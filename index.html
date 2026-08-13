@@ -231,7 +231,7 @@
     <!-- Controls Panel -->
     <div class="panel">
       <div class="controls-row">
-        <div class="input-group">
+        <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
           <label for="farmId">FARM ID:</label>
           <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
           
@@ -243,7 +243,7 @@
             👑 VIP (+2)
           </label>
           <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
-        </div>
+        </form>
 
         <div class="input-group" style="background:#FFFACD; padding:8px 12px; border:2px solid #D2691E; border-radius:8px;">
           <label style="color:#8B4513;">+1 BOOSTS:</label>
@@ -349,7 +349,7 @@
     </div>
   </div>
 
-  <!-- Column History Modal (Bounties / Chores with Ticket & Cost Editing) -->
+  <!-- Column History Modal -->
   <div id="columnHistoryModal" class="modal">
     <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
