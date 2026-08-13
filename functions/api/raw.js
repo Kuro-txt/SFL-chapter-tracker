@@ -23,7 +23,19 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
-    // 1. FILTER BOUNTIES
+    // 1. FILTER DELIVERIES
+    const rawDeliveries = farm.delivery?.orders || [];
+    const deliveryList = rawDeliveries.map(order => ({
+      id: order.id,
+      from: order.from,
+      items: order.items || {},
+      rewardCoins: order.reward?.coins || 0,
+      rewardSFL: order.reward?.sfl || 0,
+      rewardItems: order.reward?.items || {},
+      readyAt: order.readyAt
+    }));
+
+    // 2. FILTER BOUNTIES
     const activeBounties = (farm.bounties?.requests || []).map(b => ({
       id: b.id,
       name: b.name,
@@ -32,7 +44,7 @@ export async function onRequest(context) {
       rewards: b.items || {}
     }));
 
-    // 2. FILTER CHORES
+    // 3. FILTER CHORES
     const rawChores = farm.choreBoard?.chores || {};
     const choresList = Object.entries(rawChores).map(([npc, details]) => ({
       npc: npc,
@@ -42,7 +54,7 @@ export async function onRequest(context) {
       completed: !!details.completedAt
     }));
 
-    // 3. FILTER NPCs (Deliveries + Friendship)
+    // 4. FILTER NPCs
     const rawNpcs = farm.npcs || {};
     const npcList = Object.entries(rawNpcs).map(([name, data]) => ({
       npc: name,
@@ -54,6 +66,7 @@ export async function onRequest(context) {
 
     return new Response(JSON.stringify({
       farmId,
+      deliveries: deliveryList,
       bounties: activeBounties,
       chores: choresList,
       npcs: npcList
