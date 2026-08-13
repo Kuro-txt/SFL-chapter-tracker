@@ -3,7 +3,7 @@ var currentUser = null;
 var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
 var currentDoneTicketsToday = 0;
 var currentDoneCostToday = 0;
-var isFetchCooldown = false; // Cooldown state
+var isFetchCooldown = false;
 
 function formatSFL(val) {
   if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
@@ -116,9 +116,7 @@ function saveAndRecalculate() {
 }
 
 async function loadTrackerData() {
-  if (isFetchCooldown) {
-    return; // Block execution if cooldown is active
-  }
+  if (isFetchCooldown) return;
 
   var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
   var apiKey = document.getElementById('apiKey').value.trim();
@@ -130,7 +128,6 @@ async function loadTrackerData() {
   priceBadge.style.display = 'inline-block';
   priceBadge.textContent = 'FETCHING...';
 
-  // Activate Cooldown
   isFetchCooldown = true;
   var fetchButtons = document.querySelectorAll('button[onclick="loadTrackerData()"]');
   fetchButtons.forEach(btn => {
@@ -142,9 +139,7 @@ async function loadTrackerData() {
   var timeLeft = 10;
   var cooldownTimer = setInterval(function() {
     if (timeLeft > 0) {
-      fetchButtons.forEach(btn => {
-        btn.textContent = 'WAIT ' + timeLeft + 's';
-      });
+      fetchButtons.forEach(btn => { btn.textContent = 'WAIT ' + timeLeft + 's'; });
       timeLeft--;
     } else {
       clearInterval(cooldownTimer);
@@ -195,123 +190,6 @@ async function loadTrackerData() {
   } catch (err) {
     alert('Error fetching data: ' + err.message);
   }
-}
-
-function openNpcModal(indexOrName) {
-  if (!globalData) {
-    globalData = { deliveries: [], bounties: [], chores: [], cloudHistory: currentVaultData };
-  }
-
-  var modal = document.getElementById('npcModal');
-  var nameInput = document.getElementById('npcEditName');
-  var ticketsInput = document.getElementById('npcEditTickets');
-  var costInput = document.getElementById('npcEditCost');
-  var statusInput = document.getElementById('npcEditStatus');
-  var indexInput = document.getElementById('npcModalIndex');
-  var historyContainer = document.getElementById('npcHistoryContainer');
-
-  var currentNpcName = '';
-
-  if (indexOrName === 'New NPC') {
-    document.getElementById('npcModalTitle').textContent = '➕ ADD NEW NPC DELIVERY';
-    indexInput.value = 'new';
-    nameInput.value = '';
-    ticketsInput.value = '2';
-    costInput.value = '0.00';
-    statusInput.value = 'true';
-    historyContainer.innerHTML = '<p style="font-size: 11px; color: #8C7853; font-weight: bold;">Save this delivery to track its history.</p>';
-  } else {
-    var idx = parseInt(indexOrName);
-    var d = globalData.deliveries[idx];
-    if (!d) return;
-    currentNpcName = d.from.toLowerCase().trim();
-    document.getElementById('npcModalTitle').textContent = '📦 NPC PROFILE: ' + d.from.toUpperCase();
-    indexInput.value = idx;
-    nameInput.value = d.from;
-    ticketsInput.value = d.baseTickets;
-    costInput.value = d.itemsCost || 0;
-    statusInput.value = String(d.completed);
-
-    var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-    var matchingPastDeliveries = [];
-
-    logs.forEach(log => {
-      (log.deliveriesDone || []).forEach(pastDeliv => {
-        var pastName = (typeof pastDeliv === 'string' ? pastDeliv : pastDeliv.name || '').toLowerCase().trim();
-        if (pastName === currentNpcName) {
-          matchingPastDeliveries.push({
-            date: log.date || 'Past Run',
-            cost: pastDeliv.cost || 0,
-            tickets: pastDeliv.tickets || d.baseTickets
-          });
-        }
-      });
-    });
-
-    if (matchingPastDeliveries.length === 0) {
-      historyContainer.innerHTML = '<p style="font-size: 11px; color: #8C7853; font-weight: bold;">No past vault logs found for ' + d.from + '.</p>';
-    } else {
-      historyContainer.innerHTML = matchingPastDeliveries.map(match => {
-        return '<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; background:#FFF8DC; padding:6px 8px; border:1px solid #D2B48C; border-radius:4px;">' +
-          '<span style="font-weight:bold; color:#8B4513;">📅 ' + match.date + '</span>' +
-          '<span style="color:#2E7D32; font-weight:bold;">+' + match.tickets + ' Tickets (' + formatSFL(match.cost) + ' SFL)</span>' +
-        '</div>';
-      }).join('');
-    }
-  }
-
-  modal.classList.add('show');
-}
-
-function closeNpcModal() {
-  document.getElementById('npcModal').classList.remove('show');
-}
-
-function saveNpcChanges() {
-  var indexVal = document.getElementById('npcModalIndex').value;
-  var name = document.getElementById('npcEditName').value.trim() || 'Unknown NPC';
-  var tickets = parseInt(document.getElementById('npcEditTickets').value) || 0;
-  var cost = parseFloat(document.getElementById('npcEditCost').value) || 0;
-  var completed = document.getElementById('npcEditStatus').value === 'true';
-
-  if (!globalData) return;
-
-  if (indexVal === 'new') {
-    globalData.deliveries.unshift({
-      id: 'manual_' + Date.now(),
-      from: name,
-      items: {},
-      itemsCost: cost,
-      itemDetails: [{ name: 'Custom Delivery', qty: 1, unitPrice: cost, lineCost: cost, isRecipe: false }],
-      baseTickets: tickets,
-      isChapterNpc: false,
-      completed: completed,
-      isManual: true
-    });
-  } else {
-    var idx = parseInt(indexVal);
-    var d = globalData.deliveries[idx];
-    if (d) {
-      d.from = name;
-      d.baseTickets = tickets;
-      d.itemsCost = cost;
-      d.completed = completed;
-      d.isManual = true;
-    }
-  }
-
-  closeNpcModal();
-  recalculateAll();
-}
-
-function deleteNpcDelivery() {
-  var indexVal = document.getElementById('npcModalIndex').value;
-  if (indexVal !== 'new' && globalData) {
-    var idx = parseInt(indexVal);
-    globalData.deliveries.splice(idx, 1);
-  }
-  closeNpcModal();
-  recalculateAll();
 }
 
 async function saveProgressToCloudKV() {
@@ -413,7 +291,7 @@ function recalculateAll() {
 
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
-  deliveriesContainer.innerHTML = globalData.deliveries.map(function(d, index) {
+  deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
     var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
     var finalTickets = d.baseTickets + deliveryAddon;
     var totalSflCost = d.itemsCost || 0;
@@ -439,7 +317,7 @@ function recalculateAll() {
     var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
     var badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
 
-    return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '" onclick="openNpcModal(' + index + ')">' +
+    return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
       '<div style="display:flex; justify-content:space-between; align-items:center;">' +
         '<span style="font-weight:900; color:#8B4513; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
           d.from +
@@ -448,7 +326,7 @@ function recalculateAll() {
         '</span>' +
         '<div style="display:flex; align-items:center; gap:8px;">' +
           '<span class="' + badgeClass + '">' + (d.isManual ? '✍️ PAST' : (d.completed ? '✨ DONE' : '⏳ ACTIVE')) + '</span>' +
-          '<button class="btn btn-sm btn-amber" onclick="event.stopPropagation(); openNpcModal(' + index + ')">✏️ EDIT</button>' +
+          '<span style="font-size:10px; color:#8C7853;">#' + d.id + '</span>' +
         '</div>' +
       '</div>' +
       '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
