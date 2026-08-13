@@ -170,7 +170,7 @@ export const SFL_RECIPES = {
   "kale omelette": { "egg": 40, "kale": 50 },
   "kale stew": { "kale": 100 },
   "mashed potato": { "potato": 8 },
-  "pizza margherita": { "tomato": 30, "cheese": 5, "wheat": 50 },
+  "pizza margherita": { "tomato": 30, "cheese": 5, "wheat": 20 },
   "popcorn": { "sunflower": 100, "corn": 50 },
   "pumpkin soup": { "pumpkin": 10 },
   "rapid roast": { "pumpkin": 400 },
