@@ -147,6 +147,12 @@
       max-height: 650px;
       box-shadow: 0 6px 0px #5C4033;
     }
+    .column-card.collapsed {
+      max-height: fit-content;
+    }
+    .column-card.collapsed .list-container {
+      display: none;
+    }
     .column-title {
       font-size: 13px;
       font-weight: 900;
@@ -157,6 +163,11 @@
       align-items: center;
       margin-bottom: 12px;
       color: #5C4033;
+    }
+    .column-card.collapsed .column-title {
+      margin-bottom: 0;
+      border-bottom: none;
+      padding-bottom: 0;
     }
     .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
     
@@ -315,19 +326,25 @@
       </div>
     </div>
 
-    <!-- 3-Column Grid -->
+    <!-- 3-Column Grid with Toggle Buttons -->
     <div class="grid-3">
-      <div class="column-card">
+      <div id="cardDeliveries" class="column-card">
         <div class="column-title">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardDeliveries', this)" style="padding:2px 6px;">➖</button>
+            <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
+          </div>
           <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
         </div>
         <div id="deliveriesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load orders...</p></div>
       </div>
 
-      <div class="column-card">
-        <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
+      <div id="cardBounties" class="column-card">
+        <div class="column-title">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardBounties', this)" style="padding:2px 6px;">➖</button>
+            <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
+          </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT / HISTORY</button>
             <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -336,9 +353,12 @@
         <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
       </div>
 
-      <div class="column-card">
-        <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
+      <div id="cardChores" class="column-card">
+        <div class="column-title">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardChores', this)" style="padding:2px 6px;">➖</button>
+            <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
+          </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT / HISTORY</button>
             <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
