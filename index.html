@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Ticket & Price Calculator</title>
+  <title>SFL Chapter Tracker - Ticket & Cost Calculator</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
@@ -14,7 +14,7 @@
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Universal Ticket & SFL Price Calculator</p>
+      <p class="text-slate-400 text-sm">Live SFL Price & Ticket Calculator</p>
     </header>
 
     <!-- Controls & Global Ticket Boost Selectors -->
@@ -31,10 +31,10 @@
           />
           <label class="flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg cursor-pointer">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer">
-            👑 VIP Active (+2)
+            👑 VIP Active (+2 Deliveries)
           </label>
-          <span id="priceBadge" class="hidden text-[10px] px-2 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono">
-            0 Prices Loaded
+          <span id="priceBadge" class="hidden text-[10px] px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono">
+            Fetching Prices...
           </span>
         </div>
 
@@ -104,12 +104,60 @@
 
   <script>
     let globalData = null;
+    let globalPriceMap = {};
 
-    // Smart decimal formatter so small values don't round down to 0.00
+    // Formatter to prevent tiny SFL fractions from displaying as 0.00
     function formatSFL(val) {
-      if (!val || val === 0) return "0.00";
+      if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
       if (val < 0.01) return val.toFixed(4);
       return val.toFixed(2);
+    }
+
+    // Helper to extract unit price with multi-key normalization
+    function getUnitPrice(itemName) {
+      if (!itemName || !globalPriceMap) return 0;
+      const k1 = itemName.toLowerCase().trim();
+      if (globalPriceMap[k1] !== undefined) return globalPriceMap[k1];
+
+      const k2 = k1.replace(/\s+/g, '-');
+      if (globalPriceMap[k2] !== undefined) return globalPriceMap[k2];
+
+      const k3 = k1.replace(/\s+/g, '_');
+      if (globalPriceMap[k3] !== undefined) return globalPriceMap[k3];
+
+      const k4 = k1.replace(/[^a-z0-9]/g, '');
+      if (globalPriceMap[k4] !== undefined) return globalPriceMap[k4];
+
+      return 0;
+    }
+
+    // Parse raw price objects/arrays from sfl.world
+    function parsePriceObject(raw) {
+      const map = {};
+      if (!raw) return map;
+
+      const target = raw.data || raw.prices || raw.items || raw;
+
+      if (Array.isArray(target)) {
+        target.forEach(item => {
+          if (item && (item.name || item.item || item.id)) {
+            const name = (item.name || item.item || item.id).toString().toLowerCase().trim();
+            const p = item.price ?? item.sfl ?? item.value ?? item.buy ?? item.cost ?? 0;
+            map[name] = Number(p) || 0;
+          }
+        });
+      } else if (typeof target === 'object') {
+        Object.entries(target).forEach(([key, val]) => {
+          const cleanKey = key.toLowerCase().trim();
+          if (typeof val === 'number') {
+            map[cleanKey] = val;
+          } else if (val && typeof val === 'object') {
+            const p = val.price ?? val.sfl ?? val.value ?? val.buy ?? val.cost ?? val.unitPrice ?? 0;
+            map[cleanKey] = Number(p) || 0;
+          }
+        });
+      }
+      return map;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -142,22 +190,39 @@
       const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
       localStorage.setItem('sfl_farmId', farmId);
 
+      const priceBadge = document.getElementById('priceBadge');
+      priceBadge.classList.remove('hidden');
+      priceBadge.textContent = 'Fetching Prices...';
+      priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-amber-400 border border-amber-500/30 font-mono animate-pulse';
+
       try {
-        const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`);
-        const data = await response.json();
+        // Fetch Chapter Data + Direct Browser Fetch from sfl.world for redundancy
+        const [chapterRes, directPricesRes] = await Promise.all([
+          fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`).then(r => r.json()).catch(err => ({ error: err.message })),
+          fetch(`https://sfl.world/api/v1/prices`).then(r => r.json()).catch(() => null)
+        ]);
 
-        if (data.error) throw new Error(data.error);
+        if (chapterRes.error) throw new Error(chapterRes.error);
 
-        globalData = data;
+        globalData = chapterRes;
 
-        // Show price status badge
-        const priceBadge = document.getElementById('priceBadge');
-        priceBadge.classList.remove('hidden');
-        priceBadge.textContent = `${data.pricesLoadedCount || 0} Prices Loaded`;
+        // Combine client-side and server-side price results
+        const clientPrices = parsePriceObject(directPricesRes);
+        const serverPrices = parsePriceObject(chapterRes.rawPricesData);
+        globalPriceMap = { ...serverPrices, ...clientPrices };
+
+        const priceCount = Object.keys(globalPriceMap).length;
+        if (priceCount > 0) {
+          priceBadge.textContent = `${priceCount} SFL Prices Loaded`;
+          priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono';
+        } else {
+          priceBadge.textContent = 'Price API Offline';
+          priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-rose-400 border border-rose-500/30 font-mono';
+        }
 
         if (localStorage.getItem('sfl_vip') === null) {
-          document.getElementById('vipToggle').checked = data.isVipActive;
-          localStorage.setItem('sfl_vip', data.isVipActive);
+          document.getElementById('vipToggle').checked = chapterRes.isVipActive;
+          localStorage.setItem('sfl_vip', chapterRes.isVipActive);
         }
 
         recalculateAll();
@@ -182,7 +247,16 @@
       deliveriesContainer.innerHTML = globalData.deliveries.map(d => {
         const deliveryAddon = vipBonus + boostCount;
         const finalTickets = d.baseTickets + deliveryAddon;
-        const costPerTicket = finalTickets > 0 ? (d.itemsCost / finalTickets) : 0;
+
+        let totalSflCost = 0;
+        const itemRows = Object.entries(d.items).map(([item, qty]) => {
+          const unitPrice = getUnitPrice(item);
+          const lineCost = unitPrice * qty;
+          totalSflCost += lineCost;
+          return `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span> ${unitPrice > 0 ? `<span class="text-[10px] text-slate-400">(${formatSFL(lineCost)} SFL)</span>` : ''}</div>`;
+        }).join('');
+
+        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
           <div class="bg-slate-900/90 p-3 rounded-lg border border-amber-500/40 bg-amber-950/10 text-xs space-y-2">
@@ -194,14 +268,14 @@
               <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
             </div>
 
-            <div class="text-slate-200 font-medium bg-slate-950/50 p-2 rounded border border-slate-800">
-              ${Object.entries(d.items).map(([item, qty]) => `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span></div>`).join('')}
+            <div class="text-slate-200 font-medium bg-slate-950/50 p-2 rounded border border-slate-800 space-y-0.5">
+              ${itemRows}
             </div>
 
             <div class="bg-slate-950/80 p-2.5 rounded border border-amber-500/20 space-y-1.5 font-mono text-[11px]">
               <div class="flex justify-between items-center border-b border-slate-800 pb-1">
                 <span class="text-amber-300 font-bold">Yield: ${finalTickets} Tickets</span>
-                <span class="text-slate-300 font-bold">Cost: ${formatSFL(d.itemsCost)} SFL</span>
+                <span class="text-slate-300 font-bold">Cost: ${formatSFL(totalSflCost)} SFL</span>
               </div>
               <div class="text-[10px] text-emerald-400 flex justify-between font-bold">
                 <span>Cost / Ticket:</span>
@@ -217,7 +291,8 @@
       document.getElementById('bountiesCount').textContent = globalData.bounties.length;
       bountiesContainer.innerHTML = globalData.bounties.map(b => {
         const finalTickets = b.baseTickets + boostCount;
-        const costPerTicket = finalTickets > 0 ? (b.itemsCost / finalTickets) : 0;
+        const unitPrice = getUnitPrice(b.name);
+        const costPerTicket = finalTickets > 0 ? (unitPrice / finalTickets) : 0;
 
         return `
           <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 text-xs space-y-2">
@@ -228,7 +303,7 @@
             <div class="bg-slate-950/80 p-2 rounded border border-slate-800 space-y-1 font-mono text-[11px]">
               <div class="flex justify-between text-slate-300">
                 <span>Yield: ${finalTickets} Tickets</span>
-                <span>Cost: ${formatSFL(b.itemsCost)} SFL</span>
+                <span>Cost: ${formatSFL(unitPrice)} SFL</span>
               </div>
               <div class="flex justify-between text-emerald-400 font-bold text-[10px]">
                 <span>Cost / Ticket:</span>
