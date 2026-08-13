@@ -1,346 +1,572 @@
-import { SFL_RECIPES } from '../../recipes.js';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SFL Chapter Tracker</title>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .wrapper { max-width: 1200px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    header { text-align: center; padding: 10px 0; }
+    h1 { font-size: 24px; font-weight: 900; color: #fbbf24; margin-bottom: 6px; }
+    p { font-size: 13px; color: #94a3b8; font-weight: bold; }
+    
+    .panel {
+      background-color: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .controls-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+    .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    
+    label { font-size: 12px; font-weight: bold; color: #cbd5e1; }
+    input[type="text"], input[type="password"] {
+      background-color: #020617;
+      border: 2px solid #475569;
+      color: #fde047;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, input[type="password"]:focus { border-color: #fbbf24; }
+    
+    .checkbox-label {
+      background-color: rgba(245, 158, 11, 0.1);
+      border: 2px solid rgba(245, 158, 11, 0.3);
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #fde047;
+      font-weight: bold;
+    }
 
-const CHAPTER_NPC_TICKETS = {
-  "pumpkin' pete": 1,
-  "bert": 2,
-  "finley": 2,
-  "raven": 4,
-  "miranda": 2,
-  "finn": 5,
-  "pharaoh": 6,
-  "cornwell": 3,
-  "timmy": 5,
-  "tywin": 10,
-  "jester": 4
-};
+    .btn {
+      font-family: inherit;
+      font-weight: 900;
+      font-size: 12px;
+      text-transform: uppercase;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn-amber { background-color: #f59e0b; color: #020617; }
+    .btn-emerald { background-color: #059669; color: #ffffff; }
+    .btn-indigo { background-color: #4f46e5; color: #ffffff; }
 
-function extractPricesRecursive(obj, map = {}) {
-  if (!obj || typeof obj !== 'object') return map;
-  if (Array.isArray(obj)) {
-    obj.forEach(item => extractPricesRecursive(item, map));
-    return map;
-  }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .stat-box {
+      background-color: #020617;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stat-title { font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase; }
+    .stat-val { font-size: 22px; font-weight: bold; color: #38bdf8; }
+    .stat-footer { border-top: 1px solid #1e293b; padding-top: 6px; display: flex; justify-content: space-between; font-size: 11px; }
 
-  for (const [key, val] of Object.entries(obj)) {
-    const cleanKey = key.toLowerCase().trim();
-    const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .column-card {
+      background-color: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      max-height: 650px;
+    }
+    .column-title {
+      font-size: 12px;
+      font-weight: bold;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+    
+    .card-item {
+      background-color: #020617;
+      border: 2px solid #475569;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card-item.done { border-color: rgba(5, 150, 105, 0.5); opacity: 0.75; }
+    .card-item.active { border-color: rgba(245, 158, 11, 0.5); }
 
-    if (typeof val === 'number') {
-      map[cleanKey] = val;
-      map[strippedKey] = val;
-    } else if (val && typeof val === 'object') {
-      const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
-      if (typeof priceVal === 'number') {
-        map[cleanKey] = priceVal;
-        map[strippedKey] = priceVal;
+    .badge {
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge-done { background-color: #064e3b; color: #34d399; border: 1px solid #059669; }
+    .badge-active { background-color: #451a03; color: #fbbf24; border: 1px solid #d97706; }
+    .badge-recipe { background-color: #020617; color: #fde047; border: 1px solid #ca8a04; font-size: 9px; padding: 1px 4px; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.85);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background-color: #1e293b;
+      border: 2px solid #334155;
+      width: 100%;
+      max-width: 600px;
+      max-height: 80vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header { padding: 16px; border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <!-- Header -->
+    <header>
+      <h1>🌻 SFL CHAPTER TRACKER</h1>
+      <p>Live Market Price Engine & Cloud Storage</p>
+    </header>
+
+    <!-- Controls Panel -->
+    <div class="panel">
+      <div class="controls-row">
+        <div class="input-group">
+          <label for="farmId">FARM ID:</label>
+          <input type="text" id="farmId" value="8472883706403914" style="width: 130px;" />
+          
+          <label for="apiKey">API KEY:</label>
+          <input type="password" id="apiKey" placeholder="Optional API Key" style="width: 140px;" />
+
+          <label class="checkbox-label">
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #f59e0b; width: 14px; height: 14px;" />
+            👑 VIP (+2)
+          </label>
+          <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#020617; color:#34d399; border:1px solid #059669; border-radius:6px; font-weight:bold;">FETCHING...</span>
+        </div>
+
+        <div class="input-group" style="background:#020617; padding:8px 12px; border:2px solid #334155; border-radius:8px;">
+          <label style="color:#fbbf24;">+1 BOOSTS:</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#f59e0b;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#f59e0b;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#f59e0b;" /> #3</label>
+        </div>
+
+        <div class="input-group">
+          <button onclick="loadTrackerData()" class="btn btn-amber">FETCH DATA</button>
+          <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE KV</button>
+          <button onclick="toggleHistoryModal()" class="btn btn-indigo">📜 LOGS</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Stats Bar -->
+    <div class="stats-grid">
+      <div class="stat-box" style="border-color: rgba(245, 158, 11, 0.4);">
+        <div class="stat-title">TODAY TOTAL</div>
+        <div id="statTotalTickets" class="stat-val" style="color: #fbbf24;">0</div>
+        <div class="stat-footer"><span style="color:#94a3b8;">Total Cost:</span> <span id="statTotalCost" style="color:#fde047; font-weight:bold;">0.00 SFL</span></div>
+      </div>
+      <div class="stat-box" style="border-color: rgba(5, 150, 105, 0.4);">
+        <div class="stat-title">DONE TODAY</div>
+        <div id="statEarnedTickets" class="stat-val" style="color: #34d399;">0</div>
+        <div class="stat-footer"><span style="color:#94a3b8;">Cost Done:</span> <span id="statEarnedCost" style="color:#6ee7b7; font-weight:bold;">0.00 SFL</span></div>
+      </div>
+      <div class="stat-box" style="border-color: rgba(56, 189, 248, 0.4);">
+        <div class="stat-title">PENDING</div>
+        <div id="statPendingTickets" class="stat-val" style="color: #38bdf8;">0</div>
+        <div class="stat-footer"><span style="color:#94a3b8;">Cost Pending:</span> <span id="statPendingCost" style="color:#7dd3fc; font-weight:bold;">0.00 SFL</span></div>
+      </div>
+      <div class="stat-box" style="border-color: rgba(139, 92, 246, 0.4);">
+        <div class="stat-title">☁️ CLOUD KV</div>
+        <div id="statSavedTickets" class="stat-val" style="color: #a78bfa;">0</div>
+        <div class="stat-footer"><span style="color:#94a3b8;">Saved Cost:</span> <span id="statSavedCost" style="color:#c4b5fd; font-weight:bold;">0.00 SFL</span></div>
+      </div>
+    </div>
+
+    <!-- 3-Column Grid -->
+    <div class="grid-3">
+      <div class="column-card">
+        <div class="column-title" style="color: #a78bfa;">
+          <span>📦 DELIVERIES</span>
+          <span id="deliveriesCount" style="background:#020617; padding:2px 8px; border:1px solid #334155; border-radius:4px; color:#e2e8f0;">0</span>
+        </div>
+        <div id="deliveriesList" class="list-container"><p style="color:#64748b; font-size:12px;">Click Fetch Data to load orders...</p></div>
+      </div>
+
+      <div class="column-card">
+        <div class="column-title" style="color: #fbbf24;">
+          <span>📜 BOUNTIES</span>
+          <span id="bountiesCount" style="background:#020617; padding:2px 8px; border:1px solid #334155; border-radius:4px; color:#e2e8f0;">0</span>
+        </div>
+        <div id="bountiesList" class="list-container"><p style="color:#64748b; font-size:12px;">Click Fetch Data to load bounties...</p></div>
+      </div>
+
+      <div class="column-card">
+        <div class="column-title" style="color: #34d399;">
+          <span>🧹 CHORES</span>
+          <span id="choresCount" style="background:#020617; padding:2px 8px; border:1px solid #334155; border-radius:4px; color:#e2e8f0;">0</span>
+        </div>
+        <div id="choresList" class="list-container"><p style="color:#64748b; font-size:12px;">Click Fetch Data to load chores...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="historyModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size: 13px; font-weight: bold; color: #fbbf24;">📜 SAVED CLOUD LOGS</h3>
+        <button onclick="toggleHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+      </div>
+      <div id="modalLogList" class="modal-body">
+        <p style="color:#94a3b8; font-size:12px;">No logs loaded yet. Fetch data first.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var globalData = null;
+    var currentDoneTicketsToday = 0;
+    var currentDoneCostToday = 0;
+
+    function formatSFL(val) {
+      if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
+      if (val < 0.01) return val.toFixed(4);
+      return val.toFixed(2);
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
+      document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
+      document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+      var savedVip = localStorage.getItem('sfl_vip');
+      if (savedVip !== null) {
+        document.getElementById('vipToggle').checked = savedVip === 'true';
       }
-      if (val.name && typeof val.name === 'string') {
-        const itemClean = val.name.toLowerCase().trim();
-        const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
-        if (typeof priceVal === 'number') {
-          map[itemClean] = priceVal;
-          map[itemStripped] = priceVal;
+
+      var savedFarmId = localStorage.getItem('sfl_farmId');
+      if (savedFarmId) {
+        document.getElementById('farmId').value = savedFarmId;
+      }
+
+      var savedApiKey = localStorage.getItem('sfl_apiKey');
+      if (savedApiKey) {
+        document.getElementById('apiKey').value = savedApiKey;
+      }
+    });
+
+    function saveAndRecalculate() {
+      localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
+      localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
+      localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
+      localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
+      localStorage.setItem('sfl_farmId', document.getElementById('farmId').value.trim());
+      localStorage.setItem('sfl_apiKey', document.getElementById('apiKey').value.trim());
+
+      recalculateAll();
+    }
+
+    async function loadTrackerData() {
+      var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+      var apiKey = document.getElementById('apiKey').value.trim();
+      
+      localStorage.setItem('sfl_farmId', farmId);
+      localStorage.setItem('sfl_apiKey', apiKey);
+
+      var priceBadge = document.getElementById('priceBadge');
+      priceBadge.style.display = 'inline-block';
+      priceBadge.textContent = 'FETCHING...';
+
+      try {
+        var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
+        if (apiKey) {
+          queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
+        }
+
+        var response = await fetch(queryUrl);
+        var data = await response.json();
+
+        if (data.error) throw new Error(data.error);
+
+        globalData = data;
+
+        if (data.pricesLoadedCount > 0) {
+          priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
+        } else {
+          priceBadge.textContent = 'PRICE API OFFLINE';
+        }
+
+        if (localStorage.getItem('sfl_vip') === null) {
+          document.getElementById('vipToggle').checked = data.isVipActive;
+          localStorage.setItem('sfl_vip', data.isVipActive);
+        }
+
+        recalculateAll();
+
+      } catch (err) {
+        alert('Error fetching data: ' + err.message);
+      }
+    }
+
+    async function saveProgressToCloudKV() {
+      if (!globalData) {
+        alert('Please click "FETCH DATA" first before saving!');
+        return;
+      }
+
+      var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+
+      try {
+        var response = await fetch('/api/chapter?farmId=' + encodeURIComponent(farmId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticketsSaved: currentDoneTicketsToday,
+            costSaved: currentDoneCostToday,
+            deliveries: globalData.deliveries,
+            bounties: globalData.bounties,
+            chores: globalData.chores
+          })
+        });
+
+        var resData = await response.json();
+        if (resData.error) throw new Error(resData.error);
+
+        alert('☁️ SAVED TO CLOUD KV!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+        globalData.cloudHistory = resData.cloudData;
+        recalculateAll();
+      } catch (err) {
+        alert('Cloud Save Failed: ' + err.message);
+      }
+    }
+
+    function toggleHistoryModal() {
+      var modal = document.getElementById('historyModal');
+      modal.classList.toggle('show');
+
+      if (modal.classList.contains('show') && globalData && globalData.cloudHistory) {
+        var logs = globalData.cloudHistory.logs || [];
+        var container = document.getElementById('modalLogList');
+
+        if (logs.length === 0) {
+          container.innerHTML = '<p style="color:#94a3b8; font-size:12px;">No saved KV logs found for this farm yet.</p>';
+        } else {
+          container.innerHTML = logs.map(function(log, idx) {
+            return '<div style="background:#020617; padding:10px; border:1px solid #334155; border-radius:6px; display:flex; flex-direction:column; gap:4px;">' +
+              '<div style="display:flex; justify-content:space-between; color:#cbd5e1; font-size:11px;">' +
+                '<span style="font-weight:bold; color:#fbbf24;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
+                '<span style="color:#94a3b8;">' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
+              '</div>' +
+              '<div style="display:flex; justify-content:space-between; color:#34d399; font-weight:bold; font-size:12px;">' +
+                '<span>Tickets: +' + (log.ticketsSaved || 0) + '</span>' +
+                '<span>Cost: ' + formatSFL(log.costSaved || 0) + ' SFL</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
         }
       }
-      extractPricesRecursive(val, map);
-    }
-  }
-  return map;
-}
-
-function getDirectMarketPrice(name, priceMap) {
-  if (!name || !priceMap) return 0;
-
-  const clean = name.toLowerCase().trim();
-  const stripped = clean.replace(/[^a-z0-9]/g, '');
-
-  if (clean === 'coins' || clean === 'coin') {
-    return 0.001;
-  }
-
-  const variations = [
-    clean,
-    stripped,
-    clean.replace(/\s+/g, '-'),
-    clean.replace(/\s+/g, '_'),
-    clean + 's',
-    clean + 'es',
-    clean.endsWith('s') ? clean.slice(0, -1) : clean,
-    clean.endsWith('es') ? clean.slice(0, -2) : clean,
-    clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean,
-    stripped + 's',
-    stripped.endsWith('s') ? stripped.slice(0, -1) : stripped
-  ];
-
-  for (const v of variations) {
-    if (priceMap[v] !== undefined && priceMap[v] > 0) {
-      return priceMap[v];
-    }
-  }
-
-  return 0;
-}
-
-export async function onRequest(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
-  const farmId = url.searchParams.get('farmId') || '8472883706403914';
-  
-  // Accept API Key from query param (UI input) or Cloudflare Environment Variables
-  const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
-
-  if (request.method === 'POST') {
-    try {
-      const body = await request.json().catch(() => ({}));
-      if (env && env.TRACKER_KV) {
-        const kvKey = `farm_${farmId}_history`;
-        let existingData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
-        try {
-          const prev = await env.TRACKER_KV.get(kvKey, 'json');
-          if (prev) existingData = prev;
-        } catch (_) {}
-
-        const logEntry = {
-          date: new Date().toISOString().split('T')[0],
-          timestamp: new Date().toISOString(),
-          ticketsSaved: body.ticketsSaved || 0,
-          costSaved: body.costSaved || 0,
-          deliveries: body.deliveries || [],
-          bounties: body.bounties || [],
-          chores: body.chores || []
-        };
-
-        existingData.logs.unshift(logEntry);
-        existingData.cumulativeTickets += (body.ticketsSaved || 0);
-        existingData.cumulativeCost += (body.costSaved || 0);
-
-        await env.TRACKER_KV.put(kvKey, JSON.stringify(existingData));
-
-        return new Response(JSON.stringify({ success: true, cloudData: existingData }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-        });
-      } else {
-        return new Response(JSON.stringify({ 
-          success: true, 
-          cloudData: { logs: [], cumulativeTickets: body.ticketsSaved || 0, cumulativeCost: body.costSaved || 0 } 
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-        });
-      }
-    } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), { 
-        status: 200, 
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
-      });
-    }
-  }
-
-  try {
-    const sflHeaders = {
-      'Accept': 'application/json, text/plain, */*',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Referer': 'https://sunflower-land.com/',
-      'Origin': 'https://sunflower-land.com'
-    };
-
-    if (apiKey && apiKey.trim() !== '') {
-      sflHeaders['x-api-key'] = apiKey.trim();
     }
 
-    const [sflResponse, pricesResponse] = await Promise.all([
-      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(e => ({ ok: false, status: 500 })),
-      fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
-    ]);
+    function recalculateAll() {
+      if (!globalData) return;
 
-    if (!sflResponse || !sflResponse.ok) {
-      const status = sflResponse?.status || 500;
-      if (status === 401) {
-        throw new Error('SFL API returned 401 Unauthorized. Please enter your valid SFL API Key in the dashboard input box.');
-      }
-      throw new Error(`SFL API error (${status}). Check Farm ID or API Key.`);
+      var vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
+      var boostCount = 
+        (document.getElementById('boost1').checked ? 1 : 0) +
+        (document.getElementById('boost2').checked ? 1 : 0) +
+        (document.getElementById('boost3').checked ? 1 : 0);
+
+      var totalTicketsAll = 0;
+      var earnedTicketsAll = 0;
+      var pendingTicketsAll = 0;
+
+      var totalSflCostAll = 0;
+      var earnedSflCostAll = 0;
+      var pendingSflCostAll = 0;
+
+      // Render Deliveries
+      var deliveriesContainer = document.getElementById('deliveriesList');
+      document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
+      deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
+        var deliveryAddon = vipBonus + boostCount;
+        var finalTickets = d.baseTickets + deliveryAddon;
+        var totalSflCost = d.itemsCost || 0;
+
+        totalTicketsAll += finalTickets;
+        totalSflCostAll += totalSflCost;
+
+        if (d.completed) {
+          earnedTicketsAll += finalTickets;
+          earnedSflCostAll += totalSflCost;
+        } else {
+          pendingTicketsAll += finalTickets;
+          pendingSflCostAll += totalSflCost;
+        }
+
+        var itemRows = (d.itemDetails || []).map(function(detail) {
+          return '<div style="display:flex; justify-content:space-between; font-size:11px;">' +
+            '<span>• ' + detail.qty + 'x <strong style="color:#f8fafc;">' + detail.name + '</strong> ' + (detail.isRecipe ? '<span class="badge badge-recipe">RECIPE</span>' : '') + '</span>' +
+            '<span style="color:#94a3b8;">' + (detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00') + '</span>' +
+          '</div>';
+        }).join('');
+
+        var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        var badgeClass = d.completed ? 'badge badge-done' : 'badge badge-active';
+
+        return '<div class="card-item ' + (d.completed ? 'done' : 'active') + '">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<span style="font-weight:bold; color:#fde047; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
+              d.from +
+              (d.isChapterNpc ? '<span style="font-size:9px; background:#fbbf24; color:#020617; padding:1px 4px; font-weight:900; border-radius:3px;">CHAPTER</span>' : '') +
+            '</span>' +
+            '<div style="display:flex; align-items:center; gap:8px;">' +
+              '<span class="' + badgeClass + '">' + (d.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+              '<span style="font-size:10px; color:#94a3b8;">' + d.id + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#020617; padding:8px; border-radius:6px; border:1px solid #334155; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
+          '<div style="background:#020617; padding:8px; border-radius:6px; border:1px solid #334155; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+            '<div style="display:flex; justify-content:space-between; border-bottom:1px solid #1e293b; padding-bottom:4px;">' +
+              '<span style="color:#fbbf24; font-weight:bold;">Yield: ' + finalTickets + ' Tickets</span>' +
+              '<span style="color:#f8fafc; font-weight:bold;">' + formatSFL(totalSflCost) + ' SFL</span>' +
+            '</div>' +
+            '<div style="display:flex; justify-content:space-between; color:#34d399; font-weight:bold;">' +
+              '<span>Cost / Ticket:</span>' +
+              '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Render Bounties
+      var bountiesContainer = document.getElementById('bountiesList');
+      document.getElementById('bountiesCount').textContent = globalData.bounties.length;
+      bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
+        var finalTickets = b.baseTickets + boostCount;
+        var totalSflCost = b.itemsCost || 0;
+
+        totalTicketsAll += finalTickets;
+        totalSflCostAll += totalSflCost;
+
+        if (b.completed) {
+          earnedTicketsAll += finalTickets;
+          earnedSflCostAll += totalSflCost;
+        } else {
+          pendingTicketsAll += finalTickets;
+          pendingSflCostAll += totalSflCost;
+        }
+
+        var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
+
+        return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<span style="font-weight:bold; color:#f8fafc; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#fbbf24;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
+            '<span class="' + badgeClass + '">' + (b.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+          '</div>' +
+          '<div style="background:#020617; padding:8px; border-radius:6px; border:1px solid #334155; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+            '<div style="display:flex; justify-content:space-between; color:#cbd5e1;">' +
+              '<span>Yield: ' + finalTickets + ' Tickets</span>' +
+              '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
+            '</div>' +
+            '<div style="display:flex; justify-content:space-between; color:#34d399; font-weight:bold;">' +
+              '<span>Cost / Ticket:</span>' +
+              '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Render Chores
+      var choresContainer = document.getElementById('choresList');
+      document.getElementById('choresCount').textContent = globalData.chores.length;
+      choresContainer.innerHTML = globalData.chores.map(function(c) {
+        var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
+        var hasProgress = c.requirement > 0;
+
+        totalTicketsAll += finalTickets;
+
+        if (c.completed) {
+          earnedTicketsAll += finalTickets;
+        } else {
+          pendingTicketsAll += finalTickets;
+        }
+
+        var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
+
+        return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<span style="font-weight:bold; color:#f8fafc; text-transform:capitalize;">' + c.npc + '</span>' +
+            '<span class="' + badgeClass + '">' + (c.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+          '</div>' +
+          '<div style="color:#cbd5e1;">' + c.task + '</div>' +
+          (hasProgress ? '<div style="font-size:11px; color:#94a3b8;">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
+          (c.baseTickets > 0 ? '<div style="background:#020617; padding:6px 8px; border-radius:6px; border:1px solid #334155; display:flex; justify-content:space-between; align-items:center; font-size:11px;"><span style="color:#94a3b8;">Yield:</span><span style="color:#34d399; font-weight:bold;">' + finalTickets + ' Tickets</span></div>' : '') +
+        '</div>';
+      }).join('');
+
+      currentDoneTicketsToday = earnedTicketsAll;
+      currentDoneCostToday = earnedSflCostAll;
+
+      document.getElementById('statTotalTickets').textContent = totalTicketsAll;
+      document.getElementById('statTotalCost').textContent = formatSFL(totalSflCostAll) + ' SFL';
+      document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
+      document.getElementById('statEarnedCost').textContent = formatSFL(earnedSflCostAll) + ' SFL';
+      document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
+      document.getElementById('statPendingCost').textContent = formatSFL(pendingSflCostAll) + ' SFL';
+
+      var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
+      document.getElementById('statSavedTickets').textContent = cloud.cumulativeTickets || 0;
+      document.getElementById('statSavedCost').textContent = formatSFL(cloud.cumulativeCost || 0) + ' SFL';
     }
-
-    const payload = await sflResponse.json().catch(() => ({}));
-    const farm = payload.farm || {};
-
-    let priceMap = {};
-    if (pricesResponse && pricesResponse.ok) {
-      const rawPricesData = await pricesResponse.json().catch(() => null);
-      if (rawPricesData) {
-        priceMap = extractPricesRecursive(rawPricesData);
-      }
-    }
-
-    const getItemUnitPrice = (itemName, depth = 0) => {
-      if (depth > 5 || !itemName) return 0;
-
-      const clean = itemName.toLowerCase().trim();
-      const stripped = clean.replace(/[^a-z0-9]/g, '');
-
-      const directPrice = getDirectMarketPrice(clean, priceMap);
-      if (directPrice > 0) return directPrice;
-
-      const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
-      if (recipe) {
-        let recipeTotal = 0;
-        Object.entries(recipe).forEach(([ingName, ingQty]) => {
-          recipeTotal += getItemUnitPrice(ingName, depth + 1) * ingQty;
-        });
-        return recipeTotal;
-      }
-
-      return 0;
-    };
-
-    const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
-
-    // 1. DELIVERIES
-    const rawDeliveries = farm.delivery?.orders || [];
-    const deliveryList = [];
-
-    rawDeliveries.forEach(order => {
-      const npcNameClean = (order.from || '').toLowerCase().trim();
-      const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
-
-      let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
-
-      if (order.reward?.items) {
-        Object.entries(order.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
-        });
-      }
-
-      if (baseTicketCount > 0) {
-        let itemsCost = 0;
-        const itemDetails = [];
-
-        Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-          const unitPrice = getItemUnitPrice(itemName);
-          const lineCost = unitPrice * qty;
-          itemsCost += lineCost;
-
-          itemDetails.push({
-            name: itemName,
-            qty,
-            unitPrice,
-            lineCost,
-            isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()]
-          });
-        });
-
-        const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-
-        deliveryList.push({
-          id: order.id,
-          from: order.from,
-          items: order.items || {},
-          itemsCost,
-          itemDetails,
-          baseTickets: baseTicketCount,
-          isChapterNpc: baseTickets !== undefined,
-          completed: isCompleted
-        });
-      }
-    });
-
-    // 2. BOUNTIES
-    const activeBounties = [];
-    const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
-    let completedBountyIds = [];
-    if (Array.isArray(completedBountiesRaw)) {
-      completedBountyIds = completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b));
-    }
-
-    (farm.bounties?.requests || []).forEach(b => {
-      let baseTicketCount = 0;
-      if (b.items) {
-        Object.entries(b.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
-        });
-      }
-
-      if (baseTicketCount > 0) {
-        const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
-
-        const isCompleted = typeof b.completedAt === 'number' || 
-                            b.completed === true || 
-                            b.status === 'completed' ||
-                            completedBountyIds.includes(String(b.id));
-
-        activeBounties.push({
-          id: b.id,
-          name: b.name,
-          level: b.level || null,
-          baseTickets: baseTicketCount,
-          itemsCost: unitPrice,
-          completed: isCompleted
-        });
-      }
-    });
-
-    // 3. CHORES
-    const choreObj = farm.choreBoard?.chores || farm.chores || {};
-    const choresList = Object.entries(choreObj).map(([key, details]) => {
-      let baseTicketCount = 0;
-      if (details.reward?.items) {
-        Object.entries(details.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
-        });
-      }
-
-      const currentProgress = details.initialProgress ?? details.progress ?? 0;
-      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
-
-      const isCompleted = typeof details.completedAt === 'number' || 
-                          details.completed === true || 
-                          details.isCompleted === true ||
-                          (requirement > 0 && currentProgress >= requirement);
-
-      const npcName = details.npc || details.from || key;
-
-      return {
-        npc: npcName,
-        task: details.name || details.description || key,
-        baseTickets: baseTicketCount,
-        progress: currentProgress,
-        requirement: requirement,
-        completed: isCompleted
-      };
-    });
-
-    let cloudHistory = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
-    if (env && env.TRACKER_KV) {
-      try {
-        const kvData = await env.TRACKER_KV.get(`farm_${farmId}_history`, 'json');
-        if (kvData) cloudHistory = kvData;
-      } catch (_) {}
-    }
-
-    return new Response(JSON.stringify({
-      farmId,
-      isVipActive,
-      pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: deliveryList,
-      bounties: activeBounties,
-      chores: choresList,
-      cloudHistory
-    }, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
-
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-    });
-  }
-}
+  </script>
+</body>
+</html>
