@@ -93,21 +93,6 @@
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
     .btn-sm { padding: 4px 8px; font-size: 10px; box-shadow: 0 2px 0px #3E2723; }
 
-    .btn-pop {
-      background: #FFF8DC;
-      border: 2px solid #8B5A2B;
-      color: #8B4513;
-      font-weight: 900;
-      padding: 4px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-family: inherit;
-      box-shadow: 0 2px 0px #5C4033;
-      transition: all 0.1s ease;
-    }
-    .btn-pop:hover { background: #FFFACD; border-color: #D2691E; }
-    .btn-pop:active { transform: translateY(1px); box-shadow: none; }
-
     .btn-pop-title {
       background: transparent;
       border: none;
@@ -326,12 +311,12 @@
       </div>
     </div>
 
-    <!-- 3-Column Grid with Toggle Buttons -->
+    <!-- 3-Column Grid with Toggle Down/Up Arrow Buttons -->
     <div class="grid-3">
       <div id="cardDeliveries" class="column-card">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardDeliveries', this)" style="padding:2px 6px;">➖</button>
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardDeliveries', this)" style="padding:2px 6px;">▼</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
           </div>
           <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -342,7 +327,7 @@
       <div id="cardBounties" class="column-card">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardBounties', this)" style="padding:2px 6px;">➖</button>
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardBounties', this)" style="padding:2px 6px;">▼</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
@@ -356,7 +341,7 @@
       <div id="cardChores" class="column-card">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardChores', this)" style="padding:2px 6px;">➖</button>
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardChores', this)" style="padding:2px 6px;">▼</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
