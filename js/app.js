@@ -338,10 +338,10 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-// Column History Modal (Bounties / Chores)
+// Column History Modal (Bounties / Chores with Editable Tickets & Costs)
 function openColumnHistoryModal(type) {
   activeColumnType = type;
-  setElemText('columnHistoryTitle', type === 'bounty' ? '📜 ALL BOUNTIES HISTORY' : '📜 ALL CHORES HISTORY');
+  setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
   renderColumnHistoryModalList();
   document.getElementById('columnHistoryModal').classList.add('show');
 }
@@ -372,6 +372,7 @@ function renderColumnHistoryModalList() {
         name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
         cost: item.cost || 0,
         tickets: finalTix,
+        baseTickets: baseTix,
         checked: isChecked,
         status: item.completed ? '✨ Done' : '⏳ Active'
       });
@@ -394,8 +395,11 @@ function renderColumnHistoryModalList() {
           '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleColumnHistCheck(' + r.logIdx + ', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
           '<div><span style="font-weight:bold; color:#8B4513;">📅 ' + r.date + ' (' + r.status + ')</span><br/><strong style="color:#3E2723;">' + r.name + '</strong></div>' +
         '</label>' +
-        '<div style="display:flex; align-items:center; gap:10px;">' +
-          '<span style="color:#2E7D32; font-weight:bold;">' + (r.tickets > 0 ? '+' + r.tickets + ' Tix ' : '') + (r.cost > 0 ? '(' + formatSFL(r.cost) + ' SFL)' : '') + '</span>' +
+        '<div style="display:flex; align-items:center; gap:6px;">' +
+          (type === 'bounty' ? 
+            '<span>Tix:</span><input type="number" value="' + r.baseTickets + '" onchange="updateHistoryItemTickets(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:50px; padding:2px; font-size:10px;" />' : 
+            '<span>SFL:</span><input type="number" step="0.01" value="' + r.cost + '" onchange="updateHistoryItemCost(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:60px; padding:2px; font-size:10px;" />'
+          ) +
           '<button onclick="deleteColumnHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
         '</div>' +
       '</div>';
@@ -403,6 +407,26 @@ function renderColumnHistoryModalList() {
   }
 
   setElemText('columnHistoryStats', totalTickedTickets + ' Tickets | ' + formatSFL(totalTickedCost) + ' SFL');
+}
+
+function updateHistoryItemTickets(logIdx, itemIdx, val) {
+  var logs = globalData.cloudHistory.logs;
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
+  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
+    logs[logIdx][targetArray][itemIdx].tickets = parseInt(val) || 0;
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
+function updateHistoryItemCost(logIdx, itemIdx, val) {
+  var logs = globalData.cloudHistory.logs;
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
+  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
+    logs[logIdx][targetArray][itemIdx].cost = parseFloat(val) || 0;
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
 }
 
 function toggleColumnHistCheck(logIdx, itemIdx) {
@@ -598,11 +622,16 @@ function recalculateAll() {
   setElemText('catBountyTickets', bountyCatTickets + ' Tix');
   setElemText('catChoreTickets', choreCatTickets + ' Tix');
 
-  // DONE TODAY & LIVE BOARD
+  // SORTING: Active items placed ABOVE completed items
+  var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === c = b.completed ? 0 : a.completed ? 1 : -1));
+
+  // DELIVERIES COLUMN
   var deliveriesContainer = document.getElementById('deliveriesList');
   if (deliveriesContainer && globalData.deliveries) {
     setElemText('deliveriesCount', globalData.deliveries.length);
-    deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
+    deliveriesContainer.innerHTML = sortedDeliveries.map(function(d) {
       var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       var finalTickets = d.baseTickets + deliveryAddon;
       var totalSflCost = d.itemsCost || 0;
@@ -628,14 +657,8 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-weight:900; color:#8B4513; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
-            d.from +
-            (d.isChapterNpc ? '<span style="font-size:9px; background:#FFB300; color:#3E2723; padding:1px 4px; font-weight:900; border-radius:4px;">CHAPTER</span>' : '') +
-          '</span>' +
-          '<div style="display:flex; align-items:center; gap:6px;">' +
-            '<button class="btn btn-sm btn-indigo" onclick="openNpcHistoryModal(\'' + escapedName + '\')">📜 HISTORY</button>' +
-            '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
-          '</div>' +
+          '<button class="btn-pop" onclick="openNpcHistoryModal(\'' + escapedName + '\')">👤 ' + d.from.toUpperCase() + (d.isChapterNpc ? ' 👑' : '') + '</button>' +
+          '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
@@ -652,11 +675,11 @@ function recalculateAll() {
     }).join('');
   }
 
-  // Bounties
+  // BOUNTIES COLUMN
   var bountiesContainer = document.getElementById('bountiesList');
   if (bountiesContainer && globalData.bounties) {
     setElemText('bountiesCount', globalData.bounties.length);
-    bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
+    bountiesContainer.innerHTML = sortedBounties.map(function(b) {
       var finalTickets = b.baseTickets + boostCount;
       var totalSflCost = b.itemsCost || 0;
 
@@ -673,7 +696,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#B26A00;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
+          '<button class="btn-pop" onclick="openColumnHistoryModal(\'bounty\')">📜 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</button>' +
           '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
@@ -690,11 +713,11 @@ function recalculateAll() {
     }).join('');
   }
 
-  // Chores
+  // CHORES COLUMN
   var choresContainer = document.getElementById('choresList');
   if (choresContainer && globalData.chores) {
     setElemText('choresCount', globalData.chores.length);
-    choresContainer.innerHTML = globalData.chores.map(function(c) {
+    choresContainer.innerHTML = sortedChores.map(function(c) {
       var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
       var hasProgress = c.requirement > 0;
 
@@ -708,7 +731,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + c.npc + '</span>' +
+          '<button class="btn-pop" onclick="openColumnHistoryModal(\'chore\')">🧹 ' + c.npc.toUpperCase() + '</button>' +
           '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
@@ -727,9 +750,11 @@ function recalculateAll() {
 
   setElemText('statEarnedTickets', earnedTicketsAll);
   setElemText('statEarnedCost', formatSFL(earnedSflCostAll) + ' SFL');
+  setElemText('statEarnedRatio', (earnedTicketsAll > 0 ? formatSFL(earnedSflCostAll / earnedTicketsAll) : "0.00") + ' SFL / Ticket');
 
   setElemText('statPendingTickets', pendingTicketsAll);
   setElemText('statPendingCost', formatSFL(pendingSflCostAll) + ' SFL');
+  setElemText('statPendingRatio', (pendingTicketsAll > 0 ? formatSFL(pendingSflCostAll / pendingTicketsAll) : "0.00") + ' SFL / Ticket');
 
   var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
   var cloudTickets = cloud.cumulativeTickets || 0;
