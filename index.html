@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker</title>
+  <title>Sunflower Land Chapter Tracker</title>
   
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+      background-color: #3b5323; /* Forest Green game backdrop */
+      background-image: radial-gradient(#4d6b2c 15%, transparent 16%), radial-gradient(#2d401a 15%, transparent 16%);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      color: #3e2723;
+      font-family: 'Courier New', Courier, monospace, sans-serif;
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -18,16 +21,26 @@
       min-height: 100vh;
     }
     .wrapper { max-width: 1200px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
-    header { text-align: center; padding: 10px 0; }
-    h1 { font-size: 24px; font-weight: 900; color: #fbbf24; margin-bottom: 6px; }
-    p { font-size: 13px; color: #94a3b8; font-weight: bold; }
     
+    /* Wooden Game Header Banner */
+    header {
+      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
+      border: 4px solid #3E2723;
+      border-radius: 12px;
+      text-align: center;
+      padding: 16px;
+      box-shadow: 0 8px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
+    }
+    h1 { font-size: 26px; font-weight: 900; color: #FFF8DC; text-shadow: 2px 2px #271813; margin-bottom: 4px; letter-spacing: 1px; }
+    p { font-size: 13px; color: #EEDC82; font-weight: bold; text-shadow: 1px 1px #271813; }
+    
+    /* Parchment Wood Panels */
     .panel {
-      background-color: #1e293b;
-      border: 2px solid #334155;
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
       border-radius: 12px;
       padding: 16px;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      box-shadow: 0 6px 0px #5C4033;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -35,11 +48,11 @@
     .controls-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
     .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     
-    label { font-size: 12px; font-weight: bold; color: #cbd5e1; }
+    label { font-size: 12px; font-weight: 900; color: #5C4033; }
     input[type="text"], input[type="password"] {
-      background-color: #020617;
-      border: 2px solid #475569;
-      color: #fde047;
+      background-color: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      color: #3E2723;
       padding: 8px 12px;
       font-size: 12px;
       font-weight: bold;
@@ -47,11 +60,11 @@
       outline: none;
       font-family: inherit;
     }
-    input[type="text"]:focus, input[type="password"]:focus { border-color: #fbbf24; }
+    input[type="text"]:focus, input[type="password"]:focus { border-color: #D2691E; background-color: #fff; }
     
     .checkbox-label {
-      background-color: rgba(245, 158, 11, 0.1);
-      border: 2px solid rgba(245, 158, 11, 0.3);
+      background-color: #FFFACD;
+      border: 2px solid #D2691E;
       padding: 7px 12px;
       border-radius: 8px;
       cursor: pointer;
@@ -59,10 +72,11 @@
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      color: #fde047;
-      font-weight: bold;
+      color: #8B4513;
+      font-weight: 900;
     }
 
+    /* Game Buttons */
     .btn {
       font-family: inherit;
       font-weight: 900;
@@ -70,81 +84,90 @@
       text-transform: uppercase;
       padding: 10px 16px;
       border-radius: 8px;
-      border: none;
+      border: 2px solid #3E2723;
       cursor: pointer;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
-      transition: opacity 0.2s;
+      box-shadow: 0 4px 0px #3E2723;
+      transition: all 0.1s ease;
     }
-    .btn:hover { opacity: 0.9; }
-    .btn-amber { background-color: #f59e0b; color: #020617; }
-    .btn-emerald { background-color: #059669; color: #ffffff; }
-    .btn-indigo { background-color: #4f46e5; color: #ffffff; }
+    .btn:active { transform: translateY(2px); box-shadow: 0 2px 0px #3E2723; }
+    .btn-amber { background-color: #FFB300; color: #3E2723; border-color: #B26A00; box-shadow: 0 4px 0px #B26A00; }
+    .btn-emerald { background-color: #4CAF50; color: #FFF8DC; border-color: #2E7D32; box-shadow: 0 4px 0px #2E7D32; }
+    .btn-indigo { background-color: #795548; color: #FFF8DC; border-color: #4E342E; box-shadow: 0 4px 0px #4E342E; }
 
+    /* Stats Grid */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .stat-box {
-      background-color: #020617;
-      border: 2px solid #334155;
-      border-radius: 8px;
+      background-color: #FFF8DC;
+      border: 3px solid #8B5A2B;
+      border-radius: 10px;
       padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      box-shadow: 0 4px 0px #5C4033;
     }
-    .stat-title { font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase; }
-    .stat-val { font-size: 22px; font-weight: bold; color: #38bdf8; }
-    .stat-footer { border-top: 1px solid #1e293b; padding-top: 6px; display: flex; justify-content: space-between; font-size: 11px; }
+    .stat-title { font-size: 11px; font-weight: 900; color: #8B5A2B; text-transform: uppercase; }
+    .stat-val { font-size: 24px; font-weight: 900; color: #D2691E; }
+    .stat-footer { border-top: 2px dashed #D2B48C; padding-top: 6px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #5C4033; }
 
+    /* 3-Column Column Cards */
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
     .column-card {
-      background-color: #1e293b;
-      border: 2px solid #334155;
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
       border-radius: 12px;
       padding: 16px;
       display: flex;
       flex-direction: column;
       max-height: 650px;
+      box-shadow: 0 6px 0px #5C4033;
     }
     .column-title {
-      font-size: 12px;
-      font-weight: bold;
+      font-size: 13px;
+      font-weight: 900;
       padding-bottom: 10px;
-      border-bottom: 2px solid #334155;
+      border-bottom: 3px solid #8B5A2B;
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 12px;
+      color: #5C4033;
     }
     .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
     
+    /* Quest / Item Cards */
     .card-item {
-      background-color: #020617;
-      border: 2px solid #475569;
+      background-color: #FFF8DC;
+      border: 2px solid #C49A6C;
       border-radius: 8px;
       padding: 12px;
       font-size: 12px;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      box-shadow: 0 2px 0px rgba(92,64,51,0.2);
     }
-    .card-item.done { border-color: rgba(5, 150, 105, 0.5); opacity: 0.75; }
-    .card-item.active { border-color: rgba(245, 158, 11, 0.5); }
+    .card-item.done { border-color: #4CAF50; opacity: 0.8; background-color: #F1F8E9; }
+    .card-item.active { border-color: #FFB300; background-color: #FFFDE7; }
 
     .badge {
       padding: 2px 8px;
       font-size: 10px;
-      font-weight: bold;
-      border-radius: 4px;
+      font-weight: 900;
+      border-radius: 6px;
       text-transform: uppercase;
+      border: 1px solid rgba(0,0,0,0.2);
     }
-    .badge-done { background-color: #064e3b; color: #34d399; border: 1px solid #059669; }
-    .badge-active { background-color: #451a03; color: #fbbf24; border: 1px solid #d97706; }
-    .badge-recipe { background-color: #020617; color: #fde047; border: 1px solid #ca8a04; font-size: 9px; padding: 1px 4px; }
+    .badge-done { background-color: #C8E6C9; color: #2E7D32; }
+    .badge-active { background-color: #FFE0B2; color: #E65100; }
+    .badge-recipe { background-color: #EFEBE9; color: #5D4037; font-size: 9px; padding: 1px 4px; border: 1px solid #BCAAA4; border-radius: 4px; }
 
+    /* Modal */
     .modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(2, 6, 23, 0.85);
+      background: rgba(45, 64, 26, 0.85);
       z-index: 100;
       justify-content: center;
       align-items: center;
@@ -152,16 +175,17 @@
     }
     .modal.show { display: flex; }
     .modal-content {
-      background-color: #1e293b;
-      border: 2px solid #334155;
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
       width: 100%;
       max-width: 600px;
       max-height: 80vh;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
+      box-shadow: 0 10px 0px #5C4033;
     }
-    .modal-header { padding: 16px; border-bottom: 2px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header { padding: 16px; border-bottom: 3px solid #8B5A2B; display: flex; justify-content: space-between; align-items: center; background: #8B5A2B; color: #FFF8DC; border-top-left-radius: 8px; border-top-right-radius: 8px; }
     .modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
   </style>
 </head>
@@ -170,8 +194,8 @@
   <div class="wrapper">
     <!-- Header -->
     <header>
-      <h1>🌻 SFL CHAPTER TRACKER</h1>
-      <p>Live Market Price Engine & Cloud Storage</p>
+      <h1>🌻 SUNFLOWER LAND CHAPTER TRACKER</h1>
+      <p>Harvest Tickets & Market Price Calculator</p>
     </header>
 
     <!-- Controls Panel -->
@@ -182,20 +206,20 @@
           <input type="text" id="farmId" value="8472883706403914" style="width: 130px;" />
           
           <label for="apiKey">API KEY:</label>
-          <input type="password" id="apiKey" placeholder="Optional API Key" style="width: 140px;" />
+          <input type="password" id="apiKey" placeholder="Optional Key" style="width: 130px;" />
 
           <label class="checkbox-label">
-            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #f59e0b; width: 14px; height: 14px;" />
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
             👑 VIP (+2)
           </label>
-          <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#020617; color:#34d399; border:1px solid #059669; border-radius:6px; font-weight:bold;">FETCHING...</span>
+          <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </div>
 
-        <div class="input-group" style="background:#020617; padding:8px 12px; border:2px solid #334155; border-radius:8px;">
-          <label style="color:#fbbf24;">+1 BOOSTS:</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#f59e0b;" /> #1</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#f59e0b;" /> #2</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#f59e0b;" /> #3</label>
+        <div class="input-group" style="background:#FFFACD; padding:8px 12px; border:2px solid #D2691E; border-radius:8px;">
+          <label style="color:#8B4513;">+1 BOOSTS:</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #3</label>
         </div>
 
         <div class="input-group">
@@ -208,52 +232,52 @@
 
     <!-- Summary Stats Bar -->
     <div class="stats-grid">
-      <div class="stat-box" style="border-color: rgba(245, 158, 11, 0.4);">
+      <div class="stat-box">
         <div class="stat-title">TODAY TOTAL</div>
-        <div id="statTotalTickets" class="stat-val" style="color: #fbbf24;">0</div>
-        <div class="stat-footer"><span style="color:#94a3b8;">Total Cost:</span> <span id="statTotalCost" style="color:#fde047; font-weight:bold;">0.00 SFL</span></div>
+        <div id="statTotalTickets" class="stat-val">0</div>
+        <div class="stat-footer"><span>Total Cost:</span> <span id="statTotalCost" style="color:#8B4513;">0.00 SFL</span></div>
       </div>
-      <div class="stat-box" style="border-color: rgba(5, 150, 105, 0.4);">
-        <div class="stat-title">DONE TODAY</div>
-        <div id="statEarnedTickets" class="stat-val" style="color: #34d399;">0</div>
-        <div class="stat-footer"><span style="color:#94a3b8;">Cost Done:</span> <span id="statEarnedCost" style="color:#6ee7b7; font-weight:bold;">0.00 SFL</span></div>
+      <div class="stat-box" style="border-color: #4CAF50;">
+        <div class="stat-title" style="color: #2E7D32;">DONE TODAY</div>
+        <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0</div>
+        <div class="stat-footer"><span>Cost Done:</span> <span id="statEarnedCost" style="color:#2E7D32;">0.00 SFL</span></div>
       </div>
-      <div class="stat-box" style="border-color: rgba(56, 189, 248, 0.4);">
-        <div class="stat-title">PENDING</div>
-        <div id="statPendingTickets" class="stat-val" style="color: #38bdf8;">0</div>
-        <div class="stat-footer"><span style="color:#94a3b8;">Cost Pending:</span> <span id="statPendingCost" style="color:#7dd3fc; font-weight:bold;">0.00 SFL</span></div>
+      <div class="stat-box" style="border-color: #FFB300;">
+        <div class="stat-title" style="color: #B26A00;">PENDING</div>
+        <div id="statPendingTickets" class="stat-val" style="color: #E65100;">0</div>
+        <div class="stat-footer"><span>Cost Pending:</span> <span id="statPendingCost" style="color:#E65100;">0.00 SFL</span></div>
       </div>
-      <div class="stat-box" style="border-color: rgba(139, 92, 246, 0.4);">
-        <div class="stat-title">☁️ CLOUD KV</div>
-        <div id="statSavedTickets" class="stat-val" style="color: #a78bfa;">0</div>
-        <div class="stat-footer"><span style="color:#94a3b8;">Saved Cost:</span> <span id="statSavedCost" style="color:#c4b5fd; font-weight:bold;">0.00 SFL</span></div>
+      <div class="stat-box" style="border-color: #795548;">
+        <div class="stat-title" style="color: #4E342E;">☁️ CLOUD KV</div>
+        <div id="statSavedTickets" class="stat-val" style="color: #6D4C41;">0</div>
+        <div class="stat-footer"><span>Saved Cost:</span> <span id="statSavedCost" style="color:#4E342E;">0.00 SFL</span></div>
       </div>
     </div>
 
     <!-- 3-Column Grid -->
     <div class="grid-3">
       <div class="column-card">
-        <div class="column-title" style="color: #a78bfa;">
-          <span>📦 DELIVERIES</span>
-          <span id="deliveriesCount" style="background:#020617; padding:2px 8px; border:1px solid #334155; border-radius:4px; color:#e2e8f0;">0</span>
+        <div class="column-title">
+          <span>📦 NPC DELIVERIES</span>
+          <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
         </div>
-        <div id="deliveriesList" class="list-container"><p style="color:#64748b; font-size:12px;">Click Fetch Data to load orders...</p></div>
+        <div id="deliveriesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load orders...</p></div>
       </div>
 
       <div class="column-card">
-        <div class="column-title" style="color: #fbbf24;">
+        <div class="column-title">
           <span>📜 BOUNTIES</span>
-          <span id="bountiesCount" style="background:#020617; padding:2px 8px; border:1px solid #334155; border-radius:4px; color:#e2e8f0;">0</span>
+          <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
         </div>
-        <div id="bountiesList" class="list-container"><p style="color:#64748b; font-size:12px;">Click Fetch Data to load bounties...</p></div>
+        <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
       </div>
 
       <div class="column-card">
-        <div class="column-title" style="color: #34d399;">
+        <div class="column-title">
           <span>🧹 CHORES</span>
-          <span id="choresCount" style="background:#020617; padding:2px 8px; border:1px solid #334155; border-radius:4px; color:#e2e8f0;">0</span>
+          <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
         </div>
-        <div id="choresList" class="list-container"><p style="color:#64748b; font-size:12px;">Click Fetch Data to load chores...</p></div>
+        <div id="choresList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load chores...</p></div>
       </div>
     </div>
   </div>
@@ -262,11 +286,11 @@
   <div id="historyModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-size: 13px; font-weight: bold; color: #fbbf24;">📜 SAVED CLOUD LOGS</h3>
+        <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 SAVED CLOUD LOGS & HISTORY</h3>
         <button onclick="toggleHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div id="modalLogList" class="modal-body">
-        <p style="color:#94a3b8; font-size:12px;">No logs loaded yet. Fetch data first.</p>
+        <p style="color:#8C7853; font-size:12px; font-weight:bold;">No logs loaded yet. Fetch data first.</p>
       </div>
     </div>
   </div>
@@ -401,23 +425,23 @@
         var container = document.getElementById('modalLogList');
 
         if (logs.length === 0) {
-          container.innerHTML = '<p style="color:#94a3b8; font-size:12px;">No saved KV logs found for this farm yet.</p>';
+          container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved KV logs found for this farm yet.</p>';
         } else {
           container.innerHTML = logs.map(function(log, idx) {
-            var delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? '<div style="color:#a78bfa; font-size:11px;"><strong>Deliveries:</strong> ' + log.deliveriesDone.join(', ') + '</div>' : '';
-            var bountiesHtml = (log.bountiesDone && log.bountiesDone.length > 0) ? '<div style="color:#fbbf24; font-size:11px;"><strong>Bounties:</strong> ' + log.bountiesDone.join(', ') + '</div>' : '';
-            var choresHtml = (log.choresDone && log.choresDone.length > 0) ? '<div style="color:#34d399; font-size:11px;"><strong>Chores:</strong> ' + log.choresDone.join(', ') + '</div>' : '';
+            var delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? '<div style="color:#5C4033; font-size:11px;"><strong>Deliveries:</strong> ' + log.deliveriesDone.join(', ') + '</div>' : '';
+            var bountiesHtml = (log.bountiesDone && log.bountiesDone.length > 0) ? '<div style="color:#B26A00; font-size:11px;"><strong>Bounties:</strong> ' + log.bountiesDone.join(', ') + '</div>' : '';
+            var choresHtml = (log.choresDone && log.choresDone.length > 0) ? '<div style="color:#2E7D32; font-size:11px;"><strong>Chores:</strong> ' + log.choresDone.join(', ') + '</div>' : '';
 
-            return '<div style="background:#020617; padding:12px; border:1px solid #334155; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
-              '<div style="display:flex; justify-content:space-between; color:#cbd5e1; font-size:11px;">' +
-                '<span style="font-weight:bold; color:#fbbf24;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
-                '<span style="color:#94a3b8;">' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
+            return '<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
+              '<div style="display:flex; justify-content:space-between; color:#5C4033; font-size:11px; font-weight:900;">' +
+                '<span style="color:#8B4513;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
+                '<span>' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
               '</div>' +
-              '<div style="display:flex; justify-content:space-between; color:#34d399; font-weight:bold; font-size:12px; border-bottom:1px solid #1e293b; padding-bottom:4px;">' +
+              '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
                 '<span>Tickets: +' + (log.ticketsSaved || 0) + '</span>' +
                 '<span>Cost: ' + formatSFL(log.costSaved || 0) + ' SFL</span>' +
               '</div>' +
-              '<div style="display:flex; flex-direction:column; gap:2px;">' + delivHtml + bountiesHtml + choresHtml + '</div>' +
+              '<div style="display:flex; flex-direction:column; gap:3px;">' + delivHtml + bountiesHtml + choresHtml + '</div>' +
             '</div>';
           }).join('');
         }
@@ -462,8 +486,8 @@
 
         var itemRows = (d.itemDetails || []).map(function(detail) {
           return '<div style="display:flex; justify-content:space-between; font-size:11px;">' +
-            '<span>• ' + detail.qty + 'x <strong style="color:#f8fafc;">' + detail.name + '</strong> ' + (detail.isRecipe ? '<span class="badge badge-recipe">RECIPE</span>' : '') + '</span>' +
-            '<span style="color:#94a3b8;">' + (detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00') + '</span>' +
+            '<span>• ' + detail.qty + 'x <strong style="color:#3E2723;">' + detail.name + '</strong> ' + (detail.isRecipe ? '<span class="badge badge-recipe">RECIPE</span>' : '') + '</span>' +
+            '<span style="color:#8C7853; font-weight:bold;">' + (detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00') + '</span>' +
           '</div>';
         }).join('');
 
@@ -472,22 +496,22 @@
 
         return '<div class="card-item ' + (d.completed ? 'done' : 'active') + '">' +
           '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<span style="font-weight:bold; color:#fde047; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
+            '<span style="font-weight:900; color:#8B4513; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
               d.from +
-              (d.isChapterNpc ? '<span style="font-size:9px; background:#fbbf24; color:#020617; padding:1px 4px; font-weight:900; border-radius:3px;">CHAPTER</span>' : '') +
+              (d.isChapterNpc ? '<span style="font-size:9px; background:#FFB300; color:#3E2723; padding:1px 4px; font-weight:900; border-radius:4px;">CHAPTER</span>' : '') +
             '</span>' +
             '<div style="display:flex; align-items:center; gap:8px;">' +
-              '<span class="' + badgeClass + '">' + (d.completed ? 'DONE' : 'ACTIVE') + '</span>' +
-              '<span style="font-size:10px; color:#94a3b8;">' + d.id + '</span>' +
+              '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+              '<span style="font-size:10px; color:#8C7853;">#' + d.id + '</span>' +
             '</div>' +
           '</div>' +
-          '<div style="background:#020617; padding:8px; border-radius:6px; border:1px solid #334155; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
-          '<div style="background:#020617; padding:8px; border-radius:6px; border:1px solid #334155; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
-            '<div style="display:flex; justify-content:space-between; border-bottom:1px solid #1e293b; padding-bottom:4px;">' +
-              '<span style="color:#fbbf24; font-weight:bold;">Yield: ' + finalTickets + ' Tickets</span>' +
-              '<span style="color:#f8fafc; font-weight:bold;">' + formatSFL(totalSflCost) + ' SFL</span>' +
+          '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
+          '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+            '<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
+              '<span style="color:#B26A00; font-weight:900;">Yield: ' + finalTickets + ' Tickets</span>' +
+              '<span style="color:#3E2723; font-weight:900;">' + formatSFL(totalSflCost) + ' SFL</span>' +
             '</div>' +
-            '<div style="display:flex; justify-content:space-between; color:#34d399; font-weight:bold;">' +
+            '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
               '<span>Cost / Ticket:</span>' +
               '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
             '</div>' +
@@ -518,15 +542,15 @@
 
         return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
           '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<span style="font-weight:bold; color:#f8fafc; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#fbbf24;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
-            '<span class="' + badgeClass + '">' + (b.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+            '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#B26A00;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
+            '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
           '</div>' +
-          '<div style="background:#020617; padding:8px; border-radius:6px; border:1px solid #334155; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
-            '<div style="display:flex; justify-content:space-between; color:#cbd5e1;">' +
+          '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+            '<div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">' +
               '<span>Yield: ' + finalTickets + ' Tickets</span>' +
               '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
             '</div>' +
-            '<div style="display:flex; justify-content:space-between; color:#34d399; font-weight:bold;">' +
+            '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
               '<span>Cost / Ticket:</span>' +
               '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
             '</div>' +
@@ -553,12 +577,12 @@
 
         return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
           '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-            '<span style="font-weight:bold; color:#f8fafc; text-transform:capitalize;">' + c.npc + '</span>' +
-            '<span class="' + badgeClass + '">' + (c.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+            '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + c.npc + '</span>' +
+            '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
           '</div>' +
-          '<div style="color:#cbd5e1;">' + c.task + '</div>' +
-          (hasProgress ? '<div style="font-size:11px; color:#94a3b8;">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
-          (c.baseTickets > 0 ? '<div style="background:#020617; padding:6px 8px; border-radius:6px; border:1px solid #334155; display:flex; justify-content:space-between; align-items:center; font-size:11px;"><span style="color:#94a3b8;">Yield:</span><span style="color:#34d399; font-weight:bold;">' + finalTickets + ' Tickets</span></div>' : '') +
+          '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
+          (hasProgress ? '<div style="font-size:11px; color:#8C7853; font-weight:bold;">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
+          (c.baseTickets > 0 ? '<div style="background:#FFFACD; padding:6px 8px; border-radius:6px; border:1px solid #D2B48C; display:flex; justify-content:space-between; align-items:center; font-size:11px;"><span style="color:#8C7853; font-weight:bold;">Yield:</span><span style="color:#2E7D32; font-weight:900;">' + finalTickets + ' Tickets</span></div>' : '') +
         '</div>';
       }).join('');
 
