@@ -63,24 +63,39 @@
       </div>
     </div>
 
-    <!-- Summary Stats Bar -->
-    <div id="statsSummaryBar" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-md text-center font-mono">
-      <div class="p-2 bg-slate-900/70 rounded-lg border border-amber-500/30">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Tickets</div>
-        <div id="statTotalTickets" class="text-xl font-bold text-amber-400">0</div>
+    <!-- Summary Stats Bar with Costs Directly Below -->
+    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-md text-center font-mono">
+      
+      <!-- Total Tickets & Total Cost Below -->
+      <div class="p-3 bg-slate-900/80 rounded-lg border border-amber-500/30 flex flex-col justify-between space-y-2">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Total Tickets</div>
+        <div id="statTotalTickets" class="text-2xl font-bold text-amber-400">0</div>
+        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+          <span class="text-slate-400 text-[10px]">Total Cost:</span>
+          <span id="statTotalCost" class="font-bold text-amber-300">0.00 SFL</span>
+        </div>
       </div>
-      <div class="p-2 bg-slate-900/70 rounded-lg border border-emerald-500/30">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase">Completed</div>
-        <div id="statEarnedTickets" class="text-xl font-bold text-emerald-400">0</div>
+
+      <!-- Currently Have (Completed) & Completed Cost Below -->
+      <div class="p-3 bg-slate-900/80 rounded-lg border border-emerald-500/30 flex flex-col justify-between space-y-2">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Currently Have (Done)</div>
+        <div id="statEarnedTickets" class="text-2xl font-bold text-emerald-400">0</div>
+        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+          <span class="text-slate-400 text-[10px]">Cost of Current:</span>
+          <span id="statEarnedCost" class="font-bold text-emerald-300">0.00 SFL</span>
+        </div>
       </div>
-      <div class="p-2 bg-slate-900/70 rounded-lg border border-sky-500/30">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase">Remaining</div>
-        <div id="statPendingTickets" class="text-xl font-bold text-sky-400">0</div>
+
+      <!-- Pending / Active & Pending Cost Below -->
+      <div class="p-3 bg-slate-900/80 rounded-lg border border-sky-500/30 flex flex-col justify-between space-y-2">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Active (Pending)</div>
+        <div id="statPendingTickets" class="text-2xl font-bold text-sky-400">0</div>
+        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+          <span class="text-slate-400 text-[10px]">Cost of Active:</span>
+          <span id="statPendingCost" class="font-bold text-sky-300">0.00 SFL</span>
+        </div>
       </div>
-      <div class="p-2 bg-slate-900/70 rounded-lg border border-purple-500/30">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase">Total SFL Cost</div>
-        <div id="statTotalCost" class="text-xl font-bold text-purple-400">0.00</div>
-      </div>
+
     </div>
 
     <!-- 3-Column Grid -->
@@ -206,7 +221,10 @@
       let totalTicketsAll = 0;
       let earnedTicketsAll = 0;
       let pendingTicketsAll = 0;
+
       let totalSflCostAll = 0;
+      let earnedSflCostAll = 0;
+      let pendingSflCostAll = 0;
 
       // Render Deliveries
       const deliveriesContainer = document.getElementById('deliveriesList');
@@ -221,8 +239,10 @@
 
         if (d.completed) {
           earnedTicketsAll += finalTickets;
+          earnedSflCostAll += totalSflCost;
         } else {
           pendingTicketsAll += finalTickets;
+          pendingSflCostAll += totalSflCost;
         }
 
         const itemRows = (d.itemDetails || []).map(detail => {
@@ -281,8 +301,10 @@
 
         if (b.completed) {
           earnedTicketsAll += finalTickets;
+          earnedSflCostAll += totalSflCost;
         } else {
           pendingTicketsAll += finalTickets;
+          pendingSflCostAll += totalSflCost;
         }
 
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
@@ -347,11 +369,15 @@
         `;
       }).join('');
 
-      // Update Summary Bar
+      // Update Summary Bar Elements
       document.getElementById('statTotalTickets').textContent = totalTicketsAll;
-      document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
-      document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
       document.getElementById('statTotalCost').textContent = `${formatSFL(totalSflCostAll)} SFL`;
+
+      document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
+      document.getElementById('statEarnedCost').textContent = `${formatSFL(earnedSflCostAll)} SFL`;
+
+      document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
+      document.getElementById('statPendingCost').textContent = `${formatSFL(pendingSflCostAll)} SFL`;
     }
   </script>
 </body>
