@@ -83,7 +83,6 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // 1. REGISTER ACCOUNT
   if (request.method === 'POST' && action === 'register') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -113,7 +112,6 @@ export async function onRequest(context) {
     }
   }
 
-  // 2. LOGIN ACCOUNT
   if (request.method === 'POST' && action === 'login') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -144,7 +142,7 @@ export async function onRequest(context) {
     }
   }
 
-  // 3. SAVE TO SINGLE MASTER VAULT PAIR (POST) - CAPTURES ACTIVE + DONE + ITEMS
+  // SAVE TO VAULT - WEEKLY DEDUPLICATION FOR CHORES & BOUNTIES, DAILY FOR DELIVERIES
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -155,33 +153,43 @@ export async function onRequest(context) {
         const vaultKey = `user_${username}_vault`;
         let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
-        const todayDate = new Date().toISOString().split('T')[0];
+        const todayDate = new Date().toISOString().split 'T')[0];
+        
+        // Calculate current week identifier (e.g., 2026-W33) for weekly bounties and chores
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const weekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
+        const currentWeekId = `${now.getFullYear()}-W${weekNum}`;
 
-        // Capture BOTH active and completed items along with requested items for deliveries
         const allDeliveries = (body.deliveries || []).map(d => ({
-          name: d.from,
-          cost: d.itemsCost || 0,
-          tickets: d.baseTickets || 0,
-          completed: d.completed,
-          items: d.itemDetails || [],
-          checked: true
+          name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
+          completed: d.completed, items: d.itemDetails || [], checked: true
         }));
 
-        const allBounties = (body.bounties || []).map(b => ({
-          name: b.name,
-          cost: b.itemsCost || 0,
-          tickets: b.baseTickets || 0,
-          completed: b.completed,
-          checked: true
+        const incomingBounties = (body.bounties || []).map(b => ({
+          weekId: currentWeekId, name: b.name, cost: b.itemsCost || 0,
+          tickets: b.baseTickets || 0, completed: b.completed, checked: true
         }));
 
-        const allChores = (body.chores || []).map(c => ({
-          name: c.task,
-          npc: c.npc,
-          tickets: c.baseTickets || 0,
-          completed: c.completed,
-          checked: true
+        const incomingChores = (body.chores || []).map(c => ({
+          weekId: currentWeekId, name: c.task, npc: c.npc,
+          tickets: c.baseTickets || 0, completed: c.completed, checked: true
         }));
+
+        // Merge weekly bounties/chores so they don't duplicate daily
+        let existingBounties = (existingData.bounties || []).filter(b => b.weekId === currentWeekId);
+        incomingBounties.forEach(ib => {
+          if (!existingBounties.some(eb => eb.name.toLowerCase() === ib.name.toLowerCase())) {
+            existingBounties.push(ib);
+          }
+        });
+
+        let existingChores = (existingData.chores || []).filter(c => c.weekId === currentWeekId);
+        incomingChores.forEach(ic => {
+          if (!existingChores.some(ec => ec.name.toLowerCase() === ic.name.toLowerCase())) {
+            existingChores.push(ic);
+          }
+        });
 
         const newTickets = body.ticketsSaved || 0;
         const newCost = body.costSaved || 0;
@@ -195,21 +203,21 @@ export async function onRequest(context) {
           existingData.logs[existingTodayLogIndex] = {
             date: todayDate, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: allDeliveries, bountiesDone: allBounties, choresDone: allChores
+            deliveriesDone: allDeliveries, bountiesDone: existingBounties, choresDone: existingChores
           };
         } else {
           existingData.logs.unshift({
             date: todayDate, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: allDeliveries, bountiesDone: allBounties, choresDone: allChores
+            deliveriesDone: allDeliveries, bountiesDone: existingBounties, choresDone: existingChores
           });
         }
 
         existingData.cumulativeTickets += newTickets;
         existingData.cumulativeCost += newCost;
         existingData.deliveries = body.deliveries || [];
-        existingData.bounties = body.bounties || [];
-        existingData.chores = body.chores || [];
+        existingData.bounties = existingBounties;
+        existingData.chores = existingChores;
 
         await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
 
@@ -222,7 +230,6 @@ export async function onRequest(context) {
     }
   }
 
-  // 4. GET LIVE FARM DATA
   try {
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
