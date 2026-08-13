@@ -63,6 +63,26 @@
       </div>
     </div>
 
+    <!-- Summary Stats Bar -->
+    <div id="statsSummaryBar" class="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-md text-center font-mono">
+      <div class="p-2 bg-slate-900/70 rounded-lg border border-amber-500/30">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Tickets</div>
+        <div id="statTotalTickets" class="text-xl font-bold text-amber-400">0</div>
+      </div>
+      <div class="p-2 bg-slate-900/70 rounded-lg border border-emerald-500/30">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase">Completed</div>
+        <div id="statEarnedTickets" class="text-xl font-bold text-emerald-400">0</div>
+      </div>
+      <div class="p-2 bg-slate-900/70 rounded-lg border border-sky-500/30">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase">Remaining</div>
+        <div id="statPendingTickets" class="text-xl font-bold text-sky-400">0</div>
+      </div>
+      <div class="p-2 bg-slate-900/70 rounded-lg border border-purple-500/30">
+        <div class="text-[11px] text-slate-400 font-semibold uppercase">Total SFL Cost</div>
+        <div id="statTotalCost" class="text-xl font-bold text-purple-400">0.00</div>
+      </div>
+    </div>
+
     <!-- 3-Column Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
@@ -183,14 +203,28 @@
         (document.getElementById('boost2').checked ? 1 : 0) +
         (document.getElementById('boost3').checked ? 1 : 0);
 
+      let totalTicketsAll = 0;
+      let earnedTicketsAll = 0;
+      let pendingTicketsAll = 0;
+      let totalSflCostAll = 0;
+
       // Render Deliveries
       const deliveriesContainer = document.getElementById('deliveriesList');
       document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
       deliveriesContainer.innerHTML = globalData.deliveries.map(d => {
         const deliveryAddon = vipBonus + boostCount;
         const finalTickets = d.baseTickets + deliveryAddon;
-
         let totalSflCost = d.itemsCost || 0;
+
+        totalTicketsAll += finalTickets;
+        totalSflCostAll += totalSflCost;
+
+        if (d.completed) {
+          earnedTicketsAll += finalTickets;
+        } else {
+          pendingTicketsAll += finalTickets;
+        }
+
         const itemRows = (d.itemDetails || []).map(detail => {
           return `
             <div class="flex justify-between items-center text-xs">
@@ -241,6 +275,16 @@
       bountiesContainer.innerHTML = globalData.bounties.map(b => {
         const finalTickets = b.baseTickets + boostCount;
         const totalSflCost = b.itemsCost || 0;
+
+        totalTicketsAll += finalTickets;
+        totalSflCostAll += totalSflCost;
+
+        if (b.completed) {
+          earnedTicketsAll += finalTickets;
+        } else {
+          pendingTicketsAll += finalTickets;
+        }
+
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
@@ -275,6 +319,14 @@
         const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
         const hasProgress = c.requirement > 0;
 
+        totalTicketsAll += finalTickets;
+
+        if (c.completed) {
+          earnedTicketsAll += finalTickets;
+        } else {
+          pendingTicketsAll += finalTickets;
+        }
+
         return `
           <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-slate-700'} text-xs space-y-1.5">
             <div class="flex justify-between items-center">
@@ -294,6 +346,12 @@
           </div>
         `;
       }).join('');
+
+      // Update Summary Bar
+      document.getElementById('statTotalTickets').textContent = totalTicketsAll;
+      document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
+      document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
+      document.getElementById('statTotalCost').textContent = `${formatSFL(totalSflCostAll)} SFL`;
     }
   </script>
 </body>
