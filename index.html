@@ -14,7 +14,7 @@
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Live SFL Market Price & Ticket Calculator</p>
+      <p class="text-slate-400 text-sm">Live SFL Market Price & Automated Cloud Storage</p>
     </header>
 
     <!-- Controls & Global Ticket Boost Selectors -->
@@ -54,31 +54,46 @@
           </div>
         </div>
 
-        <button 
-          onclick="loadTrackerData()" 
-          class="w-full lg:w-auto bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold px-6 py-2 rounded-lg text-sm transition shadow cursor-pointer"
-        >
-          Fetch Data
-        </button>
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          <button 
+            onclick="loadTrackerData()" 
+            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer"
+          >
+            Fetch Data
+          </button>
+          <button 
+            onclick="saveProgressToCloudKV()" 
+            class="flex-1 lg:flex-initial bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            ☁️ Save KV
+          </button>
+          <button 
+            onclick="toggleHistoryModal()" 
+            class="flex-1 lg:flex-initial bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer flex items-center justify-center gap-1"
+          >
+            📜 Logs
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Summary Stats Bar with Costs Directly Below -->
-    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-md text-center font-mono">
+    <!-- Summary Stats Bar -->
+    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-md text-center font-mono">
       
-      <!-- Total Tickets & Total Cost Below -->
+      <!-- Total Available Today -->
       <div class="p-3 bg-slate-900/80 rounded-lg border border-amber-500/30 flex flex-col justify-between space-y-2">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Total Tickets</div>
+        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Today Available</div>
         <div id="statTotalTickets" class="text-2xl font-bold text-amber-400">0</div>
         <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-          <span class="text-slate-400 text-[10px]">Total Cost:</span>
+          <span class="text-slate-400 text-[10px]">Today's Cost:</span>
           <span id="statTotalCost" class="font-bold text-amber-300">0.00 SFL</span>
         </div>
       </div>
 
-      <!-- Currently Have (Completed) & Completed Cost Below -->
+      <!-- Currently Have Today -->
       <div class="p-3 bg-slate-900/80 rounded-lg border border-emerald-500/30 flex flex-col justify-between space-y-2">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Currently Have (Done)</div>
+        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Done Today</div>
         <div id="statEarnedTickets" class="text-2xl font-bold text-emerald-400">0</div>
         <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
           <span class="text-slate-400 text-[10px]">Cost of Current:</span>
@@ -86,13 +101,23 @@
         </div>
       </div>
 
-      <!-- Pending / Active & Pending Cost Below -->
+      <!-- Active Pending -->
       <div class="p-3 bg-slate-900/80 rounded-lg border border-sky-500/30 flex flex-col justify-between space-y-2">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Active (Pending)</div>
+        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Active Pending</div>
         <div id="statPendingTickets" class="text-2xl font-bold text-sky-400">0</div>
         <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
           <span class="text-slate-400 text-[10px]">Cost of Active:</span>
           <span id="statPendingCost" class="font-bold text-sky-300">0.00 SFL</span>
+        </div>
+      </div>
+
+      <!-- Saved Cumulative Totals in Cloud KV -->
+      <div class="p-3 bg-slate-900/80 rounded-lg border border-violet-500/30 flex flex-col justify-between space-y-2 bg-violet-950/10">
+        <div class="text-[11px] text-violet-300 font-semibold uppercase tracking-wide flex items-center justify-center gap-1">☁️ Cloud KV Saved</div>
+        <div id="statSavedTickets" class="text-2xl font-bold text-violet-400">0</div>
+        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
+          <span class="text-slate-400 text-[10px]">Cloud Cost:</span>
+          <span id="statSavedCost" class="font-bold text-violet-300">0.00 SFL</span>
         </div>
       </div>
 
@@ -137,8 +162,25 @@
     </div>
   </div>
 
+  <!-- Cloud KV Logs Modal -->
+  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl">
+      <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+        <h3 class="font-bold text-amber-400 flex items-center gap-2">
+          <span>📜</span> Saved Cloud KV Logs
+        </h3>
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold px-2 py-1 text-sm">✕ Close</button>
+      </div>
+      <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 font-mono text-xs">
+        <p class="text-slate-500">No logs loaded yet. Fetch data first.</p>
+      </div>
+    </div>
+  </div>
+
   <script>
     let globalData = null;
+    let currentDoneTicketsToday = 0;
+    let currentDoneCostToday = 0;
 
     function formatSFL(val) {
       if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
@@ -206,6 +248,65 @@
 
       } catch (err) {
         alert('Error fetching data: ' + err.message);
+      }
+    }
+
+    async function saveProgressToCloudKV() {
+      if (!globalData) {
+        alert('Please click "Fetch Data" first before saving!');
+        return;
+      }
+
+      const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+
+      try {
+        const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticketsSaved: currentDoneTicketsToday,
+            costSaved: currentDoneCostToday,
+            deliveries: globalData.deliveries,
+            bounties: globalData.bounties,
+            chores: globalData.chores
+          })
+        });
+
+        const resData = await response.json();
+        if (resData.error) throw new Error(resData.error);
+
+        alert(`☁️ Progress Saved to Cloud KV!\nSaved +${currentDoneTicketsToday} Tickets (${formatSFL(currentDoneCostToday)} SFL)`);
+        globalData.cloudHistory = resData.cloudData;
+        recalculateAll();
+      } catch (err) {
+        alert('Cloud Save Failed: ' + err.message);
+      }
+    }
+
+    function toggleHistoryModal() {
+      const modal = document.getElementById('historyModal');
+      modal.classList.toggle('hidden');
+
+      if (!modal.classList.contains('hidden') && globalData && globalData.cloudHistory) {
+        const logs = globalData.cloudHistory.logs || [];
+        const container = document.getElementById('modalLogList');
+
+        if (logs.length === 0) {
+          container.innerHTML = '<p class="text-slate-500">No saved KV logs found for this farm yet.</p>';
+        } else {
+          container.innerHTML = logs.map((log, idx) => `
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-700 space-y-1">
+              <div class="flex justify-between items-center text-slate-300">
+                <span class="font-bold text-amber-400">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
+                <span class="text-[10px] text-slate-500">${log.autoTrigger ? '🤖 Auto Cron (23 UTC)' : '👤 Manual Save'}</span>
+              </div>
+              <div class="flex justify-between text-emerald-400">
+                <span>Tickets Saved: +${log.ticketsSaved || 0}</span>
+                <span>Cost: ${formatSFL(log.costSaved || 0)} SFL</span>
+              </div>
+            </div>
+          `).join('');
+        }
       }
     }
 
@@ -369,7 +470,10 @@
         `;
       }).join('');
 
-      // Update Summary Bar Elements
+      currentDoneTicketsToday = earnedTicketsAll;
+      currentDoneCostToday = earnedSflCostAll;
+
+      // Update Today Summary Elements
       document.getElementById('statTotalTickets').textContent = totalTicketsAll;
       document.getElementById('statTotalCost').textContent = `${formatSFL(totalSflCostAll)} SFL`;
 
@@ -378,6 +482,11 @@
 
       document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
       document.getElementById('statPendingCost').textContent = `${formatSFL(pendingSflCostAll)} SFL`;
+
+      // Update Cloud KV Saved Summary
+      const cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
+      document.getElementById('statSavedTickets').textContent = cloud.cumulativeTickets || 0;
+      document.getElementById('statSavedCost').textContent = `${formatSFL(cloud.cumulativeCost || 0)} SFL`;
     }
   </script>
 </body>
