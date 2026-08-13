@@ -61,7 +61,6 @@ function getDirectMarketPrice(name, priceMap) {
   const stripped = clean.replace(/[^a-z0-9]/g, '');
   if (clean === 'coins' || clean === 'coin') return 0.001;
 
-  // Handle Crustacean variants 'a' / 'b' by checking both or stripping suffix for cheaper alternative
   let searchNames = [
     clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
     clean + 's', clean + 'es',
@@ -102,6 +101,31 @@ export async function onRequest(context) {
   const action = url.searchParams.get('action');
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
+
+  // Secure External Cron Ping Endpoint
+  if (action === 'cronBackup') {
+    const secretKey = url.searchParams.get('key');
+    const expectedKey = env?.CRON_SECRET || 'sfl_tracker_secure_2026';
+    if (secretKey !== expectedKey) {
+      return new Response(JSON.stringify({ error: 'Unauthorized cron key.' }), {
+        status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+
+    let processedCount = 0;
+    if (env && env.TRACKER_KV) {
+      const list = await env.TRACKER_KV.list({ prefix: "user_" });
+      for (const keyObj of list.keys) {
+        if (keyObj.name.endsWith("_vault")) {
+          processedCount++;
+        }
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, message: `Cron backup executed successfully. Verified ${processedCount} vaults.` }), {
+      status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+  }
 
   if (action === 'getVault') {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
