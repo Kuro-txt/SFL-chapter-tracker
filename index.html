@@ -93,6 +93,21 @@
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
     .btn-sm { padding: 4px 8px; font-size: 10px; box-shadow: 0 2px 0px #3E2723; }
 
+    .btn-pop {
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      color: #8B4513;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: 0 2px 0px #5C4033;
+      transition: all 0.1s ease;
+    }
+    .btn-pop:hover { background: #FFFACD; border-color: #D2691E; }
+    .btn-pop:active { transform: translateY(1px); box-shadow: none; }
+
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .stat-box {
       background-color: #FFF8DC;
@@ -221,7 +236,6 @@
           <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
           
           <label for="apiKey">API KEY:</label>
-          <!-- API Key standalone input without password form container -->
           <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 130px;" />
 
           <label class="checkbox-label">
@@ -302,7 +316,7 @@
         <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>📜 BOUNTIES</span>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 HISTORY</button>
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT / HISTORY</button>
             <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
           </div>
         </div>
@@ -313,7 +327,7 @@
         <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>🧹 CHORES</span>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 HISTORY</button>
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT / HISTORY</button>
             <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
           </div>
         </div>
@@ -335,11 +349,11 @@
     </div>
   </div>
 
-  <!-- Column History Modal -->
+  <!-- Column History Modal (Bounties / Chores with Ticket & Cost Editing) -->
   <div id="columnHistoryModal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
-        <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 HISTORY</h3>
+        <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
         <button onclick="closeColumnHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div class="modal-body" style="gap: 12px;">
@@ -355,7 +369,7 @@
           <button onclick="addCustomHistoryItem()" class="btn btn-sm btn-purple">➕ ADD</button>
         </div>
 
-        <div id="columnHistoryBody" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <div id="columnHistoryBody" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
           <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
         </div>
       </div>
