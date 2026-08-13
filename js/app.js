@@ -12,7 +12,7 @@ function formatSFL(val) {
   return val.toFixed(2);
 }
 
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
@@ -38,8 +38,27 @@ window.addEventListener('DOMContentLoaded', function() {
     document.getElementById('authLoggedOut').style.display = 'none';
     document.getElementById('authLoggedIn').style.display = 'flex';
     document.getElementById('displayUsername').textContent = currentUser;
+    
+    // Automatically fetch vault data on refresh
+    await fetchUserVault(currentUser);
   }
 });
+
+async function fetchUserVault(username) {
+  try {
+    var res = await fetch('/api/chapter?action=getVault&username=' + encodeURIComponent(username));
+    var data = await res.json();
+    if (data.vaultData) {
+      currentVaultData = data.vaultData;
+      if (globalData) {
+        globalData.cloudHistory = currentVaultData;
+        recalculateAll();
+      }
+    }
+  } catch (err) {
+    console.error('Failed to auto-load vault:', err);
+  }
+}
 
 function getActiveBoostCount() {
   var b1 = document.getElementById('boost1').checked ? 1 : 0;
@@ -195,7 +214,7 @@ async function loadTrackerData() {
   }
 }
 
-// NPC Delivery History Modal (+1 Boosts factored in)
+// NPC Delivery History Modal
 function openNpcHistoryModal(npcName) {
   document.getElementById('activeNpcHistoryName').value = npcName;
   document.getElementById('npcHistoryTitle').textContent = '📜 HISTORY: ' + npcName.toUpperCase();
@@ -309,8 +328,7 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-
-// --- COLUMN HISTORY MODAL (BOUNTIES / CHORES) WITH BOOSTS ---
+// Column History Modal (Bounties / Chores)
 function openColumnHistoryModal(type) {
   activeColumnType = type;
   document.getElementById('columnHistoryTitle').textContent = type === 'bounty' ? '📜 ALL BOUNTIES HISTORY' : '📜 ALL CHORES HISTORY';
@@ -448,7 +466,7 @@ async function saveProgressToCloudKV() {
     currentVaultData = resData.vaultData;
     globalData.cloudHistory = currentVaultData;
 
-    alert('☁️ MASTER VAULT SAVED (Weekly Chores & Bounties Synced)!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    alert('☁️ MASTER VAULT SAVED (Active & Done Synced)!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
