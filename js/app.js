@@ -288,23 +288,19 @@ function openCategorySummaryModal(cat) {
         </div>
       </div>`;
     }).join('');
-  } else if (cat === 'bounty') {
-    titleEl.textContent = '📜 BOUNTIES OVERVIEW';
-    var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  } else if (cat === 'bounty' || cat === 'animalBounty') {
+    var isAnimal = cat === 'animalBounty';
+    titleEl.textContent = isAnimal ? '🐄 ANIMAL BOUNTIES OVERVIEW' : '📜 BOUNTIES OVERVIEW';
     
-    var animalBounties = [];
-    var regularBounties = [];
-
-    sortedBounties.forEach(b => {
+    var filteredBounties = (globalData.bounties || []).filter(b => {
       var n = (b.name || '').toLowerCase();
-      if (n.includes('chicken') || n.includes('cow') || n.includes('sheep')) {
-        animalBounties.push(b);
-      } else {
-        regularBounties.push(b);
-      }
+      var checkAnimal = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      return isAnimal ? checkAnimal : !checkAnimal;
     });
 
-    var renderBountyCard = (b) => {
+    var sortedBounties = [...filteredBounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+
+    bodyEl.innerHTML = sortedBounties.map(b => {
       var finalTickets = b.baseTickets + boostCount;
       if (b.completed) {
         catTickets += finalTickets;
@@ -312,23 +308,12 @@ function openCategorySummaryModal(cat) {
       }
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
-          <strong style="color:#3E2723;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
+          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
           <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
         </div>
         <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
-    };
-
-    var htmlContent = '';
-    if (regularBounties.length > 0) {
-      htmlContent += `<div style="font-weight:900; color:#8B4513; font-size:12px; margin-bottom:2px;">📦 ITEM & FLOWER BOUNTIES</div>`;
-      htmlContent += regularBounties.map(renderBountyCard).join('');
-    }
-    if (animalBounties.length > 0) {
-      htmlContent += `<div style="font-weight:900; color:#8B4513; font-size:12px; margin-top:8px; margin-bottom:2px;">🐄 ANIMAL BOUNTIES</div>`;
-      htmlContent += animalBounties.map(renderBountyCard).join('');
-    }
-    bodyEl.innerHTML = htmlContent;
+    }).join('');
 
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
@@ -791,7 +776,22 @@ function recalculateAll() {
 
   // SORTING: Active items placed ABOVE completed items
   var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-  var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  
+  var allBounties = globalData.bounties || [];
+  var regularBountiesRaw = [];
+  var animalBountiesRaw = [];
+
+  allBounties.forEach(b => {
+    var n = (b.name || '').toLowerCase();
+    if (n.includes('chicken') || n.includes('cow') || n.includes('sheep')) {
+      animalBountiesRaw.push(b);
+    } else {
+      regularBountiesRaw.push(b);
+    }
+  });
+
+  var sortedBounties = [...regularBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  var sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   // DELIVERIES COLUMN
@@ -840,10 +840,10 @@ function recalculateAll() {
     }).join('');
   }
 
-  // BOUNTIES COLUMN
+  // BOUNTIES COLUMN (Regular Item/Flower Bounties)
   var bountiesContainer = document.getElementById('bountiesList');
-  if (bountiesContainer && globalData.bounties) {
-    setElemText('bountiesCount', globalData.bounties.length);
+  if (bountiesContainer) {
+    setElemText('bountiesCount', sortedBounties.length);
     bountiesContainer.innerHTML = sortedBounties.map(function(b) {
       var finalTickets = b.baseTickets + boostCount;
       var totalSflCost = b.itemsCost || 0;
@@ -859,6 +859,41 @@ function recalculateAll() {
       return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
           '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">📜 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</span>' +
+          '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+        '</div>' +
+        '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+          '<div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">' +
+            '<span>Yield: ' + finalTickets + ' Tickets</span>' +
+            '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
+          '</div>' +
+          '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
+            '<span>Cost / Ticket:</span>' +
+            '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  // ANIMAL BOUNTIES COLUMN
+  var animalBountiesContainer = document.getElementById('animalBountiesList');
+  if (animalBountiesContainer) {
+    setElemText('animalBountiesCount', sortedAnimalBounties.length);
+    animalBountiesContainer.innerHTML = sortedAnimalBounties.map(function(b) {
+      var finalTickets = b.baseTickets + boostCount;
+      var totalSflCost = b.itemsCost || 0;
+
+      if (b.completed) {
+        earnedTicketsAll += finalTickets;
+        earnedSflCostAll += totalSflCost;
+      }
+
+      var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+      var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
+
+      return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🐄 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</span>' +
           '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
