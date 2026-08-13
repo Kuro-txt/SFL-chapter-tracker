@@ -546,24 +546,53 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
-  // CURRENTLY HAVE: Dynamic calculation of ticked items in Vault
+  var delivCatTickets = 0;
+  var bountyCatTickets = 0;
+  var choreCatTickets = 0;
+
+  // CURRENTLY HAVE: Category breakdowns & unique sum from Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
-    [...(log.deliveriesDone || []), ...(log.bountiesDone || []), ...(log.choresDone || [])].forEach(item => {
+    (log.deliveriesDone || []).forEach(item => {
+      var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
+      if (isTicked) {
+        var baseTix = item.tickets || 2;
+        var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+        delivCatTickets += finalTix;
+        totalSflCostAll += (item.cost || 0);
+      }
+    });
+
+    (log.bountiesDone || []).forEach(item => {
       var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
         var baseTix = item.tickets || 1;
-        var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
-        var cost = item.cost || 0;
+        var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        bountyCatTickets += finalTix;
+        totalSflCostAll += (item.cost || 0);
+      }
+    });
 
-        totalTicketsAll += finalTix;
-        totalSflCostAll += cost;
+    (log.choresDone || []).forEach(item => {
+      var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
+      if (isTicked) {
+        var baseTix = item.tickets || 1;
+        var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        choreCatTickets += finalTix;
+        totalSflCostAll += (item.cost || 0);
       }
     });
   });
 
-  // DONE TODAY: Strictly live API board
+  totalTicketsAll = delivCatTickets + bountyCatTickets + choreCatTickets;
+
+  // Update Category Breakdowns
+  document.getElementById('catDelivTickets').textContent = delivCatTickets + ' Tix';
+  document.getElementById('catBountyTickets').textContent = bountyCatTickets + ' Tix';
+  document.getElementById('catChoreTickets').textContent = choreCatTickets + ' Tix';
+
+  // DONE TODAY & LIVE BOARD
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
   deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
@@ -690,7 +719,6 @@ function recalculateAll() {
 
   document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
   document.getElementById('statPendingCost').textContent = formatSFL(pendingSflCostAll) + ' SFL';
-  document.getElementById('statPendingRatio').textContent = (pendingTicketsAll > 0 ? formatSFL(pendingSflCostAll / pendingTicketsAll) : "0.00") + ' SFL / Ticket';
 
   var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
   var cloudTickets = cloud.cumulativeTickets || 0;
