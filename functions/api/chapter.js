@@ -30,7 +30,14 @@ export async function onRequest(context) {
   }
 
   try {
-    const sflResponse = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers });
+    // Concurrent fetch: Farm Data + Item Market Prices from sfl.world
+    const [sflResponse, pricesResponse] = await Promise.all([
+      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers }),
+      fetch(`https://sfl.world/api/v1/prices`, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'CloudflarePagesWorker/1.0' }
+      }).catch(() => null) // Fallback if prices API is down
+    ]);
+
     if (!sflResponse.ok) {
       return new Response(JSON.stringify({ error: `SFL API error: ${sflResponse.status}` }), { status: sflResponse.status });
     }
@@ -38,9 +45,36 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
+    let priceMap = {};
+    if (pricesResponse && pricesResponse.ok) {
+      priceMap = await pricesResponse.json().catch(() => ({}));
+    }
+
+    // Helper to calculate total SFL cost of items
+    const calculateItemsCost = (items) => {
+      let totalCost = 0;
+      const details = [];
+
+      Object.entries(items).forEach(([itemName, qty]) => {
+        // Match exact item name or normalized key
+        const unitPrice = priceMap[itemName]?.price || priceMap[itemName?.toLowerCase()]?.price || 0;
+        const itemTotal = unitPrice * qty;
+        totalCost += itemTotal;
+
+        details.push({
+          name: itemName,
+          qty,
+          unitPrice,
+          totalPrice: itemTotal
+        });
+      });
+
+      return { totalCost, details };
+    };
+
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // 1. DELIVERIES
+    // 1. DELIVERIES WITH PRICE CALCULATION
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
@@ -59,17 +93,21 @@ export async function onRequest(context) {
       }
 
       if (baseTicketCount > 0) {
+        const costData = calculateItemsCost(order.items || {});
+
         deliveryList.push({
           id: order.id,
           from: order.from,
           items: order.items || {},
+          itemsCost: costData.totalCost,
+          itemDetails: costData.details,
           baseTickets: baseTicketCount,
           isChapterNpc: baseTickets !== undefined
         });
       }
     });
 
-    // 2. BOUNTIES
+    // 2. BOUNTIES WITH PRICE CALCULATION
     const activeBounties = [];
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
@@ -82,11 +120,16 @@ export async function onRequest(context) {
       }
 
       if (baseTicketCount > 0) {
+        // Bounties specify single target item or level request
+        const targetItems = b.name ? { [b.name]: 1 } : {};
+        const costData = calculateItemsCost(targetItems);
+
         activeBounties.push({
           id: b.id,
           name: b.name,
           level: b.level || null,
-          baseTickets: baseTicketCount
+          baseTickets: baseTicketCount,
+          itemsCost: costData.totalCost
         });
       }
     });
