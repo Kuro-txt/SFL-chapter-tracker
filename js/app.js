@@ -3,6 +3,7 @@ var currentUser = null;
 var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
 var currentDoneTicketsToday = 0;
 var currentDoneCostToday = 0;
+var isFetchCooldown = false; // Cooldown state
 
 function formatSFL(val) {
   if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
@@ -115,6 +116,10 @@ function saveAndRecalculate() {
 }
 
 async function loadTrackerData() {
+  if (isFetchCooldown) {
+    return; // Block execution if cooldown is active
+  }
+
   var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
   var apiKey = document.getElementById('apiKey').value.trim();
   
@@ -124,6 +129,34 @@ async function loadTrackerData() {
   var priceBadge = document.getElementById('priceBadge');
   priceBadge.style.display = 'inline-block';
   priceBadge.textContent = 'FETCHING...';
+
+  // Activate Cooldown
+  isFetchCooldown = true;
+  var fetchButtons = document.querySelectorAll('button[onclick="loadTrackerData()"]');
+  fetchButtons.forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+  });
+
+  var timeLeft = 10;
+  var cooldownTimer = setInterval(function() {
+    if (timeLeft > 0) {
+      fetchButtons.forEach(btn => {
+        btn.textContent = 'WAIT ' + timeLeft + 's';
+      });
+      timeLeft--;
+    } else {
+      clearInterval(cooldownTimer);
+      isFetchCooldown = false;
+      fetchButtons.forEach(btn => {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.textContent = 'FETCH DATA';
+      });
+    }
+  }, 1000);
 
   try {
     var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
@@ -137,9 +170,7 @@ async function loadTrackerData() {
     globalData = data;
     globalData.cloudHistory = currentVaultData;
 
-    // Merge saved vault lists if available
     if (currentVaultData.deliveries && currentVaultData.deliveries.length > 0) {
-      // Keep fresh live statuses, append manual or saved past entries
       var liveIds = new Set(globalData.deliveries.map(d => d.id));
       currentVaultData.deliveries.forEach(savedD => {
         if (!liveIds.has(savedD.id)) {
@@ -313,7 +344,7 @@ async function saveProgressToCloudKV() {
     currentVaultData = resData.vaultData;
     globalData.cloudHistory = currentVaultData;
 
-    alert('☁️ SINGLE MASTER VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    alert('☁️ MASTER VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
