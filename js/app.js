@@ -82,7 +82,7 @@ async function loadTrackerData() {
   }
 }
 
-// NPC Delivery Modal Functions
+// NPC Delivery Modal & History Functions
 function openNpcModal(indexOrName) {
   if (!globalData) {
     globalData = { deliveries: [], bounties: [], chores: [], cloudHistory: { logs: [], cumulativeTickets: 0, cumulativeCost: 0 } };
@@ -94,23 +94,57 @@ function openNpcModal(indexOrName) {
   var costInput = document.getElementById('npcEditCost');
   var statusInput = document.getElementById('npcEditStatus');
   var indexInput = document.getElementById('npcModalIndex');
+  var historyContainer = document.getElementById('npcHistoryContainer');
+
+  var currentNpcName = '';
 
   if (indexOrName === 'New NPC') {
-    document.getElementById('npcModalTitle').textContent = '➕ ADD PAST NPC DELIVERY';
+    document.getElementById('npcModalTitle').textContent = '➕ ADD NEW NPC DELIVERY';
     indexInput.value = 'new';
     nameInput.value = '';
     ticketsInput.value = '2';
     costInput.value = '0.00';
     statusInput.value = 'true';
+    historyContainer.innerHTML = '<p style="font-size: 11px; color: #8C7853; font-weight: bold;">Save this delivery to track its history.</p>';
   } else {
-    var d = globalData.deliveries[indexOrName];
+    var idx = parseInt(indexOrName);
+    var d = globalData.deliveries[idx];
     if (!d) return;
-    document.getElementById('npcModalTitle').textContent = '✏️ EDIT NPC: ' + d.from.toUpperCase();
-    indexInput.value = indexOrName;
+    currentNpcName = d.from.toLowerCase().trim();
+    document.getElementById('npcModalTitle').textContent = '📦 NPC PROFILE: ' + d.from.toUpperCase();
+    indexInput.value = idx;
     nameInput.value = d.from;
     ticketsInput.value = d.baseTickets;
     costInput.value = d.itemsCost || 0;
     statusInput.value = String(d.completed);
+
+    // Filter past logs for this specific NPC
+    var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
+    var matchingPastDeliveries = [];
+
+    logs.forEach(log => {
+      (log.deliveriesDone || []).forEach(pastDeliv => {
+        var pastName = (typeof pastDeliv === 'string' ? pastDeliv : pastDeliv.name || '').toLowerCase().trim();
+        if (pastName === currentNpcName) {
+          matchingPastDeliveries.push({
+            date: log.date || 'Past Run',
+            cost: pastDeliv.cost || 0,
+            tickets: pastDeliv.tickets || d.baseTickets
+          });
+        }
+      });
+    });
+
+    if (matchingPastDeliveries.length === 0) {
+      historyContainer.innerHTML = '<p style="font-size: 11px; color: #8C7853; font-weight: bold;">No past cloud logs found for ' + d.from + '.</p>';
+    } else {
+      historyContainer.innerHTML = matchingPastDeliveries.map(match => {
+        return '<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; background:#FFF8DC; padding:6px 8px; border:1px solid #D2B48C; border-radius:4px;">' +
+          '<span style="font-weight:bold; color:#8B4513;">📅 ' + match.date + '</span>' +
+          '<span style="color:#2E7D32; font-weight:bold;">+' + match.tickets + ' Tickets (' + formatSFL(match.cost) + ' SFL)</span>' +
+        '</div>';
+      }).join('');
+    }
   }
 
   modal.classList.add('show');
@@ -135,7 +169,7 @@ function saveNpcChanges() {
       from: name,
       items: {},
       itemsCost: cost,
-      itemDetails: [{ name: 'Custom Past Run', qty: 1, unitPrice: cost, lineCost: cost, isRecipe: false }],
+      itemDetails: [{ name: 'Custom Delivery', qty: 1, unitPrice: cost, lineCost: cost, isRecipe: false }],
       baseTickets: tickets,
       isChapterNpc: false,
       completed: completed,
@@ -389,7 +423,6 @@ function recalculateAll() {
   currentDoneTicketsToday = earnedTicketsAll;
   currentDoneCostToday = earnedSflCostAll;
 
-  // Update Stats
   document.getElementById('statTotalTickets').textContent = totalTicketsAll;
   document.getElementById('statTotalCost').textContent = formatSFL(totalSflCostAll) + ' SFL';
   document.getElementById('statTotalRatio').textContent = (totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00") + ' SFL / Ticket';
