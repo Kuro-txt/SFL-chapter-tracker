@@ -28,8 +28,8 @@ function toggleColumnCard(cardId, btn) {
 }
 
 function saveGoalAndRecalculate() {
-  var inputVal = document.getElementById('targetGoalInput').value;
-  localStorage.setItem('sfl_targetGoal', inputVal);
+  localStorage.setItem('sfl_targetGoal', document.getElementById('targetGoalInput').value);
+  localStorage.setItem('sfl_targetWeeks', document.getElementById('targetWeeksInput').value);
   recalculateAll();
 }
 
@@ -41,6 +41,10 @@ window.addEventListener('DOMContentLoaded', async function() {
   var savedGoal = localStorage.getItem('sfl_targetGoal');
   if (savedGoal !== null) {
     document.getElementById('targetGoalInput').value = savedGoal;
+  }
+  var savedWeeks = localStorage.getItem('sfl_targetWeeks');
+  if (savedWeeks !== null) {
+    document.getElementById('targetWeeksInput').value = savedWeeks;
   }
 
   var savedVip = localStorage.getItem('sfl_vip');
@@ -243,10 +247,11 @@ async function loadTrackerData() {
   }
 }
 
-// Category Summary Overview Popup Modal
+// Category Summary Overview Popup Modal with Header Totals
 function openCategorySummaryModal(cat) {
   var modal = document.getElementById('categorySummaryModal');
   var titleEl = document.getElementById('categorySummaryTitle');
+  var totalsEl = document.getElementById('categorySummaryTotals');
   var bodyEl = document.getElementById('categorySummaryBody');
 
   var vipBonus = getActiveVipBonus();
@@ -257,12 +262,19 @@ function openCategorySummaryModal(cat) {
     return;
   }
 
+  var catTickets = 0;
+  var catCost = 0;
+
   if (cat === 'delivery') {
     titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
     var sortedDeliv = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedDeliv.map(d => {
       var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       var finalTickets = d.baseTickets + deliveryAddon;
+      if (d.completed) {
+        catTickets += finalTickets;
+        catCost += (d.itemsCost || 0);
+      }
       var itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; font-weight:900;">
@@ -281,6 +293,10 @@ function openCategorySummaryModal(cat) {
     var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedBounties.map(b => {
       var finalTickets = b.baseTickets + boostCount;
+      if (b.completed) {
+        catTickets += finalTickets;
+        catCost += (b.itemsCost || 0);
+      }
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
@@ -294,6 +310,9 @@ function openCategorySummaryModal(cat) {
     var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedChores.map(c => {
       var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
+      if (c.completed) {
+        catTickets += finalTickets;
+      }
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">🧹 ${c.npc.toUpperCase()}</strong><br/>
@@ -306,6 +325,7 @@ function openCategorySummaryModal(cat) {
     }).join('');
   }
 
+  totalsEl.textContent = catTickets + ' Tickets | ' + formatSFL(catCost) + ' SFL';
   modal.classList.add('show');
 }
 
@@ -675,59 +695,69 @@ function recalculateAll() {
   var weekTicketsAll = 0;
   var weekCostAll = 0;
 
-  // Current Week ID Calculation
+  // Determine current ISO date string for "Today" and current week prefix (YYYY-W## or YYYY-MM)
+  var todayDateStr = new Date().toISOString().split('T')[0];
   var now = new Date();
   var startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
-  var weekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
-  var currentWeekId = `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  var currentWeekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
+  var currentWeekId = `${now.getFullYear()}-W${String(currentWeekNum).padStart(2, '0')}`;
 
-  // TOTAL TICKETS & WEEKLY TICKETS: Summed from Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
-    var isThisWeek = log.weekId === currentWeekId || (log.date && log.date.startsWith(new Date().toISOString().slice(0, 7)));
+    var isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
+    var isToday = log.date === todayDateStr;
 
+    // Process Deliveries
     (log.deliveriesDone || []).forEach(item => {
       var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
         var baseTix = item.tickets || 2;
         var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+        var itemCost = item.cost || 0;
+
         delivCatTickets += finalTix;
-        totalSflCostAll += (item.cost || 0);
+        totalSflCostAll += itemCost;
 
         if (isThisWeek) {
           weekTicketsAll += finalTix;
-          weekCostAll += (item.cost || 0);
+          weekCostAll += itemCost;
         }
       }
     });
 
+    // Process Bounties
     (log.bountiesDone || []).forEach(item => {
       var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
         var baseTix = item.tickets || 1;
         var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        var itemCost = item.cost || 0;
+
         bountyCatTickets += finalTix;
-        totalSflCostAll += (item.cost || 0);
+        totalSflCostAll += itemCost;
 
         if (isThisWeek) {
           weekTicketsAll += finalTix;
-          weekCostAll += (item.cost || 0);
+          weekCostAll += itemCost;
         }
       }
     });
 
+    // Process Chores
     (log.choresDone || []).forEach(item => {
       var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
         var baseTix = item.tickets || 1;
         var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        var itemCost = item.cost || 0;
+
         choreCatTickets += finalTix;
-        totalSflCostAll += (item.cost || 0);
+        totalSflCostAll += itemCost;
 
         if (isThisWeek) {
           weekTicketsAll += finalTix;
-          weekCostAll += (item.cost || 0);
+          weekCostAll += itemCost;
         }
       }
     });
@@ -878,10 +908,11 @@ function recalculateAll() {
   var earnedRatioVal = earnedTicketsAll > 0 ? (earnedSflCostAll / earnedTicketsAll) : 0;
   setElemText('statEarnedRatio', formatSFL(earnedRatioVal) + ' SFL / Ticket');
 
-  // 4. CHAPTER END GOAL CALCULATOR
+  // 4. CHAPTER END GOAL CALCULATOR (Custom Target & Weeks)
   var targetGoal = parseInt(document.getElementById('targetGoalInput').value) || 1000;
+  var targetWeeks = parseInt(document.getElementById('targetWeeksInput').value) || 12;
   var remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
-  var targetPerWeek = Math.ceil(remainingNeeded / 12);
+  var targetPerWeek = targetWeeks > 0 ? Math.ceil(remainingNeeded / targetWeeks) : 0;
 
   setElemText('statGoalRemaining', remainingNeeded + ' Tickets');
   setElemText('statGoalPerWeek', targetPerWeek + ' Tickets / Wk');
