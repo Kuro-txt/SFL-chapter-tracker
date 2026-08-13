@@ -1,4 +1,4 @@
-// Base Chapter Ticket Table
+// Base Chapter Ticket Table for Chapter NPCs
 const CHAPTER_NPC_TICKETS = {
   "pumpkin' pete": 1,
   "bert": 2,
@@ -11,6 +11,45 @@ const CHAPTER_NPC_TICKETS = {
   "timmy": 5,
   "tywin": 10,
   "jester": 4
+};
+
+// Fallback SFL Base & Ingredient Prices (used when sfl.world market price is 0 or unavailable)
+const FALLBACK_PRICES = {
+  // Crops
+  "sunflower": 0.0002, "potato": 0.001, "pumpkin": 0.005, "carrot": 0.008, "cabbage": 0.015,
+  "beetroot": 0.02, "cauliflower": 0.035, "parsnip": 0.04, "radish": 0.05, "wheat": 0.03,
+  "kale": 0.04, "corn": 0.01, "onion": 0.02, "soybean": 0.025, "yam": 0.03, "broccoli": 0.04,
+  "artichoke": 0.05, "zucchini": 0.03, "pepper": 0.04, "rice": 0.08, "olive": 0.10,
+
+  // Fruits
+  "apple": 0.02, "orange": 0.03, "lemon": 0.04, "blueberry": 0.02, "banana": 0.05, "grape": 0.03,
+
+  // Resources
+  "wood": 0.005, "stone": 0.01, "iron": 0.05, "gold": 0.20, "crimstone": 0.30, "sunstone": 1.00,
+  "sand": 0.02, "oil": 0.08, "egg": 0.02, "milk": 0.05, "wool": 0.08, "merino wool": 0.15,
+  "feather": 0.03, "honey": 0.05, "leather": 0.10, "hieroglyph": 0.50, "acorn": 0.05,
+
+  // Fish & Sea
+  "crab": 0.10, "olive flounder": 0.12, "napoleanfish": 0.30, "sea slug": 0.25, "anchovy": 0.02,
+  "mahi mahi": 0.15, "butterflyfish": 0.08, "sunfish": 0.12, "moray eel": 0.15, "angelfish": 0.20,
+  "barnacle": 0.30, "lobster": 0.40, "red snapper": 0.15,
+
+  // Tools & Items
+  "axe": 0.02, "pickaxe": 0.03, "stone pickaxe": 0.05, "iron pickaxe": 0.15, "gold pickaxe": 0.50,
+  "rod": 0.05, "sand drill": 0.25, "sand shovel": 0.03, "lunar doll": 0.80, "cluck doll": 0.30,
+  "moo doll": 0.40, "wooly doll": 0.40, "gilded doll": 0.50,
+
+  // Cooked Meals
+  "pumpkin soup": 0.01, "bumpkin broth": 0.03, "popcorn": 0.09, "tofu scramble": 0.51,
+  "eggplant cake": 0.85, "pizza margherita": 1.97, "apple juice": 0.10, "carrot juice": 0.06,
+  "orange juice": 0.07, "bumpkin roast": 0.72, "reindeer carrot": 0.01, "sauerkraut": 0.04,
+  "club sandwich": 0.80, "pancakes": 0.15, "mashed potato": 0.01, "rhubarb tart": 0.01,
+  "cabbers n mash": 0.06, "fried tofu": 0.09, "fruit salad": 0.05, "purple smoothie": 0.10,
+  "power smoothie": 0.27, "honey cake": 1.40, "steamed red rice": 1.06, "goblin's treat": 0.19,
+  "bumpkin ganoush": 0.37, "antipasto": 1.13, "grape juice": 1.25, "slow juice": 4.11,
+  "quick juice": 0.06, "caprese salad": 0.81, "blue cheese": 0.80, "sour shake": 0.17,
+  "blueberry jam": 0.08, "fermented carrots": 0.04, "fancy fries": 0.30, "banana blast": 0.39,
+  "the lot": 0.29, "bumpkin detox": 0.19
 };
 
 export async function onRequest(context) {
@@ -27,7 +66,7 @@ export async function onRequest(context) {
   if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
   try {
-    // Concurrent fetch: Farm Data + SFL World Market Prices
+    // Fetch SFL Farm + sfl.world market prices
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
       fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
@@ -40,10 +79,8 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
-    // Flexible Price Map Parser (handles objects, nested data, or arrays)
-    let priceMap = {};
-    let pricesLoadedCount = 0;
-
+    // Build Live Price Map
+    let livePriceMap = {};
     if (pricesResponse && pricesResponse.ok) {
       const rawPrices = await pricesResponse.json().catch(() => ({}));
       const sourceObj = rawPrices.data || rawPrices.prices || rawPrices;
@@ -52,31 +89,40 @@ export async function onRequest(context) {
         sourceObj.forEach(item => {
           if (item && item.name) {
             const p = item.price ?? item.sfl ?? item.value ?? 0;
-            priceMap[item.name.toLowerCase().trim()] = Number(p) || 0;
+            livePriceMap[item.name.toLowerCase().trim()] = Number(p) || 0;
           }
         });
       } else if (typeof sourceObj === 'object') {
         Object.entries(sourceObj).forEach(([key, val]) => {
           const cleanKey = key.toLowerCase().trim();
           if (typeof val === 'number') {
-            priceMap[cleanKey] = val;
+            livePriceMap[cleanKey] = val;
           } else if (val && typeof val === 'object') {
             const p = val.price ?? val.sfl ?? val.value ?? val.buy ?? 0;
-            priceMap[cleanKey] = Number(p) || 0;
+            livePriceMap[cleanKey] = Number(p) || 0;
           }
         });
       }
-      pricesLoadedCount = Object.keys(priceMap).length;
     }
 
-    // Helper to calculate total SFL cost for required items
+    // Resolver: Check live market price first, then fallback dictionary
+    const getItemUnitPrice = (itemName) => {
+      const cleanName = itemName.toLowerCase().trim();
+      if (livePriceMap[cleanName] && livePriceMap[cleanName] > 0) {
+        return livePriceMap[cleanName];
+      }
+      if (FALLBACK_PRICES[cleanName] && FALLBACK_PRICES[cleanName] > 0) {
+        return FALLBACK_PRICES[cleanName];
+      }
+      return 0.01; // Minimum default floor
+    };
+
     const calculateItemsCost = (items) => {
       let totalCost = 0;
       const details = [];
 
       Object.entries(items).forEach(([itemName, qty]) => {
-        const cleanName = itemName.toLowerCase().trim();
-        const unitPrice = priceMap[cleanName] || 0;
+        const unitPrice = getItemUnitPrice(itemName);
         const itemTotal = unitPrice * qty;
         totalCost += itemTotal;
 
@@ -147,7 +193,8 @@ export async function onRequest(context) {
           name: b.name,
           level: b.level || null,
           baseTickets: baseTicketCount,
-          itemsCost: costData.totalCost
+          itemsCost: costData.totalCost,
+          itemDetails: costData.details
         });
       }
     });
@@ -176,7 +223,7 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({
       farmId,
       isVipActive,
-      pricesLoadedCount,
+      pricesLoadedCount: Object.keys(livePriceMap).length,
       deliveries: deliveryList,
       bounties: activeBounties,
       chores: choresList
