@@ -338,13 +338,10 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-// Column History Modal (Bounties / Chores / Deliveries)
+// Column History Modal (Bounties / Chores)
 function openColumnHistoryModal(type) {
   activeColumnType = type;
-  if (type === 'bounty') setElemText('columnHistoryTitle', '📜 BOUNTIES EDIT / HISTORY');
-  else if (type === 'chore') setElemText('columnHistoryTitle', '🧹 CHORES EDIT / HISTORY');
-  else setElemText('columnHistoryTitle', '📦 DELIVERIES EDIT / HISTORY');
-
+  setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
   renderColumnHistoryModalList();
   document.getElementById('columnHistoryModal').classList.add('show');
 }
@@ -360,13 +357,12 @@ function renderColumnHistoryModalList() {
   var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   var records = [];
   var boostCount = getActiveBoostCount();
-  var vipBonus = getActiveVipBonus();
 
   logs.forEach((log, logIdx) => {
-    var items = type === 'bounty' ? (log.bountiesDone || []) : (type === 'chore' ? (log.choresDone || []) : (log.deliveriesDone || []));
+    var items = type === 'bounty' ? (log.bountiesDone || []) : (log.choresDone || []);
     items.forEach((item, itemIdx) => {
-      var baseTix = item.tickets || (type === 'delivery' ? 2 : 1);
-      var finalTix = baseTix > 0 ? (baseTix + boostCount + (type === 'delivery' ? vipBonus : 0)) : 0;
+      var baseTix = item.tickets || 1;
+      var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
       var isChecked = item.checked !== undefined ? item.checked : !!item.completed;
 
       records.push({
@@ -415,7 +411,7 @@ function renderColumnHistoryModalList() {
 
 function updateHistoryItemTickets(logIdx, itemIdx, val) {
   var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : (activeColumnType === 'chore' ? 'choresDone' : 'deliveriesDone');
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
     logs[logIdx][targetArray][itemIdx].tickets = parseInt(val) || 0;
     renderColumnHistoryModalList();
@@ -425,7 +421,7 @@ function updateHistoryItemTickets(logIdx, itemIdx, val) {
 
 function updateHistoryItemCost(logIdx, itemIdx, val) {
   var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : (activeColumnType === 'chore' ? 'choresDone' : 'deliveriesDone');
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
     logs[logIdx][targetArray][itemIdx].cost = parseFloat(val) || 0;
     renderColumnHistoryModalList();
@@ -435,7 +431,7 @@ function updateHistoryItemCost(logIdx, itemIdx, val) {
 
 function toggleColumnHistCheck(logIdx, itemIdx) {
   var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : (activeColumnType === 'chore' ? 'choresDone' : 'deliveriesDone');
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
     var item = logs[logIdx][targetArray][itemIdx];
     item.checked = (item.checked === undefined ? !item.completed : !item.checked);
@@ -458,7 +454,7 @@ function addCustomHistoryItem() {
     globalData.cloudHistory.logs.unshift(targetLog);
   }
 
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : (activeColumnType === 'chore' ? 'choresDone' : 'deliveriesDone');
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (!targetLog[targetArray]) targetLog[targetArray] = [];
   targetLog[targetArray].push({ name: name, cost: cost, tickets: tickets, completed: true, checked: true });
 
@@ -468,7 +464,7 @@ function addCustomHistoryItem() {
 
 function deleteColumnHistItem(logIdx, itemIdx) {
   var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : (activeColumnType === 'chore' ? 'choresDone' : 'deliveriesDone');
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (logs[logIdx] && logs[logIdx][targetArray]) {
     logs[logIdx][targetArray].splice(itemIdx, 1);
     renderColumnHistoryModalList();
@@ -585,7 +581,7 @@ function recalculateAll() {
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // CURRENTLY HAVE: Category breakdowns & unique sum from Cloud Vault History
+  // CURRENTLY HAVE
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
@@ -626,7 +622,7 @@ function recalculateAll() {
   setElemText('catBountyTickets', bountyCatTickets + ' Tix');
   setElemText('catChoreTickets', choreCatTickets + ' Tix');
 
-  // SORTING: Active items placed ABOVE completed items
+  // SORTING: Active (pending) items appear ABOVE completed items
   var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
@@ -661,7 +657,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">👤 ' + d.from.toUpperCase() + (d.isChapterNpc ? ' 👑' : '') + '</span>' +
+          '<button class="btn-pop" onclick="openNpcHistoryModal(\'' + escapedName + '\')">👤 ' + d.from.toUpperCase() + (d.isChapterNpc ? ' 👑' : '') + '</button>' +
           '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
@@ -700,7 +696,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">📜 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</span>' +
+          '<button class="btn-pop" onclick="openColumnHistoryModal(\'bounty\')">📜 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</button>' +
           '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
@@ -735,7 +731,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🧹 ' + c.npc.toUpperCase() + '</span>' +
+          '<button class="btn-pop" onclick="openColumnHistoryModal(\'chore\')">🧹 ' + c.npc.toUpperCase() + '</button>' +
           '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
