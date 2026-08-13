@@ -102,7 +102,7 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // Secure External Cron Ping Endpoint with Active KV Backup Saving
+  // Secure External Cron Ping Endpoint with Accurate Calculated KV Backup Saving
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -123,21 +123,57 @@ export async function onRequest(context) {
           let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
           if (vaultData) {
             if (!vaultData.logs) vaultData.logs = [];
-            const existingTodayLog = vaultData.logs.find(l => l.date === todayDate);
-            if (!existingTodayLog) {
+
+            let calculatedTickets = 0;
+            let calculatedCost = 0;
+
+            (vaultData.deliveries || []).forEach(d => {
+              if (d.completed) {
+                calculatedTickets += (d.baseTickets || 2);
+                calculatedCost += (d.itemsCost || 0);
+              }
+            });
+            (vaultData.bounties || []).forEach(b => {
+              if (b.completed) {
+                calculatedTickets += (b.baseTickets || 1);
+                calculatedCost += (b.itemsCost || 0);
+              }
+            });
+            (vaultData.chores || []).forEach(c => {
+              if (c.completed) {
+                calculatedTickets += (c.baseTickets || 1);
+              }
+            });
+
+            const existingTodayLogIndex = vaultData.logs.findIndex(l => l.date === todayDate);
+            if (existingTodayLogIndex !== -1) {
+              vaultData.logs[existingTodayLogIndex].ticketsSaved = calculatedTickets;
+              vaultData.logs[existingTodayLogIndex].costSaved = calculatedCost;
+              vaultData.logs[existingTodayLogIndex].timestamp = backupTimestamp;
+            } else {
               vaultData.logs.unshift({
                 date: todayDate,
                 weekId: getMondayBasedWeekId(),
                 timestamp: backupTimestamp,
-                ticketsSaved: 0,
-                costSaved: 0,
+                ticketsSaved: calculatedTickets,
+                costSaved: calculatedCost,
                 autoBackup: true,
                 deliveriesDone: vaultData.deliveries || [],
                 bountiesDone: vaultData.bounties || [],
                 choresDone: vaultData.chores || []
               });
-              await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
             }
+
+            let totalTix = 0;
+            let totalCost = 0;
+            vaultData.logs.forEach(l => {
+              totalTix += (l.ticketsSaved || 0);
+              totalCost += (l.costSaved || 0);
+            });
+            vaultData.cumulativeTickets = totalTix;
+            vaultData.cumulativeCost = totalCost;
+
+            await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
             backedUpCount++;
           }
         }
@@ -147,7 +183,7 @@ export async function onRequest(context) {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} user vaults.` 
+      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced and recalculated ${backedUpCount} user vaults.` 
     }), {
       status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
@@ -255,7 +291,6 @@ export async function onRequest(context) {
           chores: incomingChores
         };
 
-        // If logs array is explicitly passed (e.g. log deletion/sync), use it and recalculate totals
         if (body.logs && Array.isArray(body.logs)) {
           existingData.logs = body.logs;
           let totalTix = 0;
