@@ -76,11 +76,10 @@ function getDirectMarketPrice(name, priceMap) {
   return 0;
 }
 
-// Helper to calculate Monday-anchored weeks
 function getMondayBasedWeekId(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
   d.setUTCDate(diff);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
@@ -165,7 +164,6 @@ export async function onRequest(context) {
     }
   }
 
-  // SAVE VAULT - WEEKLY ARCHIVE FOR CHORES & BOUNTIES, DAILY FOR DELIVERIES
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -187,16 +185,15 @@ export async function onRequest(context) {
         }));
 
         const incomingBounties = (body.bounties || []).map(b => ({
-          name: b.name, cost: b.itemsCost || 0,
+          weekId: currentWeekId, name: b.name, cost: b.itemsCost || 0,
           tickets: b.baseTickets || 0, completed: b.completed, checked: b.completed
         }));
 
         const incomingChores = (body.chores || []).map(c => ({
-          name: c.task, npc: c.npc,
+          weekId: currentWeekId, name: c.task, npc: c.npc,
           tickets: c.baseTickets || 0, completed: c.completed, checked: c.completed
         }));
 
-        // Store week archive
         existingData.weeks[currentWeekId] = {
           weekId: currentWeekId,
           bounties: incomingBounties,
