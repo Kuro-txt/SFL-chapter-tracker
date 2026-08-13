@@ -102,7 +102,6 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // Helper inside onRequest scope for dynamic item cost calculation
   const getItemUnitPrice = (itemName, priceMap, depth = 0) => {
     if (depth > 5 || !itemName) return 0;
     const clean = itemName.toLowerCase().trim();
@@ -121,7 +120,7 @@ export async function onRequest(context) {
     return 0;
   };
 
-  // Secure External Cron Ping Endpoint with Accurate Calculated KV Backup Saving & Pricing
+  // Secure External Cron Ping Endpoint with Fixed Property Mapping
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -135,7 +134,6 @@ export async function onRequest(context) {
     const backupTimestamp = new Date().toISOString();
     const todayDate = backupTimestamp.split('T')[0];
 
-    // Fetch latest prices for accurate cron cost calculations
     let priceMap = {};
     try {
       const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -157,58 +155,60 @@ export async function onRequest(context) {
             let calculatedCost = 0;
 
             const formattedDeliveries = (vaultData.deliveries || []).map(d => {
-              let dCost = d.itemsCost;
-              if (!dCost && d.itemDetails) {
-                dCost = d.itemDetails.reduce((acc, it) => acc + (it.lineCost || 0), 0);
-              }
+              const dCost = d.cost !== undefined ? d.cost : (d.itemsCost || 0);
+              const dTix = d.tickets !== undefined ? d.tickets : (d.baseTickets || 2);
               return {
-                name: d.from || d.name || 'NPC',
-                cost: dCost || 0,
-                tickets: d.baseTickets || 2,
-                completed: d.completed,
-                items: d.itemDetails || [],
-                checked: d.completed
+                name: d.name || d.from || 'NPC',
+                cost: dCost,
+                tickets: dTix,
+                completed: d.completed || d.checked,
+                items: d.items || d.itemDetails || [],
+                checked: d.completed || d.checked
               };
             });
 
             const formattedBounties = (vaultData.bounties || []).map(b => {
-              let bCost = b.itemsCost;
+              let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
               if (!bCost && b.name) {
                 bCost = getItemUnitPrice(b.name, priceMap);
               }
+              const bTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
               return {
-                weekId: getMondayBasedWeekId(),
+                weekId: b.weekId || getMondayBasedWeekId(),
                 name: b.name || 'Bounty',
-                cost: bCost || 0,
-                tickets: b.baseTickets || 1,
-                completed: b.completed,
-                checked: b.completed
+                cost: bCost,
+                tickets: bTix,
+                completed: b.completed || b.checked,
+                checked: b.completed || b.checked
               };
             });
 
-            const formattedChores = (vaultData.chores || []).map(c => ({
-              weekId: getMondayBasedWeekId(),
-              name: c.task || 'Chore',
-              npc: c.npc || 'NPC',
-              tickets: c.baseTickets || 1,
-              completed: c.completed,
-              checked: c.completed
-            }));
+            const formattedChores = (vaultData.chores || []).map(c => {
+              const cTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
+              return {
+                weekId: c.weekId || getMondayBasedWeekId(),
+                name: c.name || c.task || 'Chore',
+                npc: c.npc || 'NPC',
+                tickets: cTix,
+                completed: c.completed || c.checked,
+                checked: c.completed || c.checked
+              };
+            });
 
             formattedDeliveries.forEach(d => {
-              if (d.completed) {
+              if (d.completed || d.checked) {
                 calculatedTickets += d.tickets;
                 calculatedCost += d.cost;
               }
             });
             formattedBounties.forEach(b => {
-              if (b.completed) {
+              if (b.completed || b.checked) {
                 calculatedTickets += b.tickets;
                 calculatedCost += b.cost;
               }
             });
             formattedChores.forEach(c => {
-              if (c.completed) {
+              if (c.completed || c.checked) {
                 calculatedTickets += c.tickets;
               }
             });
