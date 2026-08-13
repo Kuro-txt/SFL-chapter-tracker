@@ -180,6 +180,8 @@ export async function onRequest(context) {
           });
         });
 
+        const isDeliveryCompleted = !!(order.completedAt || order.completed || order.fulfilledAt || order.status === 'completed');
+
         deliveryList.push({
           id: order.id,
           from: order.from,
@@ -188,7 +190,7 @@ export async function onRequest(context) {
           itemDetails,
           baseTickets: baseTicketCount,
           isChapterNpc: baseTickets !== undefined,
-          completed: !!order.completedAt // Delivery Completion Status
+          completed: isDeliveryCompleted
         });
       }
     });
@@ -207,6 +209,7 @@ export async function onRequest(context) {
 
       if (baseTicketCount > 0) {
         const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
+        const isBountyCompleted = !!(b.completedAt || b.completed || b.claimedAt || b.status === 'completed');
 
         activeBounties.push({
           id: b.id,
@@ -214,14 +217,14 @@ export async function onRequest(context) {
           level: b.level || null,
           baseTickets: baseTicketCount,
           itemsCost: unitPrice,
-          completed: !!b.completedAt // Bounty Completion Status
+          completed: isBountyCompleted
         });
       }
     });
 
     // 3. CHORES
-    const rawChores = farm.choreBoard?.chores || {};
-    const choresList = Object.entries(rawChores).map(([npc, details]) => {
+    const rawChores = farm.choreBoard?.chores || farm.chores || {};
+    const choresList = Object.entries(rawChores).map(([key, details]) => {
       let baseTicketCount = 0;
       if (details.reward?.items) {
         Object.entries(details.reward.items).forEach(([item, qty]) => {
@@ -231,12 +234,15 @@ export async function onRequest(context) {
         });
       }
 
+      const isChoreCompleted = !!(details.completedAt || details.completed || details.isCompleted || (details.requirement && details.initialProgress >= details.requirement));
+      const npcName = details.npc || details.from || key;
+
       return {
-        npc: npc,
-        task: details.name,
+        npc: npcName,
+        task: details.name || details.description || 'Chore',
         baseTickets: baseTicketCount,
         progress: details.initialProgress || 0,
-        completed: !!details.completedAt
+        completed: isChoreCompleted
       };
     });
 
