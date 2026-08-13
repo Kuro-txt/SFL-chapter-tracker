@@ -30,12 +30,12 @@ export async function onRequest(context) {
   }
 
   try {
-    // Concurrent fetch: Farm Data + Item Market Prices from sfl.world
+    // Concurrent fetch: SFL Farm Data + SFL World Market Prices
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers }),
       fetch(`https://sfl.world/api/v1/prices`, {
         headers: { 'Accept': 'application/json', 'User-Agent': 'CloudflarePagesWorker/1.0' }
-      }).catch(() => null) // Fallback if prices API is down
+      }).catch(() => null)
     ]);
 
     if (!sflResponse.ok) {
@@ -45,19 +45,27 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
+    // Build lowercase price map for exact key matching
     let priceMap = {};
     if (pricesResponse && pricesResponse.ok) {
-      priceMap = await pricesResponse.json().catch(() => ({}));
+      const rawPrices = await pricesResponse.json().catch(() => ({}));
+      Object.entries(rawPrices).forEach(([key, val]) => {
+        if (val && typeof val.price === 'number') {
+          priceMap[key.toLowerCase().trim()] = val.price;
+        } else if (typeof val === 'number') {
+          priceMap[key.toLowerCase().trim()] = val;
+        }
+      });
     }
 
-    // Helper to calculate total SFL cost of items
+    // Helper to calculate total SFL cost for items
     const calculateItemsCost = (items) => {
       let totalCost = 0;
       const details = [];
 
       Object.entries(items).forEach(([itemName, qty]) => {
-        // Match exact item name or normalized key
-        const unitPrice = priceMap[itemName]?.price || priceMap[itemName?.toLowerCase()]?.price || 0;
+        const cleanName = itemName.toLowerCase().trim();
+        const unitPrice = priceMap[cleanName] || 0;
         const itemTotal = unitPrice * qty;
         totalCost += itemTotal;
 
@@ -74,7 +82,7 @@ export async function onRequest(context) {
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // 1. DELIVERIES WITH PRICE CALCULATION
+    // 1. DELIVERIES
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
@@ -107,7 +115,7 @@ export async function onRequest(context) {
       }
     });
 
-    // 2. BOUNTIES WITH PRICE CALCULATION
+    // 2. BOUNTIES
     const activeBounties = [];
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
@@ -120,7 +128,6 @@ export async function onRequest(context) {
       }
 
       if (baseTicketCount > 0) {
-        // Bounties specify single target item or level request
         const targetItems = b.name ? { [b.name]: 1 } : {};
         const costData = calculateItemsCost(targetItems);
 
