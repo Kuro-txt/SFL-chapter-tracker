@@ -102,7 +102,7 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // Secure External Cron Ping Endpoint with Accurate Calculated KV Backup Saving
+  // Secure External Cron Ping Endpoint with Properly Mapped KV Backup Saving
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -127,21 +127,48 @@ export async function onRequest(context) {
             let calculatedTickets = 0;
             let calculatedCost = 0;
 
-            (vaultData.deliveries || []).forEach(d => {
+            const formattedDeliveries = (vaultData.deliveries || []).map(d => ({
+              name: d.from || d.name || 'NPC',
+              cost: d.itemsCost || 0,
+              tickets: d.baseTickets || 2,
+              completed: d.completed,
+              items: d.itemDetails || [],
+              checked: d.completed
+            }));
+
+            const formattedBounties = (vaultData.bounties || []).map(b => ({
+              weekId: getMondayBasedWeekId(),
+              name: b.name || 'Bounty',
+              cost: b.itemsCost || 0,
+              tickets: b.baseTickets || 1,
+              completed: b.completed,
+              checked: b.completed
+            }));
+
+            const formattedChores = (vaultData.chores || []).map(c => ({
+              weekId: getMondayBasedWeekId(),
+              name: c.task || 'Chore',
+              npc: c.npc || 'NPC',
+              tickets: c.baseTickets || 1,
+              completed: c.completed,
+              checked: c.completed
+            }));
+
+            formattedDeliveries.forEach(d => {
               if (d.completed) {
-                calculatedTickets += (d.baseTickets || 2);
-                calculatedCost += (d.itemsCost || 0);
+                calculatedTickets += d.tickets;
+                calculatedCost += d.cost;
               }
             });
-            (vaultData.bounties || []).forEach(b => {
+            formattedBounties.forEach(b => {
               if (b.completed) {
-                calculatedTickets += (b.baseTickets || 1);
-                calculatedCost += (b.itemsCost || 0);
+                calculatedTickets += b.tickets;
+                calculatedCost += b.cost;
               }
             });
-            (vaultData.chores || []).forEach(c => {
+            formattedChores.forEach(c => {
               if (c.completed) {
-                calculatedTickets += (c.baseTickets || 1);
+                calculatedTickets += c.tickets;
               }
             });
 
@@ -150,6 +177,9 @@ export async function onRequest(context) {
               vaultData.logs[existingTodayLogIndex].ticketsSaved = calculatedTickets;
               vaultData.logs[existingTodayLogIndex].costSaved = calculatedCost;
               vaultData.logs[existingTodayLogIndex].timestamp = backupTimestamp;
+              vaultData.logs[existingTodayLogIndex].deliveriesDone = formattedDeliveries;
+              vaultData.logs[existingTodayLogIndex].bountiesDone = formattedBounties;
+              vaultData.logs[existingTodayLogIndex].choresDone = formattedChores;
             } else {
               vaultData.logs.unshift({
                 date: todayDate,
@@ -158,9 +188,9 @@ export async function onRequest(context) {
                 ticketsSaved: calculatedTickets,
                 costSaved: calculatedCost,
                 autoBackup: true,
-                deliveriesDone: vaultData.deliveries || [],
-                bountiesDone: vaultData.bounties || [],
-                choresDone: vaultData.chores || []
+                deliveriesDone: formattedDeliveries,
+                bountiesDone: formattedBounties,
+                choresDone: formattedChores
               });
             }
 
