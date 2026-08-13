@@ -106,8 +106,7 @@
     }
     .stat-title { font-size: 11px; font-weight: 900; color: #8B5A2B; text-transform: uppercase; }
     .stat-val { font-size: 24px; font-weight: 900; color: #D2691E; }
-    .stat-footer { border-top: 2px dashed #D2B48C; padding-top: 6px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #5C4033; }
-    .stat-ratio { font-size: 10px; font-weight: 900; color: #2E7D32; background: #E8F5E9; padding: 2px 6px; border-radius: 4px; border: 1px solid #A5D6A7; display: inline-block; margin-top: 2px; }
+    .stat-footer { border-top: 2px dashed #D2B48C; padding-top: 6px; display: flex; flex-direction: column; gap: 3px; font-size: 10px; font-weight: bold; color: #5C4033; }
 
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
     .column-card {
@@ -248,16 +247,16 @@
       </div>
     </div>
 
-    <!-- Summary Stats Bar -->
+    <!-- Summary Stats Bar with Category Breakdowns -->
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-title">CURRENTLY HAVE</div>
         <div id="statTotalTickets" class="stat-val">0</div>
         <div class="stat-footer">
-          <span>Total Cost:</span> 
-          <span id="statTotalCost" style="color:#8B4513;">0.00 SFL</span>
+          <div style="display:flex; justify-content:space-between;"><span>📦 Deliveries:</span><strong id="catDelivTickets" style="color:#8B4513;">0 Tix</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>📜 Bounties:</span><strong id="catBountyTickets" style="color:#B26A00;">0 Tix</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>🧹 Chores:</span><strong id="catChoreTickets" style="color:#2E7D32;">0 Tix</strong></div>
         </div>
-        <div><span id="statTotalRatio" class="stat-ratio">0.00 SFL / Ticket</span></div>
       </div>
 
       <div class="stat-box" style="border-color: #4CAF50;">
@@ -265,29 +264,26 @@
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0</div>
         <div class="stat-footer">
           <span>Cost Done:</span> 
-          <span id="statEarnedCost" style="color:#2E7D32;">0.00 SFL</span>
+          <span id="statEarnedCost" style="color:#2E7D32; font-weight:bold;">0.00 SFL</span>
         </div>
-        <div><span id="statEarnedRatio" class="stat-ratio">0.00 SFL / Ticket</span></div>
       </div>
 
       <div class="stat-box" style="border-color: #FFB300;">
-        <div class="stat-title" style="color: #B26A00;">PENDING</div>
+        <div class="stat-title" style="color: #B26A00;">PENDING BOARD</div>
         <div id="statPendingTickets" class="stat-val" style="color: #E65100;">0</div>
         <div class="stat-footer">
           <span>Cost Pending:</span> 
-          <span id="statPendingCost" style="color:#E65100;">0.00 SFL</span>
+          <span id="statPendingCost" style="color:#E65100; font-weight:bold;">0.00 SFL</span>
         </div>
-        <div><span id="statPendingRatio" class="stat-ratio">0.00 SFL / Ticket</span></div>
       </div>
 
       <div class="stat-box" style="border-color: #795548;">
-        <div class="stat-title" style="color: #4E342E;">☁️ CLOUD KV</div>
-        <div id="statSavedTickets" class="stat-val" style="color: #6D4C41;">0</div>
+        <div class="stat-title" style="color: #4E342E;">☁️ TOTAL VAULT COST</div>
+        <div id="statTotalCost" class="stat-val" style="color: #6D4C41;">0.00</div>
         <div class="stat-footer">
-          <span>Saved Cost:</span> 
-          <span id="statSavedCost" style="color:#4E342E;">0.00 SFL</span>
+          <span>Ratio:</span> 
+          <span id="statTotalRatio" style="color:#4E342E; font-weight:bold;">0.00 SFL / Ticket</span>
         </div>
-        <div><span id="statSavedRatio" class="stat-ratio">0.00 SFL / Ticket</span></div>
       </div>
     </div>
 
