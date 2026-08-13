@@ -83,7 +83,6 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // GET VAUT DATA (Auto-load on refresh)
   if (action === 'getVault') {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env && env.TRACKER_KV && username) {
@@ -155,7 +154,6 @@ export async function onRequest(context) {
     }
   }
 
-  // SAVE VAULT - PRESERVES CHECKED STATES
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
