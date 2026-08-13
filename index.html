@@ -36,7 +36,7 @@
     .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     
     label { font-size: 12px; font-weight: bold; color: #cbd5e1; }
-    input[type="text"] {
+    input[type="text"], input[type="password"] {
       background-color: #020617;
       border: 2px solid #475569;
       color: #fde047;
@@ -47,7 +47,7 @@
       outline: none;
       font-family: inherit;
     }
-    input[type="text"]:focus { border-color: #fbbf24; }
+    input[type="text"]:focus, input[type="password"]:focus { border-color: #fbbf24; }
     
     .checkbox-label {
       background-color: rgba(245, 158, 11, 0.1);
@@ -179,7 +179,11 @@
       <div class="controls-row">
         <div class="input-group">
           <label for="farmId">FARM ID:</label>
-          <input type="text" id="farmId" value="8472883706403914" />
+          <input type="text" id="farmId" value="8472883706403914" style="width: 130px;" />
+          
+          <label for="apiKey">API KEY:</label>
+          <input type="password" id="apiKey" placeholder="Optional API Key" style="width: 140px;" />
+
           <label class="checkbox-label">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #f59e0b; width: 14px; height: 14px;" />
             👑 VIP (+2)
@@ -292,6 +296,11 @@
       if (savedFarmId) {
         document.getElementById('farmId').value = savedFarmId;
       }
+
+      var savedApiKey = localStorage.getItem('sfl_apiKey');
+      if (savedApiKey) {
+        document.getElementById('apiKey').value = savedApiKey;
+      }
     });
 
     function saveAndRecalculate() {
@@ -300,20 +309,29 @@
       localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
       localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
       localStorage.setItem('sfl_farmId', document.getElementById('farmId').value.trim());
+      localStorage.setItem('sfl_apiKey', document.getElementById('apiKey').value.trim());
 
       recalculateAll();
     }
 
     async function loadTrackerData() {
       var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+      var apiKey = document.getElementById('apiKey').value.trim();
+      
       localStorage.setItem('sfl_farmId', farmId);
+      localStorage.setItem('sfl_apiKey', apiKey);
 
       var priceBadge = document.getElementById('priceBadge');
       priceBadge.style.display = 'inline-block';
       priceBadge.textContent = 'FETCHING...';
 
       try {
-        var response = await fetch('/api/chapter?farmId=' + encodeURIComponent(farmId));
+        var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
+        if (apiKey) {
+          queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
+        }
+
+        var response = await fetch(queryUrl);
         var data = await response.json();
 
         if (data.error) throw new Error(data.error);
