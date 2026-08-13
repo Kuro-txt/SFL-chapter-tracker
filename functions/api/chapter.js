@@ -102,27 +102,60 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // Secure External Cron Ping Endpoint
+  // Secure External Cron Ping Endpoint with Active KV Backup Saving
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
-    const expectedKey = env?.CRON_SECRET || 'sfl_tracker_secure_2026';
+    const expectedKey = env?.CRON_SECRET || 'kuro123';
     if (secretKey !== expectedKey) {
       return new Response(JSON.stringify({ error: 'Unauthorized cron key.' }), {
         status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
     }
 
-    let processedCount = 0;
+    let backedUpCount = 0;
+    const backupTimestamp = new Date().toISOString();
+    const todayDate = backupTimestamp.split('T')[0];
+
     if (env && env.TRACKER_KV) {
       const list = await env.TRACKER_KV.list({ prefix: "user_" });
       for (const keyObj of list.keys) {
         if (keyObj.name.endsWith("_vault")) {
-          processedCount++;
+          let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
+          if (vaultData) {
+            // Ensure logs array exists
+            if (!vaultData.logs) vaultData.logs = [];
+
+            // Check if a backup log for today already exists, if not create an automated daily snapshot
+            const existingTodayLog = vaultData.logs.find(l => l.date === todayDate);
+            if (!existingTodayLog) {
+              vaultData.logs.unshift({
+                date: todayDate,
+                weekId: getMondayBasedWeekId(),
+                timestamp: backupTimestamp,
+                ticketsSaved: 0,
+                costSaved: 0,
+                autoBackup: true,
+                deliveriesDone: vaultData.deliveries || [],
+                bountiesDone: vaultData.bounties || [],
+                choresDone: vaultData.chores || []
+              });
+
+              // Save the updated vault back to KV
+              await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
+            }
+            backedUpCount++;
+          }
         }
       }
+
+      // Save a global system backup marker
+      await env.TRACKER_KV.put(`system_last_cron_backup`, JSON.stringify({ timestamp: backupTimestamp, vaultsProcessed: backedUpCount }));
     }
 
-    return new Response(JSON.stringify({ success: true, message: `Cron backup executed successfully. Verified ${processedCount} vaults.` }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} user vaults.` 
+    }), {
       status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }
