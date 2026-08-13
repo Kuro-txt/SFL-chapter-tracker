@@ -180,7 +180,6 @@ export async function onRequest(context) {
           });
         });
 
-        // Order is only marked completed if explicitly marked as fulfilled/completed on the order object itself
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
 
         deliveryList.push({
