@@ -106,7 +106,6 @@
     }
     .btn-pop-title:hover { color: #D2691E; }
 
-    /* Key Performance Metric Grid */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
     .stat-box {
       background-color: #FFF8DC;
@@ -297,13 +296,15 @@
       <!-- 4. CHAPTER END GOAL CALCULATOR -->
       <div class="stat-box" style="border-color: #8E44AD;">
         <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER END GOAL TARGET</div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 100px; padding: 4px; font-size: 16px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" />
-          <span style="font-size: 12px; font-weight: 900; color: #8E44AD;">Goal Tickets</span>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 85px; padding: 4px; font-size: 14px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
+          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Tix in</span>
+          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 55px; padding: 4px; font-size: 14px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
+          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Weeks</span>
         </div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Remaining Needed:</span><strong id="statGoalRemaining" style="color:#E65100;">1000 Tickets</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Target per Week (12 Wks):</span><strong id="statGoalPerWeek" style="color:#8E44AD;">84 Tickets/Wk</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Remaining Needed:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Target per Week:</span><strong id="statGoalPerWeek" style="color:#8E44AD;">0 Tickets / Wk</strong></div>
         </div>
       </div>
     </div>
@@ -358,8 +359,14 @@
         <h3 id="categorySummaryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📋 SUMMARY OVERVIEW</h3>
         <button onclick="closeCategorySummaryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
-      <div id="categorySummaryBody" class="modal-body" style="max-height: 70vh; overflow-y: auto; gap: 10px;">
-        <p style="color:#8C7853; font-size:12px; font-weight:bold;">Loading summary...</p>
+      <div class="modal-body" style="gap: 12px;">
+        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:900; color:#8B4513;">CATEGORY TOTALS:</span>
+          <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
+        </div>
+        <div id="categorySummaryBody" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+          <p style="color:#8C7853; font-size:12px; font-weight:bold;">Loading summary...</p>
+        </div>
       </div>
     </div>
   </div>
