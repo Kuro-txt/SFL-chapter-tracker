@@ -100,7 +100,6 @@ export async function onRequest(context) {
         const passwordHash = await hashPassword(password);
         await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
         
-        // Initialize single master vault pair for this user
         const vaultKey = `user_${username}_vault`;
         await env.TRACKER_KV.put(vaultKey, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] }));
 
@@ -132,7 +131,6 @@ export async function onRequest(context) {
         const inputHash = await hashPassword(password);
         if (userData.passwordHash !== inputHash) return new Response(JSON.stringify({ error: 'Incorrect password.' }), { status: 401 });
 
-        // Retrieve the single master KV pair
         const vaultKey = `user_${username}_vault`;
         let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
@@ -146,7 +144,7 @@ export async function onRequest(context) {
     }
   }
 
-  // 3. SAVE TO SINGLE MASTER VAULT PAIR (POST)
+  // 3. SAVE TO SINGLE MASTER VAULT PAIR (POST) - CAPTURES ACTIVE + DONE + ITEMS
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -158,14 +156,31 @@ export async function onRequest(context) {
         let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
         const todayDate = new Date().toISOString().split('T')[0];
-        const completedDeliveries = (body.deliveries || []).filter(d => d.completed).map(d => ({
-          name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0
+
+        // Capture BOTH active and completed items along with requested items for deliveries
+        const allDeliveries = (body.deliveries || []).map(d => ({
+          name: d.from,
+          cost: d.itemsCost || 0,
+          tickets: d.baseTickets || 0,
+          completed: d.completed,
+          items: d.itemDetails || [],
+          checked: true
         }));
-        const completedBounties = (body.bounties || []).filter(b => b.completed).map(b => ({
-          name: b.name, cost: b.itemsCost || 0, tickets: b.baseTickets || 0
+
+        const allBounties = (body.bounties || []).map(b => ({
+          name: b.name,
+          cost: b.itemsCost || 0,
+          tickets: b.baseTickets || 0,
+          completed: b.completed,
+          checked: true
         }));
-        const completedChores = (body.chores || []).filter(c => c.completed).map(c => ({
-          name: c.task, npc: c.npc
+
+        const allChores = (body.chores || []).map(c => ({
+          name: c.task,
+          npc: c.npc,
+          tickets: c.baseTickets || 0,
+          completed: c.completed,
+          checked: true
         }));
 
         const newTickets = body.ticketsSaved || 0;
@@ -180,20 +195,18 @@ export async function onRequest(context) {
           existingData.logs[existingTodayLogIndex] = {
             date: todayDate, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: completedDeliveries, bountiesDone: completedBounties, choresDone: completedChores
+            deliveriesDone: allDeliveries, bountiesDone: allBounties, choresDone: allChores
           };
         } else {
           existingData.logs.unshift({
             date: todayDate, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: completedDeliveries, bountiesDone: completedBounties, choresDone: completedChores
+            deliveriesDone: allDeliveries, bountiesDone: allBounties, choresDone: allChores
           });
         }
 
         existingData.cumulativeTickets += newTickets;
         existingData.cumulativeCost += newCost;
-
-        // Save complete list state into the single KV pair
         existingData.deliveries = body.deliveries || [];
         existingData.bounties = body.bounties || [];
         existingData.chores = body.chores || [];
