@@ -142,7 +142,6 @@ export async function onRequest(context) {
     }
   }
 
-  // SAVE TO VAULT - WEEKLY DEDUPLICATION FOR CHORES & BOUNTIES, DAILY FOR DELIVERIES
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -153,9 +152,8 @@ export async function onRequest(context) {
         const vaultKey = `user_${username}_vault`;
         let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
-        const todayDate = new Date().toISOString().split 'T')[0];
+        const todayDate = new Date().toISOString().split('T')[0];
         
-        // Calculate current week identifier (e.g., 2026-W33) for weekly bounties and chores
         const now = new Date();
         const startOfYear = new Date(now.getFullYear(), 0, 1);
         const weekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
@@ -176,7 +174,6 @@ export async function onRequest(context) {
           tickets: c.baseTickets || 0, completed: c.completed, checked: true
         }));
 
-        // Merge weekly bounties/chores so they don't duplicate daily
         let existingBounties = (existingData.bounties || []).filter(b => b.weekId === currentWeekId);
         incomingBounties.forEach(ib => {
           if (!existingBounties.some(eb => eb.name.toLowerCase() === ib.name.toLowerCase())) {
