@@ -85,7 +85,9 @@ export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
-  const apiKey = env?.SFL_API_KEY || '';
+  
+  // Accept API Key from query param (UI input) or Cloudflare Environment Variables
+  const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
   if (request.method === 'POST') {
     try {
@@ -155,9 +157,9 @@ export async function onRequest(context) {
     if (!sflResponse || !sflResponse.ok) {
       const status = sflResponse?.status || 500;
       if (status === 401) {
-        throw new Error('SFL API returned 401 Unauthorized. Please configure your SFL_API_KEY environment variable in Cloudflare settings.');
+        throw new Error('SFL API returned 401 Unauthorized. Please enter your valid SFL API Key in the dashboard input box.');
       }
-      throw new Error(`SFL API error (${status}). Check Farm ID.`);
+      throw new Error(`SFL API error (${status}). Check Farm ID or API Key.`);
     }
 
     const payload = await sflResponse.json().catch(() => ({}));
