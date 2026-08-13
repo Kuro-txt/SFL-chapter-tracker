@@ -1,0 +1,411 @@
+var globalData = null;
+var currentDoneTicketsToday = 0;
+var currentDoneCostToday = 0;
+
+function formatSFL(val) {
+  if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
+  if (val < 0.01) return val.toFixed(4);
+  return val.toFixed(2);
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
+  document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
+  document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+  var savedVip = localStorage.getItem('sfl_vip');
+  if (savedVip !== null) {
+    document.getElementById('vipToggle').checked = savedVip === 'true';
+  }
+
+  var savedFarmId = localStorage.getItem('sfl_farmId');
+  if (savedFarmId) {
+    document.getElementById('farmId').value = savedFarmId;
+  }
+
+  var savedApiKey = localStorage.getItem('sfl_apiKey');
+  if (savedApiKey) {
+    document.getElementById('apiKey').value = savedApiKey;
+  }
+});
+
+function saveAndRecalculate() {
+  localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
+  localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
+  localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
+  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
+  localStorage.setItem('sfl_farmId', document.getElementById('farmId').value.trim());
+  localStorage.setItem('sfl_apiKey', document.getElementById('apiKey').value.trim());
+
+  recalculateAll();
+}
+
+async function loadTrackerData() {
+  var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+  var apiKey = document.getElementById('apiKey').value.trim();
+  
+  localStorage.setItem('sfl_farmId', farmId);
+  localStorage.setItem('sfl_apiKey', apiKey);
+
+  var priceBadge = document.getElementById('priceBadge');
+  priceBadge.style.display = 'inline-block';
+  priceBadge.textContent = 'FETCHING...';
+
+  try {
+    var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
+    if (apiKey) {
+      queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
+    }
+
+    var response = await fetch(queryUrl);
+    var data = await response.json();
+
+    if (data.error) throw new Error(data.error);
+
+    globalData = data;
+
+    if (data.pricesLoadedCount > 0) {
+      priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
+    } else {
+      priceBadge.textContent = 'PRICE API OFFLINE';
+    }
+
+    if (localStorage.getItem('sfl_vip') === null) {
+      document.getElementById('vipToggle').checked = data.isVipActive;
+      localStorage.setItem('sfl_vip', data.isVipActive);
+    }
+
+    recalculateAll();
+
+  } catch (err) {
+    alert('Error fetching data: ' + err.message);
+  }
+}
+
+// NPC Delivery Modal Functions
+function openNpcModal(indexOrName) {
+  if (!globalData) {
+    globalData = { deliveries: [], bounties: [], chores: [], cloudHistory: { logs: [], cumulativeTickets: 0, cumulativeCost: 0 } };
+  }
+
+  var modal = document.getElementById('npcModal');
+  var nameInput = document.getElementById('npcEditName');
+  var ticketsInput = document.getElementById('npcEditTickets');
+  var costInput = document.getElementById('npcEditCost');
+  var statusInput = document.getElementById('npcEditStatus');
+  var indexInput = document.getElementById('npcModalIndex');
+
+  if (indexOrName === 'New NPC') {
+    document.getElementById('npcModalTitle').textContent = '➕ ADD PAST NPC DELIVERY';
+    indexInput.value = 'new';
+    nameInput.value = '';
+    ticketsInput.value = '2';
+    costInput.value = '0.00';
+    statusInput.value = 'true';
+  } else {
+    var d = globalData.deliveries[indexOrName];
+    if (!d) return;
+    document.getElementById('npcModalTitle').textContent = '✏️ EDIT NPC: ' + d.from.toUpperCase();
+    indexInput.value = indexOrName;
+    nameInput.value = d.from;
+    ticketsInput.value = d.baseTickets;
+    costInput.value = d.itemsCost || 0;
+    statusInput.value = String(d.completed);
+  }
+
+  modal.classList.add('show');
+}
+
+function closeNpcModal() {
+  document.getElementById('npcModal').classList.remove('show');
+}
+
+function saveNpcChanges() {
+  var indexVal = document.getElementById('npcModalIndex').value;
+  var name = document.getElementById('npcEditName').value.trim() || 'Unknown NPC';
+  var tickets = parseInt(document.getElementById('npcEditTickets').value) || 0;
+  var cost = parseFloat(document.getElementById('npcEditCost').value) || 0;
+  var completed = document.getElementById('npcEditStatus').value === 'true';
+
+  if (!globalData) return;
+
+  if (indexVal === 'new') {
+    globalData.deliveries.unshift({
+      id: 'manual_' + Date.now(),
+      from: name,
+      items: {},
+      itemsCost: cost,
+      itemDetails: [{ name: 'Custom Past Run', qty: 1, unitPrice: cost, lineCost: cost, isRecipe: false }],
+      baseTickets: tickets,
+      isChapterNpc: false,
+      completed: completed,
+      isManual: true
+    });
+  } else {
+    var idx = parseInt(indexVal);
+    var d = globalData.deliveries[idx];
+    if (d) {
+      d.from = name;
+      d.baseTickets = tickets;
+      d.itemsCost = cost;
+      d.completed = completed;
+      d.isManual = true;
+    }
+  }
+
+  closeNpcModal();
+  recalculateAll();
+}
+
+function deleteNpcDelivery() {
+  var indexVal = document.getElementById('npcModalIndex').value;
+  if (indexVal !== 'new' && globalData) {
+    var idx = parseInt(indexVal);
+    globalData.deliveries.splice(idx, 1);
+  }
+  closeNpcModal();
+  recalculateAll();
+}
+
+async function saveProgressToCloudKV() {
+  if (!globalData) {
+    alert('Please click "FETCH DATA" first before saving!');
+    return;
+  }
+
+  var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+  var apiKey = document.getElementById('apiKey').value.trim();
+
+  try {
+    var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
+    if (apiKey) queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
+
+    var response = await fetch(queryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticketsSaved: currentDoneTicketsToday,
+        costSaved: currentDoneCostToday,
+        deliveries: globalData.deliveries,
+        bounties: globalData.bounties,
+        chores: globalData.chores
+      })
+    });
+
+    var resData = await response.json();
+    if (resData.error) throw new Error(resData.error);
+
+    alert('☁️ SAVED TO CLOUD KV!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    globalData.cloudHistory = resData.cloudData;
+    recalculateAll();
+  } catch (err) {
+    alert('Cloud Save Failed: ' + err.message);
+  }
+}
+
+function toggleHistoryModal() {
+  var modal = document.getElementById('historyModal');
+  modal.classList.toggle('show');
+
+  if (modal.classList.contains('show') && globalData && globalData.cloudHistory) {
+    var logs = globalData.cloudHistory.logs || [];
+    var container = document.getElementById('modalLogList');
+
+    if (logs.length === 0) {
+      container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved KV logs found for this farm yet.</p>';
+    } else {
+      container.innerHTML = logs.map(function(log, idx) {
+        var delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
+          '<div style="color:#5C4033; font-size:11px;"><strong>📦 Deliveries:</strong> ' + 
+          log.deliveriesDone.map(function(d) { return (typeof d === 'string' ? d : d.name + ' (' + formatSFL(d.cost) + ' SFL)'); }).join(', ') + '</div>' : '';
+
+        var bountiesHtml = (log.bountiesDone && log.bountiesDone.length > 0) ? 
+          '<div style="color:#B26A00; font-size:11px;"><strong>📜 Bounties:</strong> ' + 
+          log.bountiesDone.map(function(b) { return (typeof b === 'string' ? b : b.name + ' (' + formatSFL(b.cost) + ' SFL)'); }).join(', ') + '</div>' : '';
+
+        var choresHtml = (log.choresDone && log.choresDone.length > 0) ? 
+          '<div style="color:#2E7D32; font-size:11px;"><strong>🧹 Chores:</strong> ' + 
+          log.choresDone.map(function(c) { return (typeof c === 'string' ? c : c.name); }).join(', ') + '</div>' : '';
+
+        var logTickets = log.ticketsSaved || 0;
+        var logCost = log.costSaved || 0;
+        var logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
+
+        return '<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
+          '<div style="display:flex; justify-content:space-between; color:#5C4033; font-size:11px; font-weight:900;">' +
+            '<span style="color:#8B4513;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
+            '<span>' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
+          '</div>' +
+          '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
+            '<span>Tickets: +' + logTickets + ' | Cost: ' + formatSFL(logCost) + ' SFL</span>' +
+            '<span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">' + logRatio + ' SFL / Ticket</span>' +
+          '</div>' +
+          '<div style="display:flex; flex-direction:column; gap:3px;">' + delivHtml + bountiesHtml + choresHtml + '</div>' +
+        '</div>';
+      }).join('');
+    }
+  }
+}
+
+function recalculateAll() {
+  if (!globalData) return;
+
+  var vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
+  var boostCount = 
+    (document.getElementById('boost1').checked ? 1 : 0) +
+    (document.getElementById('boost2').checked ? 1 : 0) +
+    (document.getElementById('boost3').checked ? 1 : 0);
+
+  var totalTicketsAll = 0;
+  var earnedTicketsAll = 0;
+  var pendingTicketsAll = 0;
+
+  var totalSflCostAll = 0;
+  var earnedSflCostAll = 0;
+  var pendingSflCostAll = 0;
+
+  // Render Deliveries
+  var deliveriesContainer = document.getElementById('deliveriesList');
+  document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
+  deliveriesContainer.innerHTML = globalData.deliveries.map(function(d, index) {
+    var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
+    var finalTickets = d.baseTickets + deliveryAddon;
+    var totalSflCost = d.itemsCost || 0;
+
+    totalTicketsAll += finalTickets;
+    totalSflCostAll += totalSflCost;
+
+    if (d.completed) {
+      earnedTicketsAll += finalTickets;
+      earnedSflCostAll += totalSflCost;
+    } else {
+      pendingTicketsAll += finalTickets;
+      pendingSflCostAll += totalSflCost;
+    }
+
+    var itemRows = (d.itemDetails || []).map(function(detail) {
+      return '<div style="display:flex; justify-content:space-between; font-size:11px;">' +
+        '<span>• ' + detail.qty + 'x <strong style="color:#3E2723;">' + detail.name + '</strong> ' + (detail.isRecipe ? '<span class="badge badge-recipe">RECIPE</span>' : '') + '</span>' +
+        '<span style="color:#8C7853; font-weight:bold;">' + (detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00') + '</span>' +
+      '</div>';
+    }).join('');
+
+    var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+    var badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
+
+    return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '" onclick="openNpcModal(' + index + ')">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+        '<span style="font-weight:900; color:#8B4513; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
+          d.from +
+          (d.isManual ? '<span style="font-size:9px; background:#8E44AD; color:#FFF8DC; padding:1px 4px; font-weight:900; border-radius:4px;">MANUAL</span>' : '') +
+          (d.isChapterNpc ? '<span style="font-size:9px; background:#FFB300; color:#3E2723; padding:1px 4px; font-weight:900; border-radius:4px;">CHAPTER</span>' : '') +
+        '</span>' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+          '<span class="' + badgeClass + '">' + (d.isManual ? '✍️ PAST' : (d.completed ? '✨ DONE' : '⏳ ACTIVE')) + '</span>' +
+          '<button class="btn btn-sm btn-amber" onclick="event.stopPropagation(); openNpcModal(' + index + ')">✏️ EDIT</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
+      '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+        '<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
+          '<span style="color:#B26A00; font-weight:900;">Yield: ' + finalTickets + ' Tickets</span>' +
+          '<span style="color:#3E2723; font-weight:900;">' + formatSFL(totalSflCost) + ' SFL</span>' +
+        '</div>' +
+        '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
+          '<span>Cost / Ticket:</span>' +
+          '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Render Bounties
+  var bountiesContainer = document.getElementById('bountiesList');
+  document.getElementById('bountiesCount').textContent = globalData.bounties.length;
+  bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
+    var finalTickets = b.baseTickets + boostCount;
+    var totalSflCost = b.itemsCost || 0;
+
+    totalTicketsAll += finalTickets;
+    totalSflCostAll += totalSflCost;
+
+    if (b.completed) {
+      earnedTicketsAll += finalTickets;
+      earnedSflCostAll += totalSflCost;
+    } else {
+      pendingTicketsAll += finalTickets;
+      pendingSflCostAll += totalSflCost;
+    }
+
+    var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+    var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
+
+    return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+        '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#B26A00;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
+        '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+      '</div>' +
+      '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
+        '<div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">' +
+          '<span>Yield: ' + finalTickets + ' Tickets</span>' +
+          '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
+        '</div>' +
+        '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
+          '<span>Cost / Ticket:</span>' +
+          '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Render Chores
+  var choresContainer = document.getElementById('choresList');
+  document.getElementById('choresCount').textContent = globalData.chores.length;
+  choresContainer.innerHTML = globalData.chores.map(function(c) {
+    var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
+    var hasProgress = c.requirement > 0;
+
+    totalTicketsAll += finalTickets;
+
+    if (c.completed) {
+      earnedTicketsAll += finalTickets;
+    } else {
+      pendingTicketsAll += finalTickets;
+    }
+
+    var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
+
+    return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+        '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + c.npc + '</span>' +
+        '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+      '</div>' +
+      '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
+      (hasProgress ? '<div style="font-size:11px; color:#8C7853; font-weight:bold;">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
+      (c.baseTickets > 0 ? '<div style="background:#FFFACD; padding:6px 8px; border-radius:6px; border:1px solid #D2B48C; display:flex; justify-content:space-between; align-items:center; font-size:11px;"><span style="color:#8C7853; font-weight:bold;">Yield:</span><span style="color:#2E7D32; font-weight:900;">' + finalTickets + ' Tickets</span></div>' : '') +
+    '</div>';
+  }).join('');
+
+  currentDoneTicketsToday = earnedTicketsAll;
+  currentDoneCostToday = earnedSflCostAll;
+
+  // Update Stats
+  document.getElementById('statTotalTickets').textContent = totalTicketsAll;
+  document.getElementById('statTotalCost').textContent = formatSFL(totalSflCostAll) + ' SFL';
+  document.getElementById('statTotalRatio').textContent = (totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00") + ' SFL / Ticket';
+
+  document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
+  document.getElementById('statEarnedCost').textContent = formatSFL(earnedSflCostAll) + ' SFL';
+  document.getElementById('statEarnedRatio').textContent = (earnedTicketsAll > 0 ? formatSFL(earnedSflCostAll / earnedTicketsAll) : "0.00") + ' SFL / Ticket';
+
+  document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
+  document.getElementById('statPendingCost').textContent = formatSFL(pendingSflCostAll) + ' SFL';
+  document.getElementById('statPendingRatio').textContent = (pendingTicketsAll > 0 ? formatSFL(pendingSflCostAll / pendingTicketsAll) : "0.00") + ' SFL / Ticket';
+
+  var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
+  var cloudTickets = cloud.cumulativeTickets || 0;
+  var cloudCost = cloud.cumulativeCost || 0;
+  document.getElementById('statSavedTickets').textContent = cloudTickets;
+  document.getElementById('statSavedCost').textContent = formatSFL(cloudCost) + ' SFL';
+  document.getElementById('statSavedRatio').textContent = (cloudTickets > 0 ? formatSFL(cloudCost / cloudTickets) : "0.00") + ' SFL / Ticket';
+}
