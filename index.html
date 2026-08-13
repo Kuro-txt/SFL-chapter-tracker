@@ -203,13 +203,18 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-slate-900/90 p-3 rounded-lg border border-amber-500/40 bg-amber-950/10 text-xs space-y-2">
+          <div class="bg-slate-900/90 p-3 rounded-lg border ${d.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-amber-500/40 bg-amber-950/10'} text-xs space-y-2">
             <div class="flex justify-between items-center">
               <span class="font-bold text-amber-300 capitalize flex items-center gap-1">
                 ${d.from}
                 ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">Chapter NPC</span>` : ''}
               </span>
-              <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] px-2 py-0.5 rounded ${d.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
+                  ${d.completed ? 'Done' : 'Active'}
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
+              </div>
             </div>
 
             <div class="text-slate-200 font-medium bg-slate-950/50 p-2 rounded border border-slate-800 space-y-1">
@@ -239,10 +244,15 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 text-xs space-y-2">
+          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${b.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-slate-700'} text-xs space-y-2">
             <div class="flex justify-between items-center">
               <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400 font-mono">(Lvl ${b.level})</span>` : ''}</span>
-              <span class="text-[10px] text-slate-500 font-mono">ID: ${b.id}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] px-2 py-0.5 rounded ${b.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
+                  ${b.completed ? 'Done' : 'Active'}
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">ID: ${b.id}</span>
+              </div>
             </div>
             <div class="bg-slate-950/80 p-2 rounded border border-slate-800 space-y-1 font-mono text-[11px]">
               <div class="flex justify-between text-slate-300">
@@ -264,7 +274,7 @@
       choresContainer.innerHTML = globalData.chores.map(c => {
         const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
         return `
-          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-700'} text-xs space-y-1.5">
+          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-slate-700'} text-xs space-y-1.5">
             <div class="flex justify-between items-center">
               <span class="font-bold capitalize text-slate-200">${c.npc}</span>
               <span class="text-[10px] px-2 py-0.5 rounded ${c.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
