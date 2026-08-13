@@ -89,18 +89,19 @@ async function processFarmData(farmId, apiKey, env) {
   };
 
   const sflHeaders = { ...browserHeaders, 'Referer': 'https://sunflower-land.com/', 'Origin': 'https://sunflower-land.com' };
-  if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
+  if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
   const [sflResponse, pricesResponse] = await Promise.all([
-    fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
+    fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(e => ({ ok: false, status: 500, statusText: e.message })),
     fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
   ]);
 
-  if (!sflResponse.ok) {
-    throw new Error(`SFL API error: ${sflResponse.status}`);
+  if (!sflResponse || !sflResponse.ok) {
+    const status = sflResponse?.status || 500;
+    throw new Error(`SFL API returned status ${status}. Check Farm ID.`);
   }
 
-  const payload = await sflResponse.json();
+  const payload = await sflResponse.json().catch(() => ({}));
   const farm = payload.farm || {};
 
   let priceMap = {};
@@ -254,10 +255,12 @@ async function processFarmData(farmId, apiKey, env) {
     };
   });
 
-  // Read History from Cloud KV
+  // Read History from Cloud KV if available
   let cloudHistory = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
   if (env?.TRACKER_KV) {
-    cloudHistory = await env.TRACKER_KV.get(`farm_${farmId}_history`, 'json') || cloudHistory;
+    try {
+      cloudHistory = await env.TRACKER_KV.get(`farm_${farmId}_history`, 'json') || cloudHistory;
+    } catch (_) {}
   }
 
   return {
@@ -271,7 +274,6 @@ async function processFarmData(farmId, apiKey, env) {
   };
 }
 
-// HTTP Request Handler
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -310,7 +312,7 @@ export async function onRequest(context) {
         return new Response(JSON.stringify({ error: 'TRACKER_KV binding not configured.' }), { status: 400 });
       }
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+      return new Response(JSON.stringify({ error: err.message }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -322,63 +324,6 @@ export async function onRequest(context) {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
-  }
-}
-
-// Automated Cron Trigger (Runs Daily at 23:00 UTC)
-export async function scheduled(event, env, ctx) {
-  const farmId = '8472883706403914';
-  const apiKey = env?.SFL_API_KEY || '';
-
-  if (!env?.TRACKER_KV) return;
-
-  try {
-    const data = await processFarmData(farmId, apiKey, env);
-
-    let doneTickets = 0;
-    let doneCost = 0;
-
-    data.deliveries.forEach(d => {
-      if (d.completed) {
-        doneTickets += d.baseTickets;
-        doneCost += d.itemsCost || 0;
-      }
-    });
-
-    data.bounties.forEach(b => {
-      if (b.completed) {
-        doneTickets += b.baseTickets;
-        doneCost += b.itemsCost || 0;
-      }
-    });
-
-    data.chores.forEach(c => {
-      if (c.completed) {
-        doneTickets += c.baseTickets;
-      }
-    });
-
-    const kvKey = `farm_${farmId}_history`;
-    const existingData = await env.TRACKER_KV.get(kvKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
-
-    const snapshot = {
-      date: new Date().toISOString().split('T')[0],
-      timestamp: new Date().toISOString(),
-      autoTrigger: true,
-      ticketsSaved: doneTickets,
-      costSaved: doneCost,
-      deliveries: data.deliveries,
-      bounties: data.bounties,
-      chores: data.chores
-    };
-
-    existingData.logs.unshift(snapshot);
-    existingData.cumulativeTickets += doneTickets;
-    existingData.cumulativeCost += doneCost;
-
-    await env.TRACKER_KV.put(kvKey, JSON.stringify(existingData));
-  } catch (err) {
-    console.error('Auto cron error:', err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 }
