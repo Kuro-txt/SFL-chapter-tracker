@@ -13,6 +13,46 @@ const CHAPTER_NPC_TICKETS = {
   "jester": 4
 };
 
+// Recursive Price Extractor to traverse nested categories in sfl.world API
+function extractPricesRecursive(obj, map = {}) {
+  if (!obj || typeof obj !== 'object') return map;
+
+  if (Array.isArray(obj)) {
+    obj.forEach(item => extractPricesRecursive(item, map));
+    return map;
+  }
+
+  for (const [key, val] of Object.entries(obj)) {
+    const cleanKey = key.toLowerCase().trim();
+    const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
+
+    if (typeof val === 'number') {
+      map[cleanKey] = val;
+      map[strippedKey] = val;
+    } else if (val && typeof val === 'object') {
+      const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
+      
+      if (typeof priceVal === 'number') {
+        map[cleanKey] = priceVal;
+        map[strippedKey] = priceVal;
+      }
+      
+      if (val.name && typeof val.name === 'string') {
+        const itemClean = val.name.toLowerCase().trim();
+        const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
+        if (typeof priceVal === 'number') {
+          map[itemClean] = priceVal;
+          map[itemStripped] = priceVal;
+        }
+      }
+
+      extractPricesRecursive(val, map);
+    }
+  }
+
+  return map;
+}
+
 export async function onRequest(context) {
   const { searchParams } = new URL(context.request.url);
   const farmId = searchParams.get('farmId') || '8472883706403914';
@@ -27,7 +67,7 @@ export async function onRequest(context) {
   if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
   try {
-    // Concurrent fetch: Farm Data + sfl.world prices
+    // Concurrent fetch: SFL Farm Data + sfl.world Live Market Prices
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
       fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
@@ -41,9 +81,38 @@ export async function onRequest(context) {
     const farm = payload.farm || {};
 
     let rawPricesData = null;
+    let priceMap = {};
+
     if (pricesResponse && pricesResponse.ok) {
       rawPricesData = await pricesResponse.json().catch(() => null);
+      if (rawPricesData) {
+        priceMap = extractPricesRecursive(rawPricesData);
+      }
     }
+
+    // Helper to calculate total SFL cost for required items
+    const calculateItemsCost = (items) => {
+      let totalCost = 0;
+      const details = [];
+
+      Object.entries(items).forEach(([itemName, qty]) => {
+        const cleanName = itemName.toLowerCase().trim();
+        const strippedName = cleanName.replace(/[^a-z0-9]/g, '');
+
+        const unitPrice = priceMap[cleanName] ?? priceMap[strippedName] ?? 0;
+        const lineTotal = unitPrice * qty;
+        totalCost += lineTotal;
+
+        details.push({
+          name: itemName,
+          qty,
+          unitPrice,
+          totalPrice: lineTotal
+        });
+      });
+
+      return { totalCost, details };
+    };
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
@@ -66,10 +135,14 @@ export async function onRequest(context) {
       }
 
       if (baseTicketCount > 0) {
+        const costData = calculateItemsCost(order.items || {});
+
         deliveryList.push({
           id: order.id,
           from: order.from,
           items: order.items || {},
+          itemsCost: costData.totalCost,
+          itemDetails: costData.details,
           baseTickets: baseTicketCount,
           isChapterNpc: baseTickets !== undefined
         });
@@ -89,11 +162,15 @@ export async function onRequest(context) {
       }
 
       if (baseTicketCount > 0) {
+        const targetItems = b.name ? { [b.name]: 1 } : {};
+        const costData = calculateItemsCost(targetItems);
+
         activeBounties.push({
           id: b.id,
           name: b.name,
           level: b.level || null,
-          baseTickets: baseTicketCount
+          baseTickets: baseTicketCount,
+          itemsCost: costData.totalCost
         });
       }
     });
@@ -123,6 +200,7 @@ export async function onRequest(context) {
       farmId,
       isVipActive,
       rawPricesData,
+      priceMap,
       deliveries: deliveryList,
       bounties: activeBounties,
       chores: choresList
