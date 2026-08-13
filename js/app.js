@@ -338,7 +338,7 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-// Column History Modal (Bounties / Chores with Editable Tickets & Costs)
+// Column History Modal (Bounties / Chores)
 function openColumnHistoryModal(type) {
   activeColumnType = type;
   setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
@@ -581,7 +581,7 @@ function recalculateAll() {
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // CURRENTLY HAVE: Category breakdowns & unique sum from Cloud Vault History
+  // CURRENTLY HAVE
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
@@ -625,7 +625,7 @@ function recalculateAll() {
   // SORTING: Active items placed ABOVE completed items
   var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-  var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === c = b.completed ? 0 : a.completed ? 1 : -1));
+  var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   // DELIVERIES COLUMN
   var deliveriesContainer = document.getElementById('deliveriesList');
