@@ -4,6 +4,7 @@ var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deli
 var currentDoneTicketsToday = 0;
 var currentDoneCostToday = 0;
 var isFetchCooldown = false;
+var activeColumnType = null; // 'bounty' or 'chore'
 
 function formatSFL(val) {
   if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
@@ -183,88 +184,223 @@ async function loadTrackerData() {
   }
 }
 
-// NPC Delivery History Modal
+// --- NPC DELIVERY HISTORY MODAL WITH TICKS & ADD/EDIT ---
 function openNpcHistoryModal(npcName) {
-  var modal = document.getElementById('npcHistoryModal');
-  var titleEl = document.getElementById('npcHistoryTitle');
-  var bodyEl = document.getElementById('npcHistoryBody');
-
-  titleEl.textContent = '📜 HISTORY: ' + npcName.toUpperCase();
-
-  var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-  var matching = [];
-
-  logs.forEach(log => {
-    (log.deliveriesDone || []).forEach(past => {
-      var name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
-      if (name === npcName.toLowerCase().trim()) {
-        matching.push({
-          date: log.date || 'Past Run',
-          cost: past.cost || 0,
-          tickets: past.tickets || 0
-        });
-      }
-    });
-  });
-
-  if (matching.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No previous history logs found for ' + npcName + '.</p>';
-  } else {
-    bodyEl.innerHTML = matching.map(m => {
-      return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
-        '<span style="font-weight:bold; color:#8B4513;">📅 ' + m.date + '</span>' +
-        '<span style="color:#2E7D32; font-weight:bold;">+' + m.tickets + ' Tickets (' + formatSFL(m.cost) + ' SFL)</span>' +
-      '</div>';
-    }).join('');
-  }
-
-  modal.classList.add('show');
+  document.getElementById('activeNpcHistoryName').value = npcName;
+  document.getElementById('npcHistoryTitle').textContent = '📜 HISTORY: ' + npcName.toUpperCase();
+  document.getElementById('addNpcHistDate').value = new Date().toISOString().split('T')[0];
+  renderNpcHistoryModalList();
+  document.getElementById('npcHistoryModal').classList.add('show');
 }
 
 function closeNpcHistoryModal() {
   document.getElementById('npcHistoryModal').classList.remove('show');
 }
 
-// Column Header History Modal (Bounties / Chores Top Button)
-function openColumnHistoryModal(type) {
-  var modal = document.getElementById('columnHistoryModal');
-  var titleEl = document.getElementById('columnHistoryTitle');
-  var bodyEl = document.getElementById('columnHistoryBody');
-
-  titleEl.textContent = type === 'bounty' ? '📜 ALL BOUNTIES HISTORY' : '📜 ALL CHORES HISTORY';
+function renderNpcHistoryModalList() {
+  var npcName = document.getElementById('activeNpcHistoryName').value;
+  var bodyEl = document.getElementById('npcHistoryBody');
+  var statsEl = document.getElementById('npcHistoryStats');
 
   var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-  var matching = [];
+  var records = [];
 
-  logs.forEach(log => {
-    var items = type === 'bounty' ? (log.bountiesDone || []) : (log.choresDone || []);
-    items.forEach(item => {
-      matching.push({
-        date: log.date || 'Past Run',
-        name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
-        cost: item.cost || 0,
-        tickets: item.tickets || 0
-      });
+  logs.forEach((log, logIdx) => {
+    (log.deliveriesDone || []).forEach((past, itemIdx) => {
+      var name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
+      if (name === npcName.toLowerCase().trim()) {
+        records.push({
+          logIdx: logIdx,
+          itemIdx: itemIdx,
+          date: log.date || 'Past Run',
+          cost: past.cost || 0,
+          tickets: past.tickets || 2,
+          checked: past.checked !== false // default ticked true
+        });
+      }
     });
   });
 
-  if (matching.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No past history records found for ' + type + 's.</p>';
+  var totalTickedTickets = 0;
+  var totalTickedCost = 0;
+
+  if (records.length === 0) {
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No previous history found for ' + npcName + '.</p>';
   } else {
-    bodyEl.innerHTML = matching.map(m => {
+    bodyEl.innerHTML = records.map((r, i) => {
+      if (r.checked) {
+        totalTickedTickets += r.tickets;
+        totalTickedCost += r.cost;
+      }
       return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
-        '<div><span style="font-weight:bold; color:#8B4513;">📅 ' + m.date + '</span><br/><strong style="color:#3E2723;">' + m.name + '</strong></div>' +
-        '<span style="color:#2E7D32; font-weight:bold;">' + (m.tickets > 0 ? '+' + m.tickets + ' Tickets' : '') + (m.cost > 0 ? ' (' + formatSFL(m.cost) + ' SFL)' : '') + '</span>' +
+        '<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">' +
+          '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleNpcHistCheck(' + r.logIdx + ', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
+          '<span>📅 ' + r.date + '</span>' +
+        '</label>' +
+        '<div style="display:flex; align-items:center; gap:10px;">' +
+          '<span style="color:#2E7D32; font-weight:bold;">+' + r.tickets + ' Tix (' + formatSFL(r.cost) + ' SFL)</span>' +
+          '<button onclick="deleteNpcHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
+        '</div>' +
       '</div>';
     }).join('');
   }
 
-  modal.classList.add('show');
+  statsEl.textContent = totalTickedTickets + ' Tickets | ' + formatSFL(totalTickedCost) + ' SFL';
+}
+
+function toggleNpcHistCheck(logIdx, itemIdx) {
+  var logs = globalData.cloudHistory.logs;
+  if (logs[logIdx] && logs[logIdx].deliveriesDone && logs[logIdx].deliveriesDone[itemIdx]) {
+    var item = logs[logIdx].deliveriesDone[itemIdx];
+    if (typeof item === 'string') {
+      logs[logIdx].deliveriesDone[itemIdx] = { name: item, cost: 0, tickets: 2, checked: false };
+    } else {
+      item.checked = item.checked === false ? true : false;
+    }
+    renderNpcHistoryModalList();
+  }
+}
+
+function addNpcHistoryItem() {
+  var npcName = document.getElementById('activeNpcHistoryName').value;
+  var dateStr = document.getElementById('addNpcHistDate').value.trim() || new Date().toISOString().split('T')[0];
+  var tickets = parseInt(document.getElementById('addNpcHistTickets').value) || 2;
+  var cost = parseFloat(document.getElementById('addNpcHistCost').value) || 0;
+
+  if (!globalData.cloudHistory.logs) globalData.cloudHistory.logs = [];
+  
+  // Find or create log for date
+  var targetLog = globalData.cloudHistory.logs.find(l => l.date === dateStr);
+  if (!targetLog) {
+    targetLog = { date: dateStr, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [], bountiesDone: [], choresDone: [] };
+    globalData.cloudHistory.logs.unshift(targetLog);
+  }
+
+  if (!targetLog.deliveriesDone) targetLog.deliveriesDone = [];
+  targetLog.deliveriesDone.push({ name: npcName, cost: cost, tickets: tickets, checked: true });
+
+  renderNpcHistoryModalList();
+  recalculateAll();
+}
+
+function deleteNpcHistItem(logIdx, itemIdx) {
+  var logs = globalData.cloudHistory.logs;
+  if (logs[logIdx] && logs[logIdx].deliveriesDone) {
+    logs[logIdx].deliveriesDone.splice(itemIdx, 1);
+    renderNpcHistoryModalList();
+    recalculateAll();
+  }
+}
+
+
+// --- COLUMN HISTORY MODAL (BOUNTIES / CHORES) WITH TICKS & ADD/EDIT ---
+function openColumnHistoryModal(type) {
+  activeColumnType = type;
+  document.getElementById('columnHistoryTitle').textContent = type === 'bounty' ? '📜 ALL BOUNTIES HISTORY' : '📜 ALL CHORES HISTORY';
+  renderColumnHistoryModalList();
+  document.getElementById('columnHistoryModal').classList.add('show');
 }
 
 function closeColumnHistoryModal() {
   document.getElementById('columnHistoryModal').classList.remove('show');
 }
+
+function renderColumnHistoryModalList() {
+  var type = activeColumnType;
+  var bodyEl = document.getElementById('columnHistoryBody');
+  var statsEl = document.getElementById('columnHistoryStats');
+
+  var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
+  var records = [];
+
+  logs.forEach((log, logIdx) => {
+    var items = type === 'bounty' ? (log.bountiesDone || []) : (log.choresDone || []);
+    items.forEach((item, itemIdx) => {
+      records.push({
+        logIdx: logIdx,
+        itemIdx: itemIdx,
+        date: log.date || 'Past Run',
+        name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
+        cost: item.cost || 0,
+        tickets: item.tickets || 1,
+        checked: item.checked !== false
+      });
+    });
+  });
+
+  var totalTickedTickets = 0;
+  var totalTickedCost = 0;
+
+  if (records.length === 0) {
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No past history records found.</p>';
+  } else {
+    bodyEl.innerHTML = records.map((r) => {
+      if (r.checked) {
+        totalTickedTickets += r.tickets;
+        totalTickedCost += r.cost;
+      }
+      return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
+        '<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">' +
+          '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleColumnHistCheck(' + r.logIdx + ', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
+          '<div><span style="font-weight:bold; color:#8B4513;">📅 ' + r.date + '</span><br/><strong style="color:#3E2723;">' + r.name + '</strong></div>' +
+        '</label>' +
+        '<div style="display:flex; align-items:center; gap:10px;">' +
+          '<span style="color:#2E7D32; font-weight:bold;">' + (r.tickets > 0 ? '+' + r.tickets + ' Tix ' : '') + (r.cost > 0 ? '(' + formatSFL(r.cost) + ' SFL)' : '') + '</span>' +
+          '<button onclick="deleteColumnHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  statsEl.textContent = totalTickedTickets + ' Tickets | ' + formatSFL(totalTickedCost) + ' SFL';
+}
+
+function toggleColumnHistCheck(logIdx, itemIdx) {
+  var logs = globalData.cloudHistory.logs;
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
+  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
+    var item = logs[logIdx][targetArray][itemIdx];
+    if (typeof item === 'string') {
+      logs[logIdx][targetArray][itemIdx] = { name: item, cost: 0, tickets: 1, checked: false };
+    } else {
+      item.checked = item.checked === false ? true : false;
+    }
+    renderColumnHistoryModalList();
+  }
+}
+
+function addCustomHistoryItem() {
+  var name = document.getElementById('addHistName').value.trim() || 'Custom Task';
+  var tickets = parseInt(document.getElementById('addHistTickets').value) || 1;
+  var cost = parseFloat(document.getElementById('addHistCost').value) || 0;
+  var todayDate = new Date().toISOString().split('T')[0];
+
+  if (!globalData.cloudHistory.logs) globalData.cloudHistory.logs = [];
+
+  var targetLog = globalData.cloudHistory.logs.find(l => l.date === todayDate);
+  if (!targetLog) {
+    targetLog = { date: todayDate, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [], bountiesDone: [], choresDone: [] };
+    globalData.cloudHistory.logs.unshift(targetLog);
+  }
+
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
+  if (!targetLog[targetArray]) targetLog[targetArray] = [];
+  targetLog[targetArray].push({ name: name, cost: cost, tickets: tickets, checked: true });
+
+  renderColumnHistoryModalList();
+  recalculateAll();
+}
+
+function deleteColumnHistItem(logIdx, itemIdx) {
+  var logs = globalData.cloudHistory.logs;
+  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
+  if (logs[logIdx] && logs[logIdx][targetArray]) {
+    logs[logIdx][targetArray].splice(itemIdx, 1);
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
 
 async function saveProgressToCloudKV() {
   if (!currentUser) {
