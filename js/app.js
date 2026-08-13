@@ -1,4 +1,6 @@
 var globalData = null;
+var currentUser = null;
+var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 var currentDoneTicketsToday = 0;
 var currentDoneCostToday = 0;
 
@@ -27,7 +29,79 @@ window.addEventListener('DOMContentLoaded', function() {
   if (savedApiKey) {
     document.getElementById('apiKey').value = savedApiKey;
   }
+
+  var savedUser = localStorage.getItem('sfl_username');
+  if (savedUser) {
+    currentUser = savedUser;
+    document.getElementById('authLoggedOut').style.display = 'none';
+    document.getElementById('authLoggedIn').style.display = 'flex';
+    document.getElementById('displayUsername').textContent = currentUser;
+  }
 });
+
+async function userRegister() {
+  var u = document.getElementById('authUsername').value.trim();
+  var p = document.getElementById('authPassword').value;
+  if (!u || !p) { alert('Please enter both username and password.'); return; }
+
+  try {
+    var res = await fetch('/api/chapter?action=register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    alert('🎉 Account registered successfully! You can now log in.');
+  } catch (err) {
+    alert('Registration Failed: ' + err.message);
+  }
+}
+
+async function userLogin() {
+  var u = document.getElementById('authUsername').value.trim();
+  var p = document.getElementById('authPassword').value;
+  if (!u || !p) { alert('Please enter both username and password.'); return; }
+
+  try {
+    var res = await fetch('/api/chapter?action=login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    var data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    currentUser = data.username;
+    currentVaultData = data.vaultData || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+    
+    localStorage.setItem('sfl_username', currentUser);
+    document.getElementById('authLoggedOut').style.display = 'none';
+    document.getElementById('authLoggedIn').style.display = 'flex';
+    document.getElementById('displayUsername').textContent = currentUser;
+
+    alert('🔓 Logged in successfully!');
+    if (globalData) {
+      globalData.cloudHistory = currentVaultData;
+      recalculateAll();
+    }
+  } catch (err) {
+    alert('Login Failed: ' + err.message);
+  }
+}
+
+function userLogout() {
+  currentUser = null;
+  currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+  localStorage.removeItem('sfl_username');
+  document.getElementById('authLoggedOut').style.display = 'flex';
+  document.getElementById('authLoggedIn').style.display = 'none';
+  if (globalData) {
+    globalData.cloudHistory = currentVaultData;
+    recalculateAll();
+  }
+}
 
 function saveAndRecalculate() {
   localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
@@ -53,9 +127,7 @@ async function loadTrackerData() {
 
   try {
     var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
-    if (apiKey) {
-      queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
-    }
+    if (apiKey) queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
 
     var response = await fetch(queryUrl);
     var data = await response.json();
@@ -63,6 +135,7 @@ async function loadTrackerData() {
     if (data.error) throw new Error(data.error);
 
     globalData = data;
+    globalData.cloudHistory = currentVaultData;
 
     if (data.pricesLoadedCount > 0) {
       priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
@@ -82,10 +155,9 @@ async function loadTrackerData() {
   }
 }
 
-// NPC Delivery Modal & History Functions
 function openNpcModal(indexOrName) {
   if (!globalData) {
-    globalData = { deliveries: [], bounties: [], chores: [], cloudHistory: { logs: [], cumulativeTickets: 0, cumulativeCost: 0 } };
+    globalData = { deliveries: [], bounties: [], chores: [], cloudHistory: currentVaultData };
   }
 
   var modal = document.getElementById('npcModal');
@@ -118,7 +190,6 @@ function openNpcModal(indexOrName) {
     costInput.value = d.itemsCost || 0;
     statusInput.value = String(d.completed);
 
-    // Filter past logs for this specific NPC
     var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
     var matchingPastDeliveries = [];
 
@@ -136,7 +207,7 @@ function openNpcModal(indexOrName) {
     });
 
     if (matchingPastDeliveries.length === 0) {
-      historyContainer.innerHTML = '<p style="font-size: 11px; color: #8C7853; font-weight: bold;">No past cloud logs found for ' + d.from + '.</p>';
+      historyContainer.innerHTML = '<p style="font-size: 11px; color: #8C7853; font-weight: bold;">No past vault logs found for ' + d.from + '.</p>';
     } else {
       historyContainer.innerHTML = matchingPastDeliveries.map(match => {
         return '<div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; background:#FFF8DC; padding:6px 8px; border:1px solid #D2B48C; border-radius:4px;">' +
@@ -202,22 +273,21 @@ function deleteNpcDelivery() {
 }
 
 async function saveProgressToCloudKV() {
+  if (!currentUser) {
+    alert('⚠️ Please LOGIN to your secure vault before saving to Cloud KV!');
+    return;
+  }
   if (!globalData) {
     alert('Please click "FETCH DATA" first before saving!');
     return;
   }
 
-  var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
-  var apiKey = document.getElementById('apiKey').value.trim();
-
   try {
-    var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
-    if (apiKey) queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
-
-    var response = await fetch(queryUrl, {
+    var response = await fetch('/api/chapter?action=saveVault', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        username: currentUser,
         ticketsSaved: currentDoneTicketsToday,
         costSaved: currentDoneCostToday,
         deliveries: globalData.deliveries,
@@ -229,11 +299,13 @@ async function saveProgressToCloudKV() {
     var resData = await response.json();
     if (resData.error) throw new Error(resData.error);
 
-    alert('☁️ SAVED TO CLOUD KV!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
-    globalData.cloudHistory = resData.cloudData;
+    currentVaultData = resData.vaultData;
+    globalData.cloudHistory = currentVaultData;
+
+    alert('☁️ SECURE VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
     recalculateAll();
   } catch (err) {
-    alert('Cloud Save Failed: ' + err.message);
+    alert('Vault Save Failed: ' + err.message);
   }
 }
 
@@ -246,7 +318,7 @@ function toggleHistoryModal() {
     var container = document.getElementById('modalLogList');
 
     if (logs.length === 0) {
-      container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved KV logs found for this farm yet.</p>';
+      container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
     } else {
       container.innerHTML = logs.map(function(log, idx) {
         var delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
@@ -268,7 +340,6 @@ function toggleHistoryModal() {
         return '<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
           '<div style="display:flex; justify-content:space-between; color:#5C4033; font-size:11px; font-weight:900;">' +
             '<span style="color:#8B4513;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
-            '<span>' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
             '<span>Tickets: +' + logTickets + ' | Cost: ' + formatSFL(logCost) + ' SFL</span>' +
@@ -298,7 +369,6 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
-  // Render Deliveries
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
   deliveriesContainer.innerHTML = globalData.deliveries.map(function(d, index) {
@@ -353,7 +423,6 @@ function recalculateAll() {
     '</div>';
   }).join('');
 
-  // Render Bounties
   var bountiesContainer = document.getElementById('bountiesList');
   document.getElementById('bountiesCount').textContent = globalData.bounties.length;
   bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
@@ -392,7 +461,6 @@ function recalculateAll() {
     '</div>';
   }).join('');
 
-  // Render Chores
   var choresContainer = document.getElementById('choresList');
   document.getElementById('choresCount').textContent = globalData.chores.length;
   choresContainer.innerHTML = globalData.chores.map(function(c) {
