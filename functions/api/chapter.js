@@ -15,7 +15,7 @@ const CHAPTER_NPC_TICKETS = {
   "jester": 4
 };
 
-// Traverse nested category objects from sfl.world
+// Traverse and extract prices from nested category objects in sfl.world API
 function extractPricesRecursive(obj, map = {}) {
   if (!obj || typeof obj !== 'object') return map;
   if (Array.isArray(obj)) {
@@ -50,6 +50,40 @@ function extractPricesRecursive(obj, map = {}) {
   return map;
 }
 
+// Flexible lookup for direct market prices (handles singular, plural, spaces, hyphens)
+function getDirectMarketPrice(name, priceMap) {
+  if (!name || !priceMap) return 0;
+
+  const clean = name.toLowerCase().trim();
+  const stripped = clean.replace(/[^a-z0-9]/g, '');
+
+  if (clean === 'coins' || clean === 'coin') {
+    return 0.001; // 1,000 Coins = 1 SFL
+  }
+
+  const variations = [
+    clean,
+    stripped,
+    clean.replace(/\s+/g, '-'),
+    clean.replace(/\s+/g, '_'),
+    clean + 's',
+    clean + 'es',
+    clean.endsWith('s') ? clean.slice(0, -1) : clean,
+    clean.endsWith('es') ? clean.slice(0, -2) : clean,
+    clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean,
+    stripped + 's',
+    stripped.endsWith('s') ? stripped.slice(0, -1) : stripped
+  ];
+
+  for (const v of variations) {
+    if (priceMap[v] !== undefined && priceMap[v] > 0) {
+      return priceMap[v];
+    }
+  }
+
+  return 0;
+}
+
 export async function onRequest(context) {
   const { searchParams } = new URL(context.request.url);
   const farmId = searchParams.get('farmId') || '8472883706403914';
@@ -64,7 +98,7 @@ export async function onRequest(context) {
   if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
   try {
-    // Server-side fetch (bypasses browser CORS entirely)
+    // Concurrent fetch: Farm Data + Live Prices from sfl.world
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
       fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
@@ -85,29 +119,28 @@ export async function onRequest(context) {
       }
     }
 
-    // Resolves unit price for direct items or recipe ingredients
-    // Conversion rate: 1,000 Coins = 1 SFL (0.001 SFL per Coin)
+    // Resolves unit price:
+    // 1. Checks direct market price from API
+    // 2. If untradeable/recipe, resolves recursively using ingredient prices from API
     const getItemUnitPrice = (itemName, depth = 0) => {
-      if (depth > 5) return 0; // Prevent infinite loops
-      if (!itemName) return 0;
+      if (depth > 5 || !itemName) return 0; // Prevent infinite loops
 
       const clean = itemName.toLowerCase().trim();
       const stripped = clean.replace(/[^a-z0-9]/g, '');
 
-      if (clean === 'coins' || clean === 'coin') {
-        return 0.001;
+      // Step 1: Direct Market Price Lookup
+      const directPrice = getDirectMarketPrice(clean, priceMap);
+      if (directPrice > 0) {
+        return directPrice;
       }
 
-      // 1. Direct market price lookup
-      if (priceMap[clean] !== undefined) return priceMap[clean];
-      if (priceMap[stripped] !== undefined) return priceMap[stripped];
-
-      // 2. Recipe lookup in recipes.js
+      // Step 2: Recipe ingredient calculation via recipes.js
       const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
       if (recipe) {
         let recipeTotal = 0;
         Object.entries(recipe).forEach(([ingName, ingQty]) => {
-          recipeTotal += getItemUnitPrice(ingName, depth + 1) * ingQty;
+          const ingPrice = getItemUnitPrice(ingName, depth + 1);
+          recipeTotal += ingPrice * ingQty;
         });
         return recipeTotal;
       }
@@ -148,7 +181,8 @@ export async function onRequest(context) {
             name: itemName,
             qty,
             unitPrice,
-            lineCost
+            lineCost,
+            isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()]
           });
         });
 
