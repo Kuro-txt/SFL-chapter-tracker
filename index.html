@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Ticket Calculator</title>
+  <title>SFL Chapter Tracker - Unified Ticket Calculator</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
@@ -14,13 +14,13 @@
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Active Chapter Ticket Deliveries, Bounties & Chores</p>
+      <p class="text-slate-400 text-sm">Universal Ticket Calculator Across All Tasks</p>
     </header>
 
-    <!-- Controls & Ticket Boost Selectors -->
+    <!-- Controls & Global Ticket Boost Selectors -->
     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4 shadow-lg">
       <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
-        <!-- Farm Input & VIP Status -->
+        <!-- Farm Input & VIP Toggle -->
         <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <label for="farmId" class="text-xs font-semibold text-slate-300">Farm ID:</label>
           <input 
@@ -29,9 +29,10 @@
             value="8472883706403914" 
             class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-sm w-full sm:w-48 text-amber-300 focus:outline-none focus:border-amber-400 font-mono"
           />
-          <div id="vipBadge" class="hidden text-[10px] px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+          <label class="flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg cursor-pointer">
+            <input type="checkbox" id="vipToggle" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer">
             👑 VIP Active (+2)
-          </div>
+          </label>
         </div>
 
         <!-- Interactive Ticket Boost Items (+1 x 3) -->
@@ -39,13 +40,13 @@
           <span class="text-xs font-semibold text-amber-400 whitespace-nowrap">+1 Ticket Items Equipped:</span>
           <div class="flex items-center gap-3 text-xs font-mono">
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost1" onchange="renderDeliveries()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 1
+              <input type="checkbox" id="boost1" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 1
             </label>
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost2" onchange="renderDeliveries()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 2
+              <input type="checkbox" id="boost2" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 2
             </label>
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost3" onchange="renderDeliveries()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 3
+              <input type="checkbox" id="boost3" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 3
             </label>
           </div>
         </div>
@@ -59,7 +60,7 @@
       </div>
     </div>
 
-    <!-- 3-Column Grid (NPC Section Removed) -->
+    <!-- 3-Column Grid -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
       <!-- Active Deliveries Card -->
@@ -112,79 +113,38 @@
 
         globalData = data;
 
-        // Show VIP Status
-        const vipBadge = document.getElementById('vipBadge');
-        if (data.isVipActive) {
-          vipBadge.classList.remove('hidden');
-        } else {
-          vipBadge.classList.add('hidden');
-        }
+        // Auto-check VIP if detected in account
+        document.getElementById('vipToggle').checked = data.isVipActive;
 
-        renderDeliveries();
-
-        // Render Bounties
-        const bountiesContainer = document.getElementById('bountiesList');
-        document.getElementById('bountiesCount').textContent = data.bounties.length;
-        bountiesContainer.innerHTML = data.bounties.map(b => `
-          <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 text-xs flex justify-between items-center">
-            <div>
-              <div class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400 font-mono">(Lvl ${b.level})</span>` : ''}</div>
-              <div class="text-[10px] text-slate-500">ID: ${b.id}</div>
-            </div>
-            <div class="text-right">
-              ${Object.entries(b.rewards).map(([item, qty]) => `<div class="text-emerald-400 font-bold font-mono">+${qty} ${item}</div>`).join('')}
-            </div>
-          </div>
-        `).join('');
-
-        // Render Chores
-        const choresContainer = document.getElementById('choresList');
-        document.getElementById('choresCount').textContent = data.chores.length;
-        choresContainer.innerHTML = data.chores.map(c => `
-          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-700'} text-xs space-y-1">
-            <div class="flex justify-between items-center">
-              <span class="font-bold capitalize text-slate-200">${c.npc}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded ${c.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
-                ${c.completed ? 'Done' : 'Active'}
-              </span>
-            </div>
-            <div class="text-slate-300">${c.task}</div>
-            <div class="text-[10px] text-emerald-400 font-mono">
-              Reward: ${Object.entries(c.reward).map(([item, qty]) => `${qty} ${item}`).join(', ')}
-            </div>
-          </div>
-        `).join('');
+        recalculateAll();
 
       } catch (err) {
         alert('Error fetching data: ' + err.message);
       }
     }
 
-    function renderDeliveries() {
+    function recalculateAll() {
       if (!globalData) return;
 
+      const vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
       const boostCount = 
         (document.getElementById('boost1').checked ? 1 : 0) +
         (document.getElementById('boost2').checked ? 1 : 0) +
         (document.getElementById('boost3').checked ? 1 : 0);
 
+      const totalAddon = vipBonus + boostCount;
+
+      // Render Deliveries
       const deliveriesContainer = document.getElementById('deliveriesList');
       document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
-
       deliveriesContainer.innerHTML = globalData.deliveries.map(d => {
-        const calc = d.ticketCalculation;
-        let totalTickets = 0;
-
-        if (calc) {
-          totalTickets = calc.basePlusVip + boostCount;
-        }
-
+        const finalTickets = d.baseTickets + totalAddon;
         return `
-          <div class="bg-slate-900/90 p-3 rounded-lg border ${calc ? 'border-amber-500/40 bg-amber-950/10' : 'border-slate-700'} text-xs space-y-2">
+          <div class="bg-slate-900/90 p-3 rounded-lg border border-amber-500/40 bg-amber-950/10 text-xs space-y-2">
             <div class="flex justify-between items-center">
               <span class="font-bold text-amber-300 capitalize flex items-center gap-1">
                 ${d.from}
-                ${calc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">Chapter NPC</span>` : ''}
+                ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">Chapter NPC</span>` : ''}
               </span>
               <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
             </div>
@@ -193,22 +153,59 @@
               ${Object.entries(d.items).map(([item, qty]) => `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span></div>`).join('')}
             </div>
 
-            ${calc ? `
-              <div class="bg-slate-950/80 p-2.5 rounded border border-amber-500/20 space-y-1.5 font-mono text-[11px]">
-                <div class="flex justify-between items-center text-amber-300 font-bold border-b border-slate-800 pb-1">
-                  <span>Calculated Reward:</span>
-                  <span class="text-sm text-emerald-400 font-bold">${totalTickets} Tickets</span>
-                </div>
-                <div class="text-[10px] text-slate-400 flex justify-between">
-                  <span>Base (${calc.baseA}) + VIP (${calc.vipB}) + Boosts (${boostCount}):</span>
-                  <span>${calc.baseA} + ${calc.vipB} + ${boostCount} = ${totalTickets}</span>
-                </div>
+            <div class="bg-slate-950/80 p-2.5 rounded border border-amber-500/20 space-y-1.5 font-mono text-[11px]">
+              <div class="flex justify-between items-center text-amber-300 font-bold border-b border-slate-800 pb-1">
+                <span>Calculated Yield:</span>
+                <span class="text-sm text-emerald-400 font-bold">${finalTickets} Tickets</span>
               </div>
-            ` : `
-              <div class="text-[10px] text-emerald-400 font-mono">
-                Reward: ${Object.entries(d.rewardItems).map(([item, qty]) => `${qty} ${item}`).join(' ')}
+              <div class="text-[10px] text-slate-400 flex justify-between">
+                <span>Base (${d.baseTickets}) + VIP (${vipBonus}) + Boosts (${boostCount}):</span>
+                <span>${d.baseTickets} + ${vipBonus} + ${boostCount} = ${finalTickets}</span>
               </div>
-            `}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Render Bounties
+      const bountiesContainer = document.getElementById('bountiesList');
+      document.getElementById('bountiesCount').textContent = globalData.bounties.length;
+      bountiesContainer.innerHTML = globalData.bounties.map(b => {
+        const finalTickets = b.baseTickets + totalAddon;
+        return `
+          <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 text-xs space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400 font-mono">(Lvl ${b.level})</span>` : ''}</span>
+              <span class="text-[10px] text-slate-500 font-mono">ID: ${b.id}</span>
+            </div>
+            <div class="bg-slate-950/80 p-2 rounded border border-slate-800 flex justify-between items-center font-mono text-[11px]">
+              <span class="text-slate-400 text-[10px]">Base (${b.baseTickets}) + Boosts (${totalAddon}):</span>
+              <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Render Chores
+      const choresContainer = document.getElementById('choresList');
+      document.getElementById('choresCount').textContent = globalData.chores.length;
+      choresContainer.innerHTML = globalData.chores.map(c => {
+        const finalTickets = c.baseTickets > 0 ? (c.baseTickets + totalAddon) : 0;
+        return `
+          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-700'} text-xs space-y-1.5">
+            <div class="flex justify-between items-center">
+              <span class="font-bold capitalize text-slate-200">${c.npc}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded ${c.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
+                ${c.completed ? 'Done' : 'Active'}
+              </span>
+            </div>
+            <div class="text-slate-300">${c.task}</div>
+            ${c.baseTickets > 0 ? `
+              <div class="bg-slate-950/80 p-2 rounded border border-slate-800 flex justify-between items-center font-mono text-[11px]">
+                <span class="text-slate-400 text-[10px]">Base (${c.baseTickets}) + Boosts (${totalAddon}):</span>
+                <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
+              </div>
+            ` : ''}
           </div>
         `;
       }).join('');
