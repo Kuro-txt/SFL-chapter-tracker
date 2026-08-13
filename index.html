@@ -221,9 +221,8 @@
           <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
           
           <label for="apiKey">API KEY:</label>
-          <form style="display:inline; margin:0; padding:0;" onsubmit="return false;">
-            <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="new-password" style="width: 130px;" />
-          </form>
+          <!-- API Key standalone input without password form container -->
+          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 130px;" />
 
           <label class="checkbox-label">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
@@ -265,6 +264,7 @@
         <div class="stat-footer">
           <span>Cost Done:</span> 
           <span id="statEarnedCost" style="color:#2E7D32; font-weight:bold;">0.00 SFL</span>
+          <span id="statEarnedRatio" style="color:#2E7D32;">0.00 SFL / Ticket</span>
         </div>
       </div>
 
@@ -274,7 +274,7 @@
         <div class="stat-footer">
           <span>Cost Pending:</span> 
           <span id="statPendingCost" style="color:#E65100; font-weight:bold;">0.00 SFL</span>
-          <span id="statPendingRatio" style="display:none;"></span>
+          <span id="statPendingRatio" style="color:#E65100;">0.00 SFL / Ticket</span>
         </div>
       </div>
 
