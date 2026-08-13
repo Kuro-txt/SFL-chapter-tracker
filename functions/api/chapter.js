@@ -102,7 +102,26 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // Secure External Cron Ping Endpoint with Properly Mapped KV Backup Saving
+  // Helper inside onRequest scope for dynamic item cost calculation
+  const getItemUnitPrice = (itemName, priceMap, depth = 0) => {
+    if (depth > 5 || !itemName) return 0;
+    const clean = itemName.toLowerCase().trim();
+    const stripped = clean.replace(/[^a-z0-9]/g, '');
+    const directPrice = getDirectMarketPrice(clean, priceMap);
+    if (directPrice > 0) return directPrice;
+
+    const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
+    if (recipe) {
+      let recipeTotal = 0;
+      Object.entries(recipe).forEach(([ingName, ingQty]) => {
+        recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
+      });
+      return recipeTotal;
+    }
+    return 0;
+  };
+
+  // Secure External Cron Ping Endpoint with Accurate Calculated KV Backup Saving & Pricing
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -116,6 +135,16 @@ export async function onRequest(context) {
     const backupTimestamp = new Date().toISOString();
     const todayDate = backupTimestamp.split('T')[0];
 
+    // Fetch latest prices for accurate cron cost calculations
+    let priceMap = {};
+    try {
+      const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (pricesRes.ok) {
+        const rawData = await pricesRes.json();
+        if (rawData) priceMap = extractPricesRecursive(rawData);
+      }
+    } catch (e) {}
+
     if (env && env.TRACKER_KV) {
       const list = await env.TRACKER_KV.list({ prefix: "user_" });
       for (const keyObj of list.keys) {
@@ -127,23 +156,35 @@ export async function onRequest(context) {
             let calculatedTickets = 0;
             let calculatedCost = 0;
 
-            const formattedDeliveries = (vaultData.deliveries || []).map(d => ({
-              name: d.from || d.name || 'NPC',
-              cost: d.itemsCost || 0,
-              tickets: d.baseTickets || 2,
-              completed: d.completed,
-              items: d.itemDetails || [],
-              checked: d.completed
-            }));
+            const formattedDeliveries = (vaultData.deliveries || []).map(d => {
+              let dCost = d.itemsCost;
+              if (!dCost && d.itemDetails) {
+                dCost = d.itemDetails.reduce((acc, it) => acc + (it.lineCost || 0), 0);
+              }
+              return {
+                name: d.from || d.name || 'NPC',
+                cost: dCost || 0,
+                tickets: d.baseTickets || 2,
+                completed: d.completed,
+                items: d.itemDetails || [],
+                checked: d.completed
+              };
+            });
 
-            const formattedBounties = (vaultData.bounties || []).map(b => ({
-              weekId: getMondayBasedWeekId(),
-              name: b.name || 'Bounty',
-              cost: b.itemsCost || 0,
-              tickets: b.baseTickets || 1,
-              completed: b.completed,
-              checked: b.completed
-            }));
+            const formattedBounties = (vaultData.bounties || []).map(b => {
+              let bCost = b.itemsCost;
+              if (!bCost && b.name) {
+                bCost = getItemUnitPrice(b.name, priceMap);
+              }
+              return {
+                weekId: getMondayBasedWeekId(),
+                name: b.name || 'Bounty',
+                cost: bCost || 0,
+                tickets: b.baseTickets || 1,
+                completed: b.completed,
+                checked: b.completed
+              };
+            });
 
             const formattedChores = (vaultData.chores || []).map(c => ({
               weekId: getMondayBasedWeekId(),
@@ -408,24 +449,6 @@ export async function onRequest(context) {
       if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
     }
 
-    const getItemUnitPrice = (itemName, depth = 0) => {
-      if (depth > 5 || !itemName) return 0;
-      const clean = itemName.toLowerCase().trim();
-      const stripped = clean.replace(/[^a-z0-9]/g, '');
-      const directPrice = getDirectMarketPrice(clean, priceMap);
-      if (directPrice > 0) return directPrice;
-
-      const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
-      if (recipe) {
-        let recipeTotal = 0;
-        Object.entries(recipe).forEach(([ingName, ingQty]) => {
-          recipeTotal += getItemUnitPrice(ingName, depth + 1) * ingQty;
-        });
-        return recipeTotal;
-      }
-      return 0;
-    };
-
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
     const rawDeliveries = farm.delivery?.orders || [];
@@ -445,7 +468,7 @@ export async function onRequest(context) {
         let itemsCost = 0;
         const itemDetails = [];
         Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-          const unitPrice = getItemUnitPrice(itemName);
+          const unitPrice = getItemUnitPrice(itemName, priceMap);
           const lineCost = unitPrice * qty;
           itemsCost += lineCost;
           itemDetails.push({ name: itemName, qty, unitPrice, lineCost, isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] });
@@ -468,7 +491,7 @@ export async function onRequest(context) {
         });
       }
       if (baseTicketCount > 0) {
-        const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
+        const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
         const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
         activeBounties.push({ id: b.id, name: b.name, level: b.level || null, baseTickets: baseTicketCount, itemsCost: unitPrice, completed: isCompleted });
       }
