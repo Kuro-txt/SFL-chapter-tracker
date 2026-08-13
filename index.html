@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Ticket & Cost Calculator</title>
+  <title>SFL Chapter Tracker - Ticket & SFL Price Calculator</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
@@ -14,7 +14,7 @@
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Live SFL Price & Ticket Calculator</p>
+      <p class="text-slate-400 text-sm">Live SFL Market Price & Ticket Calculator</p>
     </header>
 
     <!-- Controls & Global Ticket Boost Selectors -->
@@ -106,58 +106,50 @@
     let globalData = null;
     let globalPriceMap = {};
 
-    // Formatter to prevent tiny SFL fractions from displaying as 0.00
+    function extractPricesRecursive(obj, map = {}) {
+      if (!obj || typeof obj !== 'object') return map;
+      if (Array.isArray(obj)) {
+        obj.forEach(item => extractPricesRecursive(item, map));
+        return map;
+      }
+      for (const [key, val] of Object.entries(obj)) {
+        const cleanKey = key.toLowerCase().trim();
+        const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
+
+        if (typeof val === 'number') {
+          map[cleanKey] = val;
+          map[strippedKey] = val;
+        } else if (val && typeof val === 'object') {
+          const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
+          if (typeof priceVal === 'number') {
+            map[cleanKey] = priceVal;
+            map[strippedKey] = priceVal;
+          }
+          if (val.name && typeof val.name === 'string') {
+            const itemClean = val.name.toLowerCase().trim();
+            const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
+            if (typeof priceVal === 'number') {
+              map[itemClean] = priceVal;
+              map[itemStripped] = priceVal;
+            }
+          }
+          extractPricesRecursive(val, map);
+        }
+      }
+      return map;
+    }
+
     function formatSFL(val) {
       if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
       if (val < 0.01) return val.toFixed(4);
       return val.toFixed(2);
     }
 
-    // Helper to extract unit price with multi-key normalization
     function getUnitPrice(itemName) {
       if (!itemName || !globalPriceMap) return 0;
-      const k1 = itemName.toLowerCase().trim();
-      if (globalPriceMap[k1] !== undefined) return globalPriceMap[k1];
-
-      const k2 = k1.replace(/\s+/g, '-');
-      if (globalPriceMap[k2] !== undefined) return globalPriceMap[k2];
-
-      const k3 = k1.replace(/\s+/g, '_');
-      if (globalPriceMap[k3] !== undefined) return globalPriceMap[k3];
-
-      const k4 = k1.replace(/[^a-z0-9]/g, '');
-      if (globalPriceMap[k4] !== undefined) return globalPriceMap[k4];
-
-      return 0;
-    }
-
-    // Parse raw price objects/arrays from sfl.world
-    function parsePriceObject(raw) {
-      const map = {};
-      if (!raw) return map;
-
-      const target = raw.data || raw.prices || raw.items || raw;
-
-      if (Array.isArray(target)) {
-        target.forEach(item => {
-          if (item && (item.name || item.item || item.id)) {
-            const name = (item.name || item.item || item.id).toString().toLowerCase().trim();
-            const p = item.price ?? item.sfl ?? item.value ?? item.buy ?? item.cost ?? 0;
-            map[name] = Number(p) || 0;
-          }
-        });
-      } else if (typeof target === 'object') {
-        Object.entries(target).forEach(([key, val]) => {
-          const cleanKey = key.toLowerCase().trim();
-          if (typeof val === 'number') {
-            map[cleanKey] = val;
-          } else if (val && typeof val === 'object') {
-            const p = val.price ?? val.sfl ?? val.value ?? val.buy ?? val.cost ?? val.unitPrice ?? 0;
-            map[cleanKey] = Number(p) || 0;
-          }
-        });
-      }
-      return map;
+      const clean = itemName.toLowerCase().trim();
+      const stripped = clean.replace(/[^a-z0-9]/g, '');
+      return globalPriceMap[clean] ?? globalPriceMap[stripped] ?? 0;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -196,7 +188,6 @@
       priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-amber-400 border border-amber-500/30 font-mono animate-pulse';
 
       try {
-        // Fetch Chapter Data + Direct Browser Fetch from sfl.world for redundancy
         const [chapterRes, directPricesRes] = await Promise.all([
           fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`).then(r => r.json()).catch(err => ({ error: err.message })),
           fetch(`https://sfl.world/api/v1/prices`).then(r => r.json()).catch(() => null)
@@ -206,9 +197,9 @@
 
         globalData = chapterRes;
 
-        // Combine client-side and server-side price results
-        const clientPrices = parsePriceObject(directPricesRes);
-        const serverPrices = parsePriceObject(chapterRes.rawPricesData);
+        const clientPrices = extractPricesRecursive(directPricesRes);
+        const serverPrices = chapterRes.priceMap || extractPricesRecursive(chapterRes.rawPricesData);
+
         globalPriceMap = { ...serverPrices, ...clientPrices };
 
         const priceCount = Object.keys(globalPriceMap).length;
