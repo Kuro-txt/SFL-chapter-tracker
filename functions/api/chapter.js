@@ -99,9 +99,24 @@ export async function onRequest(context) {
         } catch (_) {}
 
         const todayDate = new Date().toISOString().split('T')[0];
-        const completedDeliveries = (body.deliveries || []).filter(d => d.completed).map(d => d.from);
-        const completedBounties = (body.bounties || []).filter(b => b.completed).map(b => b.name);
-        const completedChores = (body.chores || []).filter(c => c.completed).map(c => c.task);
+        
+        // Save detailed task objects with individual costs
+        const completedDeliveries = (body.deliveries || []).filter(d => d.completed).map(d => ({
+          name: d.from,
+          cost: d.itemsCost || 0,
+          tickets: d.baseTickets || 0
+        }));
+
+        const completedBounties = (body.bounties || []).filter(b => b.completed).map(b => ({
+          name: b.name,
+          cost: b.itemsCost || 0,
+          tickets: b.baseTickets || 0
+        }));
+
+        const completedChores = (body.chores || []).filter(c => c.completed).map(c => ({
+          name: c.task,
+          npc: c.npc
+        }));
 
         const newTickets = body.ticketsSaved || 0;
         const newCost = body.costSaved || 0;
