@@ -144,7 +144,7 @@ export async function onRequest(context) {
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // DELIVERIES
+    // 1. DELIVERIES
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
@@ -188,12 +188,12 @@ export async function onRequest(context) {
           itemDetails,
           baseTickets: baseTicketCount,
           isChapterNpc: baseTickets !== undefined,
-          completed: !!order.completedAt
+          completed: !!order.completedAt // Delivery Completion Status
         });
       }
     });
 
-    // BOUNTIES
+    // 2. BOUNTIES
     const activeBounties = [];
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
@@ -213,12 +213,13 @@ export async function onRequest(context) {
           name: b.name,
           level: b.level || null,
           baseTickets: baseTicketCount,
-          itemsCost: unitPrice
+          itemsCost: unitPrice,
+          completed: !!b.completedAt // Bounty Completion Status
         });
       }
     });
 
-    // CHORES
+    // 3. CHORES
     const rawChores = farm.choreBoard?.chores || {};
     const choresList = Object.entries(rawChores).map(([npc, details]) => {
       let baseTicketCount = 0;
