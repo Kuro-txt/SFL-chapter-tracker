@@ -222,6 +222,73 @@ async function loadTrackerData() {
   }
 }
 
+// Category Summary Overview Popup Modal
+function openCategorySummaryModal(cat) {
+  var modal = document.getElementById('categorySummaryModal');
+  var titleEl = document.getElementById('categorySummaryTitle');
+  var bodyEl = document.getElementById('categorySummaryBody');
+
+  var vipBonus = getActiveVipBonus();
+  var boostCount = getActiveBoostCount();
+
+  if (!globalData) {
+    alert('Please click "FETCH DATA" first!');
+    return;
+  }
+
+  if (cat === 'delivery') {
+    titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
+    bodyEl.innerHTML = globalData.deliveries.map(d => {
+      var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
+      var finalTickets = d.baseTickets + deliveryAddon;
+      var itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
+        <div style="display:flex; justify-content:space-between; font-weight:900;">
+          <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
+          <span class="badge ${d.completed ? 'badge-done' : 'badge-active'}">${d.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
+        </div>
+        <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
+        <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
+          <span>Yield: ${finalTickets} Tickets</span>
+          <span>${formatSFL(d.itemsCost)} SFL (${formatSFL(finalTickets > 0 ? d.itemsCost / finalTickets : 0)} SFL/Tix)</span>
+        </div>
+      </div>`;
+    }).join('');
+  } else if (cat === 'bounty') {
+    titleEl.textContent = '📜 BOUNTIES OVERVIEW';
+    bodyEl.innerHTML = globalData.bounties.map(b => {
+      var finalTickets = b.baseTickets + boostCount;
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+        <div>
+          <strong style="color:#3E2723;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
+          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
+        </div>
+        <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
+      </div>`;
+    }).join('');
+  } else if (cat === 'chore') {
+    titleEl.textContent = '🧹 CHORES OVERVIEW';
+    bodyEl.innerHTML = globalData.chores.map(c => {
+      var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+        <div>
+          <strong style="color:#3E2723;">🧹 ${c.npc.toUpperCase()}</strong><br/>
+          <span style="color:#5C4033; font-weight:bold;">${c.task}</span><br/>
+          ${c.requirement > 0 ? '<span style="color:#8C7853;">Progress: ' + c.progress + ' / ' + c.requirement + '</span><br/>' : ''}
+          <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets</span>
+        </div>
+        <span class="badge ${c.completed ? 'badge-done' : 'badge-active'}">${c.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  modal.classList.add('show');
+}
+
+function closeCategorySummaryModal() {
+  document.getElementById('categorySummaryModal').classList.remove('show');
+}
+
 // NPC Delivery History Modal
 function openNpcHistoryModal(npcName) {
   document.getElementById('activeNpcHistoryName').value = npcName;
@@ -338,7 +405,7 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-// Column History Modal (Bounties / Chores)
+// Column History Modal (Bounties / Chores with Editable Tickets & Costs)
 function openColumnHistoryModal(type) {
   activeColumnType = type;
   setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
@@ -581,7 +648,7 @@ function recalculateAll() {
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // CURRENTLY HAVE
+  // CURRENTLY HAVE: Calculation from Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
@@ -622,7 +689,7 @@ function recalculateAll() {
   setElemText('catBountyTickets', bountyCatTickets + ' Tix');
   setElemText('catChoreTickets', choreCatTickets + ' Tix');
 
-  // SORTING: Active (pending) items appear ABOVE completed items
+  // SORTING: Active items placed ABOVE completed items
   var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
