@@ -269,15 +269,15 @@
       </div>
     </div>
 
-    <!-- Summary Stats Bar (Pending Board & Total Vault Cost Removed) -->
+    <!-- Summary Stats Bar -->
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-title">TOTAL TICKETS</div>
         <div id="statTotalTickets" class="stat-val">0</div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>📦 Deliveries:</span><strong id="catDelivTickets" style="color:#8B4513;">0 Tix</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>📜 Bounties:</span><strong id="catBountyTickets" style="color:#B26A00;">0 Tix</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>🧹 Chores:</span><strong id="catChoreTickets" style="color:#2E7D32;">0 Tix</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>📦 Deliveries:</span><strong id="catDelivTickets" style="color:#8B4513;">0 Tickets</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>📜 Bounties:</span><strong id="catBountyTickets" style="color:#B26A00;">0 Tickets</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>🧹 Chores:</span><strong id="catChoreTickets" style="color:#2E7D32;">0 Tickets</strong></div>
         </div>
       </div>
 
@@ -286,17 +286,17 @@
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0</div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Cost Done:</span><span id="statEarnedCost" style="color:#2E7D32; font-weight:bold;">0.00 SFL</span></div>
-          <div style="display:flex; justify-content:space-between;"><span>Ratio:</span><span id="statEarnedRatio" style="color:#2E7D32; font-weight:bold;">0.00 SFL / Tix</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Flower / Ticket Ratio:</span><span id="statEarnedRatio" style="color:#2E7D32; font-weight:900;">0.00 SFL / Ticket</span></div>
         </div>
       </div>
     </div>
 
-    <!-- 3-Column Grid -->
+    <!-- 3-Column Grid (Closed/Collapsed by Default) -->
     <div class="grid-3">
-      <div id="cardDeliveries" class="column-card">
+      <div id="cardDeliveries" class="column-card collapsed">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardDeliveries', this)" style="padding:2px 6px;">▼</button>
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardDeliveries', this)" style="padding:2px 6px;">▲</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
           </div>
           <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -304,10 +304,10 @@
         <div id="deliveriesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load orders...</p></div>
       </div>
 
-      <div id="cardBounties" class="column-card">
+      <div id="cardBounties" class="column-card collapsed">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardBounties', this)" style="padding:2px 6px;">▼</button>
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardBounties', this)" style="padding:2px 6px;">▲</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
@@ -318,10 +318,10 @@
         <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
       </div>
 
-      <div id="cardChores" class="column-card">
+      <div id="cardChores" class="column-card collapsed">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardChores', this)" style="padding:2px 6px;">▼</button>
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardChores', this)" style="padding:2px 6px;">▲</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
