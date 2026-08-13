@@ -82,201 +82,303 @@ function getDirectMarketPrice(name, priceMap) {
   return 0;
 }
 
-export async function onRequest(context) {
-  const { searchParams } = new URL(context.request.url);
-  const farmId = searchParams.get('farmId') || '8472883706403914';
-  const apiKey = context.env?.SFL_API_KEY || '';
-
+async function processFarmData(farmId, apiKey, env) {
   const browserHeaders = {
     'Accept': 'application/json, text/plain, */*',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
   };
 
   const sflHeaders = { ...browserHeaders, 'Referer': 'https://sunflower-land.com/', 'Origin': 'https://sunflower-land.com' };
   if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
-  try {
-    const [sflResponse, pricesResponse] = await Promise.all([
-      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
-      fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
-    ]);
+  const [sflResponse, pricesResponse] = await Promise.all([
+    fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
+    fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
+  ]);
 
-    if (!sflResponse.ok) {
-      return new Response(JSON.stringify({ error: `SFL API error: ${sflResponse.status}` }), { status: sflResponse.status });
+  if (!sflResponse.ok) {
+    throw new Error(`SFL API error: ${sflResponse.status}`);
+  }
+
+  const payload = await sflResponse.json();
+  const farm = payload.farm || {};
+
+  let priceMap = {};
+  if (pricesResponse && pricesResponse.ok) {
+    const rawPricesData = await pricesResponse.json().catch(() => null);
+    if (rawPricesData) {
+      priceMap = extractPricesRecursive(rawPricesData);
+    }
+  }
+
+  const getItemUnitPrice = (itemName, depth = 0) => {
+    if (depth > 5 || !itemName) return 0;
+
+    const clean = itemName.toLowerCase().trim();
+    const stripped = clean.replace(/[^a-z0-9]/g, '');
+
+    const directPrice = getDirectMarketPrice(clean, priceMap);
+    if (directPrice > 0) return directPrice;
+
+    const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
+    if (recipe) {
+      let recipeTotal = 0;
+      Object.entries(recipe).forEach(([ingName, ingQty]) => {
+        recipeTotal += getItemUnitPrice(ingName, depth + 1) * ingQty;
+      });
+      return recipeTotal;
     }
 
-    const payload = await sflResponse.json();
-    const farm = payload.farm || {};
+    return 0;
+  };
 
-    let priceMap = {};
-    if (pricesResponse && pricesResponse.ok) {
-      const rawPricesData = await pricesResponse.json().catch(() => null);
-      if (rawPricesData) {
-        priceMap = extractPricesRecursive(rawPricesData);
-      }
+  const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
+
+  // 1. DELIVERIES
+  const rawDeliveries = farm.delivery?.orders || [];
+  const deliveryList = [];
+
+  rawDeliveries.forEach(order => {
+    const npcNameClean = (order.from || '').toLowerCase().trim();
+    const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
+
+    let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
+
+    if (order.reward?.items) {
+      Object.entries(order.reward.items).forEach(([item, qty]) => {
+        if (item === 'Shiny Feather' || item === 'Tickets') {
+          baseTicketCount += qty;
+        }
+      });
     }
 
-    const getItemUnitPrice = (itemName, depth = 0) => {
-      if (depth > 5 || !itemName) return 0;
+    if (baseTicketCount > 0) {
+      let itemsCost = 0;
+      const itemDetails = [];
 
-      const clean = itemName.toLowerCase().trim();
-      const stripped = clean.replace(/[^a-z0-9]/g, '');
+      Object.entries(order.items || {}).forEach(([itemName, qty]) => {
+        const unitPrice = getItemUnitPrice(itemName);
+        const lineCost = unitPrice * qty;
+        itemsCost += lineCost;
 
-      // 1. Direct Market Price
-      const directPrice = getDirectMarketPrice(clean, priceMap);
-      if (directPrice > 0) {
-        return directPrice;
-      }
-
-      // 2. Recipe Ingredient Calculation
-      const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
-      if (recipe) {
-        let recipeTotal = 0;
-        Object.entries(recipe).forEach(([ingName, ingQty]) => {
-          const ingPrice = getItemUnitPrice(ingName, depth + 1);
-          recipeTotal += ingPrice * ingQty;
+        itemDetails.push({
+          name: itemName,
+          qty,
+          unitPrice,
+          lineCost,
+          isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()]
         });
-        return recipeTotal;
-      }
+      });
 
-      return 0;
-    };
+      const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
 
-    const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
-
-    // 1. DELIVERIES
-    const rawDeliveries = farm.delivery?.orders || [];
-    const deliveryList = [];
-
-    rawDeliveries.forEach(order => {
-      const npcNameClean = (order.from || '').toLowerCase().trim();
-      const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
-
-      let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
-
-      if (order.reward?.items) {
-        Object.entries(order.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
-        });
-      }
-
-      if (baseTicketCount > 0) {
-        let itemsCost = 0;
-        const itemDetails = [];
-
-        Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-          const unitPrice = getItemUnitPrice(itemName);
-          const lineCost = unitPrice * qty;
-          itemsCost += lineCost;
-
-          itemDetails.push({
-            name: itemName,
-            qty,
-            unitPrice,
-            lineCost,
-            isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()]
-          });
-        });
-
-        const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-
-        deliveryList.push({
-          id: order.id,
-          from: order.from,
-          items: order.items || {},
-          itemsCost,
-          itemDetails,
-          baseTickets: baseTicketCount,
-          isChapterNpc: baseTickets !== undefined,
-          completed: isCompleted
-        });
-      }
-    });
-
-    // 2. BOUNTIES
-    const activeBounties = [];
-    const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
-    let completedBountyIds = [];
-    if (Array.isArray(completedBountiesRaw)) {
-      completedBountyIds = completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b));
-    }
-
-    (farm.bounties?.requests || []).forEach(b => {
-      let baseTicketCount = 0;
-      if (b.items) {
-        Object.entries(b.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
-        });
-      }
-
-      if (baseTicketCount > 0) {
-        const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
-
-        const isCompleted = typeof b.completedAt === 'number' || 
-                            b.completed === true || 
-                            b.status === 'completed' ||
-                            completedBountyIds.includes(String(b.id));
-
-        activeBounties.push({
-          id: b.id,
-          name: b.name,
-          level: b.level || null,
-          baseTickets: baseTicketCount,
-          itemsCost: unitPrice,
-          completed: isCompleted
-        });
-      }
-    });
-
-    // 3. CHORES
-    const choreObj = farm.choreBoard?.chores || farm.chores || {};
-    const choresList = Object.entries(choreObj).map(([key, details]) => {
-      let baseTicketCount = 0;
-      if (details.reward?.items) {
-        Object.entries(details.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
-        });
-      }
-
-      const currentProgress = details.initialProgress ?? details.progress ?? 0;
-      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
-
-      const isCompleted = typeof details.completedAt === 'number' || 
-                          details.completed === true || 
-                          details.isCompleted === true ||
-                          (requirement > 0 && currentProgress >= requirement);
-
-      const npcName = details.npc || details.from || key;
-
-      return {
-        npc: npcName,
-        task: details.name || details.description || key,
+      deliveryList.push({
+        id: order.id,
+        from: order.from,
+        items: order.items || {},
+        itemsCost,
+        itemDetails,
         baseTickets: baseTicketCount,
-        progress: currentProgress,
-        requirement: requirement,
+        isChapterNpc: baseTickets !== undefined,
         completed: isCompleted
-      };
-    });
+      });
+    }
+  });
 
-    return new Response(JSON.stringify({
-      farmId,
-      isVipActive,
-      pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: deliveryList,
-      bounties: activeBounties,
-      chores: choresList
-    }, null, 2), {
+  // 2. BOUNTIES
+  const activeBounties = [];
+  const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
+  let completedBountyIds = [];
+  if (Array.isArray(completedBountiesRaw)) {
+    completedBountyIds = completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b));
+  }
+
+  (farm.bounties?.requests || []).forEach(b => {
+    let baseTicketCount = 0;
+    if (b.items) {
+      Object.entries(b.items).forEach(([item, qty]) => {
+        if (item === 'Shiny Feather' || item === 'Tickets') {
+          baseTicketCount += qty;
+        }
+      });
+    }
+
+    if (baseTicketCount > 0) {
+      const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
+
+      const isCompleted = typeof b.completedAt === 'number' || 
+                          b.completed === true || 
+                          b.status === 'completed' ||
+                          completedBountyIds.includes(String(b.id));
+
+      activeBounties.push({
+        id: b.id,
+        name: b.name,
+        level: b.level || null,
+        baseTickets: baseTicketCount,
+        itemsCost: unitPrice,
+        completed: isCompleted
+      });
+    }
+  });
+
+  // 3. CHORES
+  const choreObj = farm.choreBoard?.chores || farm.chores || {};
+  const choresList = Object.entries(choreObj).map(([key, details]) => {
+    let baseTicketCount = 0;
+    if (details.reward?.items) {
+      Object.entries(details.reward.items).forEach(([item, qty]) => {
+        if (item === 'Shiny Feather' || item === 'Tickets') {
+          baseTicketCount += qty;
+        }
+      });
+    }
+
+    const currentProgress = details.initialProgress ?? details.progress ?? 0;
+    const requirement = details.requirement ?? details.target ?? details.total ?? 0;
+
+    const isCompleted = typeof details.completedAt === 'number' || 
+                        details.completed === true || 
+                        details.isCompleted === true ||
+                        (requirement > 0 && currentProgress >= requirement);
+
+    const npcName = details.npc || details.from || key;
+
+    return {
+      npc: npcName,
+      task: details.name || details.description || key,
+      baseTickets: baseTicketCount,
+      progress: currentProgress,
+      requirement: requirement,
+      completed: isCompleted
+    };
+  });
+
+  // Read History from Cloud KV
+  let cloudHistory = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+  if (env?.TRACKER_KV) {
+    cloudHistory = await env.TRACKER_KV.get(`farm_${farmId}_history`, 'json') || cloudHistory;
+  }
+
+  return {
+    farmId,
+    isVipActive,
+    pricesLoadedCount: Object.keys(priceMap).length,
+    deliveries: deliveryList,
+    bounties: activeBounties,
+    chores: choresList,
+    cloudHistory
+  };
+}
+
+// HTTP Request Handler
+export async function onRequest(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const farmId = url.searchParams.get('farmId') || '8472883706403914';
+  const apiKey = env?.SFL_API_KEY || '';
+
+  // POST: Manual save to KV
+  if (request.method === 'POST') {
+    try {
+      const body = await request.json();
+      if (env?.TRACKER_KV) {
+        const kvKey = `farm_${farmId}_history`;
+        const existingData = await env.TRACKER_KV.get(kvKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+
+        const logEntry = {
+          date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toISOString(),
+          ticketsSaved: body.ticketsSaved || 0,
+          costSaved: body.costSaved || 0,
+          deliveries: body.deliveries || [],
+          bounties: body.bounties || [],
+          chores: body.chores || []
+        };
+
+        existingData.logs.unshift(logEntry);
+        existingData.cumulativeTickets += (body.ticketsSaved || 0);
+        existingData.cumulativeCost += (body.costSaved || 0);
+
+        await env.TRACKER_KV.put(kvKey, JSON.stringify(existingData));
+
+        return new Response(JSON.stringify({ success: true, cloudData: existingData }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      } else {
+        return new Response(JSON.stringify({ error: 'TRACKER_KV binding not configured.' }), { status: 400 });
+      }
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
+  }
+
+  // GET: Fetch Farm Data
+  try {
+    const data = await processFarmData(farmId, apiKey, env);
+    return new Response(JSON.stringify(data, null, 2), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
-
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+  }
+}
+
+// Automated Cron Trigger (Runs Daily at 23:00 UTC)
+export async function scheduled(event, env, ctx) {
+  const farmId = '8472883706403914';
+  const apiKey = env?.SFL_API_KEY || '';
+
+  if (!env?.TRACKER_KV) return;
+
+  try {
+    const data = await processFarmData(farmId, apiKey, env);
+
+    let doneTickets = 0;
+    let doneCost = 0;
+
+    data.deliveries.forEach(d => {
+      if (d.completed) {
+        doneTickets += d.baseTickets;
+        doneCost += d.itemsCost || 0;
+      }
+    });
+
+    data.bounties.forEach(b => {
+      if (b.completed) {
+        doneTickets += b.baseTickets;
+        doneCost += b.itemsCost || 0;
+      }
+    });
+
+    data.chores.forEach(c => {
+      if (c.completed) {
+        doneTickets += c.baseTickets;
+      }
+    });
+
+    const kvKey = `farm_${farmId}_history`;
+    const existingData = await env.TRACKER_KV.get(kvKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+
+    const snapshot = {
+      date: new Date().toISOString().split('T')[0],
+      timestamp: new Date().toISOString(),
+      autoTrigger: true,
+      ticketsSaved: doneTickets,
+      costSaved: doneCost,
+      deliveries: data.deliveries,
+      bounties: data.bounties,
+      chores: data.chores
+    };
+
+    existingData.logs.unshift(snapshot);
+    existingData.cumulativeTickets += doneTickets;
+    existingData.cumulativeCost += doneCost;
+
+    await env.TRACKER_KV.put(kvKey, JSON.stringify(existingData));
+  } catch (err) {
+    console.error('Auto cron error:', err);
   }
 }
