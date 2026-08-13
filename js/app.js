@@ -165,15 +165,6 @@ async function loadTrackerData() {
     globalData = data;
     globalData.cloudHistory = currentVaultData;
 
-    if (currentVaultData.deliveries && currentVaultData.deliveries.length > 0) {
-      var liveIds = new Set(globalData.deliveries.map(d => d.id));
-      currentVaultData.deliveries.forEach(savedD => {
-        if (!liveIds.has(savedD.id)) {
-          globalData.deliveries.push(savedD);
-        }
-      });
-    }
-
     if (data.pricesLoadedCount > 0) {
       priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
     } else {
@@ -190,6 +181,48 @@ async function loadTrackerData() {
   } catch (err) {
     alert('Error fetching data: ' + err.message);
   }
+}
+
+// Open NPC History Modal
+function openNpcHistoryModal(npcName) {
+  var modal = document.getElementById('npcHistoryModal');
+  var titleEl = document.getElementById('npcHistoryTitle');
+  var bodyEl = document.getElementById('npcHistoryBody');
+
+  titleEl.textContent = '📜 HISTORY: ' + npcName.toUpperCase();
+
+  var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
+  var matching = [];
+
+  logs.forEach(log => {
+    (log.deliveriesDone || []).forEach(past => {
+      var name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
+      if (name === npcName.toLowerCase().trim()) {
+        matching.push({
+          date: log.date || 'Past Run',
+          cost: past.cost || 0,
+          tickets: past.tickets || 0
+        });
+      }
+    });
+  });
+
+  if (matching.length === 0) {
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No previous history logs found for ' + npcName + '.</p>';
+  } else {
+    bodyEl.innerHTML = matching.map(m => {
+      return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
+        '<span style="font-weight:bold; color:#8B4513;">📅 ' + m.date + '</span>' +
+        '<span style="color:#2E7D32; font-weight:bold;">+' + m.tickets + ' Tickets (' + formatSFL(m.cost) + ' SFL)</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  modal.classList.add('show');
+}
+
+function closeNpcHistoryModal() {
+  document.getElementById('npcHistoryModal').classList.remove('show');
 }
 
 async function saveProgressToCloudKV() {
@@ -317,16 +350,18 @@ function recalculateAll() {
     var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
     var badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
 
+    // Safe escaped name for the history button click handler
+    var escapedName = d.from.replace(/'/g, "\\'");
+
     return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
       '<div style="display:flex; justify-content:space-between; align-items:center;">' +
         '<span style="font-weight:900; color:#8B4513; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
           d.from +
-          (d.isManual ? '<span style="font-size:9px; background:#8E44AD; color:#FFF8DC; padding:1px 4px; font-weight:900; border-radius:4px;">MANUAL</span>' : '') +
           (d.isChapterNpc ? '<span style="font-size:9px; background:#FFB300; color:#3E2723; padding:1px 4px; font-weight:900; border-radius:4px;">CHAPTER</span>' : '') +
         '</span>' +
-        '<div style="display:flex; align-items:center; gap:8px;">' +
-          '<span class="' + badgeClass + '">' + (d.isManual ? '✍️ PAST' : (d.completed ? '✨ DONE' : '⏳ ACTIVE')) + '</span>' +
-          '<span style="font-size:10px; color:#8C7853;">#' + d.id + '</span>' +
+        '<div style="display:flex; align-items:center; gap:6px;">' +
+          '<button class="btn btn-sm btn-indigo" onclick="openNpcHistoryModal(\'' + escapedName + '\')">📜 HISTORY</button>' +
+          '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
       '</div>' +
       '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
