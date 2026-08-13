@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Unified Ticket Calculator</title>
+  <title>SFL Chapter Tracker - Ticket Calculator</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
@@ -31,7 +31,7 @@
           />
           <label class="flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg cursor-pointer">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer">
-            👑 VIP Active (+2)
+            👑 VIP Active (+2 Deliveries Only)
           </label>
         </div>
 
@@ -164,13 +164,12 @@
         (document.getElementById('boost2').checked ? 1 : 0) +
         (document.getElementById('boost3').checked ? 1 : 0);
 
-      const totalAddon = vipBonus + boostCount;
-
-      // Render Deliveries
+      // Render Deliveries (Includes VIP + Boosts)
       const deliveriesContainer = document.getElementById('deliveriesList');
       document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
       deliveriesContainer.innerHTML = globalData.deliveries.map(d => {
-        const finalTickets = d.baseTickets + totalAddon;
+        const deliveryAddon = vipBonus + boostCount;
+        const finalTickets = d.baseTickets + deliveryAddon;
         return `
           <div class="bg-slate-900/90 p-3 rounded-lg border border-amber-500/40 bg-amber-950/10 text-xs space-y-2">
             <div class="flex justify-between items-center">
@@ -199,11 +198,11 @@
         `;
       }).join('');
 
-      // Render Bounties
+      // Render Bounties (Includes Boosts ONLY)
       const bountiesContainer = document.getElementById('bountiesList');
       document.getElementById('bountiesCount').textContent = globalData.bounties.length;
       bountiesContainer.innerHTML = globalData.bounties.map(b => {
-        const finalTickets = b.baseTickets + totalAddon;
+        const finalTickets = b.baseTickets + boostCount;
         return `
           <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 text-xs space-y-2">
             <div class="flex justify-between items-center">
@@ -211,18 +210,18 @@
               <span class="text-[10px] text-slate-500 font-mono">ID: ${b.id}</span>
             </div>
             <div class="bg-slate-950/80 p-2 rounded border border-slate-800 flex justify-between items-center font-mono text-[11px]">
-              <span class="text-slate-400 text-[10px]">Base (${b.baseTickets}) + Boosts (${totalAddon}):</span>
+              <span class="text-slate-400 text-[10px]">Base (${b.baseTickets}) + Boosts (${boostCount}):</span>
               <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
             </div>
           </div>
         `;
       }).join('');
 
-      // Render Chores
+      // Render Chores (Includes Boosts ONLY)
       const choresContainer = document.getElementById('choresList');
       document.getElementById('choresCount').textContent = globalData.chores.length;
       choresContainer.innerHTML = globalData.chores.map(c => {
-        const finalTickets = c.baseTickets > 0 ? (c.baseTickets + totalAddon) : 0;
+        const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
         return `
           <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-slate-700'} text-xs space-y-1.5">
             <div class="flex justify-between items-center">
@@ -234,7 +233,7 @@
             <div class="text-slate-300">${c.task}</div>
             ${c.baseTickets > 0 ? `
               <div class="bg-slate-950/80 p-2 rounded border border-slate-800 flex justify-between items-center font-mono text-[11px]">
-                <span class="text-slate-400 text-[10px]">Base (${c.baseTickets}) + Boosts (${totalAddon}):</span>
+                <span class="text-slate-400 text-[10px]">Base (${c.baseTickets}) + Boosts (${boostCount}):</span>
                 <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
               </div>
             ` : ''}
