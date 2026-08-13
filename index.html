@@ -176,8 +176,8 @@
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
       width: 100%;
-      max-width: 500px;
-      max-height: 80vh;
+      max-width: 520px;
+      max-height: 85vh;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
@@ -338,28 +338,57 @@
     </div>
   </div>
 
-  <!-- Column History Modal (Bounties / Chores Top Button) -->
+  <!-- Column History Modal (Bounties / Chores Top Button with Ticks & Add/Edit) -->
   <div id="columnHistoryModal" class="modal">
-    <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-content" style="max-width: 500px;">
       <div class="modal-header">
         <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 HISTORY</h3>
         <button onclick="closeColumnHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
-      <div id="columnHistoryBody" class="modal-body" style="gap: 8px;">
-        <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+      <div class="modal-body" style="gap: 12px;">
+        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; align-items: center; background: #F4ECF7; padding: 10px; border: 2px solid #8E44AD; border-radius: 8px;">
+          <input type="text" id="addHistName" placeholder="Name/Task" style="flex: 2;" />
+          <input type="number" id="addHistTickets" placeholder="Tickets" style="width: 70px;" value="1" />
+          <input type="number" step="0.01" id="addHistCost" placeholder="SFL" style="width: 80px;" value="0.00" />
+          <button onclick="addCustomHistoryItem()" class="btn btn-sm btn-purple">➕ ADD</button>
+        </div>
+
+        <div id="columnHistoryBody" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- NPC Delivery Specific History Modal -->
+  <!-- NPC Delivery Specific History Modal (With Ticks & Add/Edit) -->
   <div id="npcHistoryModal" class="modal">
-    <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-content" style="max-width: 500px;">
       <div class="modal-header">
         <h3 id="npcHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 NPC DELIVERY HISTORY</h3>
         <button onclick="closeNpcHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
-      <div id="npcHistoryBody" class="modal-body" style="gap: 8px;">
-        <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+      <div class="modal-body" style="gap: 12px;">
+        <input type="hidden" id="activeNpcHistoryName" value="" />
+        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="npcHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; align-items: center; background: #F4ECF7; padding: 10px; border: 2px solid #8E44AD; border-radius: 8px;">
+          <input type="text" id="addNpcHistDate" placeholder="Date (e.g. 2026-08-13)" style="flex: 2;" />
+          <input type="number" id="addNpcHistTickets" placeholder="Tickets" style="width: 70px;" value="2" />
+          <input type="number" step="0.01" id="addNpcHistCost" placeholder="SFL" style="width: 80px;" value="0.00" />
+          <button onclick="addNpcHistoryItem()" class="btn btn-sm btn-purple">➕ ADD</button>
+        </div>
+
+        <div id="npcHistoryBody" style="max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+        </div>
       </div>
     </div>
   </div>
