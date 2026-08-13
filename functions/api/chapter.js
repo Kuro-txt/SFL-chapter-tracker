@@ -18,24 +18,19 @@ export async function onRequest(context) {
   const farmId = searchParams.get('farmId') || '8472883706403914';
   const apiKey = context.env.SFL_API_KEY || '';
 
-  const headers = {
-    'Accept': 'application/json',
-    'User-Agent': 'CloudflarePagesWorker/1.0',
-    'Referer': 'https://sunflower-land.com/',
-    'Origin': 'https://sunflower-land.com'
+  const browserHeaders = {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
   };
 
-  if (apiKey.trim() !== '') {
-    headers['x-api-key'] = apiKey.trim();
-  }
+  const sflHeaders = { ...browserHeaders, 'Referer': 'https://sunflower-land.com/', 'Origin': 'https://sunflower-land.com' };
+  if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
   try {
-    // Concurrent fetch: SFL Farm Data + SFL World Market Prices
+    // Concurrent fetch: Farm Data + SFL World Market Prices
     const [sflResponse, pricesResponse] = await Promise.all([
-      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers }),
-      fetch(`https://sfl.world/api/v1/prices`, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'CloudflarePagesWorker/1.0' }
-      }).catch(() => null)
+      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
+      fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
     ]);
 
     if (!sflResponse.ok) {
@@ -45,20 +40,36 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
-    // Build lowercase price map for exact key matching
+    // Flexible Price Map Parser (handles objects, nested data, or arrays)
     let priceMap = {};
+    let pricesLoadedCount = 0;
+
     if (pricesResponse && pricesResponse.ok) {
       const rawPrices = await pricesResponse.json().catch(() => ({}));
-      Object.entries(rawPrices).forEach(([key, val]) => {
-        if (val && typeof val.price === 'number') {
-          priceMap[key.toLowerCase().trim()] = val.price;
-        } else if (typeof val === 'number') {
-          priceMap[key.toLowerCase().trim()] = val;
-        }
-      });
+      const sourceObj = rawPrices.data || rawPrices.prices || rawPrices;
+
+      if (Array.isArray(sourceObj)) {
+        sourceObj.forEach(item => {
+          if (item && item.name) {
+            const p = item.price ?? item.sfl ?? item.value ?? 0;
+            priceMap[item.name.toLowerCase().trim()] = Number(p) || 0;
+          }
+        });
+      } else if (typeof sourceObj === 'object') {
+        Object.entries(sourceObj).forEach(([key, val]) => {
+          const cleanKey = key.toLowerCase().trim();
+          if (typeof val === 'number') {
+            priceMap[cleanKey] = val;
+          } else if (val && typeof val === 'object') {
+            const p = val.price ?? val.sfl ?? val.value ?? val.buy ?? 0;
+            priceMap[cleanKey] = Number(p) || 0;
+          }
+        });
+      }
+      pricesLoadedCount = Object.keys(priceMap).length;
     }
 
-    // Helper to calculate total SFL cost for items
+    // Helper to calculate total SFL cost for required items
     const calculateItemsCost = (items) => {
       let totalCost = 0;
       const details = [];
@@ -165,6 +176,7 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({
       farmId,
       isVipActive,
+      pricesLoadedCount,
       deliveries: deliveryList,
       bounties: activeBounties,
       chores: choresList
