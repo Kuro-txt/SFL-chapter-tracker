@@ -39,7 +39,6 @@ window.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('authLoggedIn').style.display = 'flex';
     document.getElementById('displayUsername').textContent = currentUser;
     
-    // Automatically fetch vault data on refresh
     await fetchUserVault(currentUser);
   }
 });
@@ -466,7 +465,7 @@ async function saveProgressToCloudKV() {
     currentVaultData = resData.vaultData;
     globalData.cloudHistory = currentVaultData;
 
-    alert('☁️ MASTER VAULT SAVED (Active & Done Synced)!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    alert('☁️ MASTER VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
@@ -530,16 +529,44 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
-  // Deliveries
+  // TODAY TOTAL: Calculated from latest log items (including ticked items in history)
+  var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
+  var latestLog = logs.length > 0 ? logs[0] : null;
+
+  if (latestLog) {
+    [...(latestLog.deliveriesDone || []), ...(latestLog.bountiesDone || []), ...(latestLog.choresDone || [])].forEach(item => {
+      if (item.checked !== false) {
+        var baseTix = item.tickets || (item.name && item.name.includes('Delivery') ? 2 : 1);
+        var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+        var cost = item.cost || 0;
+
+        totalTicketsAll += finalTix;
+        totalSflCostAll += cost;
+      }
+    });
+  } else {
+    // Fallback if no logs yet
+    globalData.deliveries.forEach(d => {
+      var t = d.baseTickets + (d.isManual ? 0 : (vipBonus + boostCount));
+      totalTicketsAll += t;
+      totalSflCostAll += (d.itemsCost || 0);
+    });
+    globalData.bounties.forEach(b => {
+      totalTicketsAll += (b.baseTickets + boostCount);
+      totalSflCostAll += (b.itemsCost || 0);
+    });
+    globalData.chores.forEach(c => {
+      if (c.baseTickets > 0) totalTicketsAll += (c.baseTickets + boostCount);
+    });
+  }
+
+  // DONE TODAY: Strictly counts whats done today from live API state
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
   deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
     var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
     var finalTickets = d.baseTickets + deliveryAddon;
     var totalSflCost = d.itemsCost || 0;
-
-    totalTicketsAll += finalTickets;
-    totalSflCostAll += totalSflCost;
 
     if (d.completed) {
       earnedTicketsAll += finalTickets;
@@ -592,9 +619,6 @@ function recalculateAll() {
     var finalTickets = b.baseTickets + boostCount;
     var totalSflCost = b.itemsCost || 0;
 
-    totalTicketsAll += finalTickets;
-    totalSflCostAll += totalSflCost;
-
     if (b.completed) {
       earnedTicketsAll += finalTickets;
       earnedSflCostAll += totalSflCost;
@@ -630,8 +654,6 @@ function recalculateAll() {
   choresContainer.innerHTML = globalData.chores.map(function(c) {
     var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
     var hasProgress = c.requirement > 0;
-
-    totalTicketsAll += finalTickets;
 
     if (c.completed) {
       earnedTicketsAll += finalTickets;
