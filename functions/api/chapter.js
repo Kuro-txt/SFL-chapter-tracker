@@ -148,12 +148,6 @@ export async function onRequest(context) {
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
-    // Helper set for completed order IDs if available in delivery state
-    const fulfilledOrders = farm.delivery?.fulfilled || farm.delivery?.completed || [];
-    const fulfilledIds = Array.isArray(fulfilledOrders)
-      ? fulfilledOrders.map(String)
-      : Object.keys(fulfilledOrders).map(String);
-
     rawDeliveries.forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
@@ -186,14 +180,8 @@ export async function onRequest(context) {
           });
         });
 
-        const isCompleted = !!(
-          order.completedAt ||
-          order.completed ||
-          order.fulfilledAt ||
-          order.status === 'completed' ||
-          order.readyAt ||
-          fulfilledIds.includes(String(order.id))
-        );
+        // Order is only marked completed if explicitly marked as fulfilled/completed on the order object itself
+        const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
 
         deliveryList.push({
           id: order.id,
@@ -210,10 +198,11 @@ export async function onRequest(context) {
 
     // 2. BOUNTIES
     const activeBounties = [];
-    const completedBountyRequests = farm.bounties?.completed || farm.bounties?.claimed || [];
-    const completedBountyIds = Array.isArray(completedBountyRequests)
-      ? completedBountyRequests.map(String)
-      : Object.keys(completedBountyRequests).map(String);
+    const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
+    let completedBountyIds = [];
+    if (Array.isArray(completedBountiesRaw)) {
+      completedBountyIds = completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b));
+    }
 
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
@@ -228,13 +217,10 @@ export async function onRequest(context) {
       if (baseTicketCount > 0) {
         const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
 
-        const isCompleted = !!(
-          b.completedAt ||
-          b.completed ||
-          b.claimedAt ||
-          b.status === 'completed' ||
-          completedBountyIds.includes(String(b.id))
-        );
+        const isCompleted = typeof b.completedAt === 'number' || 
+                            b.completed === true || 
+                            b.status === 'completed' ||
+                            completedBountyIds.includes(String(b.id));
 
         activeBounties.push({
           id: b.id,
@@ -262,13 +248,10 @@ export async function onRequest(context) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
 
-      const isCompleted = !!(
-        details.completedAt ||
-        details.completed ||
-        details.isCompleted ||
-        details.claimedAt ||
-        (requirement > 0 && currentProgress >= requirement)
-      );
+      const isCompleted = typeof details.completedAt === 'number' || 
+                          details.completed === true || 
+                          details.isCompleted === true ||
+                          (requirement > 0 && currentProgress >= requirement);
 
       const npcName = details.npc || details.from || key;
 
