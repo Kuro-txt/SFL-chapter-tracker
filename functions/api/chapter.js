@@ -148,9 +148,11 @@ export async function onRequest(context) {
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
-    const fulfilledDeliveryIds = Array.isArray(farm.delivery?.fulfilled) 
-      ? farm.delivery.fulfilled 
-      : Object.keys(farm.delivery?.fulfilled || {});
+    // Helper set for completed order IDs if available in delivery state
+    const fulfilledOrders = farm.delivery?.fulfilled || farm.delivery?.completed || [];
+    const fulfilledIds = Array.isArray(fulfilledOrders)
+      ? fulfilledOrders.map(String)
+      : Object.keys(fulfilledOrders).map(String);
 
     rawDeliveries.forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
@@ -184,13 +186,13 @@ export async function onRequest(context) {
           });
         });
 
-        const isDeliveryCompleted = !!(
-          order.completedAt || 
-          order.completed || 
-          order.fulfilledAt || 
+        const isCompleted = !!(
+          order.completedAt ||
+          order.completed ||
+          order.fulfilledAt ||
           order.status === 'completed' ||
-          fulfilledDeliveryIds.includes(order.id) ||
-          fulfilledDeliveryIds.includes(String(order.id))
+          order.readyAt ||
+          fulfilledIds.includes(String(order.id))
         );
 
         deliveryList.push({
@@ -201,16 +203,17 @@ export async function onRequest(context) {
           itemDetails,
           baseTickets: baseTicketCount,
           isChapterNpc: baseTickets !== undefined,
-          completed: isDeliveryCompleted
+          completed: isCompleted
         });
       }
     });
 
     // 2. BOUNTIES
     const activeBounties = [];
-    const completedBountyIds = Array.isArray(farm.bounties?.completed)
-      ? farm.bounties.completed
-      : Object.keys(farm.bounties?.completed || {});
+    const completedBountyRequests = farm.bounties?.completed || farm.bounties?.claimed || [];
+    const completedBountyIds = Array.isArray(completedBountyRequests)
+      ? completedBountyRequests.map(String)
+      : Object.keys(completedBountyRequests).map(String);
 
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
@@ -225,12 +228,11 @@ export async function onRequest(context) {
       if (baseTicketCount > 0) {
         const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
 
-        const isBountyCompleted = !!(
-          b.completedAt || 
-          b.completed || 
-          b.claimedAt || 
+        const isCompleted = !!(
+          b.completedAt ||
+          b.completed ||
+          b.claimedAt ||
           b.status === 'completed' ||
-          completedBountyIds.includes(b.id) ||
           completedBountyIds.includes(String(b.id))
         );
 
@@ -240,14 +242,14 @@ export async function onRequest(context) {
           level: b.level || null,
           baseTickets: baseTicketCount,
           itemsCost: unitPrice,
-          completed: isBountyCompleted
+          completed: isCompleted
         });
       }
     });
 
     // 3. CHORES
-    const rawChores = farm.choreBoard?.chores || farm.chores || {};
-    const choresList = Object.entries(rawChores).map(([key, details]) => {
+    const choreObj = farm.choreBoard?.chores || farm.chores || {};
+    const choresList = Object.entries(choreObj).map(([key, details]) => {
       let baseTicketCount = 0;
       if (details.reward?.items) {
         Object.entries(details.reward.items).forEach(([item, qty]) => {
@@ -257,13 +259,15 @@ export async function onRequest(context) {
         });
       }
 
-      const isChoreCompleted = !!(
-        details.completedAt || 
-        details.completed || 
-        details.isCompleted || 
+      const currentProgress = details.initialProgress ?? details.progress ?? 0;
+      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
+
+      const isCompleted = !!(
+        details.completedAt ||
+        details.completed ||
+        details.isCompleted ||
         details.claimedAt ||
-        (details.requirement && details.initialProgress >= details.requirement) ||
-        (details.progress && details.requirement && details.progress >= details.requirement)
+        (requirement > 0 && currentProgress >= requirement)
       );
 
       const npcName = details.npc || details.from || key;
@@ -272,8 +276,9 @@ export async function onRequest(context) {
         npc: npcName,
         task: details.name || details.description || key,
         baseTickets: baseTicketCount,
-        progress: details.initialProgress || details.progress || 0,
-        completed: isChoreCompleted
+        progress: currentProgress,
+        requirement: requirement,
+        completed: isCompleted
       };
     });
 
