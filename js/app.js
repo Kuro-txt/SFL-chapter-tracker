@@ -296,6 +296,7 @@ function toggleNpcHistCheck(logIdx, itemIdx) {
     var item = logs[logIdx].deliveriesDone[itemIdx];
     item.checked = !item.checked;
     renderNpcHistoryModalList();
+    recalculateAll();
   }
 }
 
@@ -404,6 +405,7 @@ function toggleColumnHistCheck(logIdx, itemIdx) {
     var item = logs[logIdx][targetArray][itemIdx];
     item.checked = !item.checked;
     renderColumnHistoryModalList();
+    recalculateAll();
   }
 }
 
@@ -533,15 +535,14 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
-  // TODAY TOTAL: Calculated from latest log items (only checked items)
+  // CURRENTLY HAVE: Total tickets accumulated across ALL checked items in Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-  var latestLog = logs.length > 0 ? logs[0] : null;
-
-  if (latestLog) {
-    [...(latestLog.deliveriesDone || []), ...(latestLog.bountiesDone || []), ...(latestLog.choresDone || [])].forEach(item => {
-      var defaultChecked = item.checked !== undefined ? item.checked : !!item.completed;
-      if (defaultChecked) {
-        var baseTix = item.tickets || (item.name && item.name.includes('Delivery') ? 2 : 1);
+  
+  logs.forEach(log => {
+    [...(log.deliveriesDone || []), ...(log.bountiesDone || []), ...(log.choresDone || [])].forEach(item => {
+      var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
+      if (isTicked) {
+        var baseTix = item.tickets || 1;
         var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         var cost = item.cost || 0;
 
@@ -549,22 +550,9 @@ function recalculateAll() {
         totalSflCostAll += cost;
       }
     });
-  } else {
-    globalData.deliveries.forEach(d => {
-      var t = d.baseTickets + (d.isManual ? 0 : (vipBonus + boostCount));
-      totalTicketsAll += t;
-      totalSflCostAll += (d.itemsCost || 0);
-    });
-    globalData.bounties.forEach(b => {
-      totalTicketsAll += (b.baseTickets + boostCount);
-      totalSflCostAll += (b.itemsCost || 0);
-    });
-    globalData.chores.forEach(c => {
-      if (c.baseTickets > 0) totalTicketsAll += (c.baseTickets + boostCount);
-    });
-  }
+  });
 
-  // DONE TODAY: Strictly counts whats done today from live API state
+  // DONE TODAY: Strictly counts live completed items for today
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
   deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
