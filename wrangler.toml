@@ -1,6 +1,6 @@
 name = "sfl-chapter-tracker"
+compatibility_date = "2026-08-13"
 pages_build_output_dir = "."
-
 [[kv_namespaces]]
 binding = "TRACKER_KV"
 id = "e905012c5fc143a98ec1f2eb30af343a"
