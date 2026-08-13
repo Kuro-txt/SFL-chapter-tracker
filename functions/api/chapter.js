@@ -41,7 +41,7 @@ export async function onRequest(context) {
     // Check if player currently has active VIP
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // 1. FILTER & CALCULATE DELIVERIES (Ignore coins / SFL)
+    // 1. FILTER & CALCULATE DELIVERIES
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
@@ -67,7 +67,6 @@ export async function onRequest(context) {
         };
       }
 
-      // Map "Shiny Feather" inside delivery rewards directly to "Tickets", ignoring coins/SFL
       const rewardsFormatted = {};
       if (order.reward?.items) {
         Object.entries(order.reward.items).forEach(([item, qty]) => {
@@ -79,7 +78,6 @@ export async function onRequest(context) {
         });
       }
 
-      // Only include if it is a Chapter NPC or yields item rewards
       if (ticketCalculation || Object.keys(rewardsFormatted).length > 0) {
         deliveryList.push({
           id: order.id,
@@ -91,7 +89,7 @@ export async function onRequest(context) {
       }
     });
 
-    // 2. FILTER BOUNTIES (Ignore coins / SFL)
+    // 2. FILTER BOUNTIES
     const activeBounties = (farm.bounties?.requests || []).map(b => {
       const rewardsFormatted = {};
       if (b.items) {
@@ -110,9 +108,9 @@ export async function onRequest(context) {
         level: b.level || null,
         rewards: rewardsFormatted
       };
-    }).filter(b => Object.keys(b.rewards).length > 0); // Hide coin-only bounties
+    }).filter(b => Object.keys(b.rewards).length > 0);
 
-    // 3. FILTER CHORES (Ignore coins / SFL)
+    // 3. FILTER CHORES
     const rawChores = farm.choreBoard?.chores || {};
     const choresList = Object.entries(rawChores).map(([npc, details]) => {
       const rewardsFormatted = {};
@@ -135,23 +133,12 @@ export async function onRequest(context) {
       };
     });
 
-    // 4. FILTER NPCs
-    const rawNpcs = farm.npcs || {};
-    const npcList = Object.entries(rawNpcs).map(([name, data]) => ({
-      npc: name,
-      friendshipPoints: data.friendship?.points || 0,
-      deliveriesCompleted: data.deliveryCount || 0,
-      deliveriesSkipped: data.skippedCount || 0,
-      choresCompleted: data.choreCount || 0
-    }));
-
     return new Response(JSON.stringify({
       farmId,
       isVipActive,
       deliveries: deliveryList,
       bounties: activeBounties,
-      chores: choresList,
-      npcs: npcList
+      chores: choresList
     }, null, 2), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
