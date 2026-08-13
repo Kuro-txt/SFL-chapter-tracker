@@ -14,7 +14,7 @@
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Universal SFL Price & Ticket Yield Calculator</p>
+      <p class="text-slate-400 text-sm">Live SFL Market Price & Ticket Calculator</p>
     </header>
 
     <!-- Controls & Global Ticket Boost Selectors -->
@@ -106,15 +106,12 @@
     let globalData = null;
     let globalPriceMap = {};
 
-    // Recursive Price Traverser for Nested Objects
-    function buildPriceMap(obj, map = {}) {
+    function extractPricesRecursive(obj, map = {}) {
       if (!obj || typeof obj !== 'object') return map;
-
       if (Array.isArray(obj)) {
-        obj.forEach(item => buildPriceMap(item, map));
+        obj.forEach(item => extractPricesRecursive(item, map));
         return map;
       }
-
       for (const [key, val] of Object.entries(obj)) {
         const cleanKey = key.toLowerCase().trim();
         const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
@@ -123,20 +120,20 @@
           map[cleanKey] = val;
           map[strippedKey] = val;
         } else if (val && typeof val === 'object') {
-          const p = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
-          if (typeof p === 'number') {
-            map[cleanKey] = p;
-            map[strippedKey] = p;
+          const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
+          if (typeof priceVal === 'number') {
+            map[cleanKey] = priceVal;
+            map[strippedKey] = priceVal;
           }
           if (val.name && typeof val.name === 'string') {
-            const kName = val.name.toLowerCase().trim();
-            const kNameStrip = kName.replace(/[^a-z0-9]/g, '');
-            if (typeof p === 'number') {
-              map[kName] = p;
-              map[kNameStrip] = p;
+            const itemClean = val.name.toLowerCase().trim();
+            const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
+            if (typeof priceVal === 'number') {
+              map[itemClean] = priceVal;
+              map[itemStripped] = priceVal;
             }
           }
-          buildPriceMap(val, map);
+          extractPricesRecursive(val, map);
         }
       }
       return map;
@@ -148,16 +145,17 @@
       return val.toFixed(2);
     }
 
+    // 1,000 Coins = 1 SFL (0.001 SFL per Coin)
     function getUnitPrice(itemName) {
-      if (!itemName || !globalPriceMap) return 0;
+      if (!itemName) return 0;
       const clean = itemName.toLowerCase().trim();
       const stripped = clean.replace(/[^a-z0-9]/g, '');
-      
-      // Exact match or fallback lookup
-      if (globalPriceMap[clean] !== undefined) return globalPriceMap[clean];
-      if (globalPriceMap[stripped] !== undefined) return globalPriceMap[stripped];
 
-      return 0;
+      if (clean === 'coins' || clean === 'coin') {
+        return 0.001;
+      }
+
+      return globalPriceMap[clean] ?? globalPriceMap[stripped] ?? 0;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -205,14 +203,14 @@
 
         globalData = chapterRes;
 
-        const clientMap = buildPriceMap(directPricesRes);
-        const serverMap = buildPriceMap(chapterRes.rawPricesData);
+        const clientPrices = extractPricesRecursive(directPricesRes);
+        const serverPrices = chapterRes.priceMap || extractPricesRecursive(chapterRes.rawPricesData);
 
-        globalPriceMap = { ...serverMap, ...clientMap };
+        globalPriceMap = { ...serverPrices, ...clientPrices };
 
         const priceCount = Object.keys(globalPriceMap).length;
         if (priceCount > 0) {
-          priceBadge.textContent = `${priceCount} Price Keys Loaded`;
+          priceBadge.textContent = `${priceCount} SFL Prices Loaded`;
           priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono';
         } else {
           priceBadge.textContent = 'Price API Offline';
@@ -247,12 +245,11 @@
         const deliveryAddon = vipBonus + boostCount;
         const finalTickets = d.baseTickets + deliveryAddon;
 
-        let totalSflCost = 0;
+        let totalSflCost = d.itemsCost || 0;
         const itemRows = Object.entries(d.items).map(([item, qty]) => {
           const unitPrice = getUnitPrice(item);
           const lineCost = unitPrice * qty;
-          totalSflCost += lineCost;
-          return `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span> ${unitPrice > 0 ? `<span class="text-[10px] text-slate-400">(${formatSFL(lineCost)} SFL)</span>` : '<span class="text-[9px] text-rose-400/80">(Price Unlisted)</span>'}</div>`;
+          return `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span> ${lineCost > 0 ? `<span class="text-[10px] text-slate-400">(${formatSFL(lineCost)} SFL)</span>` : ''}</div>`;
         }).join('');
 
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
@@ -290,8 +287,8 @@
       document.getElementById('bountiesCount').textContent = globalData.bounties.length;
       bountiesContainer.innerHTML = globalData.bounties.map(b => {
         const finalTickets = b.baseTickets + boostCount;
-        const unitPrice = getUnitPrice(b.name);
-        const costPerTicket = finalTickets > 0 ? (unitPrice / finalTickets) : 0;
+        const totalSflCost = b.itemsCost || 0;
+        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
           <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-700 text-xs space-y-2">
@@ -302,7 +299,7 @@
             <div class="bg-slate-950/80 p-2 rounded border border-slate-800 space-y-1 font-mono text-[11px]">
               <div class="flex justify-between text-slate-300">
                 <span>Yield: ${finalTickets} Tickets</span>
-                <span>Cost: ${formatSFL(unitPrice)} SFL</span>
+                <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
               </div>
               <div class="flex justify-between text-emerald-400 font-bold text-[10px]">
                 <span>Cost / Ticket:</span>
