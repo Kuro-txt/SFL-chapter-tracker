@@ -216,7 +216,7 @@ export const SFL_RECIPES = {
   "the lot": { "blueberry": 1, "orange": 1, "grape": 1, "apple": 1, "banana": 1 },
 
   // ==========================================
- // DOLLS
+  // DOLLS
   // ==========================================
   "shadow doll": { "doll": 1, "obsidian": 8 },
   "sizzle doll": { "doll": 1, "synthetic fibre": 8 },
