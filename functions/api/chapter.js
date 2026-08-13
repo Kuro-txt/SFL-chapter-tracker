@@ -106,16 +106,13 @@ export async function onRequest(context) {
         const newTickets = body.ticketsSaved || 0;
         const newCost = body.costSaved || 0;
 
-        // Check if a log for today already exists
         const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
 
         if (existingTodayLogIndex !== -1) {
-          // Subtract the old values of today's log from cumulative totals before updating
           const oldLog = existingData.logs[existingTodayLogIndex];
           existingData.cumulativeTickets -= (oldLog.ticketsSaved || 0);
           existingData.cumulativeCost -= (oldLog.costSaved || 0);
 
-          // Update the existing today log with fresh values
           existingData.logs[existingTodayLogIndex] = {
             date: todayDate,
             timestamp: new Date().toISOString(),
@@ -126,7 +123,6 @@ export async function onRequest(context) {
             choresDone: completedChores
           };
         } else {
-          // Create a brand new log entry if none exists for today
           const logEntry = {
             date: todayDate,
             timestamp: new Date().toISOString(),
@@ -139,7 +135,6 @@ export async function onRequest(context) {
           existingData.logs.unshift(logEntry);
         }
 
-        // Re-add today's updated values to cumulative totals
         existingData.cumulativeTickets += newTickets;
         existingData.cumulativeCost += newCost;
 
@@ -225,7 +220,6 @@ export async function onRequest(context) {
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // 1. DELIVERIES
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
@@ -276,7 +270,6 @@ export async function onRequest(context) {
       }
     });
 
-    // 2. BOUNTIES
     const activeBounties = [];
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
     let completedBountyIds = [];
@@ -313,7 +306,6 @@ export async function onRequest(context) {
       }
     });
 
-    // 3. CHORES
     const choreObj = farm.choreBoard?.chores || farm.chores || {};
     const choresList = Object.entries(choreObj).map(([key, details]) => {
       let baseTicketCount = 0;
