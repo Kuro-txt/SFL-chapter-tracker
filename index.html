@@ -3,39 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Arcade Dashboard</title>
+  <title>SFL Chapter Tracker</title>
   
-  <!-- Standalone Tailwind CSS -->
+  <!-- Tailwind CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 
   <style>
     body {
-      background-color: #0b0f19;
+      background-color: #0f172a; /* Slate 900 - Rich dark blue background */
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background-image: 
-        linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 20px 24px;
     }
 
+    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #090d16; }
-    ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 0px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 2px; }
   </style>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
 
   <div class="max-w-7xl w-full space-y-6">
+    
     <!-- Header -->
     <header class="text-center space-y-2 py-2">
-      <h1 class="text-xl sm:text-3xl font-black text-amber-400 flex items-center justify-center gap-3 tracking-wider drop-shadow-[2px_2px_0_#000]">
+      <h1 class="text-2xl sm:text-3xl font-black text-amber-400 flex items-center justify-center gap-3 tracking-wider drop-shadow">
         <span>🌻</span> SFL CHAPTER TRACKER
       </h1>
       <p class="text-slate-400 text-xs sm:text-sm font-bold tracking-wide">Live Market Price Engine & Cloud Storage</p>
     </header>
 
     <!-- Controls Panel -->
-    <div class="bg-[#131b2e] border-2 border-slate-700 p-4 space-y-4 shadow-[4px_4px_0px_0px_#000000]">
+    <div class="bg-slate-800 border-2 border-slate-700 p-4 space-y-4 shadow-xl rounded-xl">
       <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
         
         <!-- Inputs -->
@@ -45,19 +43,19 @@
             type="text" 
             id="farmId" 
             value="8472883706403914" 
-            class="bg-[#090d16] border-2 border-slate-700 px-3 py-1.5 text-xs text-amber-300 focus:outline-none focus:border-amber-400 w-full sm:w-48 font-bold"
+            class="bg-slate-950 border-2 border-slate-600 px-3 py-1.5 text-xs text-amber-300 focus:outline-none focus:border-amber-400 w-full sm:w-48 font-bold rounded-lg"
           />
-          <label class="flex items-center gap-2 text-xs font-bold text-amber-300 bg-amber-500/10 border-2 border-amber-500/30 px-3 py-1.5 cursor-pointer hover:bg-amber-500/20">
+          <label class="flex items-center gap-2 text-xs font-bold text-amber-300 bg-amber-500/10 border-2 border-amber-500/30 px-3 py-1.5 cursor-pointer hover:bg-amber-500/20 rounded-lg">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer">
             👑 VIP (+2)
           </label>
-          <span id="priceBadge" class="hidden text-[10px] px-2.5 py-1 bg-[#090d16] text-emerald-400 border border-emerald-500/50 font-bold">
+          <span id="priceBadge" class="hidden text-[10px] px-2.5 py-1 bg-slate-950 text-emerald-400 border border-emerald-500/50 font-bold rounded-md">
             FETCHING...
           </span>
         </div>
 
         <!-- Boost Checkboxes -->
-        <div class="flex items-center gap-3 bg-[#090d16] px-3 py-2 border-2 border-slate-800 w-full lg:w-auto justify-between lg:justify-start text-xs font-bold">
+        <div class="flex items-center gap-3 bg-slate-950 px-3 py-2 border-2 border-slate-700 rounded-lg w-full lg:w-auto justify-between lg:justify-start text-xs font-bold">
           <span class="text-amber-400 whitespace-nowrap">+1 BOOSTS:</span>
           <div class="flex items-center gap-3 text-slate-300">
             <label class="flex items-center gap-1 cursor-pointer">
@@ -76,19 +74,19 @@
         <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto font-mono">
           <button 
             onclick="loadTrackerData()" 
-            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-400 active:translate-y-1 active:shadow-none text-slate-950 font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all border-2 border-amber-300 shadow-[3px_3px_0px_0px_#000] cursor-pointer"
+            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all rounded-lg shadow-md cursor-pointer"
           >
             FETCH DATA
           </button>
           <button 
             onclick="saveProgressToCloudKV()" 
-            class="flex-1 lg:flex-initial bg-emerald-500 hover:bg-emerald-400 active:translate-y-1 active:shadow-none text-slate-950 font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all border-2 border-emerald-300 shadow-[3px_3px_0px_0px_#000] cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-1"
           >
             ☁️ SAVE KV
           </button>
           <button 
             onclick="toggleHistoryModal()" 
-            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 active:translate-y-1 active:shadow-none text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all border-2 border-indigo-400 shadow-[3px_3px_0px_0px_#000] cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-1"
           >
             📜 LOGS
           </button>
@@ -97,10 +95,10 @@
     </div>
 
     <!-- Summary Stats Bar -->
-    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000]">
+    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-800 border-2 border-slate-700 p-4 shadow-xl rounded-xl">
       
       <!-- Total Available Today -->
-      <div class="p-3 bg-[#090d16] border-2 border-amber-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+      <div class="p-3 bg-slate-950 border-2 border-amber-500/40 rounded-lg flex flex-col justify-between space-y-2">
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">TODAY TOTAL</div>
         <div id="statTotalTickets" class="text-2xl font-bold text-amber-400">0</div>
         <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
@@ -110,7 +108,7 @@
       </div>
 
       <!-- Currently Have Today -->
-      <div class="p-3 bg-[#090d16] border-2 border-emerald-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+      <div class="p-3 bg-slate-950 border-2 border-emerald-500/40 rounded-lg flex flex-col justify-between space-y-2">
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">DONE TODAY</div>
         <div id="statEarnedTickets" class="text-2xl font-bold text-emerald-400">0</div>
         <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
@@ -120,7 +118,7 @@
       </div>
 
       <!-- Active Pending -->
-      <div class="p-3 bg-[#090d16] border-2 border-sky-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+      <div class="p-3 bg-slate-950 border-2 border-sky-500/40 rounded-lg flex flex-col justify-between space-y-2">
         <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">PENDING</div>
         <div id="statPendingTickets" class="text-2xl font-bold text-sky-400">0</div>
         <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
@@ -130,7 +128,7 @@
       </div>
 
       <!-- Saved Cumulative Totals in Cloud KV -->
-      <div class="p-3 bg-[#090d16] border-2 border-violet-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+      <div class="p-3 bg-slate-950 border-2 border-violet-500/40 rounded-lg flex flex-col justify-between space-y-2">
         <div class="text-[10px] text-violet-300 font-bold uppercase tracking-wider flex items-center gap-1">☁️ CLOUD KV</div>
         <div id="statSavedTickets" class="text-2xl font-bold text-violet-400">0</div>
         <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
@@ -145,35 +143,35 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
       <!-- Active Deliveries Card -->
-      <div class="bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
+      <div class="bg-slate-800 border-2 border-slate-700 p-4 shadow-xl rounded-xl flex flex-col">
         <h2 class="text-xs font-bold text-violet-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
           <span>📦 DELIVERIES</span>
-          <span id="deliveriesCount" class="text-[11px] bg-[#090d16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
+          <span id="deliveriesCount" class="text-[11px] bg-slate-950 px-2 py-0.5 border border-slate-700 text-slate-300 rounded">0</span>
         </h2>
         <div id="deliveriesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
-          <p class="text-xs text-slate-500">Click Fetch Data to load orders...</p>
+          <p class="text-xs text-slate-400">Click Fetch Data to load orders...</p>
         </div>
       </div>
 
       <!-- Bounties Card -->
-      <div class="bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
+      <div class="bg-slate-800 border-2 border-slate-700 p-4 shadow-xl rounded-xl flex flex-col">
         <h2 class="text-xs font-bold text-amber-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
           <span>📜 BOUNTIES</span>
-          <span id="bountiesCount" class="text-[11px] bg-[#090d16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
+          <span id="bountiesCount" class="text-[11px] bg-slate-950 px-2 py-0.5 border border-slate-700 text-slate-300 rounded">0</span>
         </h2>
         <div id="bountiesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
-          <p class="text-xs text-slate-500">Click Fetch Data to load bounties...</p>
+          <p class="text-xs text-slate-400">Click Fetch Data to load bounties...</p>
         </div>
       </div>
 
       <!-- Chores Card -->
-      <div class="bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
+      <div class="bg-slate-800 border-2 border-slate-700 p-4 shadow-xl rounded-xl flex flex-col">
         <h2 class="text-xs font-bold text-emerald-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
           <span>🧹 CHORES</span>
-          <span id="choresCount" class="text-[11px] bg-[#090d16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
+          <span id="choresCount" class="text-[11px] bg-slate-950 px-2 py-0.5 border border-slate-700 text-slate-300 rounded">0</span>
         </h2>
         <div id="choresList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
-          <p class="text-xs text-slate-500">Click Fetch Data to load chores...</p>
+          <p class="text-xs text-slate-400">Click Fetch Data to load chores...</p>
         </div>
       </div>
 
@@ -182,7 +180,7 @@
 
   <!-- Cloud KV Logs Modal -->
   <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-[#131b2e] border-2 border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-[8px_8px_0px_0px_#000]">
+    <div class="bg-slate-800 border-2 border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl rounded-xl">
       <div class="p-4 border-b-2 border-slate-700 flex justify-between items-center">
         <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
           <span>📜</span> SAVED CLOUD LOGS
@@ -190,18 +188,19 @@
         <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold text-xs uppercase cursor-pointer">✕ CLOSE</button>
       </div>
       <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 text-xs">
-        <p class="text-slate-500">No logs loaded yet. Fetch data first.</p>
+        <p class="text-slate-400">No logs loaded yet. Fetch data first.</p>
       </div>
     </div>
   </div>
 
-  <!-- Load Styles Module & App Logic -->
-  <script type="module">
-    import { STYLES } from './styles.js';
-    window.STYLES = STYLES;
-  </script>
-
   <script>
+    // Style configurations embedded directly to eliminate import errors
+    const STYLES = {
+      badgeDone: "bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded",
+      badgeActive: "bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded",
+      badgeRecipe: "bg-slate-950 text-amber-300 border border-amber-500/40 px-1 text-[9px] rounded"
+    };
+
     let globalData = null;
     let currentDoneTicketsToday = 0;
     let currentDoneCostToday = 0;
@@ -245,7 +244,7 @@
       const priceBadge = document.getElementById('priceBadge');
       priceBadge.classList.remove('hidden');
       priceBadge.textContent = 'FETCHING...';
-      priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090d16] text-amber-400 border border-amber-500/50 font-bold animate-pulse';
+      priceBadge.className = 'text-[10px] px-2.5 py-1 bg-slate-950 text-amber-400 border border-amber-500/50 font-bold animate-pulse rounded-md';
 
       try {
         const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`);
@@ -257,10 +256,10 @@
 
         if (data.pricesLoadedCount > 0) {
           priceBadge.textContent = `${data.pricesLoadedCount} PRICES LOADED`;
-          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090d16] text-emerald-400 border border-emerald-500/50 font-bold';
+          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-slate-950 text-emerald-400 border border-emerald-500/50 font-bold rounded-md';
         } else {
           priceBadge.textContent = 'PRICE API OFFLINE';
-          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090d16] text-rose-400 border border-rose-500/50 font-bold';
+          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-slate-950 text-rose-400 border border-rose-500/50 font-bold rounded-md';
         }
 
         if (localStorage.getItem('sfl_vip') === null) {
@@ -316,13 +315,13 @@
         const container = document.getElementById('modalLogList');
 
         if (logs.length === 0) {
-          container.innerHTML = '<p class="text-slate-500">No saved KV logs found for this farm yet.</p>';
+          container.innerHTML = '<p class="text-slate-400">No saved KV logs found for this farm yet.</p>';
         } else {
           container.innerHTML = logs.map((log, idx) => `
-            <div class="bg-[#090d16] p-3 border border-slate-800 space-y-1">
+            <div class="bg-slate-950 p-3 border border-slate-700 rounded-lg space-y-1">
               <div class="flex justify-between items-center text-slate-300">
                 <span class="font-bold text-amber-400">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
-                <span class="text-[10px] text-slate-500">${log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save'}</span>
+                <span class="text-[10px] text-slate-400">${log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save'}</span>
               </div>
               <div class="flex justify-between text-emerald-400 text-xs font-bold">
                 <span>Tickets: +${log.ticketsSaved || 0}</span>
@@ -373,7 +372,7 @@
         const itemRows = (d.itemDetails || []).map(detail => {
           return `
             <div class="flex justify-between items-center text-xs">
-              <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="${window.STYLES?.badgeRecipe || 'bg-slate-950 text-amber-300 border border-amber-500/40 px-1 text-[9px]'}">RECIPE</span>` : ''}</span>
+              <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="${STYLES.badgeRecipe}">RECIPE</span>` : ''}</span>
               <span class="text-[11px] text-slate-400">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : '0.00'}</span>
             </div>
           `;
@@ -382,25 +381,25 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-[#090d16] p-3 border-2 ${d.completed ? 'border-emerald-500/40 opacity-75' : 'border-amber-500/40'} text-xs space-y-2.5 shadow-[2px_2px_0px_0px_#000]">
+          <div class="bg-slate-950 p-3 border-2 ${d.completed ? 'border-emerald-500/40 opacity-75' : 'border-amber-500/40'} text-xs space-y-2.5 rounded-lg">
             <div class="flex justify-between items-center">
               <span class="font-bold text-amber-300 capitalize flex items-center gap-1.5">
                 ${d.from}
-                ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1 font-black">CHAPTER</span>` : ''}
+                ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1 font-black rounded">CHAPTER</span>` : ''}
               </span>
               <div class="flex items-center gap-2">
-                <span class="${d.completed ? (window.STYLES?.badgeDone || 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider') : (window.STYLES?.badgeActive || 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider')}">
+                <span class="${d.completed ? STYLES.badgeDone : STYLES.badgeActive}">
                   ${d.completed ? 'DONE' : 'ACTIVE'}
                 </span>
-                <span class="text-[10px] text-slate-500">${d.id}</span>
+                <span class="text-[10px] text-slate-400">${d.id}</span>
               </div>
             </div>
 
-            <div class="text-slate-200 bg-[#131b2e] p-2 border border-slate-800 space-y-1">
+            <div class="text-slate-200 bg-slate-900 p-2 border border-slate-800 rounded space-y-1">
               ${itemRows}
             </div>
 
-            <div class="bg-[#131b2e] p-2 border border-slate-800 space-y-1 text-xs">
+            <div class="bg-slate-900 p-2 border border-slate-800 rounded space-y-1 text-xs">
               <div class="flex justify-between items-center border-b border-slate-800 pb-1">
                 <span class="text-amber-300 font-bold">Yield: ${finalTickets} Tickets</span>
                 <span class="text-slate-300 font-bold">${formatSFL(totalSflCost)} SFL</span>
@@ -435,14 +434,14 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-[#090d16] p-3 border-2 ${b.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-800'} text-xs space-y-2 shadow-[2px_2px_0px_0px_#000]">
+          <div class="bg-slate-950 p-3 border-2 ${b.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-700'} text-xs space-y-2 rounded-lg">
             <div class="flex justify-between items-center">
               <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400">(Lvl ${b.level})</span>` : ''}</span>
-              <span class="${b.completed ? (window.STYLES?.badgeDone || 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider') : (window.STYLES?.badgeActive || 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider')}">
+              <span class="${b.completed ? STYLES.badgeDone : STYLES.badgeActive}">
                 ${b.completed ? 'DONE' : 'ACTIVE'}
               </span>
             </div>
-            <div class="bg-[#131b2e] p-2 border border-slate-800 space-y-1 text-xs">
+            <div class="bg-slate-900 p-2 border border-slate-800 rounded space-y-1 text-xs">
               <div class="flex justify-between text-slate-300">
                 <span>Yield: ${finalTickets} Tickets</span>
                 <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
@@ -472,17 +471,17 @@
         }
 
         return `
-          <div class="bg-[#090d16] p-3 border-2 ${c.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-800'} text-xs space-y-1.5 shadow-[2px_2px_0px_0px_#000]">
+          <div class="bg-slate-950 p-3 border-2 ${c.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-700'} text-xs space-y-1.5 rounded-lg">
             <div class="flex justify-between items-center">
               <span class="font-bold capitalize text-slate-200">${c.npc}</span>
-              <span class="${c.completed ? (window.STYLES?.badgeDone || 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider') : (window.STYLES?.badgeActive || 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider')}">
+              <span class="${c.completed ? STYLES.badgeDone : STYLES.badgeActive}">
                 ${c.completed ? 'DONE' : 'ACTIVE'}
               </span>
             </div>
             <div class="text-slate-300">${c.task}</div>
             ${hasProgress ? `<div class="text-[11px] text-slate-400">Progress: ${c.progress} / ${c.requirement}</div>` : ''}
             ${c.baseTickets > 0 ? `
-              <div class="bg-[#131b2e] p-2 border border-slate-800 flex justify-between items-center text-xs">
+              <div class="bg-slate-900 p-2 border border-slate-800 rounded flex justify-between items-center text-xs">
                 <span class="text-slate-400">Yield:</span>
                 <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
               </div>
