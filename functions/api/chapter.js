@@ -187,7 +187,8 @@ export async function onRequest(context) {
           itemsCost,
           itemDetails,
           baseTickets: baseTicketCount,
-          isChapterNpc: baseTickets !== undefined
+          isChapterNpc: baseTickets !== undefined,
+          completed: !!order.completedAt
         });
       }
     });
