@@ -15,6 +15,7 @@ const CHAPTER_NPC_TICKETS = {
   "jester": 4
 };
 
+// Traverse nested category objects from sfl.world
 function extractPricesRecursive(obj, map = {}) {
   if (!obj || typeof obj !== 'object') return map;
   if (Array.isArray(obj)) {
@@ -63,6 +64,7 @@ export async function onRequest(context) {
   if (apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
   try {
+    // Server-side fetch (bypasses browser CORS entirely)
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }),
       fetch(`https://sfl.world/api/v1/prices`, { headers: browserHeaders }).catch(() => null)
@@ -75,11 +77,9 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
-    let rawPricesData = null;
     let priceMap = {};
-
     if (pricesResponse && pricesResponse.ok) {
-      rawPricesData = await pricesResponse.json().catch(() => null);
+      const rawPricesData = await pricesResponse.json().catch(() => null);
       if (rawPricesData) {
         priceMap = extractPricesRecursive(rawPricesData);
       }
@@ -89,6 +89,7 @@ export async function onRequest(context) {
     // Conversion rate: 1,000 Coins = 1 SFL (0.001 SFL per Coin)
     const getItemUnitPrice = (itemName, depth = 0) => {
       if (depth > 5) return 0; // Prevent infinite loops
+      if (!itemName) return 0;
 
       const clean = itemName.toLowerCase().trim();
       const stripped = clean.replace(/[^a-z0-9]/g, '');
@@ -97,11 +98,11 @@ export async function onRequest(context) {
         return 0.001;
       }
 
-      // Direct market price lookup
+      // 1. Direct market price lookup
       if (priceMap[clean] !== undefined) return priceMap[clean];
       if (priceMap[stripped] !== undefined) return priceMap[stripped];
 
-      // Recipe lookup
+      // 2. Recipe lookup in recipes.js
       const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
       if (recipe) {
         let recipeTotal = 0;
@@ -212,8 +213,7 @@ export async function onRequest(context) {
     return new Response(JSON.stringify({
       farmId,
       isVipActive,
-      rawPricesData,
-      priceMap,
+      pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: deliveryList,
       bounties: activeBounties,
       chores: choresList
