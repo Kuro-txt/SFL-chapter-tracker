@@ -349,8 +349,6 @@ function recalculateAll() {
 
     var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
     var badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
-
-    // Safe escaped name for the history button click handler
     var escapedName = d.from.replace(/'/g, "\\'");
 
     return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
