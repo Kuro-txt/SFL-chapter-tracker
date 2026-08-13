@@ -41,6 +41,17 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+function getActiveBoostCount() {
+  var b1 = document.getElementById('boost1').checked ? 1 : 0;
+  var b2 = document.getElementById('boost2').checked ? 1 : 0;
+  var b3 = document.getElementById('boost3').checked ? 1 : 0;
+  return b1 + b2 + b3;
+}
+
+function getActiveVipBonus() {
+  return document.getElementById('vipToggle').checked ? 2 : 0;
+}
+
 async function userRegister() {
   var u = document.getElementById('authUsername').value.trim();
   var p = document.getElementById('authPassword').value;
@@ -184,7 +195,7 @@ async function loadTrackerData() {
   }
 }
 
-// NPC Delivery History Modal (With Items Asked & Ticks)
+// NPC Delivery History Modal (+1 Boosts factored in)
 function openNpcHistoryModal(npcName) {
   document.getElementById('activeNpcHistoryName').value = npcName;
   document.getElementById('npcHistoryTitle').textContent = '📜 HISTORY: ' + npcName.toUpperCase();
@@ -204,17 +215,21 @@ function renderNpcHistoryModalList() {
 
   var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   var records = [];
+  var boostCount = getActiveBoostCount();
+  var vipBonus = getActiveVipBonus();
 
   logs.forEach((log, logIdx) => {
     (log.deliveriesDone || []).forEach((past, itemIdx) => {
       var name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
       if (name === npcName.toLowerCase().trim()) {
+        var baseTix = past.tickets || 2;
+        var finalTix = baseTix + vipBonus + boostCount;
         records.push({
           logIdx: logIdx,
           itemIdx: itemIdx,
           date: log.date || 'Past Run',
           cost: past.cost || 0,
-          tickets: past.tickets || 2,
+          tickets: finalTix,
           items: past.items || [],
           checked: past.checked !== false,
           status: past.completed ? '✨ Done' : '⏳ Active'
@@ -295,7 +310,7 @@ function deleteNpcHistItem(logIdx, itemIdx) {
 }
 
 
-// --- COLUMN HISTORY MODAL (BOUNTIES / CHORES) ---
+// --- COLUMN HISTORY MODAL (BOUNTIES / CHORES) WITH BOOSTS ---
 function openColumnHistoryModal(type) {
   activeColumnType = type;
   document.getElementById('columnHistoryTitle').textContent = type === 'bounty' ? '📜 ALL BOUNTIES HISTORY' : '📜 ALL CHORES HISTORY';
@@ -314,17 +329,20 @@ function renderColumnHistoryModalList() {
 
   var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   var records = [];
+  var boostCount = getActiveBoostCount();
 
   logs.forEach((log, logIdx) => {
     var items = type === 'bounty' ? (log.bountiesDone || []) : (log.choresDone || []);
     items.forEach((item, itemIdx) => {
+      var baseTix = item.tickets || 1;
+      var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
       records.push({
         logIdx: logIdx,
         itemIdx: itemIdx,
         date: log.date || 'Past Run',
         name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
         cost: item.cost || 0,
-        tickets: item.tickets || 1,
+        tickets: finalTix,
         checked: item.checked !== false,
         status: item.completed ? '✨ Done' : '⏳ Active'
       });
@@ -400,7 +418,6 @@ function deleteColumnHistItem(logIdx, itemIdx) {
   }
 }
 
-
 async function saveProgressToCloudKV() {
   if (!currentUser) {
     alert('⚠️ Please LOGIN to your secure vault before saving to Cloud KV!');
@@ -431,7 +448,7 @@ async function saveProgressToCloudKV() {
     currentVaultData = resData.vaultData;
     globalData.cloudHistory = currentVaultData;
 
-    alert('☁️ MASTER VAULT SAVED (Active & Done Captured)!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    alert('☁️ MASTER VAULT SAVED (Weekly Chores & Bounties Synced)!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
@@ -484,11 +501,8 @@ function toggleHistoryModal() {
 function recalculateAll() {
   if (!globalData) return;
 
-  var vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
-  var boostCount = 
-    (document.getElementById('boost1').checked ? 1 : 0) +
-    (document.getElementById('boost2').checked ? 1 : 0) +
-    (document.getElementById('boost3').checked ? 1 : 0);
+  var vipBonus = getActiveVipBonus();
+  var boostCount = getActiveBoostCount();
 
   var totalTicketsAll = 0;
   var earnedTicketsAll = 0;
