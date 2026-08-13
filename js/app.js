@@ -242,6 +242,8 @@ function renderNpcHistoryModalList() {
       if (name === npcName.toLowerCase().trim()) {
         var baseTix = past.tickets || 2;
         var finalTix = baseTix + vipBonus + boostCount;
+        var defaultChecked = past.checked !== undefined ? past.checked : !!past.completed;
+
         records.push({
           logIdx: logIdx,
           itemIdx: itemIdx,
@@ -249,7 +251,7 @@ function renderNpcHistoryModalList() {
           cost: past.cost || 0,
           tickets: finalTix,
           items: past.items || [],
-          checked: past.checked !== false,
+          checked: defaultChecked,
           status: past.completed ? '✨ Done' : '⏳ Active'
         });
       }
@@ -292,7 +294,7 @@ function toggleNpcHistCheck(logIdx, itemIdx) {
   var logs = globalData.cloudHistory.logs;
   if (logs[logIdx] && logs[logIdx].deliveriesDone && logs[logIdx].deliveriesDone[itemIdx]) {
     var item = logs[logIdx].deliveriesDone[itemIdx];
-    item.checked = item.checked === false ? true : false;
+    item.checked = !item.checked;
     renderNpcHistoryModalList();
   }
 }
@@ -353,6 +355,8 @@ function renderColumnHistoryModalList() {
     items.forEach((item, itemIdx) => {
       var baseTix = item.tickets || 1;
       var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+      var defaultChecked = item.checked !== undefined ? item.checked : !!item.completed;
+
       records.push({
         logIdx: logIdx,
         itemIdx: itemIdx,
@@ -360,7 +364,7 @@ function renderColumnHistoryModalList() {
         name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
         cost: item.cost || 0,
         tickets: finalTix,
-        checked: item.checked !== false,
+        checked: defaultChecked,
         status: item.completed ? '✨ Done' : '⏳ Active'
       });
     });
@@ -398,7 +402,7 @@ function toggleColumnHistCheck(logIdx, itemIdx) {
   var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
     var item = logs[logIdx][targetArray][itemIdx];
-    item.checked = item.checked === false ? true : false;
+    item.checked = !item.checked;
     renderColumnHistoryModalList();
   }
 }
@@ -529,13 +533,14 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
-  // TODAY TOTAL: Calculated from latest log items (including ticked items in history)
+  // TODAY TOTAL: Calculated from latest log items (only checked items)
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   var latestLog = logs.length > 0 ? logs[0] : null;
 
   if (latestLog) {
     [...(latestLog.deliveriesDone || []), ...(latestLog.bountiesDone || []), ...(latestLog.choresDone || [])].forEach(item => {
-      if (item.checked !== false) {
+      var defaultChecked = item.checked !== undefined ? item.checked : !!item.completed;
+      if (defaultChecked) {
         var baseTix = item.tickets || (item.name && item.name.includes('Delivery') ? 2 : 1);
         var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         var cost = item.cost || 0;
@@ -545,7 +550,6 @@ function recalculateAll() {
       }
     });
   } else {
-    // Fallback if no logs yet
     globalData.deliveries.forEach(d => {
       var t = d.baseTickets + (d.isManual ? 0 : (vipBonus + boostCount));
       totalTicketsAll += t;
