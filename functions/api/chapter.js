@@ -154,6 +154,7 @@ export async function onRequest(context) {
     }
   }
 
+  // SAVE VAULT - DEFAULT UNCHECKED IF NOT COMPLETED
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -175,43 +176,54 @@ export async function onRequest(context) {
         let checkedMap = {};
         [...(oldTodayLog.deliveriesDone || []), ...(oldTodayLog.bountiesDone || []), ...(oldTodayLog.choresDone || [])].forEach(item => {
           let k = (item.name || item.npc || '').toLowerCase().trim();
-          if (k) checkedMap[k] = item.checked;
+          if (k && item.checked !== undefined) checkedMap[k] = item.checked;
         });
 
         const allDeliveries = (body.deliveries || []).map(d => {
           let k = d.from.toLowerCase().trim();
+          let defaultChk = d.completed ? true : false;
           return {
             name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
-            completed: d.completed, items: d.itemDetails || [], checked: checkedMap[k] !== undefined ? checkedMap[k] : true
+            completed: d.completed, items: d.itemDetails || [], checked: checkedMap[k] !== undefined ? checkedMap[k] : defaultChk
           };
         });
 
         const incomingBounties = (body.bounties || []).map(b => {
           let k = b.name.toLowerCase().trim();
+          let defaultChk = b.completed ? true : false;
           return {
             weekId: currentWeekId, name: b.name, cost: b.itemsCost || 0,
-            tickets: b.baseTickets || 0, completed: b.completed, checked: checkedMap[k] !== undefined ? checkedMap[k] : true
+            tickets: b.baseTickets || 0, completed: b.completed, checked: checkedMap[k] !== undefined ? checkedMap[k] : defaultChk
           };
         });
 
         const incomingChores = (body.chores || []).map(c => {
           let k = (c.task || c.npc || '').toLowerCase().trim();
+          let defaultChk = c.completed ? true : false;
           return {
             weekId: currentWeekId, name: c.task, npc: c.npc,
-            tickets: c.baseTickets || 0, completed: c.completed, checked: checkedMap[k] !== undefined ? checkedMap[k] : true
+            tickets: c.baseTickets || 0, completed: c.completed, checked: checkedMap[k] !== undefined ? checkedMap[k] : defaultChk
           };
         });
 
         let existingBounties = (existingData.bounties || []).filter(b => b.weekId === currentWeekId);
         incomingBounties.forEach(ib => {
-          if (!existingBounties.some(eb => eb.name.toLowerCase() === ib.name.toLowerCase())) {
+          let existingIdx = existingBounties.findIndex(eb => eb.name.toLowerCase() === ib.name.toLowerCase());
+          if (existingIdx !== -1) {
+            existingBounties[existingIdx].completed = ib.completed;
+            if (ib.completed) existingBounties[existingIdx].checked = true;
+          } else {
             existingBounties.push(ib);
           }
         });
 
         let existingChores = (existingData.chores || []).filter(c => c.weekId === currentWeekId);
         incomingChores.forEach(ic => {
-          if (!existingChores.some(ec => ec.name.toLowerCase() === ic.name.toLowerCase())) {
+          let existingIdx = existingChores.findIndex(ec => ec.name.toLowerCase() === ic.name.toLowerCase());
+          if (existingIdx !== -1) {
+            existingChores[existingIdx].completed = ic.completed;
+            if (ic.completed) existingChores[existingIdx].checked = true;
+          } else {
             existingChores.push(ic);
           }
         });
