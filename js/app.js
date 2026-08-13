@@ -175,6 +175,21 @@ function saveAndRecalculate() {
   recalculateAll();
 }
 
+// Retry wrapper helper: 3 tries, 8 seconds (8000ms) delay per try
+async function retryOperation(fn, retries = 3, delay = 8000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === retries - 1) {
+        throw err;
+      }
+      console.warn(`Attempt ${i + 1} failed. Retrying in ${delay / 1000} seconds...`, err);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 async function loadTrackerData() {
   if (isFetchCooldown) return;
 
@@ -219,10 +234,12 @@ async function loadTrackerData() {
     var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
     if (apiKey) queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
 
-    var response = await fetch(queryUrl);
-    var data = await response.json();
-
-    if (data.error) throw new Error(data.error);
+    var data = await retryOperation(async () => {
+      var response = await fetch(queryUrl);
+      var json = await response.json();
+      if (json.error) throw new Error(json.error);
+      return json;
+    }, 3, 8000);
 
     globalData = data;
     globalData.cloudHistory = currentVaultData;
@@ -243,7 +260,7 @@ async function loadTrackerData() {
     recalculateAll();
 
   } catch (err) {
-    alert('Error fetching data: ' + err.message);
+    alert('Error fetching data after 3 attempts: ' + err.message);
   }
 }
 
