@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sunflower Land Chapter Tracker</title>
   
-  <!-- Embedded CSS to guarantee zero MIME type loading errors on Cloudflare Pages -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -48,7 +47,7 @@
     .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     
     label { font-size: 12px; font-weight: 900; color: #5C4033; }
-    input[type="text"], input[type="password"], input[type="number"] {
+    input[type="text"], input[type="password"], input[type="number"], select {
       background-color: #FFF8DC;
       border: 2px solid #8B5A2B;
       color: #3E2723;
@@ -59,7 +58,7 @@
       outline: none;
       font-family: inherit;
     }
-    input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus { border-color: #D2691E; background-color: #fff; }
+    input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus { border-color: #D2691E; background-color: #fff; }
     
     .checkbox-label {
       background-color: #FFFACD;
@@ -133,7 +132,7 @@
       color: #5C4033;
     }
     .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
-
+    
     .card-item {
       background-color: #FFF8DC;
       border: 2px solid #C49A6C;
@@ -208,9 +207,7 @@
           <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
           
           <label for="apiKey">API KEY:</label>
-          <form style="display:inline; margin:0; padding:0;">
-            <input type="password" id="apiKey" placeholder="Optional Key" style="width: 130px;" />
-          </form>
+          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="new-password" style="width: 130px;" />
 
           <label class="checkbox-label">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
@@ -228,7 +225,6 @@
 
         <div class="input-group">
           <button onclick="loadTrackerData()" class="btn btn-amber">FETCH DATA</button>
-          <button onclick="openNpcModal('New NPC')" class="btn btn-purple">➕ ADD NPC / RUN</button>
           <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE KV</button>
           <button onclick="toggleHistoryModal()" class="btn btn-indigo">📜 LOGS</button>
         </div>
@@ -321,9 +317,9 @@
 
   <!-- NPC Delivery Edit & History Modal -->
   <div id="npcModal" class="modal">
-    <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-content" style="max-width: 500px;">
       <div class="modal-header">
-        <h3 id="npcModalTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📦 NPC DELIVERY PROFILE</h3>
+        <h3 id="npcModalTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📦 NPC PROFILE & HISTORY</h3>
         <button onclick="closeNpcModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div class="modal-body" style="gap: 14px;">
@@ -332,30 +328,40 @@
           <label style="display:block; margin-bottom:4px;">NPC NAME:</label>
           <input type="text" id="npcEditName" placeholder="e.g. Pumpkin' Pete" style="width: 100%;" />
         </div>
-        <div>
-          <label style="display:block; margin-bottom:4px;">BASE TICKETS YIELD:</label>
-          <input type="number" id="npcEditTickets" placeholder="e.g. 2" style="width: 100%;" />
-        </div>
-        <div>
-          <label style="display:block; margin-bottom:4px;">TOTAL SFL COST:</label>
-          <input type="number" step="0.01" id="npcEditCost" placeholder="e.g. 1.25" style="width: 100%;" />
+        <div style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label style="display:block; margin-bottom:4px;">BASE TICKETS:</label>
+            <input type="number" id="npcEditTickets" placeholder="e.g. 2" style="width: 100%;" />
+          </div>
+          <div style="flex: 1;">
+            <label style="display:block; margin-bottom:4px;">TOTAL SFL COST:</label>
+            <input type="number" step="0.01" id="npcEditCost" placeholder="e.g. 1.25" style="width: 100%;" />
+          </div>
         </div>
         <div>
           <label style="display:block; margin-bottom:4px;">STATUS:</label>
-          <select id="npcEditStatus" style="width: 100%; padding: 8px; background: #FFF8DC; border: 2px solid #8B5A2B; border-radius: 8px; font-family: inherit; font-weight: bold; color: #3E2723;">
+          <select id="npcEditStatus" style="width: 100%;">
             <option value="false">⏳ Active (Pending)</option>
             <option value="true">✨ Done (Completed)</option>
           </select>
         </div>
-        <div style="display:flex; gap:10px; margin-top: 6px;">
+        <div style="display:flex; gap:10px;">
           <button onclick="saveNpcChanges()" class="btn btn-emerald" style="flex: 1;">SAVE CHANGES</button>
           <button onclick="deleteNpcDelivery()" class="btn btn-amber" style="background:#C0392B; border-color:#922B21; box-shadow:0 4px 0px #922B21; color:#fff;">DELETE</button>
+        </div>
+
+        <hr style="border: 1px dashed #D2B48C; margin: 4px 0;" />
+
+        <div>
+          <h4 style="font-size: 12px; font-weight: 900; color: #8B5A2B; margin-bottom: 6px;">📜 PREVIOUS DELIVERIES FOR THIS NPC</h4>
+          <div id="npcHistoryContainer" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background: #FFFACD; padding: 8px; border: 2px solid #D2B48C; border-radius: 8px;">
+            <p style="font-size: 11px; color: #8C7853; font-weight: bold;">No past cloud logs found for this NPC.</p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Link to your JavaScript logic file -->
   <script src="./js/app.js"></script>
 </body>
 </html>
