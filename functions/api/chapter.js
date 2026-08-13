@@ -41,9 +41,11 @@ export async function onRequest(context) {
     // Check if player currently has active VIP
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // 1. FILTER & CALCULATE CHAPTER DELIVERIES
+    // 1. FILTER & CALCULATE DELIVERIES (Ignore coins / SFL)
     const rawDeliveries = farm.delivery?.orders || [];
-    const deliveryList = rawDeliveries.map(order => {
+    const deliveryList = [];
+
+    rawDeliveries.forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
 
@@ -65,7 +67,7 @@ export async function onRequest(context) {
         };
       }
 
-      // Map "Shiny Feather" inside delivery rewards directly to "Tickets"
+      // Map "Shiny Feather" inside delivery rewards directly to "Tickets", ignoring coins/SFL
       const rewardsFormatted = {};
       if (order.reward?.items) {
         Object.entries(order.reward.items).forEach(([item, qty]) => {
@@ -77,18 +79,19 @@ export async function onRequest(context) {
         });
       }
 
-      return {
-        id: order.id,
-        from: order.from,
-        items: order.items || {},
-        rewardCoins: order.reward?.coins || 0,
-        rewardSFL: order.reward?.sfl || 0,
-        rewardItems: rewardsFormatted,
-        ticketCalculation
-      };
+      // Only include if it is a Chapter NPC or yields item rewards
+      if (ticketCalculation || Object.keys(rewardsFormatted).length > 0) {
+        deliveryList.push({
+          id: order.id,
+          from: order.from,
+          items: order.items || {},
+          rewardItems: rewardsFormatted,
+          ticketCalculation
+        });
+      }
     });
 
-    // 2. FILTER BOUNTIES
+    // 2. FILTER BOUNTIES (Ignore coins / SFL)
     const activeBounties = (farm.bounties?.requests || []).map(b => {
       const rewardsFormatted = {};
       if (b.items) {
@@ -105,12 +108,11 @@ export async function onRequest(context) {
         id: b.id,
         name: b.name,
         level: b.level || null,
-        coins: b.coins || 0,
         rewards: rewardsFormatted
       };
-    });
+    }).filter(b => Object.keys(b.rewards).length > 0); // Hide coin-only bounties
 
-    // 3. FILTER CHORES
+    // 3. FILTER CHORES (Ignore coins / SFL)
     const rawChores = farm.choreBoard?.chores || {};
     const choresList = Object.entries(rawChores).map(([npc, details]) => {
       const rewardsFormatted = {};
