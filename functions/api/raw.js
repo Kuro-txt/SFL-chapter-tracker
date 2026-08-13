@@ -1,15 +1,11 @@
 export async function onRequest(context) {
   const { searchParams } = new URL(context.request.url);
-  const farmId = searchParams.get('farmId') || '1';
-
-  // Retrieve secret API key from Cloudflare Pages Environment Variables
+  const farmId = searchParams.get('farmId') || '8472883706403914';
   const apiKey = context.env.SFL_API_KEY || '';
 
-  // Full browser-like headers to prevent SFL API drops / 522 Host Errors
   const headers = {
-    'Accept': 'application/json, text/plain, */*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'application/json',
+    'User-Agent': 'CloudflarePagesWorker/1.0',
     'Referer': 'https://sunflower-land.com/',
     'Origin': 'https://sunflower-land.com'
   };
@@ -19,49 +15,54 @@ export async function onRequest(context) {
   }
 
   try {
-    // Add a 10-second timeout to prevent connection hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const sflResponse = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, {
-      method: 'GET',
-      headers: headers,
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
+    const sflResponse = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers });
     if (!sflResponse.ok) {
-      return new Response(
-        JSON.stringify({ 
-          error: `SFL API status ${sflResponse.status}`,
-          status: sflResponse.status 
-        }), 
-        { status: sflResponse.status, headers: { 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: `SFL API error: ${sflResponse.status}` }), { status: sflResponse.status });
     }
 
-    const rawData = await sflResponse.json();
+    const payload = await sflResponse.json();
+    const farm = payload.farm || {};
 
-    return new Response(JSON.stringify(rawData, null, 2), {
+    // 1. FILTER BOUNTIES
+    const activeBounties = (farm.bounties?.requests || []).map(b => ({
+      id: b.id,
+      name: b.name,
+      level: b.level || null,
+      coins: b.coins || 0,
+      rewards: b.items || {}
+    }));
+
+    // 2. FILTER CHORES
+    const rawChores = farm.choreBoard?.chores || {};
+    const choresList = Object.entries(rawChores).map(([npc, details]) => ({
+      npc: npc,
+      task: details.name,
+      reward: details.reward?.items || {},
+      progress: details.initialProgress || 0,
+      completed: !!details.completedAt
+    }));
+
+    // 3. FILTER NPCs (Deliveries + Friendship)
+    const rawNpcs = farm.npcs || {};
+    const npcList = Object.entries(rawNpcs).map(([name, data]) => ({
+      npc: name,
+      friendshipPoints: data.friendship?.points || 0,
+      deliveriesCompleted: data.deliveryCount || 0,
+      deliveriesSkipped: data.skippedCount || 0,
+      choresCompleted: data.choreCount || 0
+    }));
+
+    return new Response(JSON.stringify({
+      farmId,
+      bounties: activeBounties,
+      chores: choresList,
+      npcs: npcList
+    }, null, 2), {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
 
   } catch (err) {
-    const isAbort = err.name === 'AbortError';
-    return new Response(
-      JSON.stringify({ 
-        error: isAbort ? 'SFL API request timed out (10s)' : 'Failed to fetch SFL data', 
-        details: err.message 
-      }), 
-      { 
-        status: 504, 
-        headers: { 'Content-Type': 'application/json' } 
-      }
-    );
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 }
