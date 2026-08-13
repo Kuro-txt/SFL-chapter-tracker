@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SFL Chapter Tracker - Ticket & Cost Calculator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Production Tailwind CSS Stylesheet -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center" style="background-color: #0f172a; color: #f1f5f9;">
 
-  <div class="max-w-7xl w-full space-y-6">
+  <div class="max-w-7xl w-full space-y-6" style="max-width: 80rem; margin: 0 auto;">
     <!-- Header -->
     <header class="text-center space-y-2">
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
@@ -70,7 +71,7 @@
           </button>
           <button 
             onclick="toggleHistoryModal()" 
-            class="flex-1 lg:flex-initial bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer flex items-center justify-center gap-1"
           >
             📜 Logs
           </button>
@@ -163,13 +164,13 @@
   </div>
 
   <!-- Cloud KV Logs Modal -->
-  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="background-color: rgba(2, 6, 23, 0.85);">
     <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl">
       <div class="p-4 border-b border-slate-700 flex justify-between items-center">
         <h3 class="font-bold text-amber-400 flex items-center gap-2">
           <span>📜</span> Saved Cloud KV Logs
         </h3>
-        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold px-2 py-1 text-sm">✕ Close</button>
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold px-2 py-1 text-sm cursor-pointer">✕ Close</button>
       </div>
       <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 font-mono text-xs">
         <p class="text-slate-500">No logs loaded yet. Fetch data first.</p>
@@ -298,7 +299,7 @@
             <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-700 space-y-1">
               <div class="flex justify-between items-center text-slate-300">
                 <span class="font-bold text-amber-400">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
-                <span class="text-[10px] text-slate-500">${log.autoTrigger ? '🤖 Auto Cron (23 UTC)' : '👤 Manual Save'}</span>
+                <span class="text-[10px] text-slate-500">${log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save'}</span>
               </div>
               <div class="flex justify-between text-emerald-400">
                 <span>Tickets Saved: +${log.ticketsSaved || 0}</span>
