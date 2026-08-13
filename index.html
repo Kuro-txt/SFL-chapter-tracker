@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Ticket & SFL Price Calculator</title>
+  <title>SFL Chapter Tracker - Ticket & Cost Calculator</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
@@ -14,7 +14,7 @@
       <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Live SFL Market Price & Ticket Calculator</p>
+      <p class="text-slate-400 text-sm">Universal SFL Price & Ticket Yield Calculator</p>
     </header>
 
     <!-- Controls & Global Ticket Boost Selectors -->
@@ -106,12 +106,15 @@
     let globalData = null;
     let globalPriceMap = {};
 
-    function extractPricesRecursive(obj, map = {}) {
+    // Recursive Price Traverser for Nested Objects
+    function buildPriceMap(obj, map = {}) {
       if (!obj || typeof obj !== 'object') return map;
+
       if (Array.isArray(obj)) {
-        obj.forEach(item => extractPricesRecursive(item, map));
+        obj.forEach(item => buildPriceMap(item, map));
         return map;
       }
+
       for (const [key, val] of Object.entries(obj)) {
         const cleanKey = key.toLowerCase().trim();
         const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
@@ -120,20 +123,20 @@
           map[cleanKey] = val;
           map[strippedKey] = val;
         } else if (val && typeof val === 'object') {
-          const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
-          if (typeof priceVal === 'number') {
-            map[cleanKey] = priceVal;
-            map[strippedKey] = priceVal;
+          const p = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
+          if (typeof p === 'number') {
+            map[cleanKey] = p;
+            map[strippedKey] = p;
           }
           if (val.name && typeof val.name === 'string') {
-            const itemClean = val.name.toLowerCase().trim();
-            const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
-            if (typeof priceVal === 'number') {
-              map[itemClean] = priceVal;
-              map[itemStripped] = priceVal;
+            const kName = val.name.toLowerCase().trim();
+            const kNameStrip = kName.replace(/[^a-z0-9]/g, '');
+            if (typeof p === 'number') {
+              map[kName] = p;
+              map[kNameStrip] = p;
             }
           }
-          extractPricesRecursive(val, map);
+          buildPriceMap(val, map);
         }
       }
       return map;
@@ -149,7 +152,12 @@
       if (!itemName || !globalPriceMap) return 0;
       const clean = itemName.toLowerCase().trim();
       const stripped = clean.replace(/[^a-z0-9]/g, '');
-      return globalPriceMap[clean] ?? globalPriceMap[stripped] ?? 0;
+      
+      // Exact match or fallback lookup
+      if (globalPriceMap[clean] !== undefined) return globalPriceMap[clean];
+      if (globalPriceMap[stripped] !== undefined) return globalPriceMap[stripped];
+
+      return 0;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -197,14 +205,14 @@
 
         globalData = chapterRes;
 
-        const clientPrices = extractPricesRecursive(directPricesRes);
-        const serverPrices = chapterRes.priceMap || extractPricesRecursive(chapterRes.rawPricesData);
+        const clientMap = buildPriceMap(directPricesRes);
+        const serverMap = buildPriceMap(chapterRes.rawPricesData);
 
-        globalPriceMap = { ...serverPrices, ...clientPrices };
+        globalPriceMap = { ...serverMap, ...clientMap };
 
         const priceCount = Object.keys(globalPriceMap).length;
         if (priceCount > 0) {
-          priceBadge.textContent = `${priceCount} SFL Prices Loaded`;
+          priceBadge.textContent = `${priceCount} Price Keys Loaded`;
           priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono';
         } else {
           priceBadge.textContent = 'Price API Offline';
@@ -244,7 +252,7 @@
           const unitPrice = getUnitPrice(item);
           const lineCost = unitPrice * qty;
           totalSflCost += lineCost;
-          return `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span> ${unitPrice > 0 ? `<span class="text-[10px] text-slate-400">(${formatSFL(lineCost)} SFL)</span>` : ''}</div>`;
+          return `<div>• ${qty}x <span class="text-slate-100 font-bold">${item}</span> ${unitPrice > 0 ? `<span class="text-[10px] text-slate-400">(${formatSFL(lineCost)} SFL)</span>` : '<span class="text-[9px] text-rose-400/80">(Price Unlisted)</span>'}</div>`;
         }).join('');
 
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
