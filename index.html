@@ -106,7 +106,7 @@
     }
     .btn-pop-title:hover { color: #D2691E; }
 
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
     .stat-box {
       background-color: #FFF8DC;
       border: 3px solid #8B5A2B;
@@ -269,10 +269,10 @@
       </div>
     </div>
 
-    <!-- Summary Stats Bar -->
+    <!-- Summary Stats Bar (Pending Board & Total Vault Cost Removed) -->
     <div class="stats-grid">
       <div class="stat-box">
-        <div class="stat-title">CURRENTLY HAVE</div>
+        <div class="stat-title">TOTAL TICKETS</div>
         <div id="statTotalTickets" class="stat-val">0</div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>📦 Deliveries:</span><strong id="catDelivTickets" style="color:#8B4513;">0 Tix</strong></div>
@@ -285,33 +285,13 @@
         <div class="stat-title" style="color: #2E7D32;">DONE TODAY</div>
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0</div>
         <div class="stat-footer">
-          <span>Cost Done:</span> 
-          <span id="statEarnedCost" style="color:#2E7D32; font-weight:bold;">0.00 SFL</span>
-          <span id="statEarnedRatio" style="color:#2E7D32;">0.00 SFL / Ticket</span>
-        </div>
-      </div>
-
-      <div class="stat-box" style="border-color: #FFB300;">
-        <div class="stat-title" style="color: #B26A00;">PENDING BOARD</div>
-        <div id="statPendingTickets" class="stat-val" style="color: #E65100;">0</div>
-        <div class="stat-footer">
-          <span>Cost Pending:</span> 
-          <span id="statPendingCost" style="color:#E65100; font-weight:bold;">0.00 SFL</span>
-          <span id="statPendingRatio" style="color:#E65100;">0.00 SFL / Ticket</span>
-        </div>
-      </div>
-
-      <div class="stat-box" style="border-color: #795548;">
-        <div class="stat-title" style="color: #4E342E;">☁️ TOTAL VAULT COST</div>
-        <div id="statTotalCost" class="stat-val" style="color: #6D4C41;">0.00</div>
-        <div class="stat-footer">
-          <span>Ratio:</span> 
-          <span id="statTotalRatio" style="color:#4E342E; font-weight:bold;">0.00 SFL / Ticket</span>
+          <div style="display:flex; justify-content:space-between;"><span>Cost Done:</span><span id="statEarnedCost" style="color:#2E7D32; font-weight:bold;">0.00 SFL</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>Ratio:</span><span id="statEarnedRatio" style="color:#2E7D32; font-weight:bold;">0.00 SFL / Tix</span></div>
         </div>
       </div>
     </div>
 
-    <!-- 3-Column Grid with Toggle Down/Up Arrow Buttons -->
+    <!-- 3-Column Grid -->
     <div class="grid-3">
       <div id="cardDeliveries" class="column-card">
         <div class="column-title">
