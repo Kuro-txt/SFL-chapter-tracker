@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SFL Chapter Tracker</title>
   
-  <!-- Tailwind CSS -->
+  <!-- Standalone Tailwind CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 
   <style>
     body {
-      background-color: #0f172a; /* Slate 900 - Rich dark blue background */
+      background-color: #0f172a; /* Slate 900 */
+      color: #f8fafc;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #020617; }
     ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 2px; }
@@ -26,7 +26,7 @@
     
     <!-- Header -->
     <header class="text-center space-y-2 py-2">
-      <h1 class="text-2xl sm:text-3xl font-black text-amber-400 flex items-center justify-center gap-3 tracking-wider drop-shadow">
+      <h1 class="text-2xl sm:text-3xl font-black text-amber-400 flex items-center justify-center gap-3 tracking-wider">
         <span>🌻</span> SFL CHAPTER TRACKER
       </h1>
       <p class="text-slate-400 text-xs sm:text-sm font-bold tracking-wide">Live Market Price Engine & Cloud Storage</p>
@@ -179,7 +179,7 @@
   </div>
 
   <!-- Cloud KV Logs Modal -->
-  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950 bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-slate-800 border-2 border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl rounded-xl">
       <div class="p-4 border-b-2 border-slate-700 flex justify-between items-center">
         <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
@@ -194,16 +194,9 @@
   </div>
 
   <script>
-    // Style configurations embedded directly to eliminate import errors
-    const STYLES = {
-      badgeDone: "bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded",
-      badgeActive: "bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded",
-      badgeRecipe: "bg-slate-950 text-amber-300 border border-amber-500/40 px-1 text-[9px] rounded"
-    };
-
-    let globalData = null;
-    let currentDoneTicketsToday = 0;
-    let currentDoneCostToday = 0;
+    var globalData = null;
+    var currentDoneTicketsToday = 0;
+    var currentDoneCostToday = 0;
 
     function formatSFL(val) {
       if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
@@ -211,17 +204,17 @@
       return val.toFixed(2);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', function() {
       document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
       document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
       document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
 
-      const savedVip = localStorage.getItem('sfl_vip');
+      var savedVip = localStorage.getItem('sfl_vip');
       if (savedVip !== null) {
         document.getElementById('vipToggle').checked = savedVip === 'true';
       }
 
-      const savedFarmId = localStorage.getItem('sfl_farmId');
+      var savedFarmId = localStorage.getItem('sfl_farmId');
       if (savedFarmId) {
         document.getElementById('farmId').value = savedFarmId;
       }
@@ -238,24 +231,24 @@
     }
 
     async function loadTrackerData() {
-      const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+      var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
       localStorage.setItem('sfl_farmId', farmId);
 
-      const priceBadge = document.getElementById('priceBadge');
+      var priceBadge = document.getElementById('priceBadge');
       priceBadge.classList.remove('hidden');
       priceBadge.textContent = 'FETCHING...';
       priceBadge.className = 'text-[10px] px-2.5 py-1 bg-slate-950 text-amber-400 border border-amber-500/50 font-bold animate-pulse rounded-md';
 
       try {
-        const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`);
-        const data = await response.json();
+        var response = await fetch('/api/chapter?farmId=' + encodeURIComponent(farmId));
+        var data = await response.json();
 
         if (data.error) throw new Error(data.error);
 
         globalData = data;
 
         if (data.pricesLoadedCount > 0) {
-          priceBadge.textContent = `${data.pricesLoadedCount} PRICES LOADED`;
+          priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
           priceBadge.className = 'text-[10px] px-2.5 py-1 bg-slate-950 text-emerald-400 border border-emerald-500/50 font-bold rounded-md';
         } else {
           priceBadge.textContent = 'PRICE API OFFLINE';
@@ -280,10 +273,10 @@
         return;
       }
 
-      const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+      var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
 
       try {
-        const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`, {
+        var response = await fetch('/api/chapter?farmId=' + encodeURIComponent(farmId), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -295,10 +288,10 @@
           })
         });
 
-        const resData = await response.json();
+        var resData = await response.json();
         if (resData.error) throw new Error(resData.error);
 
-        alert(`☁️ SAVED TO CLOUD KV!\nSaved +${currentDoneTicketsToday} Tickets (${formatSFL(currentDoneCostToday)} SFL)`);
+        alert('☁️ SAVED TO CLOUD KV!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
         globalData.cloudHistory = resData.cloudData;
         recalculateAll();
       } catch (err) {
@@ -307,28 +300,28 @@
     }
 
     function toggleHistoryModal() {
-      const modal = document.getElementById('historyModal');
+      var modal = document.getElementById('historyModal');
       modal.classList.toggle('hidden');
 
       if (!modal.classList.contains('hidden') && globalData && globalData.cloudHistory) {
-        const logs = globalData.cloudHistory.logs || [];
-        const container = document.getElementById('modalLogList');
+        var logs = globalData.cloudHistory.logs || [];
+        var container = document.getElementById('modalLogList');
 
         if (logs.length === 0) {
           container.innerHTML = '<p class="text-slate-400">No saved KV logs found for this farm yet.</p>';
         } else {
-          container.innerHTML = logs.map((log, idx) => `
-            <div class="bg-slate-950 p-3 border border-slate-700 rounded-lg space-y-1">
-              <div class="flex justify-between items-center text-slate-300">
-                <span class="font-bold text-amber-400">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
-                <span class="text-[10px] text-slate-400">${log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save'}</span>
-              </div>
-              <div class="flex justify-between text-emerald-400 text-xs font-bold">
-                <span>Tickets: +${log.ticketsSaved || 0}</span>
-                <span>Cost: ${formatSFL(log.costSaved || 0)} SFL</span>
-              </div>
-            </div>
-          `).join('');
+          container.innerHTML = logs.map(function(log, idx) {
+            return '<div class="bg-slate-950 p-3 border border-slate-700 rounded-lg space-y-1">' +
+              '<div class="flex justify-between items-center text-slate-300">' +
+                '<span class="font-bold text-amber-400">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
+                '<span class="text-[10px] text-slate-400">' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
+              '</div>' +
+              '<div class="flex justify-between text-emerald-400 text-xs font-bold">' +
+                '<span>Tickets: +' + (log.ticketsSaved || 0) + '</span>' +
+                '<span>Cost: ' + formatSFL(log.costSaved || 0) + ' SFL</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
         }
       }
     }
@@ -336,27 +329,27 @@
     function recalculateAll() {
       if (!globalData) return;
 
-      const vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
-      const boostCount = 
+      var vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
+      var boostCount = 
         (document.getElementById('boost1').checked ? 1 : 0) +
         (document.getElementById('boost2').checked ? 1 : 0) +
         (document.getElementById('boost3').checked ? 1 : 0);
 
-      let totalTicketsAll = 0;
-      let earnedTicketsAll = 0;
-      let pendingTicketsAll = 0;
+      var totalTicketsAll = 0;
+      var earnedTicketsAll = 0;
+      var pendingTicketsAll = 0;
 
-      let totalSflCostAll = 0;
-      let earnedSflCostAll = 0;
-      let pendingSflCostAll = 0;
+      var totalSflCostAll = 0;
+      var earnedSflCostAll = 0;
+      var pendingSflCostAll = 0;
 
       // Render Deliveries
-      const deliveriesContainer = document.getElementById('deliveriesList');
+      var deliveriesContainer = document.getElementById('deliveriesList');
       document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
-      deliveriesContainer.innerHTML = globalData.deliveries.map(d => {
-        const deliveryAddon = vipBonus + boostCount;
-        const finalTickets = d.baseTickets + deliveryAddon;
-        let totalSflCost = d.itemsCost || 0;
+      deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
+        var deliveryAddon = vipBonus + boostCount;
+        var finalTickets = d.baseTickets + deliveryAddon;
+        var totalSflCost = d.itemsCost || 0;
 
         totalTicketsAll += finalTickets;
         totalSflCostAll += totalSflCost;
@@ -369,56 +362,47 @@
           pendingSflCostAll += totalSflCost;
         }
 
-        const itemRows = (d.itemDetails || []).map(detail => {
-          return `
-            <div class="flex justify-between items-center text-xs">
-              <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="${STYLES.badgeRecipe}">RECIPE</span>` : ''}</span>
-              <span class="text-[11px] text-slate-400">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : '0.00'}</span>
-            </div>
-          `;
+        var itemRows = (d.itemDetails || []).map(function(detail) {
+          return '<div class="flex justify-between items-center text-xs">' +
+            '<span>• ' + detail.qty + 'x <span class="text-slate-100 font-bold">' + detail.name + '</span> ' + (detail.isRecipe ? '<span class="bg-slate-950 text-amber-300 border border-amber-500/40 px-1 text-[9px] rounded">RECIPE</span>' : '') + '</span>' +
+            '<span class="text-[11px] text-slate-400">' + (detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00') + '</span>' +
+          '</div>';
         }).join('');
 
-        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        var badgeStyle = d.completed ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded' : 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded';
 
-        return `
-          <div class="bg-slate-950 p-3 border-2 ${d.completed ? 'border-emerald-500/40 opacity-75' : 'border-amber-500/40'} text-xs space-y-2.5 rounded-lg">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-amber-300 capitalize flex items-center gap-1.5">
-                ${d.from}
-                ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1 font-black rounded">CHAPTER</span>` : ''}
-              </span>
-              <div class="flex items-center gap-2">
-                <span class="${d.completed ? STYLES.badgeDone : STYLES.badgeActive}">
-                  ${d.completed ? 'DONE' : 'ACTIVE'}
-                </span>
-                <span class="text-[10px] text-slate-400">${d.id}</span>
-              </div>
-            </div>
-
-            <div class="text-slate-200 bg-slate-900 p-2 border border-slate-800 rounded space-y-1">
-              ${itemRows}
-            </div>
-
-            <div class="bg-slate-900 p-2 border border-slate-800 rounded space-y-1 text-xs">
-              <div class="flex justify-between items-center border-b border-slate-800 pb-1">
-                <span class="text-amber-300 font-bold">Yield: ${finalTickets} Tickets</span>
-                <span class="text-slate-300 font-bold">${formatSFL(totalSflCost)} SFL</span>
-              </div>
-              <div class="text-emerald-400 flex justify-between font-bold text-[11px]">
-                <span>Cost / Ticket:</span>
-                <span>${formatSFL(costPerTicket)} SFL</span>
-              </div>
-            </div>
-          </div>
-        `;
+        return '<div class="bg-slate-950 p-3 border-2 ' + (d.completed ? 'border-emerald-500/40 opacity-75' : 'border-amber-500/40') + ' text-xs space-y-2.5 rounded-lg">' +
+          '<div class="flex justify-between items-center">' +
+            '<span class="font-bold text-amber-300 capitalize flex items-center gap-1.5">' +
+              d.from +
+              (d.isChapterNpc ? ' <span class="text-[9px] bg-amber-500 text-slate-950 px-1 font-black rounded">CHAPTER</span>' : '') +
+            '</span>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="' + badgeStyle + '">' + (d.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+              '<span class="text-[10px] text-slate-400">' + d.id + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="text-slate-200 bg-slate-900 p-2 border border-slate-800 rounded space-y-1">' + itemRows + '</div>' +
+          '<div class="bg-slate-900 p-2 border border-slate-800 rounded space-y-1 text-xs">' +
+            '<div class="flex justify-between items-center border-b border-slate-800 pb-1">' +
+              '<span class="text-amber-300 font-bold">Yield: ' + finalTickets + ' Tickets</span>' +
+              '<span class="text-slate-300 font-bold">' + formatSFL(totalSflCost) + ' SFL</span>' +
+            '</div>' +
+            '<div class="text-emerald-400 flex justify-between font-bold text-[11px]">' +
+              '<span>Cost / Ticket:</span>' +
+              '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
       }).join('');
 
       // Render Bounties
-      const bountiesContainer = document.getElementById('bountiesList');
+      var bountiesContainer = document.getElementById('bountiesList');
       document.getElementById('bountiesCount').textContent = globalData.bounties.length;
-      bountiesContainer.innerHTML = globalData.bounties.map(b => {
-        const finalTickets = b.baseTickets + boostCount;
-        const totalSflCost = b.itemsCost || 0;
+      bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
+        var finalTickets = b.baseTickets + boostCount;
+        var totalSflCost = b.itemsCost || 0;
 
         totalTicketsAll += finalTickets;
         totalSflCostAll += totalSflCost;
@@ -431,36 +415,33 @@
           pendingSflCostAll += totalSflCost;
         }
 
-        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        var badgeStyle = b.completed ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded' : 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded';
 
-        return `
-          <div class="bg-slate-950 p-3 border-2 ${b.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-700'} text-xs space-y-2 rounded-lg">
-            <div class="flex justify-between items-center">
-              <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400">(Lvl ${b.level})</span>` : ''}</span>
-              <span class="${b.completed ? STYLES.badgeDone : STYLES.badgeActive}">
-                ${b.completed ? 'DONE' : 'ACTIVE'}
-              </span>
-            </div>
-            <div class="bg-slate-900 p-2 border border-slate-800 rounded space-y-1 text-xs">
-              <div class="flex justify-between text-slate-300">
-                <span>Yield: ${finalTickets} Tickets</span>
-                <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
-              </div>
-              <div class="flex justify-between text-emerald-400 font-bold text-[11px]">
-                <span>Cost / Ticket:</span>
-                <span>${formatSFL(costPerTicket)} SFL</span>
-              </div>
-            </div>
-          </div>
-        `;
+        return '<div class="bg-slate-950 p-3 border-2 ' + (b.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-700') + ' text-xs space-y-2 rounded-lg">' +
+          '<div class="flex justify-between items-center">' +
+            '<span class="font-bold text-slate-200 capitalize">' + b.name + (b.level ? ' <span class="text-[10px] text-amber-400">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
+            '<span class="' + badgeStyle + '">' + (b.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+          '</div>' +
+          '<div class="bg-slate-900 p-2 border border-slate-800 rounded space-y-1 text-xs">' +
+            '<div class="flex justify-between text-slate-300">' +
+              '<span>Yield: ' + finalTickets + ' Tickets</span>' +
+              '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
+            '</div>' +
+            '<div class="flex justify-between text-emerald-400 font-bold text-[11px]">' +
+              '<span>Cost / Ticket:</span>' +
+              '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
       }).join('');
 
       // Render Chores
-      const choresContainer = document.getElementById('choresList');
+      var choresContainer = document.getElementById('choresList');
       document.getElementById('choresCount').textContent = globalData.chores.length;
-      choresContainer.innerHTML = globalData.chores.map(c => {
-        const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
-        const hasProgress = c.requirement > 0;
+      choresContainer.innerHTML = globalData.chores.map(function(c) {
+        var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
+        var hasProgress = c.requirement > 0;
 
         totalTicketsAll += finalTickets;
 
@@ -470,24 +451,17 @@
           pendingTicketsAll += finalTickets;
         }
 
-        return `
-          <div class="bg-slate-950 p-3 border-2 ${c.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-700'} text-xs space-y-1.5 rounded-lg">
-            <div class="flex justify-between items-center">
-              <span class="font-bold capitalize text-slate-200">${c.npc}</span>
-              <span class="${c.completed ? STYLES.badgeDone : STYLES.badgeActive}">
-                ${c.completed ? 'DONE' : 'ACTIVE'}
-              </span>
-            </div>
-            <div class="text-slate-300">${c.task}</div>
-            ${hasProgress ? `<div class="text-[11px] text-slate-400">Progress: ${c.progress} / ${c.requirement}</div>` : ''}
-            ${c.baseTickets > 0 ? `
-              <div class="bg-slate-900 p-2 border border-slate-800 rounded flex justify-between items-center text-xs">
-                <span class="text-slate-400">Yield:</span>
-                <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
-              </div>
-            ` : ''}
-          </div>
-        `;
+        var badgeStyle = c.completed ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded' : 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded';
+
+        return '<div class="bg-slate-950 p-3 border-2 ' + (c.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-700') + ' text-xs space-y-1.5 rounded-lg">' +
+          '<div class="flex justify-between items-center">' +
+            '<span class="font-bold capitalize text-slate-200">' + c.npc + '</span>' +
+            '<span class="' + badgeStyle + '">' + (c.completed ? 'DONE' : 'ACTIVE') + '</span>' +
+          '</div>' +
+          '<div class="text-slate-300">' + c.task + '</div>' +
+          (hasProgress ? '<div class="text-[11px] text-slate-400">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
+          (c.baseTickets > 0 ? '<div class="bg-slate-900 p-2 border border-slate-800 rounded flex justify-between items-center text-xs"><span class="text-slate-400">Yield:</span><span class="text-emerald-400 font-bold">' + finalTickets + ' Tickets</span></div>' : '') +
+        '</div>';
       }).join('');
 
       currentDoneTicketsToday = earnedTicketsAll;
@@ -495,18 +469,18 @@
 
       // Update Today Summary Elements
       document.getElementById('statTotalTickets').textContent = totalTicketsAll;
-      document.getElementById('statTotalCost').textContent = `${formatSFL(totalSflCostAll)} SFL`;
+      document.getElementById('statTotalCost').textContent = formatSFL(totalSflCostAll) + ' SFL';
 
       document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
-      document.getElementById('statEarnedCost').textContent = `${formatSFL(earnedSflCostAll)} SFL`;
+      document.getElementById('statEarnedCost').textContent = formatSFL(earnedSflCostAll) + ' SFL';
 
       document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
-      document.getElementById('statPendingCost').textContent = `${formatSFL(pendingSflCostAll)} SFL`;
+      document.getElementById('statPendingCost').textContent = formatSFL(pendingSflCostAll) + ' SFL';
 
       // Update Cloud KV Saved Summary
-      const cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
+      var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
       document.getElementById('statSavedTickets').textContent = cloud.cumulativeTickets || 0;
-      document.getElementById('statSavedCost').textContent = `${formatSFL(cloud.cumulativeCost || 0)} SFL`;
+      document.getElementById('statSavedCost').textContent = formatSFL(cloud.cumulativeCost || 0) + ' SFL';
     }
   </script>
 </body>
