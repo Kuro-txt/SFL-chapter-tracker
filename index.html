@@ -20,7 +20,7 @@
       align-items: center;
       min-height: 100vh;
     }
-    .wrapper { max-width: 1200px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    .wrapper { max-width: 1400px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
     
     header {
       background: linear-gradient(to bottom, #8B5A2B, #5C4033);
@@ -121,7 +121,7 @@
     .stat-val { font-size: 22px; font-weight: 900; color: #D2691E; }
     .stat-footer { border-top: 2px dashed #D2B48C; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; font-size: 10px; font-weight: bold; color: #5C4033; }
 
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
     .column-card {
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
@@ -263,7 +263,6 @@
 
     <!-- 4-Box Key Performance Metrics Dashboard -->
     <div class="stats-grid">
-      <!-- 1. OVERALL TOTALS -->
       <div class="stat-box">
         <div class="stat-title">🏆 TOTAL TICKETS COLLECTED</div>
         <div id="statTotalTickets" class="stat-val">0</div>
@@ -273,7 +272,6 @@
         </div>
       </div>
 
-      <!-- 2. THIS WEEK'S PERFORMANCE -->
       <div class="stat-box" style="border-color: #FFB300;">
         <div class="stat-title" style="color: #B26A00;">📅 THIS WEEK'S PROGRESS</div>
         <div id="statWeekTickets" class="stat-val" style="color: #B26A00;">0 Tickets</div>
@@ -283,7 +281,6 @@
         </div>
       </div>
 
-      <!-- 3. TODAY'S PERFORMANCE -->
       <div class="stat-box" style="border-color: #4CAF50;">
         <div class="stat-title" style="color: #2E7D32;">✨ DONE TODAY</div>
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0 Tickets</div>
@@ -293,7 +290,6 @@
         </div>
       </div>
 
-      <!-- 4. CHAPTER END GOAL CALCULATOR -->
       <div class="stat-box" style="border-color: #8E44AD;">
         <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER END GOAL TARGET</div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -309,8 +305,8 @@
       </div>
     </div>
 
-    <!-- 3-Column Grid -->
-    <div class="grid-3">
+    <!-- 4-Column Grid -->
+    <div class="grid-4">
       <div id="cardDeliveries" class="column-card collapsed">
         <div class="column-title">
           <div style="display:flex; align-items:center; gap:6px;">
@@ -329,11 +325,22 @@
             <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT / HISTORY</button>
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT</button>
             <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
           </div>
         </div>
         <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
+      </div>
+
+      <div id="cardAnimalBounties" class="column-card collapsed">
+        <div class="column-title">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardAnimalBounties', this)" style="padding:2px 6px;">▲</button>
+            <button class="btn-pop-title" onclick="openCategorySummaryModal('animalBounty')">🐄 ANIMAL BOUNTIES</button>
+          </div>
+          <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+        </div>
+        <div id="animalBountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load animal bounties...</p></div>
       </div>
 
       <div id="cardChores" class="column-card collapsed">
@@ -343,7 +350,7 @@
             <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT / HISTORY</button>
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT</button>
             <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
           </div>
         </div>
@@ -361,11 +368,11 @@
       </div>
       <div class="modal-body" style="gap: 12px;">
         <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; font-weight:900; color:#8B4513;">CATEGORY TOTALS:</span>
+          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
           <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
-        <div id="categorySummaryBody" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-          <p style="color:#8C7853; font-size:12px; font-weight:bold;">Loading summary...</p>
+        <div id="categorySummaryBody" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">Loading summary...</p>
         </div>
       </div>
     </div>
