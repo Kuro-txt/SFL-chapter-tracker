@@ -148,6 +148,10 @@ export async function onRequest(context) {
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
+    const fulfilledDeliveryIds = Array.isArray(farm.delivery?.fulfilled) 
+      ? farm.delivery.fulfilled 
+      : Object.keys(farm.delivery?.fulfilled || {});
+
     rawDeliveries.forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
@@ -180,7 +184,14 @@ export async function onRequest(context) {
           });
         });
 
-        const isDeliveryCompleted = !!(order.completedAt || order.completed || order.fulfilledAt || order.status === 'completed');
+        const isDeliveryCompleted = !!(
+          order.completedAt || 
+          order.completed || 
+          order.fulfilledAt || 
+          order.status === 'completed' ||
+          fulfilledDeliveryIds.includes(order.id) ||
+          fulfilledDeliveryIds.includes(String(order.id))
+        );
 
         deliveryList.push({
           id: order.id,
@@ -197,6 +208,10 @@ export async function onRequest(context) {
 
     // 2. BOUNTIES
     const activeBounties = [];
+    const completedBountyIds = Array.isArray(farm.bounties?.completed)
+      ? farm.bounties.completed
+      : Object.keys(farm.bounties?.completed || {});
+
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
       if (b.items) {
@@ -209,7 +224,15 @@ export async function onRequest(context) {
 
       if (baseTicketCount > 0) {
         const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
-        const isBountyCompleted = !!(b.completedAt || b.completed || b.claimedAt || b.status === 'completed');
+
+        const isBountyCompleted = !!(
+          b.completedAt || 
+          b.completed || 
+          b.claimedAt || 
+          b.status === 'completed' ||
+          completedBountyIds.includes(b.id) ||
+          completedBountyIds.includes(String(b.id))
+        );
 
         activeBounties.push({
           id: b.id,
@@ -234,14 +257,22 @@ export async function onRequest(context) {
         });
       }
 
-      const isChoreCompleted = !!(details.completedAt || details.completed || details.isCompleted || (details.requirement && details.initialProgress >= details.requirement));
+      const isChoreCompleted = !!(
+        details.completedAt || 
+        details.completed || 
+        details.isCompleted || 
+        details.claimedAt ||
+        (details.requirement && details.initialProgress >= details.requirement) ||
+        (details.progress && details.requirement && details.progress >= details.requirement)
+      );
+
       const npcName = details.npc || details.from || key;
 
       return {
         npc: npcName,
-        task: details.name || details.description || 'Chore',
+        task: details.name || details.description || key,
         baseTickets: baseTicketCount,
-        progress: details.initialProgress || 0,
+        progress: details.initialProgress || details.progress || 0,
         completed: isChoreCompleted
       };
     });
