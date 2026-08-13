@@ -17,6 +17,16 @@ function setElemText(id, text) {
   if (el) el.textContent = text;
 }
 
+function toggleColumnCard(cardId, btn) {
+  var card = document.getElementById(cardId);
+  if (card) {
+    card.classList.toggle('collapsed');
+    if (btn) {
+      btn.textContent = card.classList.contains('collapsed') ? '➕' : '➖';
+    }
+  }
+}
+
 window.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
@@ -648,7 +658,7 @@ function recalculateAll() {
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // CURRENTLY HAVE: Calculation from Cloud Vault History
+  // CURRENTLY HAVE: Category breakdowns & unique sum from Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
