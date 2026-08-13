@@ -8,6 +8,7 @@ export const SFL_RECIPES = {
   "crab pot": { "feather": 5, "wool": 3, "coins": 250 },
   "mariner pot": { "feather": 10, "merino wool": 10, "coins": 500 },
   "rod": { "wood": 3, "stone": 1, "coins": 20 },
+  "axe": { "coins": 20 },
   "pickaxe": { "wood": 3, "coins": 16 },
   "stone pickaxe": { "wood": 3, "stone": 5, "coins": 16 },
   "iron pickaxe": { "wood": 3, "iron": 5, "coins": 64 },
