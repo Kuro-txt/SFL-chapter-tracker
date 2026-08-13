@@ -232,7 +232,7 @@ async function loadTrackerData() {
   }
 }
 
-// Category Summary Overview Popup Modal (ACTIVE ITEMS ORDERED ABOVE COMPLETED)
+// Category Summary Overview Popup Modal
 function openCategorySummaryModal(cat) {
   var modal = document.getElementById('categorySummaryModal');
   var titleEl = document.getElementById('categorySummaryTitle');
@@ -253,6 +253,7 @@ function openCategorySummaryModal(cat) {
       var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       var finalTickets = d.baseTickets + deliveryAddon;
       var itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
+      var ratio = finalTickets > 0 ? formatSFL(d.itemsCost / finalTickets) : "0.00";
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; font-weight:900;">
           <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
@@ -260,8 +261,8 @@ function openCategorySummaryModal(cat) {
         </div>
         <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
         <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
-          <span>Yield: ${finalTickets} Tickets</span>
-          <span>${formatSFL(d.itemsCost)} SFL (${formatSFL(finalTickets > 0 ? d.itemsCost / finalTickets : 0)} SFL/Tix)</span>
+          <span>Yield: ${finalTickets} Tickets (${ratio} SFL/Tix)</span>
+          <span>${formatSFL(d.itemsCost)} SFL</span>
         </div>
       </div>`;
     }).join('');
@@ -270,10 +271,11 @@ function openCategorySummaryModal(cat) {
     var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedBounties.map(b => {
       var finalTickets = b.baseTickets + boostCount;
+      var ratio = finalTickets > 0 ? formatSFL(b.itemsCost / finalTickets) : "0.00";
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
-          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
+          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL (${ratio} SFL/Tix)</span>
         </div>
         <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
@@ -651,17 +653,15 @@ function recalculateAll() {
 
   var totalTicketsAll = 0;
   var earnedTicketsAll = 0;
-  var pendingTicketsAll = 0;
 
   var totalSflCostAll = 0;
   var earnedSflCostAll = 0;
-  var pendingSflCostAll = 0;
 
   var delivCatTickets = 0;
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // CURRENTLY HAVE: Category breakdowns & unique sum from Cloud Vault History
+  // TOTAL TICKETS: Category breakdowns & sum from Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
@@ -719,9 +719,6 @@ function recalculateAll() {
       if (d.completed) {
         earnedTicketsAll += finalTickets;
         earnedSflCostAll += totalSflCost;
-      } else {
-        pendingTicketsAll += finalTickets;
-        pendingSflCostAll += totalSflCost;
       }
 
       var itemRows = (d.itemDetails || []).map(function(detail) {
@@ -748,7 +745,7 @@ function recalculateAll() {
             '<span style="color:#3E2723; font-weight:900;">' + formatSFL(totalSflCost) + ' SFL</span>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
-            '<span>Cost / Ticket:</span>' +
+            '<span>SFL / Ticket Ratio:</span>' +
             '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
           '</div>' +
         '</div>' +
@@ -767,9 +764,6 @@ function recalculateAll() {
       if (b.completed) {
         earnedTicketsAll += finalTickets;
         earnedSflCostAll += totalSflCost;
-      } else {
-        pendingTicketsAll += finalTickets;
-        pendingSflCostAll += totalSflCost;
       }
 
       var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
@@ -786,7 +780,7 @@ function recalculateAll() {
             '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
-            '<span>Cost / Ticket:</span>' +
+            '<span>SFL / Ticket Ratio:</span>' +
             '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
           '</div>' +
         '</div>' +
@@ -804,8 +798,6 @@ function recalculateAll() {
 
       if (c.completed) {
         earnedTicketsAll += finalTickets;
-      } else {
-        pendingTicketsAll += finalTickets;
       }
 
       var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
@@ -826,21 +818,8 @@ function recalculateAll() {
   currentDoneCostToday = earnedSflCostAll;
 
   setElemText('statTotalTickets', totalTicketsAll);
-  setElemText('statTotalCost', formatSFL(totalSflCostAll) + ' SFL');
-  setElemText('statTotalRatio', (totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00") + ' SFL / Ticket');
 
   setElemText('statEarnedTickets', earnedTicketsAll);
   setElemText('statEarnedCost', formatSFL(earnedSflCostAll) + ' SFL');
-  setElemText('statEarnedRatio', (earnedTicketsAll > 0 ? formatSFL(earnedSflCostAll / earnedTicketsAll) : "0.00") + ' SFL / Ticket');
-
-  setElemText('statPendingTickets', pendingTicketsAll);
-  setElemText('statPendingCost', formatSFL(pendingSflCostAll) + ' SFL');
-  setElemText('statPendingRatio', (pendingTicketsAll > 0 ? formatSFL(pendingSflCostAll / pendingTicketsAll) : "0.00") + ' SFL / Ticket');
-
-  var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
-  var cloudTickets = cloud.cumulativeTickets || 0;
-  var cloudCost = cloud.cumulativeCost || 0;
-  setElemText('statSavedTickets', cloudTickets);
-  setElemText('statSavedCost', formatSFL(cloudCost) + ' SFL');
-  setElemText('statSavedRatio', (cloudTickets > 0 ? formatSFL(cloudCost / cloudTickets) : "0.00") + ' SFL / Ticket');
+  setElemText('statEarnedRatio', (earnedTicketsAll > 0 ? formatSFL(earnedSflCostAll / earnedTicketsAll) : "0.00") + ' SFL / Tix');
 }
