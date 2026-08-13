@@ -79,7 +79,7 @@ function getDirectMarketPrice(name, priceMap) {
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const action = url.searchParams.get('action'); // 'register', 'login', or default data fetch
+  const action = url.searchParams.get('action');
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
@@ -90,26 +90,25 @@ export async function onRequest(context) {
       const username = (body.username || '').toLowerCase().trim();
       const password = body.password || '';
 
-      if (!username || !password) {
-        return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
-      }
+      if (!username || !password) return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
 
       if (env && env.TRACKER_KV) {
         const userKey = `user_${username}_auth`;
         const existing = await env.TRACKER_KV.get(userKey);
-        if (existing) {
-          return new Response(JSON.stringify({ error: 'Username already taken.' }), { status: 400 });
-        }
+        if (existing) return new Response(JSON.stringify({ error: 'Username already taken.' }), { status: 400 });
 
         const passwordHash = await hashPassword(password);
         await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
+        
+        // Initialize single master vault pair for this user
+        const vaultKey = `user_${username}_vault`;
+        await env.TRACKER_KV.put(vaultKey, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] }));
 
         return new Response(JSON.stringify({ success: true, username }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
-      return new Response(JSON.stringify({ error: 'KV Database binding missing.' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'KV Database missing.' }), { status: 500 });
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
@@ -122,52 +121,41 @@ export async function onRequest(context) {
       const username = (body.username || '').toLowerCase().trim();
       const password = body.password || '';
 
-      if (!username || !password) {
-        return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
-      }
+      if (!username || !password) return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
 
       if (env && env.TRACKER_KV) {
         const userKey = `user_${username}_auth`;
         const userDataStr = await env.TRACKER_KV.get(userKey);
-        if (!userDataStr) {
-          return new Response(JSON.stringify({ error: 'Account not found.' }), { status: 401 });
-        }
+        if (!userDataStr) return new Response(JSON.stringify({ error: 'Account not found.' }), { status: 401 });
 
         const userData = JSON.parse(userDataStr);
         const inputHash = await hashPassword(password);
+        if (userData.passwordHash !== inputHash) return new Response(JSON.stringify({ error: 'Incorrect password.' }), { status: 401 });
 
-        if (userData.passwordHash !== inputHash) {
-          return new Response(JSON.stringify({ error: 'Incorrect password.' }), { status: 401 });
-        }
-
-        // Fetch user's private vault data
+        // Retrieve the single master KV pair
         const vaultKey = `user_${username}_vault`;
-        let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, checklist: {} };
+        let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
         return new Response(JSON.stringify({ success: true, username, vaultData }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
-      return new Response(JSON.stringify({ error: 'KV Database binding missing.' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'KV Database missing.' }), { status: 500 });
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
   }
 
-  // 3. SAVE PRIVATE VAULT DATA (POST)
+  // 3. SAVE TO SINGLE MASTER VAULT PAIR (POST)
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
       const username = (body.username || '').toLowerCase().trim();
-
-      if (!username) {
-        return new Response(JSON.stringify({ error: 'Not logged in.' }), { status: 401 });
-      }
+      if (!username) return new Response(JSON.stringify({ error: 'Not logged in.' }), { status: 401 });
 
       if (env && env.TRACKER_KV) {
         const vaultKey = `user_${username}_vault`;
-        let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, checklist: {} };
+        let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
         const todayDate = new Date().toISOString().split('T')[0];
         const completedDeliveries = (body.deliveries || []).filter(d => d.completed).map(d => ({
@@ -204,13 +192,16 @@ export async function onRequest(context) {
 
         existingData.cumulativeTickets += newTickets;
         existingData.cumulativeCost += newCost;
-        if (body.checklist) existingData.checklist = body.checklist;
+
+        // Save complete list state into the single KV pair
+        existingData.deliveries = body.deliveries || [];
+        existingData.bounties = body.bounties || [];
+        existingData.chores = body.chores || [];
 
         await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
 
         return new Response(JSON.stringify({ success: true, vaultData: existingData }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
     } catch (err) {
@@ -236,7 +227,7 @@ export async function onRequest(context) {
 
     if (!sflResponse || !sflResponse.ok) {
       const status = sflResponse?.status || 500;
-      if (status === 401) throw new Error('SFL API returned 401 Unauthorized. Check your API Key.');
+      if (status === 401) throw new Error('SFL API returned 401 Unauthorized.');
       throw new Error(`SFL API error (${status}). Check Farm ID.`);
     }
 
@@ -334,8 +325,7 @@ export async function onRequest(context) {
       pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: deliveryList, bounties: activeBounties, chores: choresList
     }, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
 
   } catch (err) {
