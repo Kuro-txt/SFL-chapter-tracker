@@ -253,7 +253,6 @@ function openCategorySummaryModal(cat) {
       var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       var finalTickets = d.baseTickets + deliveryAddon;
       var itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
-      var ratio = finalTickets > 0 ? formatSFL(d.itemsCost / finalTickets) : "0.00";
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; font-weight:900;">
           <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
@@ -261,8 +260,8 @@ function openCategorySummaryModal(cat) {
         </div>
         <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
         <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
-          <span>Yield: ${finalTickets} Tickets (${ratio} SFL/Tix)</span>
-          <span>${formatSFL(d.itemsCost)} SFL</span>
+          <span>Yield: ${finalTickets} Tickets</span>
+          <span>${formatSFL(d.itemsCost)} SFL (${formatSFL(finalTickets > 0 ? d.itemsCost / finalTickets : 0)} SFL/Ticket)</span>
         </div>
       </div>`;
     }).join('');
@@ -271,11 +270,10 @@ function openCategorySummaryModal(cat) {
     var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedBounties.map(b => {
       var finalTickets = b.baseTickets + boostCount;
-      var ratio = finalTickets > 0 ? formatSFL(b.itemsCost / finalTickets) : "0.00";
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
-          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL (${ratio} SFL/Tix)</span>
+          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
         </div>
         <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
@@ -368,7 +366,7 @@ function renderNpcHistoryModalList() {
             '<span style="font-weight:bold; color:#8B4513;">📅 ' + r.date + ' (' + r.status + ')</span>' +
           '</label>' +
           '<div style="display:flex; align-items:center; gap:8px;">' +
-            '<span style="color:#2E7D32; font-weight:bold;">+' + r.tickets + ' Tix (' + formatSFL(r.cost) + ' SFL)</span>' +
+            '<span style="color:#2E7D32; font-weight:bold;">+' + r.tickets + ' Tickets (' + formatSFL(r.cost) + ' SFL)</span>' +
             '<button onclick="deleteNpcHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
           '</div>' +
         '</div>' +
@@ -479,7 +477,7 @@ function renderColumnHistoryModalList() {
         '</label>' +
         '<div style="display:flex; align-items:center; gap:6px;">' +
           (type === 'bounty' ? 
-            '<span>Tix:</span><input type="number" value="' + r.baseTickets + '" onchange="updateHistoryItemTickets(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:50px; padding:2px; font-size:10px;" />' : 
+            '<span>Tickets:</span><input type="number" value="' + r.baseTickets + '" onchange="updateHistoryItemTickets(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:50px; padding:2px; font-size:10px;" />' : 
             '<span>SFL:</span><input type="number" step="0.01" value="' + r.cost + '" onchange="updateHistoryItemCost(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:60px; padding:2px; font-size:10px;" />'
           ) +
           '<button onclick="deleteColumnHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
@@ -653,15 +651,17 @@ function recalculateAll() {
 
   var totalTicketsAll = 0;
   var earnedTicketsAll = 0;
+  var pendingTicketsAll = 0;
 
   var totalSflCostAll = 0;
   var earnedSflCostAll = 0;
+  var pendingSflCostAll = 0;
 
   var delivCatTickets = 0;
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // TOTAL TICKETS: Category breakdowns & sum from Vault History
+  // TOTAL TICKETS: Category breakdowns & sum from Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
@@ -698,9 +698,9 @@ function recalculateAll() {
 
   totalTicketsAll = delivCatTickets + bountyCatTickets + choreCatTickets;
 
-  setElemText('catDelivTickets', delivCatTickets + ' Tix');
-  setElemText('catBountyTickets', bountyCatTickets + ' Tix');
-  setElemText('catChoreTickets', choreCatTickets + ' Tix');
+  setElemText('catDelivTickets', delivCatTickets + ' Tickets');
+  setElemText('catBountyTickets', bountyCatTickets + ' Tickets');
+  setElemText('catChoreTickets', choreCatTickets + ' Tickets');
 
   // SORTING: Active items placed ABOVE completed items
   var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
@@ -719,6 +719,9 @@ function recalculateAll() {
       if (d.completed) {
         earnedTicketsAll += finalTickets;
         earnedSflCostAll += totalSflCost;
+      } else {
+        pendingTicketsAll += finalTickets;
+        pendingSflCostAll += totalSflCost;
       }
 
       var itemRows = (d.itemDetails || []).map(function(detail) {
@@ -745,7 +748,7 @@ function recalculateAll() {
             '<span style="color:#3E2723; font-weight:900;">' + formatSFL(totalSflCost) + ' SFL</span>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
-            '<span>SFL / Ticket Ratio:</span>' +
+            '<span>Cost / Ticket:</span>' +
             '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
           '</div>' +
         '</div>' +
@@ -764,6 +767,9 @@ function recalculateAll() {
       if (b.completed) {
         earnedTicketsAll += finalTickets;
         earnedSflCostAll += totalSflCost;
+      } else {
+        pendingTicketsAll += finalTickets;
+        pendingSflCostAll += totalSflCost;
       }
 
       var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
@@ -780,7 +786,7 @@ function recalculateAll() {
             '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
-            '<span>SFL / Ticket Ratio:</span>' +
+            '<span>Cost / Ticket:</span>' +
             '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
           '</div>' +
         '</div>' +
@@ -798,6 +804,8 @@ function recalculateAll() {
 
       if (c.completed) {
         earnedTicketsAll += finalTickets;
+      } else {
+        pendingTicketsAll += finalTickets;
       }
 
       var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
@@ -821,5 +829,8 @@ function recalculateAll() {
 
   setElemText('statEarnedTickets', earnedTicketsAll);
   setElemText('statEarnedCost', formatSFL(earnedSflCostAll) + ' SFL');
-  setElemText('statEarnedRatio', (earnedTicketsAll > 0 ? formatSFL(earnedSflCostAll / earnedTicketsAll) : "0.00") + ' SFL / Tix');
+  
+  // FLOWER / TICKET RATIO CALCULATION
+  var earnedRatioVal = earnedTicketsAll > 0 ? (earnedSflCostAll / earnedTicketsAll) : 0;
+  setElemText('statEarnedRatio', formatSFL(earnedRatioVal) + ' SFL / Ticket');
 }
