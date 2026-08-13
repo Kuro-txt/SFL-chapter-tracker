@@ -242,7 +242,7 @@ function renderNpcHistoryModalList() {
       if (name === npcName.toLowerCase().trim()) {
         var baseTix = past.tickets || 2;
         var finalTix = baseTix + vipBonus + boostCount;
-        var defaultChecked = past.checked !== undefined ? past.checked : !!past.completed;
+        var isChecked = past.checked !== undefined ? past.checked : !!past.completed;
 
         records.push({
           logIdx: logIdx,
@@ -251,7 +251,7 @@ function renderNpcHistoryModalList() {
           cost: past.cost || 0,
           tickets: finalTix,
           items: past.items || [],
-          checked: defaultChecked,
+          checked: isChecked,
           status: past.completed ? '✨ Done' : '⏳ Active'
         });
       }
@@ -294,7 +294,7 @@ function toggleNpcHistCheck(logIdx, itemIdx) {
   var logs = globalData.cloudHistory.logs;
   if (logs[logIdx] && logs[logIdx].deliveriesDone && logs[logIdx].deliveriesDone[itemIdx]) {
     var item = logs[logIdx].deliveriesDone[itemIdx];
-    item.checked = !item.checked;
+    item.checked = (item.checked === undefined ? !item.completed : !item.checked);
     renderNpcHistoryModalList();
     recalculateAll();
   }
@@ -356,7 +356,7 @@ function renderColumnHistoryModalList() {
     items.forEach((item, itemIdx) => {
       var baseTix = item.tickets || 1;
       var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-      var defaultChecked = item.checked !== undefined ? item.checked : !!item.completed;
+      var isChecked = item.checked !== undefined ? item.checked : !!item.completed;
 
       records.push({
         logIdx: logIdx,
@@ -365,7 +365,7 @@ function renderColumnHistoryModalList() {
         name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
         cost: item.cost || 0,
         tickets: finalTix,
-        checked: defaultChecked,
+        checked: isChecked,
         status: item.completed ? '✨ Done' : '⏳ Active'
       });
     });
@@ -403,7 +403,7 @@ function toggleColumnHistCheck(logIdx, itemIdx) {
   var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
   if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
     var item = logs[logIdx][targetArray][itemIdx];
-    item.checked = !item.checked;
+    item.checked = (item.checked === undefined ? !item.completed : !item.checked);
     renderColumnHistoryModalList();
     recalculateAll();
   }
@@ -437,6 +437,16 @@ function deleteColumnHistItem(logIdx, itemIdx) {
   if (logs[logIdx] && logs[logIdx][targetArray]) {
     logs[logIdx][targetArray].splice(itemIdx, 1);
     renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
+function deleteMasterLog(logIdx) {
+  if (!globalData || !globalData.cloudHistory || !globalData.cloudHistory.logs) return;
+  if (confirm('🗑️ Delete this snapshot log?')) {
+    globalData.cloudHistory.logs.splice(logIdx, 1);
+    toggleHistoryModal();
+    toggleHistoryModal();
     recalculateAll();
   }
 }
@@ -507,8 +517,9 @@ function toggleHistoryModal() {
         var logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
 
         return '<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
-          '<div style="display:flex; justify-content:space-between; color:#5C4033; font-size:11px; font-weight:900;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">' +
             '<span style="color:#8B4513;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
+            '<button onclick="deleteMasterLog(' + idx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
             '<span>Tickets: +' + logTickets + ' | Cost: ' + formatSFL(logCost) + ' SFL</span>' +
@@ -535,7 +546,7 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
-  // CURRENTLY HAVE: Total tickets accumulated across ALL checked items in Cloud Vault History
+  // CURRENTLY HAVE: Dynamic calculation of ticked items in Vault
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
@@ -552,7 +563,7 @@ function recalculateAll() {
     });
   });
 
-  // DONE TODAY: Strictly counts live completed items for today
+  // DONE TODAY: Strictly live API board
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
   deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
