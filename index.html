@@ -30,7 +30,7 @@
             class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-sm w-full sm:w-48 text-amber-300 focus:outline-none focus:border-amber-400 font-mono"
           />
           <label class="flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg cursor-pointer">
-            <input type="checkbox" id="vipToggle" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer">
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer">
             👑 VIP Active (+2)
           </label>
         </div>
@@ -40,13 +40,13 @@
           <span class="text-xs font-semibold text-amber-400 whitespace-nowrap">+1 Ticket Items Equipped:</span>
           <div class="flex items-center gap-3 text-xs font-mono">
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost1" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 1
+              <input type="checkbox" id="boost1" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 1
             </label>
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost2" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 2
+              <input type="checkbox" id="boost2" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 2
             </label>
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost3" onchange="recalculateAll()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 3
+              <input type="checkbox" id="boost3" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 3
             </label>
           </div>
         </div>
@@ -102,9 +102,38 @@
   <script>
     let globalData = null;
 
+    // Load saved localStorage configuration when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
+      document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
+      document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+      const savedVip = localStorage.getItem('sfl_vip');
+      if (savedVip !== null) {
+        document.getElementById('vipToggle').checked = savedVip === 'true';
+      }
+
+      const savedFarmId = localStorage.getItem('sfl_farmId');
+      if (savedFarmId) {
+        document.getElementById('farmId').value = savedFarmId;
+      }
+    });
+
+    // Save configuration to localStorage whenever a checkbox changes
+    function saveAndRecalculate() {
+      localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
+      localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
+      localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
+      localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
+      localStorage.setItem('sfl_farmId', document.getElementById('farmId').value.trim());
+
+      recalculateAll();
+    }
+
     async function loadTrackerData() {
       const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
-      
+      localStorage.setItem('sfl_farmId', farmId);
+
       try {
         const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`);
         const data = await response.json();
@@ -113,8 +142,11 @@
 
         globalData = data;
 
-        // Auto-check VIP if detected in account
-        document.getElementById('vipToggle').checked = data.isVipActive;
+        // Auto-detect VIP from API if user hasn't explicitly toggled VIP
+        if (localStorage.getItem('sfl_vip') === null) {
+          document.getElementById('vipToggle').checked = data.isVipActive;
+          localStorage.setItem('sfl_vip', data.isVipActive);
+        }
 
         recalculateAll();
 
