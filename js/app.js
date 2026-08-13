@@ -183,32 +183,37 @@ async function loadTrackerData() {
   }
 }
 
-// Open NPC History Modal
-function openNpcHistoryModal(npcName) {
-  var modal = document.getElementById('npcHistoryModal');
-  var titleEl = document.getElementById('npcHistoryTitle');
-  var bodyEl = document.getElementById('npcHistoryBody');
+// Universal Task History Modal (Deliveries, Bounties, Chores)
+function openTaskHistoryModal(taskType, targetName) {
+  var modal = document.getElementById('taskHistoryModal');
+  var titleEl = document.getElementById('taskHistoryTitle');
+  var bodyEl = document.getElementById('taskHistoryBody');
 
-  titleEl.textContent = '📜 HISTORY: ' + npcName.toUpperCase();
+  titleEl.textContent = '📜 HISTORY: ' + targetName.toUpperCase();
 
   var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   var matching = [];
 
   logs.forEach(log => {
-    (log.deliveriesDone || []).forEach(past => {
-      var name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
-      if (name === npcName.toLowerCase().trim()) {
+    var targetList = [];
+    if (taskType === 'delivery') targetList = log.deliveriesDone || [];
+    if (taskType === 'bounty') targetList = log.bountiesDone || [];
+    if (taskType === 'chore') targetList = log.choresDone || [];
+
+    targetList.forEach(item => {
+      var itemName = (typeof item === 'string' ? item : item.name || item.npc || '').toLowerCase().trim();
+      if (itemName === targetName.toLowerCase().trim()) {
         matching.push({
           date: log.date || 'Past Run',
-          cost: past.cost || 0,
-          tickets: past.tickets || 0
+          cost: item.cost || 0,
+          tickets: item.tickets || 0
         });
       }
     });
   });
 
   if (matching.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No previous history logs found for ' + npcName + '.</p>';
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history logs found for ' + targetName + '.</p>';
   } else {
     bodyEl.innerHTML = matching.map(m => {
       return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
@@ -221,8 +226,8 @@ function openNpcHistoryModal(npcName) {
   modal.classList.add('show');
 }
 
-function closeNpcHistoryModal() {
-  document.getElementById('npcHistoryModal').classList.remove('show');
+function closeTaskHistoryModal() {
+  document.getElementById('taskHistoryModal').classList.remove('show');
 }
 
 async function saveProgressToCloudKV() {
@@ -322,6 +327,7 @@ function recalculateAll() {
   var earnedSflCostAll = 0;
   var pendingSflCostAll = 0;
 
+  // Deliveries
   var deliveriesContainer = document.getElementById('deliveriesList');
   document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
   deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
@@ -358,7 +364,7 @@ function recalculateAll() {
           (d.isChapterNpc ? '<span style="font-size:9px; background:#FFB300; color:#3E2723; padding:1px 4px; font-weight:900; border-radius:4px;">CHAPTER</span>' : '') +
         '</span>' +
         '<div style="display:flex; align-items:center; gap:6px;">' +
-          '<button class="btn btn-sm btn-indigo" onclick="openNpcHistoryModal(\'' + escapedName + '\')">📜 HISTORY</button>' +
+          '<button class="btn btn-sm btn-indigo" onclick="openTaskHistoryModal(\'delivery\', \'' + escapedName + '\')">📜 HISTORY</button>' +
           '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
       '</div>' +
@@ -376,6 +382,7 @@ function recalculateAll() {
     '</div>';
   }).join('');
 
+  // Bounties
   var bountiesContainer = document.getElementById('bountiesList');
   document.getElementById('bountiesCount').textContent = globalData.bounties.length;
   bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
@@ -395,11 +402,15 @@ function recalculateAll() {
 
     var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
     var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
+    var escapedBountyName = b.name.replace(/'/g, "\\'");
 
     return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
       '<div style="display:flex; justify-content:space-between; align-items:center;">' +
         '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#B26A00;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
-        '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+        '<div style="display:flex; align-items:center; gap:6px;">' +
+          '<button class="btn btn-sm btn-indigo" onclick="openTaskHistoryModal(\'bounty\', \'' + escapedBountyName + '\')">📜 HISTORY</button>' +
+          '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+        '</div>' +
       '</div>' +
       '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
         '<div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">' +
@@ -414,6 +425,7 @@ function recalculateAll() {
     '</div>';
   }).join('');
 
+  // Chores
   var choresContainer = document.getElementById('choresList');
   document.getElementById('choresCount').textContent = globalData.chores.length;
   choresContainer.innerHTML = globalData.chores.map(function(c) {
@@ -429,11 +441,15 @@ function recalculateAll() {
     }
 
     var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
+    var escapedChoreName = (c.npc || c.task).replace(/'/g, "\\'");
 
     return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
       '<div style="display:flex; justify-content:space-between; align-items:center;">' +
         '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + c.npc + '</span>' +
-        '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+        '<div style="display:flex; align-items:center; gap:6px;">' +
+          '<button class="btn btn-sm btn-indigo" onclick="openTaskHistoryModal(\'chore\', \'' + escapedChoreName + '\')">📜 HISTORY</button>' +
+          '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
+        '</div>' +
       '</div>' +
       '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
       (hasProgress ? '<div style="font-size:11px; color:#8C7853; font-weight:bold;">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
