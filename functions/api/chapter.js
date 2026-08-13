@@ -122,10 +122,7 @@ export async function onRequest(context) {
         if (keyObj.name.endsWith("_vault")) {
           let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
           if (vaultData) {
-            // Ensure logs array exists
             if (!vaultData.logs) vaultData.logs = [];
-
-            // Check if a backup log for today already exists, if not create an automated daily snapshot
             const existingTodayLog = vaultData.logs.find(l => l.date === todayDate);
             if (!existingTodayLog) {
               vaultData.logs.unshift({
@@ -139,16 +136,12 @@ export async function onRequest(context) {
                 bountiesDone: vaultData.bounties || [],
                 choresDone: vaultData.chores || []
               });
-
-              // Save the updated vault back to KV
               await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
             }
             backedUpCount++;
           }
         }
       }
-
-      // Save a global system backup marker
       await env.TRACKER_KV.put(`system_last_cron_backup`, JSON.stringify({ timestamp: backupTimestamp, vaultsProcessed: backedUpCount }));
     }
 
@@ -246,11 +239,6 @@ export async function onRequest(context) {
 
         if (!existingData.weeks) existingData.weeks = {};
 
-        const allDeliveries = (body.deliveries || []).map(d => ({
-          name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
-          completed: d.completed, items: d.itemDetails || [], checked: d.completed
-        }));
-
         const incomingBounties = (body.bounties || []).map(b => ({
           weekId: currentWeekId, name: b.name, cost: b.itemsCost || 0,
           tickets: b.baseTickets || 0, completed: b.completed, checked: b.completed
@@ -267,30 +255,49 @@ export async function onRequest(context) {
           chores: incomingChores
         };
 
-        const newTickets = body.ticketsSaved || 0;
-        const newCost = body.costSaved || 0;
-
-        const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
-        if (existingTodayLogIndex !== -1) {
-          const oldLog = existingData.logs[existingTodayLogIndex];
-          existingData.cumulativeTickets -= (oldLog.ticketsSaved || 0);
-          existingData.cumulativeCost -= (oldLog.costSaved || 0);
-
-          existingData.logs[existingTodayLogIndex] = {
-            date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
-            ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
-          };
-        } else {
-          existingData.logs.unshift({
-            date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
-            ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
+        // If logs array is explicitly passed (e.g. log deletion/sync), use it and recalculate totals
+        if (body.logs && Array.isArray(body.logs)) {
+          existingData.logs = body.logs;
+          let totalTix = 0;
+          let totalCost = 0;
+          existingData.logs.forEach(l => {
+            totalTix += (l.ticketsSaved || 0);
+            totalCost += (l.costSaved || 0);
           });
+          existingData.cumulativeTickets = totalTix;
+          existingData.cumulativeCost = totalCost;
+        } else {
+          const allDeliveries = (body.deliveries || []).map(d => ({
+            name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
+            completed: d.completed, items: d.itemDetails || [], checked: d.completed
+          }));
+
+          const newTickets = body.ticketsSaved || 0;
+          const newCost = body.costSaved || 0;
+
+          const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
+          if (existingTodayLogIndex !== -1) {
+            const oldLog = existingData.logs[existingTodayLogIndex];
+            existingData.cumulativeTickets -= (oldLog.ticketsSaved || 0);
+            existingData.cumulativeCost -= (oldLog.costSaved || 0);
+
+            existingData.logs[existingTodayLogIndex] = {
+              date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
+              ticketsSaved: newTickets, costSaved: newCost,
+              deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
+            };
+          } else {
+            existingData.logs.unshift({
+              date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
+              ticketsSaved: newTickets, costSaved: newCost,
+              deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
+            });
+          }
+
+          existingData.cumulativeTickets += newTickets;
+          existingData.cumulativeCost += newCost;
         }
 
-        existingData.cumulativeTickets += newTickets;
-        existingData.cumulativeCost += newCost;
         existingData.deliveries = body.deliveries || [];
         existingData.bounties = incomingBounties;
         existingData.chores = incomingChores;
