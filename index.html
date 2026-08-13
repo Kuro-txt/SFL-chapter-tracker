@@ -93,20 +93,21 @@
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
     .btn-sm { padding: 4px 8px; font-size: 10px; box-shadow: 0 2px 0px #3E2723; }
 
-    .btn-pop {
+    .header-pop-btn {
       background: #FFF8DC;
       border: 2px solid #8B5A2B;
-      color: #8B4513;
+      color: #5C4033;
       font-weight: 900;
-      padding: 4px 8px;
-      border-radius: 6px;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 8px;
       cursor: pointer;
       font-family: inherit;
-      box-shadow: 0 2px 0px #5C4033;
+      box-shadow: 0 3px 0px #5C4033;
       transition: all 0.1s ease;
     }
-    .btn-pop:hover { background: #FFFACD; border-color: #D2691E; }
-    .btn-pop:active { transform: translateY(1px); box-shadow: none; }
+    .header-pop-btn:hover { background: #FFFACD; border-color: #D2691E; color: #8B4513; }
+    .header-pop-btn:active { transform: translateY(2px); box-shadow: 0 1px 0px #5C4033; }
 
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .stat-box {
@@ -306,7 +307,7 @@
     <div class="grid-3">
       <div class="column-card">
         <div class="column-title">
-          <span>📦 NPC DELIVERIES</span>
+          <button class="header-pop-btn" onclick="openColumnHistoryModal('delivery')">📦 NPC DELIVERIES</button>
           <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
         </div>
         <div id="deliveriesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load orders...</p></div>
@@ -314,7 +315,7 @@
 
       <div class="column-card">
         <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>📜 BOUNTIES</span>
+          <button class="header-pop-btn" onclick="openColumnHistoryModal('bounty')">📜 BOUNTIES</button>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT / HISTORY</button>
             <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -325,7 +326,7 @@
 
       <div class="column-card">
         <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>🧹 CHORES</span>
+          <button class="header-pop-btn" onclick="openColumnHistoryModal('chore')">🧹 CHORES</button>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT / HISTORY</button>
             <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
