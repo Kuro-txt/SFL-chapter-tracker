@@ -76,6 +76,17 @@ function getDirectMarketPrice(name, priceMap) {
   return 0;
 }
 
+// Helper to calculate Monday-anchored weeks
+function getMondayBasedWeekId(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay();
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  d.setUTCDate(diff);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -87,7 +98,7 @@ export async function onRequest(context) {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env && env.TRACKER_KV && username) {
       const vaultKey = `user_${username}_vault`;
-      let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
+      let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] };
       return new Response(JSON.stringify({ success: true, vaultData }), {
         status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
       });
@@ -112,7 +123,7 @@ export async function onRequest(context) {
         await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
         
         const vaultKey = `user_${username}_vault`;
-        await env.TRACKER_KV.put(vaultKey, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] }));
+        await env.TRACKER_KV.put(vaultKey, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] }));
 
         return new Response(JSON.stringify({ success: true, username }), {
           status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -142,7 +153,7 @@ export async function onRequest(context) {
         if (userData.passwordHash !== inputHash) return new Response(JSON.stringify({ error: 'Incorrect password.' }), { status: 401 });
 
         const vaultKey = `user_${username}_vault`;
-        let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+        let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {} };
 
         return new Response(JSON.stringify({ success: true, username, vaultData }), {
           status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -154,7 +165,7 @@ export async function onRequest(context) {
     }
   }
 
-  // SAVE VAULT - DEFAULT UNCHECKED IF NOT COMPLETED
+  // SAVE VAULT - WEEKLY ARCHIVE FOR CHORES & BOUNTIES, DAILY FOR DELIVERIES
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -163,70 +174,34 @@ export async function onRequest(context) {
 
       if (env && env.TRACKER_KV) {
         const vaultKey = `user_${username}_vault`;
-        let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+        let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {} };
 
         const todayDate = new Date().toISOString().split('T')[0];
-        
-        const now = new Date();
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
-        const weekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getDay() + 1) / 7);
-        const currentWeekId = `${now.getFullYear()}-W${weekNum}`;
+        const currentWeekId = getMondayBasedWeekId();
 
-        let oldTodayLog = (existingData.logs || []).find(l => l.date === todayDate) || { deliveriesDone: [], bountiesDone: [], choresDone: [] };
-        let checkedMap = {};
-        [...(oldTodayLog.deliveriesDone || []), ...(oldTodayLog.bountiesDone || []), ...(oldTodayLog.choresDone || [])].forEach(item => {
-          let k = (item.name || item.npc || '').toLowerCase().trim();
-          if (k && item.checked !== undefined) checkedMap[k] = item.checked;
-        });
+        if (!existingData.weeks) existingData.weeks = {};
 
-        const allDeliveries = (body.deliveries || []).map(d => {
-          let k = d.from.toLowerCase().trim();
-          let defaultChk = d.completed ? true : false;
-          return {
-            name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
-            completed: d.completed, items: d.itemDetails || [], checked: checkedMap[k] !== undefined ? checkedMap[k] : defaultChk
-          };
-        });
+        const allDeliveries = (body.deliveries || []).map(d => ({
+          name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
+          completed: d.completed, items: d.itemDetails || [], checked: d.completed
+        }));
 
-        const incomingBounties = (body.bounties || []).map(b => {
-          let k = b.name.toLowerCase().trim();
-          let defaultChk = b.completed ? true : false;
-          return {
-            weekId: currentWeekId, name: b.name, cost: b.itemsCost || 0,
-            tickets: b.baseTickets || 0, completed: b.completed, checked: checkedMap[k] !== undefined ? checkedMap[k] : defaultChk
-          };
-        });
+        const incomingBounties = (body.bounties || []).map(b => ({
+          name: b.name, cost: b.itemsCost || 0,
+          tickets: b.baseTickets || 0, completed: b.completed, checked: b.completed
+        }));
 
-        const incomingChores = (body.chores || []).map(c => {
-          let k = (c.task || c.npc || '').toLowerCase().trim();
-          let defaultChk = c.completed ? true : false;
-          return {
-            weekId: currentWeekId, name: c.task, npc: c.npc,
-            tickets: c.baseTickets || 0, completed: c.completed, checked: checkedMap[k] !== undefined ? checkedMap[k] : defaultChk
-          };
-        });
+        const incomingChores = (body.chores || []).map(c => ({
+          name: c.task, npc: c.npc,
+          tickets: c.baseTickets || 0, completed: c.completed, checked: c.completed
+        }));
 
-        let existingBounties = (existingData.bounties || []).filter(b => b.weekId === currentWeekId);
-        incomingBounties.forEach(ib => {
-          let existingIdx = existingBounties.findIndex(eb => eb.name.toLowerCase() === ib.name.toLowerCase());
-          if (existingIdx !== -1) {
-            existingBounties[existingIdx].completed = ib.completed;
-            if (ib.completed) existingBounties[existingIdx].checked = true;
-          } else {
-            existingBounties.push(ib);
-          }
-        });
-
-        let existingChores = (existingData.chores || []).filter(c => c.weekId === currentWeekId);
-        incomingChores.forEach(ic => {
-          let existingIdx = existingChores.findIndex(ec => ec.name.toLowerCase() === ic.name.toLowerCase());
-          if (existingIdx !== -1) {
-            existingChores[existingIdx].completed = ic.completed;
-            if (ic.completed) existingChores[existingIdx].checked = true;
-          } else {
-            existingChores.push(ic);
-          }
-        });
+        // Store week archive
+        existingData.weeks[currentWeekId] = {
+          weekId: currentWeekId,
+          bounties: incomingBounties,
+          chores: incomingChores
+        };
 
         const newTickets = body.ticketsSaved || 0;
         const newCost = body.costSaved || 0;
@@ -240,21 +215,21 @@ export async function onRequest(context) {
           existingData.logs[existingTodayLogIndex] = {
             date: todayDate, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: allDeliveries, bountiesDone: existingBounties, choresDone: existingChores
+            deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
           };
         } else {
           existingData.logs.unshift({
             date: todayDate, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
-            deliveriesDone: allDeliveries, bountiesDone: existingBounties, choresDone: existingChores
+            deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
           });
         }
 
         existingData.cumulativeTickets += newTickets;
         existingData.cumulativeCost += newCost;
         existingData.deliveries = body.deliveries || [];
-        existingData.bounties = existingBounties;
-        existingData.chores = existingChores;
+        existingData.bounties = incomingBounties;
+        existingData.chores = incomingChores;
 
         await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
 
