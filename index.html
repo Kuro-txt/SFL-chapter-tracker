@@ -302,17 +302,23 @@
       </div>
 
       <div class="column-card">
-        <div class="column-title">
+        <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>📜 BOUNTIES</span>
-          <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 HISTORY</button>
+            <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+          </div>
         </div>
         <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
       </div>
 
       <div class="column-card">
-        <div class="column-title">
+        <div class="column-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>🧹 CHORES</span>
-          <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 HISTORY</button>
+            <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+          </div>
         </div>
         <div id="choresList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load chores...</p></div>
       </div>
@@ -332,14 +338,27 @@
     </div>
   </div>
 
-  <!-- Task/NPC Specific History Modal -->
-  <div id="taskHistoryModal" class="modal">
+  <!-- Column History Modal (Bounties / Chores) -->
+  <div id="columnHistoryModal" class="modal">
     <div class="modal-content" style="max-width: 450px;">
       <div class="modal-header">
-        <h3 id="taskHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 TASK HISTORY</h3>
-        <button onclick="closeTaskHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 HISTORY</h3>
+        <button onclick="closeColumnHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
-      <div id="taskHistoryBody" class="modal-body" style="gap: 8px;">
+      <div id="columnHistoryBody" class="modal-body" style="gap: 8px;">
+        <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- NPC Specific History Modal -->
+  <div id="npcHistoryModal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3 id="npcHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 NPC DELIVERY HISTORY</h3>
+        <button onclick="closeNpcHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+      </div>
+      <div id="npcHistoryBody" class="modal-body" style="gap: 8px;">
         <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
       </div>
     </div>
