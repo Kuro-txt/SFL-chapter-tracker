@@ -1,645 +1,349 @@
-var globalData = null;
-var currentUser = null;
-var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
-var currentDoneTicketsToday = 0;
-var currentDoneCostToday = 0;
-var isFetchCooldown = false;
-var activeColumnType = null; // 'bounty' or 'chore'
+import { SFL_RECIPES } from '../../recipes.js';
 
-function formatSFL(val) {
-  if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
-  if (val < 0.01) return val.toFixed(4);
-  return val.toFixed(2);
+const CHAPTER_NPC_TICKETS = {
+  "pumpkin' pete": 1,
+  "bert": 2,
+  "finley": 2,
+  "raven": 4,
+  "miranda": 2,
+  "finn": 5,
+  "pharaoh": 6,
+  "cornwell": 3,
+  "timmy": 5,
+  "tywin": 10,
+  "jester": 4
+};
+
+async function hashPassword(password) {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-window.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
-  document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
-  document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
-
-  var savedVip = localStorage.getItem('sfl_vip');
-  if (savedVip !== null) {
-    document.getElementById('vipToggle').checked = savedVip === 'true';
+function extractPricesRecursive(obj, map = {}) {
+  if (!obj || typeof obj !== 'object') return map;
+  if (Array.isArray(obj)) {
+    obj.forEach(item => extractPricesRecursive(item, map));
+    return map;
   }
 
-  var savedFarmId = localStorage.getItem('sfl_farmId');
-  if (savedFarmId) {
-    document.getElementById('farmId').value = savedFarmId;
-  }
+  for (const [key, val] of Object.entries(obj)) {
+    const cleanKey = key.toLowerCase().trim();
+    const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
 
-  var savedApiKey = localStorage.getItem('sfl_apiKey');
-  if (savedApiKey) {
-    document.getElementById('apiKey').value = savedApiKey;
-  }
-
-  var savedUser = localStorage.getItem('sfl_username');
-  if (savedUser) {
-    currentUser = savedUser;
-    document.getElementById('authLoggedOut').style.display = 'none';
-    document.getElementById('authLoggedIn').style.display = 'flex';
-    document.getElementById('displayUsername').textContent = currentUser;
-  }
-});
-
-async function userRegister() {
-  var u = document.getElementById('authUsername').value.trim();
-  var p = document.getElementById('authPassword').value;
-  if (!u || !p) { alert('Please enter both username and password.'); return; }
-
-  try {
-    var res = await fetch('/api/chapter?action=register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, password: p })
-    });
-    var data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    alert('🎉 Account registered successfully! You can now log in.');
-  } catch (err) {
-    alert('Registration Failed: ' + err.message);
-  }
-}
-
-async function userLogin() {
-  var u = document.getElementById('authUsername').value.trim();
-  var p = document.getElementById('authPassword').value;
-  if (!u || !p) { alert('Please enter both username and password.'); return; }
-
-  try {
-    var res = await fetch('/api/chapter?action=login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: u, password: p })
-    });
-    var data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    currentUser = data.username;
-    currentVaultData = data.vaultData || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
-    
-    localStorage.setItem('sfl_username', currentUser);
-    document.getElementById('authLoggedOut').style.display = 'none';
-    document.getElementById('authLoggedIn').style.display = 'flex';
-    document.getElementById('displayUsername').textContent = currentUser;
-
-    alert('🔓 Logged in successfully!');
-    if (globalData) {
-      globalData.cloudHistory = currentVaultData;
-      recalculateAll();
+    if (typeof val === 'number') {
+      map[cleanKey] = val;
+      map[strippedKey] = val;
+    } else if (val && typeof val === 'object') {
+      const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
+      if (typeof priceVal === 'number') {
+        map[cleanKey] = priceVal;
+        map[strippedKey] = priceVal;
+      }
+      if (val.name && typeof val.name === 'string') {
+        const itemClean = val.name.toLowerCase().trim();
+        const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
+        if (typeof priceVal === 'number') {
+          map[itemClean] = priceVal;
+          map[itemStripped] = priceVal;
+        }
+      }
+      extractPricesRecursive(val, map);
     }
-  } catch (err) {
-    alert('Login Failed: ' + err.message);
   }
+  return map;
 }
 
-function userLogout() {
-  currentUser = null;
-  currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
-  localStorage.removeItem('sfl_username');
-  document.getElementById('authLoggedOut').style.display = 'flex';
-  document.getElementById('authLoggedIn').style.display = 'none';
-  if (globalData) {
-    globalData.cloudHistory = currentVaultData;
-    recalculateAll();
+function getDirectMarketPrice(name, priceMap) {
+  if (!name || !priceMap) return 0;
+  const clean = name.toLowerCase().trim();
+  const stripped = clean.replace(/[^a-z0-9]/g, '');
+  if (clean === 'coins' || clean === 'coin') return 0.001;
+
+  const variations = [
+    clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
+    clean + 's', clean + 'es',
+    clean.endsWith('s') ? clean.slice(0, -1) : clean,
+    clean.endsWith('es') ? clean.slice(0, -2) : clean,
+    clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean,
+    stripped + 's', stripped.endsWith('s') ? stripped.slice(0, -1) : stripped
+  ];
+
+  for (const v of variations) {
+    if (priceMap[v] !== undefined && priceMap[v] > 0) return priceMap[v];
   }
+  return 0;
 }
 
-function saveAndRecalculate() {
-  localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
-  localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
-  localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
-  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
-  localStorage.setItem('sfl_farmId', document.getElementById('farmId').value.trim());
-  localStorage.setItem('sfl_apiKey', document.getElementById('apiKey').value.trim());
+export async function onRequest(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const action = url.searchParams.get('action');
+  const farmId = url.searchParams.get('farmId') || '8472883706403914';
+  const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  recalculateAll();
-}
+  // 1. REGISTER ACCOUNT
+  if (request.method === 'POST' && action === 'register') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      const password = body.password || '';
 
-async function loadTrackerData() {
-  if (isFetchCooldown) return;
+      if (!username || !password) return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
 
-  var farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
-  var apiKey = document.getElementById('apiKey').value.trim();
-  
-  localStorage.setItem('sfl_farmId', farmId);
-  localStorage.setItem('sfl_apiKey', apiKey);
+      if (env && env.TRACKER_KV) {
+        const userKey = `user_${username}_auth`;
+        const existing = await env.TRACKER_KV.get(userKey);
+        if (existing) return new Response(JSON.stringify({ error: 'Username already taken.' }), { status: 400 });
 
-  var priceBadge = document.getElementById('priceBadge');
-  priceBadge.style.display = 'inline-block';
-  priceBadge.textContent = 'FETCHING...';
+        const passwordHash = await hashPassword(password);
+        await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
+        
+        const vaultKey = `user_${username}_vault`;
+        await env.TRACKER_KV.put(vaultKey, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] }));
 
-  isFetchCooldown = true;
-  var fetchButtons = document.querySelectorAll('button[onclick="loadTrackerData()"]');
-  fetchButtons.forEach(btn => {
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
-    btn.style.cursor = 'not-allowed';
-  });
-
-  var timeLeft = 10;
-  var cooldownTimer = setInterval(function() {
-    if (timeLeft > 0) {
-      fetchButtons.forEach(btn => { btn.textContent = 'WAIT ' + timeLeft + 's'; });
-      timeLeft--;
-    } else {
-      clearInterval(cooldownTimer);
-      isFetchCooldown = false;
-      fetchButtons.forEach(btn => {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-        btn.textContent = 'FETCH DATA';
-      });
-    }
-  }, 1000);
-
-  try {
-    var queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
-    if (apiKey) queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
-
-    var response = await fetch(queryUrl);
-    var data = await response.json();
-
-    if (data.error) throw new Error(data.error);
-
-    globalData = data;
-    globalData.cloudHistory = currentVaultData;
-
-    if (data.pricesLoadedCount > 0) {
-      priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
-    } else {
-      priceBadge.textContent = 'PRICE API OFFLINE';
-    }
-
-    if (localStorage.getItem('sfl_vip') === null) {
-      document.getElementById('vipToggle').checked = data.isVipActive;
-      localStorage.setItem('sfl_vip', data.isVipActive);
-    }
-
-    recalculateAll();
-
-  } catch (err) {
-    alert('Error fetching data: ' + err.message);
-  }
-}
-
-// --- NPC DELIVERY HISTORY MODAL WITH TICKS & ADD/EDIT ---
-function openNpcHistoryModal(npcName) {
-  document.getElementById('activeNpcHistoryName').value = npcName;
-  document.getElementById('npcHistoryTitle').textContent = '📜 HISTORY: ' + npcName.toUpperCase();
-  document.getElementById('addNpcHistDate').value = new Date().toISOString().split('T')[0];
-  renderNpcHistoryModalList();
-  document.getElementById('npcHistoryModal').classList.add('show');
-}
-
-function closeNpcHistoryModal() {
-  document.getElementById('npcHistoryModal').classList.remove('show');
-}
-
-function renderNpcHistoryModalList() {
-  var npcName = document.getElementById('activeNpcHistoryName').value;
-  var bodyEl = document.getElementById('npcHistoryBody');
-  var statsEl = document.getElementById('npcHistoryStats');
-
-  var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-  var records = [];
-
-  logs.forEach((log, logIdx) => {
-    (log.deliveriesDone || []).forEach((past, itemIdx) => {
-      var name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
-      if (name === npcName.toLowerCase().trim()) {
-        records.push({
-          logIdx: logIdx,
-          itemIdx: itemIdx,
-          date: log.date || 'Past Run',
-          cost: past.cost || 0,
-          tickets: past.tickets || 2,
-          checked: past.checked !== false // default ticked true
+        return new Response(JSON.stringify({ success: true, username }), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
-    });
-  });
-
-  var totalTickedTickets = 0;
-  var totalTickedCost = 0;
-
-  if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No previous history found for ' + npcName + '.</p>';
-  } else {
-    bodyEl.innerHTML = records.map((r, i) => {
-      if (r.checked) {
-        totalTickedTickets += r.tickets;
-        totalTickedCost += r.cost;
-      }
-      return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
-        '<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">' +
-          '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleNpcHistCheck(' + r.logIdx + ', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
-          '<span>📅 ' + r.date + '</span>' +
-        '</label>' +
-        '<div style="display:flex; align-items:center; gap:10px;">' +
-          '<span style="color:#2E7D32; font-weight:bold;">+' + r.tickets + ' Tix (' + formatSFL(r.cost) + ' SFL)</span>' +
-          '<button onclick="deleteNpcHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-  }
-
-  statsEl.textContent = totalTickedTickets + ' Tickets | ' + formatSFL(totalTickedCost) + ' SFL';
-}
-
-function toggleNpcHistCheck(logIdx, itemIdx) {
-  var logs = globalData.cloudHistory.logs;
-  if (logs[logIdx] && logs[logIdx].deliveriesDone && logs[logIdx].deliveriesDone[itemIdx]) {
-    var item = logs[logIdx].deliveriesDone[itemIdx];
-    if (typeof item === 'string') {
-      logs[logIdx].deliveriesDone[itemIdx] = { name: item, cost: 0, tickets: 2, checked: false };
-    } else {
-      item.checked = item.checked === false ? true : false;
+      return new Response(JSON.stringify({ error: 'KV Database missing.' }), { status: 500 });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
-    renderNpcHistoryModalList();
-  }
-}
-
-function addNpcHistoryItem() {
-  var npcName = document.getElementById('activeNpcHistoryName').value;
-  var dateStr = document.getElementById('addNpcHistDate').value.trim() || new Date().toISOString().split('T')[0];
-  var tickets = parseInt(document.getElementById('addNpcHistTickets').value) || 2;
-  var cost = parseFloat(document.getElementById('addNpcHistCost').value) || 0;
-
-  if (!globalData.cloudHistory.logs) globalData.cloudHistory.logs = [];
-  
-  // Find or create log for date
-  var targetLog = globalData.cloudHistory.logs.find(l => l.date === dateStr);
-  if (!targetLog) {
-    targetLog = { date: dateStr, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [], bountiesDone: [], choresDone: [] };
-    globalData.cloudHistory.logs.unshift(targetLog);
   }
 
-  if (!targetLog.deliveriesDone) targetLog.deliveriesDone = [];
-  targetLog.deliveriesDone.push({ name: npcName, cost: cost, tickets: tickets, checked: true });
+  // 2. LOGIN ACCOUNT
+  if (request.method === 'POST' && action === 'login') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      const password = body.password || '';
 
-  renderNpcHistoryModalList();
-  recalculateAll();
-}
+      if (!username || !password) return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
 
-function deleteNpcHistItem(logIdx, itemIdx) {
-  var logs = globalData.cloudHistory.logs;
-  if (logs[logIdx] && logs[logIdx].deliveriesDone) {
-    logs[logIdx].deliveriesDone.splice(itemIdx, 1);
-    renderNpcHistoryModalList();
-    recalculateAll();
-  }
-}
+      if (env && env.TRACKER_KV) {
+        const userKey = `user_${username}_auth`;
+        const userDataStr = await env.TRACKER_KV.get(userKey);
+        if (!userDataStr) return new Response(JSON.stringify({ error: 'Account not found.' }), { status: 401 });
 
+        const userData = JSON.parse(userDataStr);
+        const inputHash = await hashPassword(password);
+        if (userData.passwordHash !== inputHash) return new Response(JSON.stringify({ error: 'Incorrect password.' }), { status: 401 });
 
-// --- COLUMN HISTORY MODAL (BOUNTIES / CHORES) WITH TICKS & ADD/EDIT ---
-function openColumnHistoryModal(type) {
-  activeColumnType = type;
-  document.getElementById('columnHistoryTitle').textContent = type === 'bounty' ? '📜 ALL BOUNTIES HISTORY' : '📜 ALL CHORES HISTORY';
-  renderColumnHistoryModalList();
-  document.getElementById('columnHistoryModal').classList.add('show');
-}
+        const vaultKey = `user_${username}_vault`;
+        let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
-function closeColumnHistoryModal() {
-  document.getElementById('columnHistoryModal').classList.remove('show');
-}
-
-function renderColumnHistoryModalList() {
-  var type = activeColumnType;
-  var bodyEl = document.getElementById('columnHistoryBody');
-  var statsEl = document.getElementById('columnHistoryStats');
-
-  var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-  var records = [];
-
-  logs.forEach((log, logIdx) => {
-    var items = type === 'bounty' ? (log.bountiesDone || []) : (log.choresDone || []);
-    items.forEach((item, itemIdx) => {
-      records.push({
-        logIdx: logIdx,
-        itemIdx: itemIdx,
-        date: log.date || 'Past Run',
-        name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
-        cost: item.cost || 0,
-        tickets: item.tickets || 1,
-        checked: item.checked !== false
-      });
-    });
-  });
-
-  var totalTickedTickets = 0;
-  var totalTickedCost = 0;
-
-  if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No past history records found.</p>';
-  } else {
-    bodyEl.innerHTML = records.map((r) => {
-      if (r.checked) {
-        totalTickedTickets += r.tickets;
-        totalTickedCost += r.cost;
+        return new Response(JSON.stringify({ success: true, username, vaultData }), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
       }
-      return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
-        '<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">' +
-          '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleColumnHistCheck(' + r.logIdx + ', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
-          '<div><span style="font-weight:bold; color:#8B4513;">📅 ' + r.date + '</span><br/><strong style="color:#3E2723;">' + r.name + '</strong></div>' +
-        '</label>' +
-        '<div style="display:flex; align-items:center; gap:10px;">' +
-          '<span style="color:#2E7D32; font-weight:bold;">' + (r.tickets > 0 ? '+' + r.tickets + ' Tix ' : '') + (r.cost > 0 ? '(' + formatSFL(r.cost) + ' SFL)' : '') + '</span>' +
-          '<button onclick="deleteColumnHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-  }
-
-  statsEl.textContent = totalTickedTickets + ' Tickets | ' + formatSFL(totalTickedCost) + ' SFL';
-}
-
-function toggleColumnHistCheck(logIdx, itemIdx) {
-  var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
-    var item = logs[logIdx][targetArray][itemIdx];
-    if (typeof item === 'string') {
-      logs[logIdx][targetArray][itemIdx] = { name: item, cost: 0, tickets: 1, checked: false };
-    } else {
-      item.checked = item.checked === false ? true : false;
+      return new Response(JSON.stringify({ error: 'KV Database missing.' }), { status: 500 });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
-    renderColumnHistoryModalList();
-  }
-}
-
-function addCustomHistoryItem() {
-  var name = document.getElementById('addHistName').value.trim() || 'Custom Task';
-  var tickets = parseInt(document.getElementById('addHistTickets').value) || 1;
-  var cost = parseFloat(document.getElementById('addHistCost').value) || 0;
-  var todayDate = new Date().toISOString().split('T')[0];
-
-  if (!globalData.cloudHistory.logs) globalData.cloudHistory.logs = [];
-
-  var targetLog = globalData.cloudHistory.logs.find(l => l.date === todayDate);
-  if (!targetLog) {
-    targetLog = { date: todayDate, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [], bountiesDone: [], choresDone: [] };
-    globalData.cloudHistory.logs.unshift(targetLog);
   }
 
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (!targetLog[targetArray]) targetLog[targetArray] = [];
-  targetLog[targetArray].push({ name: name, cost: cost, tickets: tickets, checked: true });
+  // 3. SAVE TO SINGLE MASTER VAULT PAIR (POST) - CAPTURES ACTIVE + DONE + ITEMS
+  if (request.method === 'POST' && action === 'saveVault') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      if (!username) return new Response(JSON.stringify({ error: 'Not logged in.' }), { status: 401 });
 
-  renderColumnHistoryModalList();
-  recalculateAll();
-}
+      if (env && env.TRACKER_KV) {
+        const vaultKey = `user_${username}_vault`;
+        let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
 
-function deleteColumnHistItem(logIdx, itemIdx) {
-  var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (logs[logIdx] && logs[logIdx][targetArray]) {
-    logs[logIdx][targetArray].splice(itemIdx, 1);
-    renderColumnHistoryModalList();
-    recalculateAll();
+        const todayDate = new Date().toISOString().split('T')[0];
+
+        // Capture BOTH active and completed items along with requested items for deliveries
+        const allDeliveries = (body.deliveries || []).map(d => ({
+          name: d.from,
+          cost: d.itemsCost || 0,
+          tickets: d.baseTickets || 0,
+          completed: d.completed,
+          items: d.itemDetails || [],
+          checked: true
+        }));
+
+        const allBounties = (body.bounties || []).map(b => ({
+          name: b.name,
+          cost: b.itemsCost || 0,
+          tickets: b.baseTickets || 0,
+          completed: b.completed,
+          checked: true
+        }));
+
+        const allChores = (body.chores || []).map(c => ({
+          name: c.task,
+          npc: c.npc,
+          tickets: c.baseTickets || 0,
+          completed: c.completed,
+          checked: true
+        }));
+
+        const newTickets = body.ticketsSaved || 0;
+        const newCost = body.costSaved || 0;
+
+        const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
+        if (existingTodayLogIndex !== -1) {
+          const oldLog = existingData.logs[existingTodayLogIndex];
+          existingData.cumulativeTickets -= (oldLog.ticketsSaved || 0);
+          existingData.cumulativeCost -= (oldLog.costSaved || 0);
+
+          existingData.logs[existingTodayLogIndex] = {
+            date: todayDate, timestamp: new Date().toISOString(),
+            ticketsSaved: newTickets, costSaved: newCost,
+            deliveriesDone: allDeliveries, bountiesDone: allBounties, choresDone: allChores
+          };
+        } else {
+          existingData.logs.unshift({
+            date: todayDate, timestamp: new Date().toISOString(),
+            ticketsSaved: newTickets, costSaved: newCost,
+            deliveriesDone: allDeliveries, bountiesDone: allBounties, choresDone: allChores
+          });
+        }
+
+        existingData.cumulativeTickets += newTickets;
+        existingData.cumulativeCost += newCost;
+        existingData.deliveries = body.deliveries || [];
+        existingData.bounties = body.bounties || [];
+        existingData.chores = body.chores || [];
+
+        await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
+
+        return new Response(JSON.stringify({ success: true, vaultData: existingData }), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
   }
-}
 
-
-async function saveProgressToCloudKV() {
-  if (!currentUser) {
-    alert('⚠️ Please LOGIN to your secure vault before saving to Cloud KV!');
-    return;
-  }
-  if (!globalData) {
-    alert('Please click "FETCH DATA" first before saving!');
-    return;
-  }
-
+  // 4. GET LIVE FARM DATA
   try {
-    var response = await fetch('/api/chapter?action=saveVault', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: currentUser,
-        ticketsSaved: currentDoneTicketsToday,
-        costSaved: currentDoneCostToday,
-        deliveries: globalData.deliveries,
-        bounties: globalData.bounties,
-        chores: globalData.chores
-      })
+    const sflHeaders = {
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Referer': 'https://sunflower-land.com/',
+      'Origin': 'https://sunflower-land.com'
+    };
+
+    if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
+
+    const [sflResponse, pricesResponse] = await Promise.all([
+      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => ({ ok: false, status: 500 })),
+      fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
+    ]);
+
+    if (!sflResponse || !sflResponse.ok) {
+      const status = sflResponse?.status || 500;
+      if (status === 401) throw new Error('SFL API returned 401 Unauthorized.');
+      throw new Error(`SFL API error (${status}). Check Farm ID.`);
+    }
+
+    const payload = await sflResponse.json().catch(() => ({}));
+    const farm = payload.farm || {};
+
+    let priceMap = {};
+    if (pricesResponse && pricesResponse.ok) {
+      const rawPricesData = await pricesResponse.json().catch(() => null);
+      if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
+    }
+
+    const getItemUnitPrice = (itemName, depth = 0) => {
+      if (depth > 5 || !itemName) return 0;
+      const clean = itemName.toLowerCase().trim();
+      const stripped = clean.replace(/[^a-z0-9]/g, '');
+      const directPrice = getDirectMarketPrice(clean, priceMap);
+      if (directPrice > 0) return directPrice;
+
+      const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
+      if (recipe) {
+        let recipeTotal = 0;
+        Object.entries(recipe).forEach(([ingName, ingQty]) => {
+          recipeTotal += getItemUnitPrice(ingName, depth + 1) * ingQty;
+        });
+        return recipeTotal;
+      }
+      return 0;
+    };
+
+    const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
+
+    const rawDeliveries = farm.delivery?.orders || [];
+    const deliveryList = [];
+    rawDeliveries.forEach(order => {
+      const npcNameClean = (order.from || '').toLowerCase().trim();
+      const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
+      let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
+
+      if (order.reward?.items) {
+        Object.entries(order.reward.items).forEach(([item, qty]) => {
+          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
+        });
+      }
+
+      if (baseTicketCount > 0) {
+        let itemsCost = 0;
+        const itemDetails = [];
+        Object.entries(order.items || {}).forEach(([itemName, qty]) => {
+          const unitPrice = getItemUnitPrice(itemName);
+          const lineCost = unitPrice * qty;
+          itemsCost += lineCost;
+          itemDetails.push({ name: itemName, qty, unitPrice, lineCost, isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] });
+        });
+
+        const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+        deliveryList.push({ id: order.id, from: order.from, items: order.items || {}, itemsCost, itemDetails, baseTickets: baseTicketCount, isChapterNpc: baseTickets !== undefined, completed: isCompleted });
+      }
     });
 
-    var resData = await response.json();
-    if (resData.error) throw new Error(resData.error);
+    const activeBounties = [];
+    const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
+    let completedBountyIds = Array.isArray(completedBountiesRaw) ? completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b)) : [];
 
-    currentVaultData = resData.vaultData;
-    globalData.cloudHistory = currentVaultData;
+    (farm.bounties?.requests || []).forEach(b => {
+      let baseTicketCount = 0;
+      if (b.items) {
+        Object.entries(b.items).forEach(([item, qty]) => {
+          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
+        });
+      }
+      if (baseTicketCount > 0) {
+        const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
+        const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
+        activeBounties.push({ id: b.id, name: b.name, level: b.level || null, baseTickets: baseTicketCount, itemsCost: unitPrice, completed: isCompleted });
+      }
+    });
 
-    alert('☁️ MASTER VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
-    recalculateAll();
+    const choreObj = farm.choreBoard?.chores || farm.chores || {};
+    const choresList = Object.entries(choreObj).map(([key, details]) => {
+      let baseTicketCount = 0;
+      if (details.reward?.items) {
+        Object.entries(details.reward.items).forEach(([item, qty]) => {
+          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
+        });
+      }
+      const currentProgress = details.initialProgress ?? details.progress ?? 0;
+      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
+      const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
+      return { npc: details.npc || details.from || key, task: details.name || details.description || key, baseTickets: baseTicketCount, progress: currentProgress, requirement, completed: isCompleted };
+    });
+
+    return new Response(JSON.stringify({
+      farmId, isVipActive,
+      pricesLoadedCount: Object.keys(priceMap).length,
+      deliveries: deliveryList, bounties: activeBounties, chores: choresList
+    }, null, 2), {
+      status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+
   } catch (err) {
-    alert('Vault Save Failed: ' + err.message);
+    return new Response(JSON.stringify({ error: err.message }, null, 2), {
+      status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
   }
-}
-
-function toggleHistoryModal() {
-  var modal = document.getElementById('historyModal');
-  modal.classList.toggle('show');
-
-  if (modal.classList.contains('show') && globalData && globalData.cloudHistory) {
-    var logs = globalData.cloudHistory.logs || [];
-    var container = document.getElementById('modalLogList');
-
-    if (logs.length === 0) {
-      container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
-    } else {
-      container.innerHTML = logs.map(function(log, idx) {
-        var delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
-          '<div style="color:#5C4033; font-size:11px;"><strong>📦 Deliveries:</strong> ' + 
-          log.deliveriesDone.map(function(d) { return (typeof d === 'string' ? d : d.name + ' (' + formatSFL(d.cost) + ' SFL)'); }).join(', ') + '</div>' : '';
-
-        var bountiesHtml = (log.bountiesDone && log.bountiesDone.length > 0) ? 
-          '<div style="color:#B26A00; font-size:11px;"><strong>📜 Bounties:</strong> ' + 
-          log.bountiesDone.map(function(b) { return (typeof b === 'string' ? b : b.name + ' (' + formatSFL(b.cost) + ' SFL)'); }).join(', ') + '</div>' : '';
-
-        var choresHtml = (log.choresDone && log.choresDone.length > 0) ? 
-          '<div style="color:#2E7D32; font-size:11px;"><strong>🧹 Chores:</strong> ' + 
-          log.choresDone.map(function(c) { return (typeof c === 'string' ? c : c.name); }).join(', ') + '</div>' : '';
-
-        var logTickets = log.ticketsSaved || 0;
-        var logCost = log.costSaved || 0;
-        var logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
-
-        return '<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
-          '<div style="display:flex; justify-content:space-between; color:#5C4033; font-size:11px; font-weight:900;">' +
-            '<span style="color:#8B4513;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
-          '</div>' +
-          '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
-            '<span>Tickets: +' + logTickets + ' | Cost: ' + formatSFL(logCost) + ' SFL</span>' +
-            '<span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">' + logRatio + ' SFL / Ticket</span>' +
-          '</div>' +
-          '<div style="display:flex; flex-direction:column; gap:3px;">' + delivHtml + bountiesHtml + choresHtml + '</div>' +
-        '</div>';
-      }).join('');
-    }
-  }
-}
-
-function recalculateAll() {
-  if (!globalData) return;
-
-  var vipBonus = document.getElementById('vipToggle').checked ? 2 : 0;
-  var boostCount = 
-    (document.getElementById('boost1').checked ? 1 : 0) +
-    (document.getElementById('boost2').checked ? 1 : 0) +
-    (document.getElementById('boost3').checked ? 1 : 0);
-
-  var totalTicketsAll = 0;
-  var earnedTicketsAll = 0;
-  var pendingTicketsAll = 0;
-
-  var totalSflCostAll = 0;
-  var earnedSflCostAll = 0;
-  var pendingSflCostAll = 0;
-
-  // Deliveries
-  var deliveriesContainer = document.getElementById('deliveriesList');
-  document.getElementById('deliveriesCount').textContent = globalData.deliveries.length;
-  deliveriesContainer.innerHTML = globalData.deliveries.map(function(d) {
-    var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-    var finalTickets = d.baseTickets + deliveryAddon;
-    var totalSflCost = d.itemsCost || 0;
-
-    totalTicketsAll += finalTickets;
-    totalSflCostAll += totalSflCost;
-
-    if (d.completed) {
-      earnedTicketsAll += finalTickets;
-      earnedSflCostAll += totalSflCost;
-    } else {
-      pendingTicketsAll += finalTickets;
-      pendingSflCostAll += totalSflCost;
-    }
-
-    var itemRows = (d.itemDetails || []).map(function(detail) {
-      return '<div style="display:flex; justify-content:space-between; font-size:11px;">' +
-        '<span>• ' + detail.qty + 'x <strong style="color:#3E2723;">' + detail.name + '</strong> ' + (detail.isRecipe ? '<span class="badge badge-recipe">RECIPE</span>' : '') + '</span>' +
-        '<span style="color:#8C7853; font-weight:bold;">' + (detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00') + '</span>' +
-      '</div>';
-    }).join('');
-
-    var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-    var badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
-    var escapedName = d.from.replace(/'/g, "\\'");
-
-    return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-        '<span style="font-weight:900; color:#8B4513; text-transform:capitalize; display:flex; align-items:center; gap:6px;">' +
-          d.from +
-          (d.isChapterNpc ? '<span style="font-size:9px; background:#FFB300; color:#3E2723; padding:1px 4px; font-weight:900; border-radius:4px;">CHAPTER</span>' : '') +
-        '</span>' +
-        '<div style="display:flex; align-items:center; gap:6px;">' +
-          '<button class="btn btn-sm btn-indigo" onclick="openNpcHistoryModal(\'' + escapedName + '\')">📜 HISTORY</button>' +
-          '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
-        '</div>' +
-      '</div>' +
-      '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
-      '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
-        '<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
-          '<span style="color:#B26A00; font-weight:900;">Yield: ' + finalTickets + ' Tickets</span>' +
-          '<span style="color:#3E2723; font-weight:900;">' + formatSFL(totalSflCost) + ' SFL</span>' +
-        '</div>' +
-        '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
-          '<span>Cost / Ticket:</span>' +
-          '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-
-  // Bounties
-  var bountiesContainer = document.getElementById('bountiesList');
-  document.getElementById('bountiesCount').textContent = globalData.bounties.length;
-  bountiesContainer.innerHTML = globalData.bounties.map(function(b) {
-    var finalTickets = b.baseTickets + boostCount;
-    var totalSflCost = b.itemsCost || 0;
-
-    totalTicketsAll += finalTickets;
-    totalSflCostAll += totalSflCost;
-
-    if (b.completed) {
-      earnedTicketsAll += finalTickets;
-      earnedSflCostAll += totalSflCost;
-    } else {
-      pendingTicketsAll += finalTickets;
-      pendingSflCostAll += totalSflCost;
-    }
-
-    var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-    var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
-
-    return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-        '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + b.name + (b.level ? ' <span style="font-size:10px; color:#B26A00;">(Lvl ' + b.level + ')</span>' : '') + '</span>' +
-        '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
-      '</div>' +
-      '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
-        '<div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">' +
-          '<span>Yield: ' + finalTickets + ' Tickets</span>' +
-          '<span>Cost: ' + formatSFL(totalSflCost) + ' SFL</span>' +
-        '</div>' +
-        '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">' +
-          '<span>Cost / Ticket:</span>' +
-          '<span>' + formatSFL(costPerTicket) + ' SFL</span>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-
-  // Chores
-  var choresContainer = document.getElementById('choresList');
-  document.getElementById('choresCount').textContent = globalData.chores.length;
-  choresContainer.innerHTML = globalData.chores.map(function(c) {
-    var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
-    var hasProgress = c.requirement > 0;
-
-    totalTicketsAll += finalTickets;
-
-    if (c.completed) {
-      earnedTicketsAll += finalTickets;
-    } else {
-      pendingTicketsAll += finalTickets;
-    }
-
-    var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
-
-    return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-        '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">' + c.npc + '</span>' +
-        '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
-      '</div>' +
-      '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
-      (hasProgress ? '<div style="font-size:11px; color:#8C7853; font-weight:bold;">Progress: ' + c.progress + ' / ' + c.requirement + '</div>' : '') +
-      (c.baseTickets > 0 ? '<div style="background:#FFFACD; padding:6px 8px; border-radius:6px; border:1px solid #D2B48C; display:flex; justify-content:space-between; align-items:center; font-size:11px;"><span style="color:#8C7853; font-weight:bold;">Yield:</span><span style="color:#2E7D32; font-weight:900;">' + finalTickets + ' Tickets</span></div>' : '') +
-    '</div>';
-  }).join('');
-
-  currentDoneTicketsToday = earnedTicketsAll;
-  currentDoneCostToday = earnedSflCostAll;
-
-  document.getElementById('statTotalTickets').textContent = totalTicketsAll;
-  document.getElementById('statTotalCost').textContent = formatSFL(totalSflCostAll) + ' SFL';
-  document.getElementById('statTotalRatio').textContent = (totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00") + ' SFL / Ticket';
-
-  document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
-  document.getElementById('statEarnedCost').textContent = formatSFL(earnedSflCostAll) + ' SFL';
-  document.getElementById('statEarnedRatio').textContent = (earnedTicketsAll > 0 ? formatSFL(earnedSflCostAll / earnedTicketsAll) : "0.00") + ' SFL / Ticket';
-
-  document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
-  document.getElementById('statPendingCost').textContent = formatSFL(pendingSflCostAll) + ' SFL';
-  document.getElementById('statPendingRatio').textContent = (pendingTicketsAll > 0 ? formatSFL(pendingSflCostAll / pendingTicketsAll) : "0.00") + ' SFL / Ticket';
-
-  var cloud = globalData.cloudHistory || { cumulativeTickets: 0, cumulativeCost: 0 };
-  var cloudTickets = cloud.cumulativeTickets || 0;
-  var cloudCost = cloud.cumulativeCost || 0;
-  document.getElementById('statSavedTickets').textContent = cloudTickets;
-  document.getElementById('statSavedCost').textContent = formatSFL(cloudCost) + ' SFL';
-  document.getElementById('statSavedRatio').textContent = (cloudTickets > 0 ? formatSFL(cloudCost / cloudTickets) : "0.00") + ' SFL / Ticket';
 }
