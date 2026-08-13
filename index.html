@@ -199,19 +199,20 @@
       <p>Harvest Tickets & Market Price Calculator</p>
     </header>
 
-    <!-- Account Bar (Virtual Login/Register) -->
+    <!-- Account Bar wrapped in form to satisfy browser password rules -->
     <div class="panel" style="padding: 10px 16px; background: #FFFACD;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div id="authLoggedOut" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
           <span style="font-size: 11px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
           <input type="text" id="authUsername" placeholder="Username" style="width: 110px;" autocomplete="username" />
           <input type="password" id="authPassword" placeholder="Password" style="width: 110px;" autocomplete="current-password" />
-          <button onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
-          <button onclick="userRegister()" class="btn btn-sm btn-amber">REGISTER</button>
-        </div>
+          <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
+          <button type="button" onclick="userRegister()" class="btn btn-sm btn-amber">REGISTER</button>
+        </form>
+
         <div id="authLoggedIn" style="display: none; align-items: center; gap: 12px;">
           <span style="font-size: 12px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
-          <button onclick="userLogout()" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff;">LOGOUT</button>
+          <button type="button" onclick="userLogout()" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff;">LOGOUT</button>
         </div>
       </div>
     </div>
@@ -224,7 +225,9 @@
           <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
           
           <label for="apiKey">API KEY:</label>
-          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="new-password" style="width: 130px;" />
+          <form style="display:inline; margin:0; padding:0;" onsubmit="return false;">
+            <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="new-password" style="width: 130px;" />
+          </form>
 
           <label class="checkbox-label">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
