@@ -247,7 +247,7 @@ async function loadTrackerData() {
   }
 }
 
-// Category Summary Overview Popup Modal with Header Totals
+// Category Summary Overview Popup Modal with Header Totals & Animal Separation
 function openCategorySummaryModal(cat) {
   var modal = document.getElementById('categorySummaryModal');
   var titleEl = document.getElementById('categorySummaryTitle');
@@ -291,20 +291,45 @@ function openCategorySummaryModal(cat) {
   } else if (cat === 'bounty') {
     titleEl.textContent = '📜 BOUNTIES OVERVIEW';
     var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-    bodyEl.innerHTML = sortedBounties.map(b => {
+    
+    var animalBounties = [];
+    var regularBounties = [];
+
+    sortedBounties.forEach(b => {
+      var n = (b.name || '').toLowerCase();
+      if (n.includes('chicken') || n.includes('cow') || n.includes('sheep')) {
+        animalBounties.push(b);
+      } else {
+        regularBounties.push(b);
+      }
+    });
+
+    var renderBountyCard = (b) => {
       var finalTickets = b.baseTickets + boostCount;
       if (b.completed) {
         catTickets += finalTickets;
         catCost += (b.itemsCost || 0);
       }
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
           <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
         </div>
         <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
-    }).join('');
+    };
+
+    var htmlContent = '';
+    if (regularBounties.length > 0) {
+      htmlContent += `<div style="font-weight:900; color:#8B4513; font-size:12px; margin-bottom:2px;">📦 ITEM & FLOWER BOUNTIES</div>`;
+      htmlContent += regularBounties.map(renderBountyCard).join('');
+    }
+    if (animalBounties.length > 0) {
+      htmlContent += `<div style="font-weight:900; color:#8B4513; font-size:12px; margin-top:8px; margin-bottom:2px;">🐄 ANIMAL BOUNTIES</div>`;
+      htmlContent += animalBounties.map(renderBountyCard).join('');
+    }
+    bodyEl.innerHTML = htmlContent;
+
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
     var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
@@ -682,11 +707,8 @@ function recalculateAll() {
 
   var totalTicketsAll = 0;
   var earnedTicketsAll = 0;
-  var pendingTicketsAll = 0;
-
   var totalSflCostAll = 0;
   var earnedSflCostAll = 0;
-  var pendingSflCostAll = 0;
 
   var delivCatTickets = 0;
   var bountyCatTickets = 0;
@@ -695,7 +717,6 @@ function recalculateAll() {
   var weekTicketsAll = 0;
   var weekCostAll = 0;
 
-  // Determine current ISO date string for "Today" and current week prefix (YYYY-W## or YYYY-MM)
   var todayDateStr = new Date().toISOString().split('T')[0];
   var now = new Date();
   var startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
@@ -706,7 +727,6 @@ function recalculateAll() {
   
   logs.forEach(log => {
     var isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
-    var isToday = log.date === todayDateStr;
 
     // Process Deliveries
     (log.deliveriesDone || []).forEach(item => {
@@ -786,9 +806,6 @@ function recalculateAll() {
       if (d.completed) {
         earnedTicketsAll += finalTickets;
         earnedSflCostAll += totalSflCost;
-      } else {
-        pendingTicketsAll += finalTickets;
-        pendingSflCostAll += totalSflCost;
       }
 
       var itemRows = (d.itemDetails || []).map(function(detail) {
@@ -834,9 +851,6 @@ function recalculateAll() {
       if (b.completed) {
         earnedTicketsAll += finalTickets;
         earnedSflCostAll += totalSflCost;
-      } else {
-        pendingTicketsAll += finalTickets;
-        pendingSflCostAll += totalSflCost;
       }
 
       var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
@@ -871,8 +885,6 @@ function recalculateAll() {
 
       if (c.completed) {
         earnedTicketsAll += finalTickets;
-      } else {
-        pendingTicketsAll += finalTickets;
       }
 
       var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
@@ -908,7 +920,7 @@ function recalculateAll() {
   var earnedRatioVal = earnedTicketsAll > 0 ? (earnedSflCostAll / earnedTicketsAll) : 0;
   setElemText('statEarnedRatio', formatSFL(earnedRatioVal) + ' SFL / Ticket');
 
-  // 4. CHAPTER END GOAL CALCULATOR (Custom Target & Weeks)
+  // 4. CHAPTER END GOAL CALCULATOR
   var targetGoal = parseInt(document.getElementById('targetGoalInput').value) || 1000;
   var targetWeeks = parseInt(document.getElementById('targetWeeksInput').value) || 12;
   var remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
