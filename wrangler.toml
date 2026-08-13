@@ -1,0 +1,10 @@
+name = "sfl-chapter-tracker"
+pages_build_output_dir = "."
+
+# Automatically triggers snapshot every day at 23:00 UTC
+[triggers]
+crons = ["0 23 * * *"]
+
+[[kv_namespaces]]
+binding = "TRACKER_KV"
+id = "e905012c5fc143a98ec1f2eb30af343a"
