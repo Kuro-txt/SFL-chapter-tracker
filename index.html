@@ -203,10 +203,10 @@
       <div class="controls-row">
         <div class="input-group">
           <label for="farmId">FARM ID:</label>
-          <input type="text" id="farmId" value="8472883706403914" style="width: 130px;" />
+          <input type="text" id="farmId" value="8472883706403914" style="width: 180px;" />
           
           <label for="apiKey">API KEY:</label>
-          <input type="password" id="apiKey" placeholder="Optional Key" style="width: 130px;" />
+          <input type="password" id="apiKey" placeholder="Optional Key" style="width: 160px;" />
 
           <label class="checkbox-label">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
@@ -232,21 +232,30 @@
 
     <!-- Summary Stats Bar -->
     <div class="stats-grid">
+      <!-- Total Available Today -->
       <div class="stat-box">
         <div class="stat-title">TODAY TOTAL</div>
         <div id="statTotalTickets" class="stat-val">0</div>
         <div class="stat-footer"><span>Total Cost:</span> <span id="statTotalCost" style="color:#8B4513;">0.00 SFL</span></div>
+        <div class="stat-footer" style="border-top: none; padding-top: 0;"><span style="color:#B26A00;">Cost / Ticket:</span> <span id="statTotalPerTicket" style="font-weight:900; color:#B26A00;">0.00 SFL</span></div>
       </div>
+
+      <!-- Done Today -->
       <div class="stat-box" style="border-color: #4CAF50;">
         <div class="stat-title" style="color: #2E7D32;">DONE TODAY</div>
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0</div>
         <div class="stat-footer"><span>Cost Done:</span> <span id="statEarnedCost" style="color:#2E7D32;">0.00 SFL</span></div>
+        <div class="stat-footer" style="border-top: none; padding-top: 0;"><span style="color:#2E7D32;">Cost / Ticket:</span> <span id="statEarnedPerTicket" style="font-weight:900; color:#2E7D32;">0.00 SFL</span></div>
       </div>
+
+      <!-- Pending -->
       <div class="stat-box" style="border-color: #FFB300;">
         <div class="stat-title" style="color: #B26A00;">PENDING</div>
         <div id="statPendingTickets" class="stat-val" style="color: #E65100;">0</div>
         <div class="stat-footer"><span>Cost Pending:</span> <span id="statPendingCost" style="color:#E65100;">0.00 SFL</span></div>
       </div>
+
+      <!-- Cloud KV -->
       <div class="stat-box" style="border-color: #795548;">
         <div class="stat-title" style="color: #4E342E;">☁️ CLOUD KV</div>
         <div id="statSavedTickets" class="stat-val" style="color: #6D4C41;">0</div>
@@ -440,14 +449,22 @@
               '<div style="color:#2E7D32; font-size:11px;"><strong>🧹 Chores:</strong> ' + 
               log.choresDone.map(function(c) { return (typeof c === 'string' ? c : c.name); }).join(', ') + '</div>' : '';
 
+            var logTickets = log.ticketsSaved || 0;
+            var logCost = log.costSaved || 0;
+            var logCostPerTicket = logTickets > 0 ? (logCost / logTickets) : 0;
+
             return '<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">' +
               '<div style="display:flex; justify-content:space-between; color:#5C4033; font-size:11px; font-weight:900;">' +
                 '<span style="color:#8B4513;">Log #' + (logs.length - idx) + ' (' + (log.date || 'Snapshot') + ')</span>' +
                 '<span>' + (log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save') + '</span>' +
               '</div>' +
               '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
-                '<span>Tickets: +' + (log.ticketsSaved || 0) + '</span>' +
-                '<span>Total Cost: ' + formatSFL(log.costSaved || 0) + ' SFL</span>' +
+                '<span>Tickets: +' + logTickets + '</span>' +
+                '<span>Total Cost: ' + formatSFL(logCost) + ' SFL</span>' +
+              '</div>' +
+              '<div style="display:flex; justify-content:space-between; color:#B26A00; font-weight:900; font-size:11px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
+                '<span>Cost / Ticket:</span>' +
+                '<span>' + formatSFL(logCostPerTicket) + ' SFL</span>' +
               '</div>' +
               '<div style="display:flex; flex-direction:column; gap:3px;">' + delivHtml + bountiesHtml + choresHtml + '</div>' +
             '</div>';
@@ -597,10 +614,17 @@
       currentDoneTicketsToday = earnedTicketsAll;
       currentDoneCostToday = earnedSflCostAll;
 
+      // Update Today Summary Elements
       document.getElementById('statTotalTickets').textContent = totalTicketsAll;
       document.getElementById('statTotalCost').textContent = formatSFL(totalSflCostAll) + ' SFL';
+      var totalPerTicket = totalTicketsAll > 0 ? (totalSflCostAll / totalTicketsAll) : 0;
+      document.getElementById('statTotalPerTicket').textContent = formatSFL(totalPerTicket) + ' SFL';
+
       document.getElementById('statEarnedTickets').textContent = earnedTicketsAll;
       document.getElementById('statEarnedCost').textContent = formatSFL(earnedSflCostAll) + ' SFL';
+      var earnedPerTicket = earnedTicketsAll > 0 ? (earnedSflCostAll / earnedTicketsAll) : 0;
+      document.getElementById('statEarnedPerTicket').textContent = formatSFL(earnedPerTicket) + ' SFL';
+
       document.getElementById('statPendingTickets').textContent = pendingTicketsAll;
       document.getElementById('statPendingCost').textContent = formatSFL(pendingSflCostAll) + ' SFL';
 
