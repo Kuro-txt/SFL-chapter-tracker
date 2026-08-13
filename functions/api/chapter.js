@@ -1,4 +1,4 @@
-// Base Chapter Ticket Table for Deliveries
+// Base Chapter Ticket Table
 const CHAPTER_NPC_TICKETS = {
   "pumpkin' pete": 1,
   "bert": 2,
@@ -50,7 +50,6 @@ export async function onRequest(context) {
 
       let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
 
-      // Check if order has raw Ticket/Shiny Feather item rewards
       if (order.reward?.items) {
         Object.entries(order.reward.items).forEach(([item, qty]) => {
           if (item === 'Shiny Feather' || item === 'Tickets') {
