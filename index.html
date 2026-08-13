@@ -5,8 +5,191 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sunflower Land Chapter Tracker</title>
   
-  <!-- Link to your new CSS file -->
-  <link rel="stylesheet" href="./css/style.css">
+  <!-- Embedded CSS to guarantee zero MIME type loading errors on Cloudflare Pages -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #3b5323;
+      background-image: radial-gradient(#4d6b2c 15%, transparent 16%), radial-gradient(#2d401a 15%, transparent 16%);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      color: #3e2723;
+      font-family: 'Courier New', Courier, monospace, sans-serif;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .wrapper { max-width: 1200px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    
+    header {
+      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
+      border: 4px solid #3E2723;
+      border-radius: 12px;
+      text-align: center;
+      padding: 16px;
+      box-shadow: 0 8px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
+    }
+    h1 { font-size: 26px; font-weight: 900; color: #FFF8DC; text-shadow: 2px 2px #271813; margin-bottom: 4px; letter-spacing: 1px; }
+    p { font-size: 13px; color: #EEDC82; font-weight: bold; text-shadow: 1px 1px #271813; }
+    
+    .panel {
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 6px 0px #5C4033;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .controls-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+    .input-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    
+    label { font-size: 12px; font-weight: 900; color: #5C4033; }
+    input[type="text"], input[type="password"], input[type="number"] {
+      background-color: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      color: #3E2723;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus { border-color: #D2691E; background-color: #fff; }
+    
+    .checkbox-label {
+      background-color: #FFFACD;
+      border: 2px solid #D2691E;
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #8B4513;
+      font-weight: 900;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-weight: 900;
+      font-size: 12px;
+      text-transform: uppercase;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 2px solid #3E2723;
+      cursor: pointer;
+      box-shadow: 0 4px 0px #3E2723;
+      transition: all 0.1s ease;
+    }
+    .btn:active { transform: translateY(2px); box-shadow: 0 2px 0px #3E2723; }
+    .btn-amber { background-color: #FFB300; color: #3E2723; border-color: #B26A00; box-shadow: 0 4px 0px #B26A00; }
+    .btn-emerald { background-color: #4CAF50; color: #FFF8DC; border-color: #2E7D32; box-shadow: 0 4px 0px #2E7D32; }
+    .btn-indigo { background-color: #795548; color: #FFF8DC; border-color: #4E342E; box-shadow: 0 4px 0px #4E342E; }
+    .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
+    .btn-sm { padding: 4px 8px; font-size: 10px; box-shadow: 0 2px 0px #3E2723; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .stat-box {
+      background-color: #FFF8DC;
+      border: 3px solid #8B5A2B;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 0px #5C4033;
+    }
+    .stat-title { font-size: 11px; font-weight: 900; color: #8B5A2B; text-transform: uppercase; }
+    .stat-val { font-size: 24px; font-weight: 900; color: #D2691E; }
+    .stat-footer { border-top: 2px dashed #D2B48C; padding-top: 6px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: #5C4033; }
+    .stat-ratio { font-size: 10px; font-weight: 900; color: #2E7D32; background: #E8F5E9; padding: 2px 6px; border-radius: 4px; border: 1px solid #A5D6A7; display: inline-block; margin-top: 2px; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .column-card {
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      max-height: 650px;
+      box-shadow: 0 6px 0px #5C4033;
+    }
+    .column-title {
+      font-size: 13px;
+      font-weight: 900;
+      padding-bottom: 10px;
+      border-bottom: 3px solid #8B5A2B;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #5C4033;
+    }
+    .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+
+    .card-item {
+      background-color: #FFF8DC;
+      border: 2px solid #C49A6C;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 2px 0px rgba(92,64,51,0.2);
+      cursor: pointer;
+      transition: border-color 0.1s;
+    }
+    .card-item:hover { border-color: #8B5A2B; }
+    .card-item.done { border-color: #4CAF50; opacity: 0.8; background-color: #F1F8E9; }
+    .card-item.active { border-color: #FFB300; background-color: #FFFDE7; }
+    .card-item.manual { border-color: #8E44AD; background-color: #F4ECF7; }
+
+    .badge {
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 900;
+      border-radius: 6px;
+      text-transform: uppercase;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .badge-done { background-color: #C8E6C9; color: #2E7D32; }
+    .badge-active { background-color: #FFE0B2; color: #E65100; }
+    .badge-manual { background-color: #EBDEF0; color: #6C3483; }
+    .badge-recipe { background-color: #EFEBE9; color: #5D4037; font-size: 9px; padding: 1px 4px; border: 1px solid #BCAAA4; border-radius: 4px; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(45, 64, 26, 0.85);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
+      width: 100%;
+      max-width: 600px;
+      max-height: 80vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 0px #5C4033;
+    }
+    .modal-header { padding: 16px; border-bottom: 3px solid #8B5A2B; display: flex; justify-content: space-between; align-items: center; background: #8B5A2B; color: #FFF8DC; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  </style>
 </head>
 <body>
 
@@ -25,7 +208,9 @@
           <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
           
           <label for="apiKey">API KEY:</label>
-          <input type="password" id="apiKey" placeholder="Optional Key" style="width: 130px;" />
+          <form style="display:inline; margin:0; padding:0;">
+            <input type="password" id="apiKey" placeholder="Optional Key" style="width: 130px;" />
+          </form>
 
           <label class="checkbox-label">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
@@ -170,7 +355,7 @@
     </div>
   </div>
 
-  <!-- Link to your new JS file -->
+  <!-- Link to your JavaScript logic file -->
   <script src="./js/app.js"></script>
 </body>
 </html>
