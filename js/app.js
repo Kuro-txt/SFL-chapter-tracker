@@ -1,6 +1,6 @@
 var globalData = null;
 var currentUser = null;
-var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
 var currentDoneTicketsToday = 0;
 var currentDoneCostToday = 0;
 
@@ -74,7 +74,7 @@ async function userLogin() {
     if (data.error) throw new Error(data.error);
 
     currentUser = data.username;
-    currentVaultData = data.vaultData || { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+    currentVaultData = data.vaultData || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
     
     localStorage.setItem('sfl_username', currentUser);
     document.getElementById('authLoggedOut').style.display = 'none';
@@ -93,7 +93,7 @@ async function userLogin() {
 
 function userLogout() {
   currentUser = null;
-  currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
+  currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
   localStorage.removeItem('sfl_username');
   document.getElementById('authLoggedOut').style.display = 'flex';
   document.getElementById('authLoggedIn').style.display = 'none';
@@ -136,6 +136,17 @@ async function loadTrackerData() {
 
     globalData = data;
     globalData.cloudHistory = currentVaultData;
+
+    // Merge saved vault lists if available
+    if (currentVaultData.deliveries && currentVaultData.deliveries.length > 0) {
+      // Keep fresh live statuses, append manual or saved past entries
+      var liveIds = new Set(globalData.deliveries.map(d => d.id));
+      currentVaultData.deliveries.forEach(savedD => {
+        if (!liveIds.has(savedD.id)) {
+          globalData.deliveries.push(savedD);
+        }
+      });
+    }
 
     if (data.pricesLoadedCount > 0) {
       priceBadge.textContent = data.pricesLoadedCount + ' PRICES LOADED';
@@ -302,7 +313,7 @@ async function saveProgressToCloudKV() {
     currentVaultData = resData.vaultData;
     globalData.cloudHistory = currentVaultData;
 
-    alert('☁️ SECURE VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    alert('☁️ SINGLE MASTER VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
