@@ -3,54 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Ticket & Cost Calculator</title>
-  <!-- Production Tailwind CSS Stylesheet -->
+  <title>SFL Chapter Tracker - Pixel Edition</title>
+  
+  <!-- Pixel Font (Press Start 2P) & Tailwind CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center" style="background-color: #0f172a; color: #f1f5f9;">
 
-  <div class="max-w-7xl w-full space-y-6" style="max-width: 80rem; margin: 0 auto;">
+  <style>
+    /* Retro 8-bit Pixel Styles & Tiled Grass Pattern Background */
+    * {
+      font-family: 'Press Start 2P', monospace;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    
+    body {
+      background-color: #064e3b;
+      background-image: radial-gradient(#047857 2px, transparent 2px), radial-gradient(#022c22 2px, #064e3b 2px);
+      background-size: 32px 32px;
+      background-position: 0 0, 16px 16px;
+    }
+
+    /* Custom Retro Scrollbars */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020617;
+      border: 2px solid #334155;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #f59e0b;
+      border: 2px solid #78350f;
+    }
+  </style>
+</head>
+<body class="bg-emerald-950 text-amber-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
+
+  <div class="max-w-7xl w-full space-y-6">
     <!-- Header -->
-    <header class="text-center space-y-2">
-      <h1 class="text-3xl font-bold text-amber-400 flex items-center justify-center gap-2">
+    <header class="text-center space-y-3 py-2">
+      <h1 class="text-xl sm:text-3xl font-extrabold text-amber-400 flex items-center justify-center gap-3 tracking-wider drop-shadow-[4px_4px_0_rgba(0,0,0,0.9)]">
         <span>🌻</span> SFL Chapter Tracker
       </h1>
-      <p class="text-slate-400 text-sm">Live SFL Market Price & Automated Cloud Storage</p>
+      <p class="text-amber-200/80 text-[10px] sm:text-xs tracking-wide">8-BIT MARKET PRICE & TICKET TRACKER</p>
     </header>
 
     <!-- Controls & Global Ticket Boost Selectors -->
-    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-4 shadow-lg">
+    <div id="controlsCard" class="bg-slate-900 border-4 border-slate-700 p-4 space-y-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.8)]">
       <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
+        
         <!-- Farm Input, VIP Toggle & Price Status -->
         <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <label for="farmId" class="text-xs font-semibold text-slate-300">Farm ID:</label>
+          <label for="farmId" class="text-[10px] font-bold text-slate-300">FARM ID:</label>
           <input 
             type="text" 
             id="farmId" 
             value="8472883706403914" 
-            class="bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-sm w-full sm:w-48 text-amber-300 focus:outline-none focus:border-amber-400 font-mono"
+            class="bg-slate-950 border-2 border-slate-600 px-3 py-1.5 text-xs text-amber-300 focus:outline-none focus:border-amber-400 font-mono w-full sm:w-48"
           />
-          <label class="flex items-center gap-1.5 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg cursor-pointer">
+          <label class="flex items-center gap-2 text-[10px] font-bold text-amber-300 bg-amber-950/80 border-2 border-amber-500/50 px-3 py-1.5 cursor-pointer">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer">
-            👑 VIP Active (+2 Deliveries)
+            👑 VIP (+2)
           </label>
-          <span id="priceBadge" class="hidden text-[10px] px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono">
-            Fetching Prices...
+          <span id="priceBadge" class="hidden text-[9px] px-2 py-1 bg-slate-950 text-emerald-400 border-2 border-emerald-500">
+            FETCHING...
           </span>
         </div>
 
         <!-- Interactive Ticket Boost Items (+1 x 3) -->
-        <div class="flex items-center gap-3 bg-slate-900/80 px-4 py-2 rounded-lg border border-slate-700 w-full lg:w-auto justify-between lg:justify-start">
-          <span class="text-xs font-semibold text-amber-400 whitespace-nowrap">+1 Ticket Items Equipped:</span>
-          <div class="flex items-center gap-3 text-xs font-mono">
+        <div class="flex items-center gap-3 bg-slate-950 px-3 py-2 border-2 border-slate-700 w-full lg:w-auto justify-between lg:justify-start">
+          <span class="text-[10px] font-bold text-amber-400 whitespace-nowrap">+1 BOOSTS:</span>
+          <div class="flex items-center gap-2 text-[9px]">
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost1" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 1
+              <input type="checkbox" id="boost1" onchange="saveAndRecalculate()" class="accent-amber-500 w-3 h-3 cursor-pointer"> #1
             </label>
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost2" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 2
+              <input type="checkbox" id="boost2" onchange="saveAndRecalculate()" class="accent-amber-500 w-3 h-3 cursor-pointer"> #2
             </label>
             <label class="flex items-center gap-1 cursor-pointer">
-              <input type="checkbox" id="boost3" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer"> Item 3
+              <input type="checkbox" id="boost3" onchange="saveAndRecalculate()" class="accent-amber-500 w-3 h-3 cursor-pointer"> #3
             </label>
           </div>
         </div>
@@ -59,65 +93,65 @@
         <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <button 
             onclick="loadTrackerData()" 
-            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer"
+            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black px-4 py-2 text-[10px] uppercase transition-transform active:translate-y-1 border-b-4 border-r-4 border-amber-700 cursor-pointer"
           >
-            Fetch Data
+            FETCH DATA
           </button>
           <button 
             onclick="saveProgressToCloudKV()" 
-            class="flex-1 lg:flex-initial bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black px-4 py-2 text-[10px] uppercase transition-transform active:translate-y-1 border-b-4 border-r-4 border-emerald-900 cursor-pointer"
           >
-            ☁️ Save KV
+            ☁️ SAVE KV
           </button>
           <button 
             onclick="toggleHistoryModal()" 
-            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-black px-4 py-2 text-[10px] uppercase transition-transform active:translate-y-1 border-b-4 border-r-4 border-indigo-900 cursor-pointer"
           >
-            📜 Logs
+            📜 LOGS
           </button>
         </div>
       </div>
     </div>
 
     <!-- Summary Stats Bar -->
-    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-md text-center font-mono">
+    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-900 border-4 border-slate-700 p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.8)] text-center">
       
       <!-- Total Available Today -->
-      <div class="p-3 bg-slate-900/80 rounded-lg border border-amber-500/30 flex flex-col justify-between space-y-2">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Today Available</div>
-        <div id="statTotalTickets" class="text-2xl font-bold text-amber-400">0</div>
-        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-          <span class="text-slate-400 text-[10px]">Today's Cost:</span>
+      <div class="p-3 bg-slate-950 border-2 border-amber-500/50 flex flex-col justify-between space-y-2">
+        <div class="text-[9px] text-slate-400 font-bold uppercase">TODAY TOTAL</div>
+        <div id="statTotalTickets" class="text-lg sm:text-xl font-bold text-amber-400">0</div>
+        <div class="pt-2 border-t-2 border-slate-800 flex justify-between items-center text-[9px]">
+          <span class="text-slate-400">COST:</span>
           <span id="statTotalCost" class="font-bold text-amber-300">0.00 SFL</span>
         </div>
       </div>
 
       <!-- Currently Have Today -->
-      <div class="p-3 bg-slate-900/80 rounded-lg border border-emerald-500/30 flex flex-col justify-between space-y-2">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Done Today</div>
-        <div id="statEarnedTickets" class="text-2xl font-bold text-emerald-400">0</div>
-        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-          <span class="text-slate-400 text-[10px]">Cost of Current:</span>
+      <div class="p-3 bg-slate-950 border-2 border-emerald-500/50 flex flex-col justify-between space-y-2">
+        <div class="text-[9px] text-slate-400 font-bold uppercase">DONE TODAY</div>
+        <div id="statEarnedTickets" class="text-lg sm:text-xl font-bold text-emerald-400">0</div>
+        <div class="pt-2 border-t-2 border-slate-800 flex justify-between items-center text-[9px]">
+          <span class="text-slate-400">COST:</span>
           <span id="statEarnedCost" class="font-bold text-emerald-300">0.00 SFL</span>
         </div>
       </div>
 
       <!-- Active Pending -->
-      <div class="p-3 bg-slate-900/80 rounded-lg border border-sky-500/30 flex flex-col justify-between space-y-2">
-        <div class="text-[11px] text-slate-400 font-semibold uppercase tracking-wide">Active Pending</div>
-        <div id="statPendingTickets" class="text-2xl font-bold text-sky-400">0</div>
-        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-          <span class="text-slate-400 text-[10px]">Cost of Active:</span>
+      <div class="p-3 bg-slate-950 border-2 border-sky-500/50 flex flex-col justify-between space-y-2">
+        <div class="text-[9px] text-slate-400 font-bold uppercase">ACTIVE PENDING</div>
+        <div id="statPendingTickets" class="text-lg sm:text-xl font-bold text-sky-400">0</div>
+        <div class="pt-2 border-t-2 border-slate-800 flex justify-between items-center text-[9px]">
+          <span class="text-slate-400">COST:</span>
           <span id="statPendingCost" class="font-bold text-sky-300">0.00 SFL</span>
         </div>
       </div>
 
       <!-- Saved Cumulative Totals in Cloud KV -->
-      <div class="p-3 bg-slate-900/80 rounded-lg border border-violet-500/30 flex flex-col justify-between space-y-2 bg-violet-950/10">
-        <div class="text-[11px] text-violet-300 font-semibold uppercase tracking-wide flex items-center justify-center gap-1">☁️ Cloud KV Saved</div>
-        <div id="statSavedTickets" class="text-2xl font-bold text-violet-400">0</div>
-        <div class="pt-2 border-t border-slate-800/80 flex justify-between items-center text-xs">
-          <span class="text-slate-400 text-[10px]">Cloud Cost:</span>
+      <div class="p-3 bg-slate-950 border-2 border-violet-500/50 flex flex-col justify-between space-y-2">
+        <div class="text-[9px] text-violet-300 font-bold uppercase">☁️ CLOUD TOTAL</div>
+        <div id="statSavedTickets" class="text-lg sm:text-xl font-bold text-violet-400">0</div>
+        <div class="pt-2 border-t-2 border-slate-800 flex justify-between items-center text-[9px]">
+          <span class="text-slate-400">COST:</span>
           <span id="statSavedCost" class="font-bold text-violet-300">0.00 SFL</span>
         </div>
       </div>
@@ -128,35 +162,35 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
       <!-- Active Deliveries Card -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md flex flex-col">
-        <h2 class="text-base font-bold text-violet-400 mb-3 border-b border-slate-700 pb-2 flex justify-between items-center">
-          <span>📦 Ticket Deliveries</span>
-          <span id="deliveriesCount" class="text-xs font-mono bg-slate-700 px-2 py-0.5 rounded text-slate-300">0</span>
+      <div class="bg-slate-900 border-4 border-slate-700 p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.8)] flex flex-col">
+        <h2 class="text-xs font-bold text-violet-400 pb-2 border-b-4 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
+          <span>📦 DELIVERIES</span>
+          <span id="deliveriesCount" class="text-[10px] bg-slate-950 px-2 py-1 border border-slate-700 text-slate-300">0</span>
         </h2>
         <div id="deliveriesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
-          <p class="text-xs text-slate-500">Click fetch to load deliveries...</p>
+          <p class="text-[10px] text-slate-500">CLICK FETCH DATA...</p>
         </div>
       </div>
 
       <!-- Bounties Card -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md flex flex-col">
-        <h2 class="text-base font-bold text-amber-400 mb-3 border-b border-slate-700 pb-2 flex justify-between items-center">
-          <span>📜 Ticket Bounties</span>
-          <span id="bountiesCount" class="text-xs font-mono bg-slate-700 px-2 py-0.5 rounded text-slate-300">0</span>
+      <div class="bg-slate-900 border-4 border-slate-700 p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.8)] flex flex-col">
+        <h2 class="text-xs font-bold text-amber-400 pb-2 border-b-4 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
+          <span>📜 BOUNTIES</span>
+          <span id="bountiesCount" class="text-[10px] bg-slate-950 px-2 py-1 border border-slate-700 text-slate-300">0</span>
         </h2>
-        <div id="bountiesList" class="space-y-2 overflow-y-auto max-h-[600px] pr-1">
-          <p class="text-xs text-slate-500">Click fetch to load bounties...</p>
+        <div id="bountiesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
+          <p class="text-[10px] text-slate-500">CLICK FETCH DATA...</p>
         </div>
       </div>
 
       <!-- Chores Card -->
-      <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md flex flex-col">
-        <h2 class="text-base font-bold text-emerald-400 mb-3 border-b border-slate-700 pb-2 flex justify-between items-center">
-          <span>🧹 Chores</span>
-          <span id="choresCount" class="text-xs font-mono bg-slate-700 px-2 py-0.5 rounded text-slate-300">0</span>
+      <div class="bg-slate-900 border-4 border-slate-700 p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,0.8)] flex flex-col">
+        <h2 class="text-xs font-bold text-emerald-400 pb-2 border-b-4 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
+          <span>🧹 CHORES</span>
+          <span id="choresCount" class="text-[10px] bg-slate-950 px-2 py-1 border border-slate-700 text-slate-300">0</span>
         </h2>
-        <div id="choresList" class="space-y-2 overflow-y-auto max-h-[600px] pr-1">
-          <p class="text-xs text-slate-500">Click fetch to load chores...</p>
+        <div id="choresList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
+          <p class="text-[10px] text-slate-500">CLICK FETCH DATA...</p>
         </div>
       </div>
 
@@ -164,19 +198,25 @@
   </div>
 
   <!-- Cloud KV Logs Modal -->
-  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" style="background-color: rgba(2, 6, 23, 0.85);">
-    <div class="bg-slate-800 border border-slate-700 rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl">
-      <div class="p-4 border-b border-slate-700 flex justify-between items-center">
-        <h3 class="font-bold text-amber-400 flex items-center gap-2">
-          <span>📜</span> Saved Cloud KV Logs
+  <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/90 z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-4 border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-[10px_10px_0px_0px_rgba(0,0,0,0.9)]">
+      <div class="p-4 border-b-4 border-slate-700 flex justify-between items-center">
+        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+          <span>📜</span> SAVED CLOUD LOGS
         </h3>
-        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold px-2 py-1 text-sm cursor-pointer">✕ Close</button>
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold text-xs uppercase cursor-pointer">✕ CLOSE</button>
       </div>
-      <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 font-mono text-xs">
+      <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 text-[10px]">
         <p class="text-slate-500">No logs loaded yet. Fetch data first.</p>
       </div>
     </div>
   </div>
+
+  <!-- Load Styles Module & Main Script -->
+  <script type="module">
+    import { PIXEL_STYLES } from './styles.js';
+    window.PIXEL_STYLES = PIXEL_STYLES;
+  </script>
 
   <script>
     let globalData = null;
@@ -221,8 +261,8 @@
 
       const priceBadge = document.getElementById('priceBadge');
       priceBadge.classList.remove('hidden');
-      priceBadge.textContent = 'Fetching Prices...';
-      priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-amber-400 border border-amber-500/30 font-mono animate-pulse';
+      priceBadge.textContent = 'FETCHING...';
+      priceBadge.className = 'text-[9px] px-2 py-1 bg-slate-950 text-amber-400 border-2 border-amber-500 animate-pulse';
 
       try {
         const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`);
@@ -233,11 +273,11 @@
         globalData = data;
 
         if (data.pricesLoadedCount > 0) {
-          priceBadge.textContent = `${data.pricesLoadedCount} SFL Prices Loaded`;
-          priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-emerald-400 border border-emerald-500/30 font-mono';
+          priceBadge.textContent = `${data.pricesLoadedCount} PRICES LOADED`;
+          priceBadge.className = 'text-[9px] px-2 py-1 bg-slate-950 text-emerald-400 border-2 border-emerald-500';
         } else {
-          priceBadge.textContent = 'Price API Offline';
-          priceBadge.className = 'text-[10px] px-2.5 py-1 rounded bg-slate-900 text-rose-400 border border-rose-500/30 font-mono';
+          priceBadge.textContent = 'PRICE API OFFLINE';
+          priceBadge.className = 'text-[9px] px-2 py-1 bg-slate-950 text-rose-400 border-2 border-rose-500';
         }
 
         if (localStorage.getItem('sfl_vip') === null) {
@@ -254,7 +294,7 @@
 
     async function saveProgressToCloudKV() {
       if (!globalData) {
-        alert('Please click "Fetch Data" first before saving!');
+        alert('Please click "FETCH DATA" first before saving!');
         return;
       }
 
@@ -276,7 +316,7 @@
         const resData = await response.json();
         if (resData.error) throw new Error(resData.error);
 
-        alert(`☁️ Progress Saved to Cloud KV!\nSaved +${currentDoneTicketsToday} Tickets (${formatSFL(currentDoneCostToday)} SFL)`);
+        alert(`☁️ SAVED TO CLOUD KV!\nSaved +${currentDoneTicketsToday} Tickets (${formatSFL(currentDoneCostToday)} SFL)`);
         globalData.cloudHistory = resData.cloudData;
         recalculateAll();
       } catch (err) {
@@ -293,17 +333,17 @@
         const container = document.getElementById('modalLogList');
 
         if (logs.length === 0) {
-          container.innerHTML = '<p class="text-slate-500">No saved KV logs found for this farm yet.</p>';
+          container.innerHTML = '<p class="text-slate-500">NO SAVED KV LOGS FOUND FOR THIS FARM YET.</p>';
         } else {
           container.innerHTML = logs.map((log, idx) => `
-            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-700 space-y-1">
+            <div class="bg-slate-950 p-3 border-2 border-slate-700 space-y-1">
               <div class="flex justify-between items-center text-slate-300">
-                <span class="font-bold text-amber-400">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
-                <span class="text-[10px] text-slate-500">${log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save'}</span>
+                <span class="font-bold text-amber-400">LOG #${logs.length - idx} (${log.date || 'SNAPSHOT'})</span>
+                <span class="text-[8px] text-slate-500">${log.autoTrigger ? '🤖 AUTO CRON' : '👤 MANUAL SAVE'}</span>
               </div>
               <div class="flex justify-between text-emerald-400">
-                <span>Tickets Saved: +${log.ticketsSaved || 0}</span>
-                <span>Cost: ${formatSFL(log.costSaved || 0)} SFL</span>
+                <span>TICKETS: +${log.ticketsSaved || 0}</span>
+                <span>COST: ${formatSFL(log.costSaved || 0)} SFL</span>
               </div>
             </div>
           `).join('');
@@ -349,9 +389,9 @@
 
         const itemRows = (d.itemDetails || []).map(detail => {
           return `
-            <div class="flex justify-between items-center text-xs">
-              <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="text-[9px] bg-slate-800 text-amber-400 px-1 py-0.2 rounded">Recipe</span>` : ''}</span>
-              <span class="text-[10px] text-slate-400 font-mono">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : 'Free / 0.00'}</span>
+            <div class="flex justify-between items-center text-[10px]">
+              <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="text-[8px] bg-slate-950 text-amber-400 border border-amber-500/50 px-1">RECIPE</span>` : ''}</span>
+              <span class="text-[9px] text-slate-400 font-mono">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : '0.00'}</span>
             </div>
           `;
         }).join('');
@@ -359,31 +399,30 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-slate-900/90 p-3 rounded-lg border ${d.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-amber-500/40 bg-amber-950/10'} text-xs space-y-2">
+          <div class="bg-slate-950 p-3 border-2 ${d.completed ? 'border-emerald-500/50 opacity-70' : 'border-amber-500/50'} text-[10px] space-y-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)]">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-amber-300 capitalize flex items-center gap-1">
+              <span class="font-bold text-amber-300 uppercase flex items-center gap-1">
                 ${d.from}
-                ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">Chapter NPC</span>` : ''}
+                ${d.isChapterNpc ? `<span class="text-[8px] bg-amber-500 text-slate-950 px-1 font-bold">CHAPTER</span>` : ''}
               </span>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded ${d.completed ? 'bg-emerald-900/90 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-amber-300 border border-amber-500/30'} font-mono font-bold">
-                  ${d.completed ? 'Done' : 'Active'}
+              <div class="flex items-center gap-1.5">
+                <span class="text-[8px] px-1.5 py-0.5 ${d.completed ? 'bg-emerald-950 text-emerald-400 border border-emerald-500' : 'bg-amber-950 text-amber-400 border border-amber-500'} font-bold">
+                  ${d.completed ? 'DONE' : 'ACTIVE'}
                 </span>
-                <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
               </div>
             </div>
 
-            <div class="text-slate-200 font-medium bg-slate-950/50 p-2 rounded border border-slate-800 space-y-1">
+            <div class="text-slate-200 bg-slate-900/90 p-2 border border-slate-800 space-y-1">
               ${itemRows}
             </div>
 
-            <div class="bg-slate-950/80 p-2.5 rounded border border-amber-500/20 space-y-1.5 font-mono text-[11px]">
+            <div class="bg-slate-900 p-2 border border-slate-800 space-y-1 text-[9px]">
               <div class="flex justify-between items-center border-b border-slate-800 pb-1">
-                <span class="text-amber-300 font-bold">Yield: ${finalTickets} Tickets</span>
-                <span class="text-slate-300 font-bold">Cost: ${formatSFL(totalSflCost)} SFL</span>
+                <span class="text-amber-300 font-bold">YIELD: ${finalTickets} TICKETS</span>
+                <span class="text-slate-300 font-bold">${formatSFL(totalSflCost)} SFL</span>
               </div>
-              <div class="text-[10px] text-emerald-400 flex justify-between font-bold">
-                <span>Cost / Ticket:</span>
+              <div class="text-emerald-400 flex justify-between font-bold">
+                <span>COST / TICKET:</span>
                 <span>${formatSFL(costPerTicket)} SFL</span>
               </div>
             </div>
@@ -412,23 +451,20 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${b.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-slate-700'} text-xs space-y-2">
+          <div class="bg-slate-950 p-2.5 border-2 ${b.completed ? 'border-emerald-500/50 opacity-70' : 'border-slate-700'} text-[10px] space-y-2 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)]">
             <div class="flex justify-between items-center">
-              <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400 font-mono">(Lvl ${b.level})</span>` : ''}</span>
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded ${b.completed ? 'bg-emerald-900/90 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-amber-300 border border-amber-500/30'} font-mono font-bold">
-                  ${b.completed ? 'Done' : 'Active'}
-                </span>
-                <span class="text-[10px] text-slate-500 font-mono">ID: ${b.id}</span>
-              </div>
+              <span class="font-bold text-slate-200 uppercase">${b.name} ${b.level ? `<span class="text-[8px] text-amber-400">(LVL ${b.level})</span>` : ''}</span>
+              <span class="text-[8px] px-1.5 py-0.5 ${b.completed ? 'bg-emerald-950 text-emerald-400 border border-emerald-500' : 'bg-amber-950 text-amber-400 border border-amber-500'} font-bold">
+                ${b.completed ? 'DONE' : 'ACTIVE'}
+              </span>
             </div>
-            <div class="bg-slate-950/80 p-2 rounded border border-slate-800 space-y-1 font-mono text-[11px]">
+            <div class="bg-slate-900 p-2 border border-slate-800 space-y-1 text-[9px]">
               <div class="flex justify-between text-slate-300">
-                <span>Yield: ${finalTickets} Tickets</span>
-                <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
+                <span>YIELD: ${finalTickets} TICKETS</span>
+                <span>COST: ${formatSFL(totalSflCost)} SFL</span>
               </div>
-              <div class="flex justify-between text-emerald-400 font-bold text-[10px]">
-                <span>Cost / Ticket:</span>
+              <div class="flex justify-between text-emerald-400 font-bold">
+                <span>COST / TICKET:</span>
                 <span>${formatSFL(costPerTicket)} SFL</span>
               </div>
             </div>
@@ -452,19 +488,19 @@
         }
 
         return `
-          <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-slate-700'} text-xs space-y-1.5">
+          <div class="bg-slate-950 p-2.5 border-2 ${c.completed ? 'border-emerald-500/50 opacity-70' : 'border-slate-700'} text-[10px] space-y-1.5 shadow-[3px_3px_0px_0px_rgba(0,0,0,0.8)]">
             <div class="flex justify-between items-center">
-              <span class="font-bold capitalize text-slate-200">${c.npc}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded ${c.completed ? 'bg-emerald-900/90 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-amber-300 border border-amber-500/30'} font-mono font-bold">
-                ${c.completed ? 'Done' : 'Active'}
+              <span class="font-bold uppercase text-slate-200">${c.npc}</span>
+              <span class="text-[8px] px-1.5 py-0.5 ${c.completed ? 'bg-emerald-950 text-emerald-400 border border-emerald-500' : 'bg-amber-950 text-amber-400 border border-amber-500'} font-bold">
+                ${c.completed ? 'DONE' : 'ACTIVE'}
               </span>
             </div>
-            <div class="text-slate-300">${c.task}</div>
-            ${hasProgress ? `<div class="text-[10px] text-slate-400 font-mono">Progress: ${c.progress} / ${c.requirement}</div>` : ''}
+            <div class="text-slate-300 uppercase">${c.task}</div>
+            ${hasProgress ? `<div class="text-[8px] text-slate-400">PROGRESS: ${c.progress} / ${c.requirement}</div>` : ''}
             ${c.baseTickets > 0 ? `
-              <div class="bg-slate-950/80 p-2 rounded border border-slate-800 flex justify-between items-center font-mono text-[11px]">
-                <span class="text-slate-400 text-[10px]">Yield:</span>
-                <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
+              <div class="bg-slate-900 p-2 border border-slate-800 flex justify-between items-center text-[9px]">
+                <span class="text-slate-400">YIELD:</span>
+                <span class="text-emerald-400 font-bold">${finalTickets} TICKETS</span>
               </div>
             ` : ''}
           </div>
