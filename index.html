@@ -143,10 +143,7 @@
       flex-direction: column;
       gap: 8px;
       box-shadow: 0 2px 0px rgba(92,64,51,0.2);
-      cursor: pointer;
-      transition: border-color 0.1s;
     }
-    .card-item:hover { border-color: #8B5A2B; }
     .card-item.done { border-color: #4CAF50; opacity: 0.8; background-color: #F1F8E9; }
     .card-item.active { border-color: #FFB300; background-color: #FFFDE7; }
     .card-item.manual { border-color: #8E44AD; background-color: #F4ECF7; }
@@ -199,7 +196,7 @@
       <p>Harvest Tickets & Market Price Calculator</p>
     </header>
 
-    <!-- Account Bar wrapped in form to satisfy browser password rules -->
+    <!-- Account Bar -->
     <div class="panel" style="padding: 10px 16px; background: #FFFACD;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
@@ -331,53 +328,6 @@
       </div>
       <div id="modalLogList" class="modal-body">
         <p style="color:#8C7853; font-size:12px; font-weight:bold;">No logs loaded yet. Login and save KV first.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- NPC Delivery Edit & History Modal -->
-  <div id="npcModal" class="modal">
-    <div class="modal-content" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3 id="npcModalTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📦 NPC PROFILE & HISTORY</h3>
-        <button onclick="closeNpcModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
-      </div>
-      <div class="modal-body" style="gap: 14px;">
-        <input type="hidden" id="npcModalIndex" value="" />
-        <div>
-          <label style="display:block; margin-bottom:4px;">NPC NAME:</label>
-          <input type="text" id="npcEditName" placeholder="e.g. Pumpkin' Pete" style="width: 100%;" />
-        </div>
-        <div style="display: flex; gap: 10px;">
-          <div style="flex: 1;">
-            <label style="display:block; margin-bottom:4px;">BASE TICKETS:</label>
-            <input type="number" id="npcEditTickets" placeholder="e.g. 2" style="width: 100%;" />
-          </div>
-          <div style="flex: 1;">
-            <label style="display:block; margin-bottom:4px;">TOTAL SFL COST:</label>
-            <input type="number" step="0.01" id="npcEditCost" placeholder="e.g. 1.25" style="width: 100%;" />
-          </div>
-        </div>
-        <div>
-          <label style="display:block; margin-bottom:4px;">STATUS:</label>
-          <select id="npcEditStatus" style="width: 100%;">
-            <option value="false">⏳ Active (Pending)</option>
-            <option value="true">✨ Done (Completed)</option>
-          </select>
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button onclick="saveNpcChanges()" class="btn btn-emerald" style="flex: 1;">SAVE CHANGES</button>
-          <button onclick="deleteNpcDelivery()" class="btn btn-amber" style="background:#C0392B; border-color:#922B21; box-shadow:0 4px 0px #922B21; color:#fff;">DELETE</button>
-        </div>
-
-        <hr style="border: 1px dashed #D2B48C; margin: 4px 0;" />
-
-        <div>
-          <h4 style="font-size: 12px; font-weight: 900; color: #8B5A2B; margin-bottom: 6px;">📜 PREVIOUS DELIVERIES FOR THIS NPC</h4>
-          <div id="npcHistoryContainer" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; background: #FFFACD; padding: 8px; border: 2px solid #D2B48C; border-radius: 8px;">
-            <p style="font-size: 11px; color: #8C7853; font-weight: bold;">No past cloud logs found for this NPC.</p>
-          </div>
-        </div>
       </div>
     </div>
   </div>
