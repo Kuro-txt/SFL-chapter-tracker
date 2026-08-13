@@ -192,7 +192,12 @@
 
         let totalSflCost = d.itemsCost || 0;
         const itemRows = (d.itemDetails || []).map(detail => {
-          return `<div>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.lineCost > 0 ? `<span class="text-[10px] text-slate-400">(${formatSFL(detail.lineCost)} SFL)</span>` : ''}</div>`;
+          return `
+            <div class="flex justify-between items-center text-xs">
+              <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="text-[9px] bg-slate-800 text-amber-400 px-1 py-0.2 rounded">Recipe</span>` : ''}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : 'Free / 0.00'}</span>
+            </div>
+          `;
         }).join('');
 
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
@@ -207,7 +212,7 @@
               <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
             </div>
 
-            <div class="text-slate-200 font-medium bg-slate-950/50 p-2 rounded border border-slate-800 space-y-0.5">
+            <div class="text-slate-200 font-medium bg-slate-950/50 p-2 rounded border border-slate-800 space-y-1">
               ${itemRows}
             </div>
 
