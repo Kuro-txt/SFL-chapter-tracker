@@ -22,7 +22,7 @@ function toggleColumnCard(cardId, btn) {
   if (card) {
     card.classList.toggle('collapsed');
     if (btn) {
-      btn.textContent = card.classList.contains('collapsed') ? '➕' : '➖';
+      btn.textContent = card.classList.contains('collapsed') ? '▲' : '▼';
     }
   }
 }
@@ -232,7 +232,7 @@ async function loadTrackerData() {
   }
 }
 
-// Category Summary Overview Popup Modal
+// Category Summary Overview Popup Modal (ACTIVE ITEMS ORDERED ABOVE COMPLETED)
 function openCategorySummaryModal(cat) {
   var modal = document.getElementById('categorySummaryModal');
   var titleEl = document.getElementById('categorySummaryTitle');
@@ -248,7 +248,8 @@ function openCategorySummaryModal(cat) {
 
   if (cat === 'delivery') {
     titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
-    bodyEl.innerHTML = globalData.deliveries.map(d => {
+    var sortedDeliv = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    bodyEl.innerHTML = sortedDeliv.map(d => {
       var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       var finalTickets = d.baseTickets + deliveryAddon;
       var itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
@@ -266,7 +267,8 @@ function openCategorySummaryModal(cat) {
     }).join('');
   } else if (cat === 'bounty') {
     titleEl.textContent = '📜 BOUNTIES OVERVIEW';
-    bodyEl.innerHTML = globalData.bounties.map(b => {
+    var sortedBounties = [...globalData.bounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    bodyEl.innerHTML = sortedBounties.map(b => {
       var finalTickets = b.baseTickets + boostCount;
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
@@ -278,7 +280,8 @@ function openCategorySummaryModal(cat) {
     }).join('');
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
-    bodyEl.innerHTML = globalData.chores.map(c => {
+    var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    bodyEl.innerHTML = sortedChores.map(c => {
       var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
@@ -734,9 +737,10 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (d.isManual ? 'manual' : (d.completed ? 'done' : 'active')) + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<button class="btn-pop" onclick="openNpcHistoryModal(\'' + escapedName + '\')">👤 ' + d.from.toUpperCase() + (d.isChapterNpc ? ' 👑' : '') + '</button>' +
+          '<button class="btn-pop" onclick="openNpcHistoryModal(\'' + escapedName + '\')">📜 EDIT / HISTORY</button>' +
           '<span class="' + badgeClass + '">' + (d.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
+        '<div style="font-weight:900; color:#8B4513; font-size:12px;">👤 ' + d.from.toUpperCase() + (d.isChapterNpc ? ' 👑' : '') + '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">' + itemRows + '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
           '<div style="display:flex; justify-content:space-between; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
@@ -773,7 +777,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (b.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<button class="btn-pop" onclick="openColumnHistoryModal(\'bounty\')">📜 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</button>' +
+          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">📜 ' + b.name.toUpperCase() + (b.level ? ' (Lvl ' + b.level + ')' : '') + '</span>' +
           '<span class="' + badgeClass + '">' + (b.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">' +
@@ -808,7 +812,7 @@ function recalculateAll() {
 
       return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-          '<button class="btn-pop" onclick="openColumnHistoryModal(\'chore\')">🧹 ' + c.npc.toUpperCase() + '</button>' +
+          '<span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🧹 ' + c.npc.toUpperCase() + '</span>' +
           '<span class="' + badgeClass + '">' + (c.completed ? '✨ DONE' : '⏳ ACTIVE') + '</span>' +
         '</div>' +
         '<div style="color:#5C4033; font-weight:bold;">' + c.task + '</div>' +
