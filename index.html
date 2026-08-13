@@ -3,24 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SFL Chapter Tracker - Arcade Edition</title>
+  <title>SFL Chapter Tracker - Arcade Dashboard</title>
   
-  <!-- Fonts & Tailwind CSS -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Standalone Tailwind CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 
   <style>
-    .font-pixel { font-family: 'Press Start 2P', cursive; }
-    .font-mono-code { font-family: 'Space Mono', monospace; }
-
     body {
       background-color: #0b0f19;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       background-image: 
         linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
         linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 24px 24px;
+      background-size: 20px 24px;
     }
 
     ::-webkit-scrollbar { width: 8px; }
@@ -28,41 +23,41 @@
     ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 0px; }
   </style>
 </head>
-<body class="bg-[#0B0F19] text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen p-4 sm:p-8 flex flex-col items-center">
 
   <div class="max-w-7xl w-full space-y-6">
     <!-- Header -->
     <header class="text-center space-y-2 py-2">
-      <h1 class="font-pixel text-lg sm:text-2xl font-extrabold text-amber-400 flex items-center justify-center gap-3 tracking-wider drop-shadow-[3px_3px_0_#000]">
+      <h1 class="text-xl sm:text-3xl font-black text-amber-400 flex items-center justify-center gap-3 tracking-wider drop-shadow-[2px_2px_0_#000]">
         <span>🌻</span> SFL CHAPTER TRACKER
       </h1>
-      <p class="font-mono-code text-slate-400 text-xs sm:text-sm tracking-wide">Live Market Price Engine & Automatic Cloud Storage</p>
+      <p class="text-slate-400 text-xs sm:text-sm font-bold tracking-wide">Live Market Price Engine & Cloud Storage</p>
     </header>
 
     <!-- Controls Panel -->
-    <div class="bg-[#131B2E] border-2 border-slate-700 p-4 space-y-4 shadow-[4px_4px_0px_0px_#000000]">
+    <div class="bg-[#131b2e] border-2 border-slate-700 p-4 space-y-4 shadow-[4px_4px_0px_0px_#000000]">
       <div class="flex flex-col lg:flex-row gap-4 items-center justify-between">
         
         <!-- Inputs -->
-        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto font-mono-code">
+        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto font-mono">
           <label for="farmId" class="text-xs font-bold text-slate-300">FARM ID:</label>
           <input 
             type="text" 
             id="farmId" 
             value="8472883706403914" 
-            class="bg-[#090D16] border-2 border-slate-700 px-3 py-1.5 text-xs text-amber-300 focus:outline-none focus:border-amber-400 w-full sm:w-48 font-bold"
+            class="bg-[#090d16] border-2 border-slate-700 px-3 py-1.5 text-xs text-amber-300 focus:outline-none focus:border-amber-400 w-full sm:w-48 font-bold"
           />
           <label class="flex items-center gap-2 text-xs font-bold text-amber-300 bg-amber-500/10 border-2 border-amber-500/30 px-3 py-1.5 cursor-pointer hover:bg-amber-500/20">
             <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" class="accent-amber-500 w-4 h-4 cursor-pointer">
             👑 VIP (+2)
           </label>
-          <span id="priceBadge" class="hidden text-[10px] px-2.5 py-1 bg-[#090D16] text-emerald-400 border border-emerald-500/50 font-mono-code font-bold">
+          <span id="priceBadge" class="hidden text-[10px] px-2.5 py-1 bg-[#090d16] text-emerald-400 border border-emerald-500/50 font-bold">
             FETCHING...
           </span>
         </div>
 
         <!-- Boost Checkboxes -->
-        <div class="flex items-center gap-3 bg-[#090D16] px-3 py-2 border-2 border-slate-800 w-full lg:w-auto justify-between lg:justify-start font-mono-code text-xs font-bold">
+        <div class="flex items-center gap-3 bg-[#090d16] px-3 py-2 border-2 border-slate-800 w-full lg:w-auto justify-between lg:justify-start text-xs font-bold">
           <span class="text-amber-400 whitespace-nowrap">+1 BOOSTS:</span>
           <div class="flex items-center gap-3 text-slate-300">
             <label class="flex items-center gap-1 cursor-pointer">
@@ -78,22 +73,22 @@
         </div>
 
         <!-- Buttons -->
-        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto font-pixel">
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto font-mono">
           <button 
             onclick="loadTrackerData()" 
-            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-400 active:translate-y-1 active:shadow-none text-slate-950 font-black px-4 py-2.5 text-[10px] uppercase transition-all border-2 border-amber-300 shadow-[3px_3px_0px_0px_#000] cursor-pointer"
+            class="flex-1 lg:flex-initial bg-amber-500 hover:bg-amber-400 active:translate-y-1 active:shadow-none text-slate-950 font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all border-2 border-amber-300 shadow-[3px_3px_0px_0px_#000] cursor-pointer"
           >
             FETCH DATA
           </button>
           <button 
             onclick="saveProgressToCloudKV()" 
-            class="flex-1 lg:flex-initial bg-emerald-500 hover:bg-emerald-400 active:translate-y-1 active:shadow-none text-slate-950 font-black px-4 py-2.5 text-[10px] uppercase transition-all border-2 border-emerald-300 shadow-[3px_3px_0px_0px_#000] cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-emerald-500 hover:bg-emerald-400 active:translate-y-1 active:shadow-none text-slate-950 font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all border-2 border-emerald-300 shadow-[3px_3px_0px_0px_#000] cursor-pointer flex items-center justify-center gap-1"
           >
             ☁️ SAVE KV
           </button>
           <button 
             onclick="toggleHistoryModal()" 
-            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 active:translate-y-1 active:shadow-none text-white font-black px-4 py-2.5 text-[10px] uppercase transition-all border-2 border-indigo-400 shadow-[3px_3px_0px_0px_#000] cursor-pointer flex items-center justify-center gap-1"
+            class="flex-1 lg:flex-initial bg-indigo-600 hover:bg-indigo-500 active:translate-y-1 active:shadow-none text-white font-black px-4 py-2.5 text-xs uppercase tracking-wider transition-all border-2 border-indigo-400 shadow-[3px_3px_0px_0px_#000] cursor-pointer flex items-center justify-center gap-1"
           >
             📜 LOGS
           </button>
@@ -102,43 +97,43 @@
     </div>
 
     <!-- Summary Stats Bar -->
-    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#131B2E] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000]">
+    <div id="statsSummaryBar" class="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000]">
       
       <!-- Total Available Today -->
-      <div class="p-3 bg-[#090D16] border-2 border-amber-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
-        <div class="font-pixel text-[9px] text-slate-400 font-bold uppercase tracking-wider">TODAY TOTAL</div>
-        <div id="statTotalTickets" class="font-mono-code text-2xl font-bold text-amber-400">0</div>
-        <div class="pt-2 border-t border-slate-800 flex justify-between items-center font-mono-code text-xs">
+      <div class="p-3 bg-[#090d16] border-2 border-amber-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">TODAY TOTAL</div>
+        <div id="statTotalTickets" class="text-2xl font-bold text-amber-400">0</div>
+        <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
           <span class="text-slate-400 text-[10px]">Total Cost:</span>
           <span id="statTotalCost" class="font-bold text-amber-300">0.00 SFL</span>
         </div>
       </div>
 
       <!-- Currently Have Today -->
-      <div class="p-3 bg-[#090D16] border-2 border-emerald-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
-        <div class="font-pixel text-[9px] text-slate-400 font-bold uppercase tracking-wider">DONE TODAY</div>
-        <div id="statEarnedTickets" class="font-mono-code text-2xl font-bold text-emerald-400">0</div>
-        <div class="pt-2 border-t border-slate-800 flex justify-between items-center font-mono-code text-xs">
+      <div class="p-3 bg-[#090d16] border-2 border-emerald-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">DONE TODAY</div>
+        <div id="statEarnedTickets" class="text-2xl font-bold text-emerald-400">0</div>
+        <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
           <span class="text-slate-400 text-[10px]">Cost Done:</span>
           <span id="statEarnedCost" class="font-bold text-emerald-300">0.00 SFL</span>
         </div>
       </div>
 
       <!-- Active Pending -->
-      <div class="p-3 bg-[#090D16] border-2 border-sky-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
-        <div class="font-pixel text-[9px] text-slate-400 font-bold uppercase tracking-wider">PENDING</div>
-        <div id="statPendingTickets" class="font-mono-code text-2xl font-bold text-sky-400">0</div>
-        <div class="pt-2 border-t border-slate-800 flex justify-between items-center font-mono-code text-xs">
+      <div class="p-3 bg-[#090d16] border-2 border-sky-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+        <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">PENDING</div>
+        <div id="statPendingTickets" class="text-2xl font-bold text-sky-400">0</div>
+        <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
           <span class="text-slate-400 text-[10px]">Cost Pending:</span>
           <span id="statPendingCost" class="font-bold text-sky-300">0.00 SFL</span>
         </div>
       </div>
 
       <!-- Saved Cumulative Totals in Cloud KV -->
-      <div class="p-3 bg-[#090D16] border-2 border-violet-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
-        <div class="font-pixel text-[9px] text-violet-300 font-bold uppercase tracking-wider flex items-center gap-1">☁️ CLOUD KV</div>
-        <div id="statSavedTickets" class="font-mono-code text-2xl font-bold text-violet-400">0</div>
-        <div class="pt-2 border-t border-slate-800 flex justify-between items-center font-mono-code text-xs">
+      <div class="p-3 bg-[#090d16] border-2 border-violet-500/40 shadow-[3px_3px_0px_0px_#000] flex flex-col justify-between space-y-2">
+        <div class="text-[10px] text-violet-300 font-bold uppercase tracking-wider flex items-center gap-1">☁️ CLOUD KV</div>
+        <div id="statSavedTickets" class="text-2xl font-bold text-violet-400">0</div>
+        <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
           <span class="text-slate-400 text-[10px]">Saved Cost:</span>
           <span id="statSavedCost" class="font-bold text-violet-300">0.00 SFL</span>
         </div>
@@ -150,34 +145,34 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
       <!-- Active Deliveries Card -->
-      <div class="bg-[#131B2E] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
-        <h2 class="font-pixel text-xs font-bold text-violet-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
+      <div class="bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
+        <h2 class="text-xs font-bold text-violet-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
           <span>📦 DELIVERIES</span>
-          <span id="deliveriesCount" class="font-mono-code text-[11px] bg-[#090D16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
+          <span id="deliveriesCount" class="text-[11px] bg-[#090d16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
         </h2>
-        <div id="deliveriesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1 font-mono-code">
+        <div id="deliveriesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
           <p class="text-xs text-slate-500">Click Fetch Data to load orders...</p>
         </div>
       </div>
 
       <!-- Bounties Card -->
-      <div class="bg-[#131B2E] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
-        <h2 class="font-pixel text-xs font-bold text-amber-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
+      <div class="bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
+        <h2 class="text-xs font-bold text-amber-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
           <span>📜 BOUNTIES</span>
-          <span id="bountiesCount" class="font-mono-code text-[11px] bg-[#090D16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
+          <span id="bountiesCount" class="text-[11px] bg-[#090d16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
         </h2>
-        <div id="bountiesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1 font-mono-code">
+        <div id="bountiesList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
           <p class="text-xs text-slate-500">Click Fetch Data to load bounties...</p>
         </div>
       </div>
 
       <!-- Chores Card -->
-      <div class="bg-[#131B2E] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
-        <h2 class="font-pixel text-xs font-bold text-emerald-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
+      <div class="bg-[#131b2e] border-2 border-slate-700 p-4 shadow-[4px_4px_0px_0px_#000000] flex flex-col">
+        <h2 class="text-xs font-bold text-emerald-400 pb-3 border-b-2 border-slate-700 flex justify-between items-center uppercase tracking-wider mb-3">
           <span>🧹 CHORES</span>
-          <span id="choresCount" class="font-mono-code text-[11px] bg-[#090D16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
+          <span id="choresCount" class="text-[11px] bg-[#090d16] px-2 py-0.5 border border-slate-700 text-slate-300">0</span>
         </h2>
-        <div id="choresList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1 font-mono-code">
+        <div id="choresList" class="space-y-3 overflow-y-auto max-h-[600px] pr-1">
           <p class="text-xs text-slate-500">Click Fetch Data to load chores...</p>
         </div>
       </div>
@@ -187,14 +182,14 @@
 
   <!-- Cloud KV Logs Modal -->
   <div id="historyModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-[#131B2E] border-2 border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-[8px_8px_0px_0px_#000]">
+    <div class="bg-[#131b2e] border-2 border-slate-700 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-[8px_8px_0px_0px_#000]">
       <div class="p-4 border-b-2 border-slate-700 flex justify-between items-center">
-        <h3 class="font-pixel text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
           <span>📜</span> SAVED CLOUD LOGS
         </h3>
-        <button onclick="toggleHistoryModal()" class="font-pixel text-slate-400 hover:text-slate-100 font-bold text-xs uppercase cursor-pointer">✕ CLOSE</button>
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-100 font-bold text-xs uppercase cursor-pointer">✕ CLOSE</button>
       </div>
-      <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 font-mono-code text-xs">
+      <div id="modalLogList" class="p-4 overflow-y-auto space-y-3 text-xs">
         <p class="text-slate-500">No logs loaded yet. Fetch data first.</p>
       </div>
     </div>
@@ -250,7 +245,7 @@
       const priceBadge = document.getElementById('priceBadge');
       priceBadge.classList.remove('hidden');
       priceBadge.textContent = 'FETCHING...';
-      priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090D16] text-amber-400 border border-amber-500/50 font-mono-code font-bold animate-pulse';
+      priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090d16] text-amber-400 border border-amber-500/50 font-bold animate-pulse';
 
       try {
         const response = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}`);
@@ -262,10 +257,10 @@
 
         if (data.pricesLoadedCount > 0) {
           priceBadge.textContent = `${data.pricesLoadedCount} PRICES LOADED`;
-          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090D16] text-emerald-400 border border-emerald-500/50 font-mono-code font-bold';
+          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090d16] text-emerald-400 border border-emerald-500/50 font-bold';
         } else {
           priceBadge.textContent = 'PRICE API OFFLINE';
-          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090D16] text-rose-400 border border-rose-500/50 font-mono-code font-bold';
+          priceBadge.className = 'text-[10px] px-2.5 py-1 bg-[#090d16] text-rose-400 border border-rose-500/50 font-bold';
         }
 
         if (localStorage.getItem('sfl_vip') === null) {
@@ -324,7 +319,7 @@
           container.innerHTML = '<p class="text-slate-500">No saved KV logs found for this farm yet.</p>';
         } else {
           container.innerHTML = logs.map((log, idx) => `
-            <div class="bg-[#090D16] p-3 border border-slate-800 space-y-1">
+            <div class="bg-[#090d16] p-3 border border-slate-800 space-y-1">
               <div class="flex justify-between items-center text-slate-300">
                 <span class="font-bold text-amber-400">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
                 <span class="text-[10px] text-slate-500">${log.autoTrigger ? '🤖 Auto Cron' : '👤 Manual Save'}</span>
@@ -379,7 +374,7 @@
           return `
             <div class="flex justify-between items-center text-xs">
               <span>• ${detail.qty}x <span class="text-slate-100 font-bold">${detail.name}</span> ${detail.isRecipe ? `<span class="${window.STYLES?.badgeRecipe || 'bg-slate-950 text-amber-300 border border-amber-500/40 px-1 text-[9px]'}">RECIPE</span>` : ''}</span>
-              <span class="text-[11px] text-slate-400 font-mono-code">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : '0.00'}</span>
+              <span class="text-[11px] text-slate-400">${detail.lineCost > 0 ? `${formatSFL(detail.lineCost)} SFL` : '0.00'}</span>
             </div>
           `;
         }).join('');
@@ -387,7 +382,7 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-[#090D16] p-3 border-2 ${d.completed ? 'border-emerald-500/40 opacity-75' : 'border-amber-500/40'} text-xs space-y-2.5 shadow-[2px_2px_0px_0px_#000]">
+          <div class="bg-[#090d16] p-3 border-2 ${d.completed ? 'border-emerald-500/40 opacity-75' : 'border-amber-500/40'} text-xs space-y-2.5 shadow-[2px_2px_0px_0px_#000]">
             <div class="flex justify-between items-center">
               <span class="font-bold text-amber-300 capitalize flex items-center gap-1.5">
                 ${d.from}
@@ -397,15 +392,15 @@
                 <span class="${d.completed ? (window.STYLES?.badgeDone || 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider') : (window.STYLES?.badgeActive || 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider')}">
                   ${d.completed ? 'DONE' : 'ACTIVE'}
                 </span>
-                <span class="text-[10px] text-slate-500 font-mono-code">${d.id}</span>
+                <span class="text-[10px] text-slate-500">${d.id}</span>
               </div>
             </div>
 
-            <div class="text-slate-200 bg-[#131B2E] p-2 border border-slate-800 space-y-1">
+            <div class="text-slate-200 bg-[#131b2e] p-2 border border-slate-800 space-y-1">
               ${itemRows}
             </div>
 
-            <div class="bg-[#131B2E] p-2 border border-slate-800 space-y-1 font-mono-code text-xs">
+            <div class="bg-[#131b2e] p-2 border border-slate-800 space-y-1 text-xs">
               <div class="flex justify-between items-center border-b border-slate-800 pb-1">
                 <span class="text-amber-300 font-bold">Yield: ${finalTickets} Tickets</span>
                 <span class="text-slate-300 font-bold">${formatSFL(totalSflCost)} SFL</span>
@@ -440,14 +435,14 @@
         const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
 
         return `
-          <div class="bg-[#090D16] p-3 border-2 ${b.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-800'} text-xs space-y-2 shadow-[2px_2px_0px_0px_#000]">
+          <div class="bg-[#090d16] p-3 border-2 ${b.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-800'} text-xs space-y-2 shadow-[2px_2px_0px_0px_#000]">
             <div class="flex justify-between items-center">
               <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400">(Lvl ${b.level})</span>` : ''}</span>
               <span class="${b.completed ? (window.STYLES?.badgeDone || 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider') : (window.STYLES?.badgeActive || 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider')}">
                 ${b.completed ? 'DONE' : 'ACTIVE'}
               </span>
             </div>
-            <div class="bg-[#131B2E] p-2 border border-slate-800 space-y-1 font-mono-code text-xs">
+            <div class="bg-[#131b2e] p-2 border border-slate-800 space-y-1 text-xs">
               <div class="flex justify-between text-slate-300">
                 <span>Yield: ${finalTickets} Tickets</span>
                 <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
@@ -477,7 +472,7 @@
         }
 
         return `
-          <div class="bg-[#090D16] p-3 border-2 ${c.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-800'} text-xs space-y-1.5 shadow-[2px_2px_0px_0px_#000]">
+          <div class="bg-[#090d16] p-3 border-2 ${c.completed ? 'border-emerald-500/40 opacity-75' : 'border-slate-800'} text-xs space-y-1.5 shadow-[2px_2px_0px_0px_#000]">
             <div class="flex justify-between items-center">
               <span class="font-bold capitalize text-slate-200">${c.npc}</span>
               <span class="${c.completed ? (window.STYLES?.badgeDone || 'bg-emerald-950 text-emerald-300 border border-emerald-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider') : (window.STYLES?.badgeActive || 'bg-amber-950 text-amber-300 border border-amber-500/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider')}">
@@ -485,9 +480,9 @@
               </span>
             </div>
             <div class="text-slate-300">${c.task}</div>
-            ${hasProgress ? `<div class="text-[11px] text-slate-400 font-mono-code">Progress: ${c.progress} / ${c.requirement}</div>` : ''}
+            ${hasProgress ? `<div class="text-[11px] text-slate-400">Progress: ${c.progress} / ${c.requirement}</div>` : ''}
             ${c.baseTickets > 0 ? `
-              <div class="bg-[#131B2E] p-2 border border-slate-800 flex justify-between items-center font-mono-code text-xs">
+              <div class="bg-[#131b2e] p-2 border border-slate-800 flex justify-between items-center text-xs">
                 <span class="text-slate-400">Yield:</span>
                 <span class="text-emerald-400 font-bold">${finalTickets} Tickets</span>
               </div>
