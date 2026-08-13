@@ -14,6 +14,13 @@ const CHAPTER_NPC_TICKETS = {
   "jester": 4
 };
 
+async function hashPassword(password) {
+  const msgUint8 = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function extractPricesRecursive(obj, map = {}) {
   if (!obj || typeof obj !== 'object') return map;
   if (Array.isArray(obj)) {
@@ -50,132 +57,168 @@ function extractPricesRecursive(obj, map = {}) {
 
 function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
-
   const clean = name.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
-
-  if (clean === 'coins' || clean === 'coin') {
-    return 0.001;
-  }
+  if (clean === 'coins' || clean === 'coin') return 0.001;
 
   const variations = [
-    clean,
-    stripped,
-    clean.replace(/\s+/g, '-'),
-    clean.replace(/\s+/g, '_'),
-    clean + 's',
-    clean + 'es',
+    clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
+    clean + 's', clean + 'es',
     clean.endsWith('s') ? clean.slice(0, -1) : clean,
     clean.endsWith('es') ? clean.slice(0, -2) : clean,
     clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean,
-    stripped + 's',
-    stripped.endsWith('s') ? stripped.slice(0, -1) : stripped
+    stripped + 's', stripped.endsWith('s') ? stripped.slice(0, -1) : stripped
   ];
 
   for (const v of variations) {
-    if (priceMap[v] !== undefined && priceMap[v] > 0) {
-      return priceMap[v];
-    }
+    if (priceMap[v] !== undefined && priceMap[v] > 0) return priceMap[v];
   }
-
   return 0;
 }
 
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
+  const action = url.searchParams.get('action'); // 'register', 'login', or default data fetch
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  if (request.method === 'POST') {
+  // 1. REGISTER ACCOUNT
+  if (request.method === 'POST' && action === 'register') {
     try {
       const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      const password = body.password || '';
+
+      if (!username || !password) {
+        return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
+      }
+
       if (env && env.TRACKER_KV) {
-        const kvKey = `farm_${farmId}_history`;
-        let existingData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
-        try {
-          const prev = await env.TRACKER_KV.get(kvKey, 'json');
-          if (prev) existingData = prev;
-        } catch (_) {}
+        const userKey = `user_${username}_auth`;
+        const existing = await env.TRACKER_KV.get(userKey);
+        if (existing) {
+          return new Response(JSON.stringify({ error: 'Username already taken.' }), { status: 400 });
+        }
+
+        const passwordHash = await hashPassword(password);
+        await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
+
+        return new Response(JSON.stringify({ success: true, username }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+      return new Response(JSON.stringify({ error: 'KV Database binding missing.' }), { status: 500 });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
+  }
+
+  // 2. LOGIN ACCOUNT
+  if (request.method === 'POST' && action === 'login') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      const password = body.password || '';
+
+      if (!username || !password) {
+        return new Response(JSON.stringify({ error: 'Username and password required.' }), { status: 400 });
+      }
+
+      if (env && env.TRACKER_KV) {
+        const userKey = `user_${username}_auth`;
+        const userDataStr = await env.TRACKER_KV.get(userKey);
+        if (!userDataStr) {
+          return new Response(JSON.stringify({ error: 'Account not found.' }), { status: 401 });
+        }
+
+        const userData = JSON.parse(userDataStr);
+        const inputHash = await hashPassword(password);
+
+        if (userData.passwordHash !== inputHash) {
+          return new Response(JSON.stringify({ error: 'Incorrect password.' }), { status: 401 });
+        }
+
+        // Fetch user's private vault data
+        const vaultKey = `user_${username}_vault`;
+        let vaultData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, checklist: {} };
+
+        return new Response(JSON.stringify({ success: true, username, vaultData }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
+      return new Response(JSON.stringify({ error: 'KV Database binding missing.' }), { status: 500 });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
+  }
+
+  // 3. SAVE PRIVATE VAULT DATA (POST)
+  if (request.method === 'POST' && action === 'saveVault') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+
+      if (!username) {
+        return new Response(JSON.stringify({ error: 'Not logged in.' }), { status: 401 });
+      }
+
+      if (env && env.TRACKER_KV) {
+        const vaultKey = `user_${username}_vault`;
+        let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, checklist: {} };
 
         const todayDate = new Date().toISOString().split('T')[0];
-        
-        // Save detailed task objects with individual costs
         const completedDeliveries = (body.deliveries || []).filter(d => d.completed).map(d => ({
-          name: d.from,
-          cost: d.itemsCost || 0,
-          tickets: d.baseTickets || 0
+          name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0
         }));
-
         const completedBounties = (body.bounties || []).filter(b => b.completed).map(b => ({
-          name: b.name,
-          cost: b.itemsCost || 0,
-          tickets: b.baseTickets || 0
+          name: b.name, cost: b.itemsCost || 0, tickets: b.baseTickets || 0
         }));
-
         const completedChores = (body.chores || []).filter(c => c.completed).map(c => ({
-          name: c.task,
-          npc: c.npc
+          name: c.task, npc: c.npc
         }));
 
         const newTickets = body.ticketsSaved || 0;
         const newCost = body.costSaved || 0;
 
         const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
-
         if (existingTodayLogIndex !== -1) {
           const oldLog = existingData.logs[existingTodayLogIndex];
           existingData.cumulativeTickets -= (oldLog.ticketsSaved || 0);
           existingData.cumulativeCost -= (oldLog.costSaved || 0);
 
           existingData.logs[existingTodayLogIndex] = {
-            date: todayDate,
-            timestamp: new Date().toISOString(),
-            ticketsSaved: newTickets,
-            costSaved: newCost,
-            deliveriesDone: completedDeliveries,
-            bountiesDone: completedBounties,
-            choresDone: completedChores
+            date: todayDate, timestamp: new Date().toISOString(),
+            ticketsSaved: newTickets, costSaved: newCost,
+            deliveriesDone: completedDeliveries, bountiesDone: completedBounties, choresDone: completedChores
           };
         } else {
-          const logEntry = {
-            date: todayDate,
-            timestamp: new Date().toISOString(),
-            ticketsSaved: newTickets,
-            costSaved: newCost,
-            deliveriesDone: completedDeliveries,
-            bountiesDone: completedBounties,
-            choresDone: completedChores
-          };
-          existingData.logs.unshift(logEntry);
+          existingData.logs.unshift({
+            date: todayDate, timestamp: new Date().toISOString(),
+            ticketsSaved: newTickets, costSaved: newCost,
+            deliveriesDone: completedDeliveries, bountiesDone: completedBounties, choresDone: completedChores
+          });
         }
 
         existingData.cumulativeTickets += newTickets;
         existingData.cumulativeCost += newCost;
+        if (body.checklist) existingData.checklist = body.checklist;
 
-        await env.TRACKER_KV.put(kvKey, JSON.stringify(existingData));
+        await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
 
-        return new Response(JSON.stringify({ success: true, cloudData: existingData }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-        });
-      } else {
-        return new Response(JSON.stringify({ 
-          success: true, 
-          cloudData: { logs: [], cumulativeTickets: body.ticketsSaved || 0, cumulativeCost: body.costSaved || 0 } 
-        }), {
+        return new Response(JSON.stringify({ success: true, vaultData: existingData }), {
           status: 200,
           headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
         });
       }
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), { 
-        status: 200, 
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } 
-      });
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
   }
 
+  // 4. GET LIVE FARM DATA
   try {
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
@@ -184,21 +227,17 @@ export async function onRequest(context) {
       'Origin': 'https://sunflower-land.com'
     };
 
-    if (apiKey && apiKey.trim() !== '') {
-      sflHeaders['x-api-key'] = apiKey.trim();
-    }
+    if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
     const [sflResponse, pricesResponse] = await Promise.all([
-      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(e => ({ ok: false, status: 500 })),
+      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => ({ ok: false, status: 500 })),
       fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
     ]);
 
     if (!sflResponse || !sflResponse.ok) {
       const status = sflResponse?.status || 500;
-      if (status === 401) {
-        throw new Error('SFL API returned 401 Unauthorized. Please enter your valid SFL API Key in the dashboard input box.');
-      }
-      throw new Error(`SFL API error (${status}). Check Farm ID or API Key.`);
+      if (status === 401) throw new Error('SFL API returned 401 Unauthorized. Check your API Key.');
+      throw new Error(`SFL API error (${status}). Check Farm ID.`);
     }
 
     const payload = await sflResponse.json().catch(() => ({}));
@@ -207,17 +246,13 @@ export async function onRequest(context) {
     let priceMap = {};
     if (pricesResponse && pricesResponse.ok) {
       const rawPricesData = await pricesResponse.json().catch(() => null);
-      if (rawPricesData) {
-        priceMap = extractPricesRecursive(rawPricesData);
-      }
+      if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
     }
 
     const getItemUnitPrice = (itemName, depth = 0) => {
       if (depth > 5 || !itemName) return 0;
-
       const clean = itemName.toLowerCase().trim();
       const stripped = clean.replace(/[^a-z0-9]/g, '');
-
       const directPrice = getDirectMarketPrice(clean, priceMap);
       if (directPrice > 0) return directPrice;
 
@@ -229,7 +264,6 @@ export async function onRequest(context) {
         });
         return recipeTotal;
       }
-
       return 0;
     };
 
@@ -237,87 +271,47 @@ export async function onRequest(context) {
 
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
-
     rawDeliveries.forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
-
       let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
 
       if (order.reward?.items) {
         Object.entries(order.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
+          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
         });
       }
 
       if (baseTicketCount > 0) {
         let itemsCost = 0;
         const itemDetails = [];
-
         Object.entries(order.items || {}).forEach(([itemName, qty]) => {
           const unitPrice = getItemUnitPrice(itemName);
           const lineCost = unitPrice * qty;
           itemsCost += lineCost;
-
-          itemDetails.push({
-            name: itemName,
-            qty,
-            unitPrice,
-            lineCost,
-            isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()]
-          });
+          itemDetails.push({ name: itemName, qty, unitPrice, lineCost, isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] });
         });
 
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-
-        deliveryList.push({
-          id: order.id,
-          from: order.from,
-          items: order.items || {},
-          itemsCost,
-          itemDetails,
-          baseTickets: baseTicketCount,
-          isChapterNpc: baseTickets !== undefined,
-          completed: isCompleted
-        });
+        deliveryList.push({ id: order.id, from: order.from, items: order.items || {}, itemsCost, itemDetails, baseTickets: baseTicketCount, isChapterNpc: baseTickets !== undefined, completed: isCompleted });
       }
     });
 
     const activeBounties = [];
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
-    let completedBountyIds = [];
-    if (Array.isArray(completedBountiesRaw)) {
-      completedBountyIds = completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b));
-    }
+    let completedBountyIds = Array.isArray(completedBountiesRaw) ? completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b)) : [];
 
     (farm.bounties?.requests || []).forEach(b => {
       let baseTicketCount = 0;
       if (b.items) {
         Object.entries(b.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
+          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
         });
       }
-
       if (baseTicketCount > 0) {
         const unitPrice = b.name ? getItemUnitPrice(b.name) : 0;
-
-        const isCompleted = typeof b.completedAt === 'number' || 
-                            b.completed === true || 
-                            b.status === 'completed' ||
-                            completedBountyIds.includes(String(b.id));
-
-        activeBounties.push({
-          id: b.id,
-          name: b.name,
-          level: b.level || null,
-          baseTickets: baseTicketCount,
-          itemsCost: unitPrice,
-          completed: isCompleted
-        });
+        const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
+        activeBounties.push({ id: b.id, name: b.name, level: b.level || null, baseTickets: baseTicketCount, itemsCost: unitPrice, completed: isCompleted });
       }
     });
 
@@ -326,48 +320,19 @@ export async function onRequest(context) {
       let baseTicketCount = 0;
       if (details.reward?.items) {
         Object.entries(details.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') {
-            baseTicketCount += qty;
-          }
+          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
         });
       }
-
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
-
-      const isCompleted = typeof details.completedAt === 'number' || 
-                          details.completed === true || 
-                          details.isCompleted === true ||
-                          (requirement > 0 && currentProgress >= requirement);
-
-      const npcName = details.npc || details.from || key;
-
-      return {
-        npc: npcName,
-        task: details.name || details.description || key,
-        baseTickets: baseTicketCount,
-        progress: currentProgress,
-        requirement: requirement,
-        completed: isCompleted
-      };
+      const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
+      return { npc: details.npc || details.from || key, task: details.name || details.description || key, baseTickets: baseTicketCount, progress: currentProgress, requirement, completed: isCompleted };
     });
 
-    let cloudHistory = { logs: [], cumulativeTickets: 0, cumulativeCost: 0 };
-    if (env && env.TRACKER_KV) {
-      try {
-        const kvData = await env.TRACKER_KV.get(`farm_${farmId}_history`, 'json');
-        if (kvData) cloudHistory = kvData;
-      } catch (_) {}
-    }
-
     return new Response(JSON.stringify({
-      farmId,
-      isVipActive,
+      farmId, isVipActive,
       pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: deliveryList,
-      bounties: activeBounties,
-      chores: choresList,
-      cloudHistory
+      deliveries: deliveryList, bounties: activeBounties, chores: choresList
     }, null, 2), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
@@ -375,8 +340,7 @@ export async function onRequest(context) {
 
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }, null, 2), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }
 }
