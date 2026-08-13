@@ -27,10 +27,21 @@ function toggleColumnCard(cardId, btn) {
   }
 }
 
+function saveGoalAndRecalculate() {
+  var inputVal = document.getElementById('targetGoalInput').value;
+  localStorage.setItem('sfl_targetGoal', inputVal);
+  recalculateAll();
+}
+
 window.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+  var savedGoal = localStorage.getItem('sfl_targetGoal');
+  if (savedGoal !== null) {
+    document.getElementById('targetGoalInput').value = savedGoal;
+  }
 
   var savedVip = localStorage.getItem('sfl_vip');
   if (savedVip !== null) {
@@ -418,7 +429,7 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-// Column History Modal (Bounties / Chores with Editable Tickets & Costs)
+// Column History Modal
 function openColumnHistoryModal(type) {
   activeColumnType = type;
   setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
@@ -661,10 +672,21 @@ function recalculateAll() {
   var bountyCatTickets = 0;
   var choreCatTickets = 0;
 
-  // TOTAL TICKETS: Category breakdowns & sum from Cloud Vault History
+  var weekTicketsAll = 0;
+  var weekCostAll = 0;
+
+  // Current Week ID Calculation
+  var now = new Date();
+  var startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
+  var weekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
+  var currentWeekId = `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+
+  // TOTAL TICKETS & WEEKLY TICKETS: Summed from Cloud Vault History
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
   
   logs.forEach(log => {
+    var isThisWeek = log.weekId === currentWeekId || (log.date && log.date.startsWith(new Date().toISOString().slice(0, 7)));
+
     (log.deliveriesDone || []).forEach(item => {
       var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
@@ -672,6 +694,11 @@ function recalculateAll() {
         var finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         delivCatTickets += finalTix;
         totalSflCostAll += (item.cost || 0);
+
+        if (isThisWeek) {
+          weekTicketsAll += finalTix;
+          weekCostAll += (item.cost || 0);
+        }
       }
     });
 
@@ -682,6 +709,11 @@ function recalculateAll() {
         var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         bountyCatTickets += finalTix;
         totalSflCostAll += (item.cost || 0);
+
+        if (isThisWeek) {
+          weekTicketsAll += finalTix;
+          weekCostAll += (item.cost || 0);
+        }
       }
     });
 
@@ -692,6 +724,11 @@ function recalculateAll() {
         var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         choreCatTickets += finalTix;
         totalSflCostAll += (item.cost || 0);
+
+        if (isThisWeek) {
+          weekTicketsAll += finalTix;
+          weekCostAll += (item.cost || 0);
+        }
       }
     });
   });
@@ -825,12 +862,27 @@ function recalculateAll() {
   currentDoneTicketsToday = earnedTicketsAll;
   currentDoneCostToday = earnedSflCostAll;
 
-  setElemText('statTotalTickets', totalTicketsAll);
+  // 1. OVERALL STATS
+  setElemText('statTotalTickets', totalTicketsAll + ' Tickets');
+  setElemText('statTotalCost', formatSFL(totalSflCostAll) + ' SFL');
+  setElemText('statTotalRatio', (totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00") + ' SFL / Ticket');
 
-  setElemText('statEarnedTickets', earnedTicketsAll);
+  // 2. THIS WEEK'S STATS
+  setElemText('statWeekTickets', weekTicketsAll + ' Tickets');
+  setElemText('statWeekCost', formatSFL(weekCostAll) + ' SFL');
+  setElemText('statWeekRatio', (weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.00") + ' SFL / Ticket');
+
+  // 3. TODAY'S STATS
+  setElemText('statEarnedTickets', earnedTicketsAll + ' Tickets');
   setElemText('statEarnedCost', formatSFL(earnedSflCostAll) + ' SFL');
-  
-  // FLOWER / TICKET RATIO CALCULATION
   var earnedRatioVal = earnedTicketsAll > 0 ? (earnedSflCostAll / earnedTicketsAll) : 0;
   setElemText('statEarnedRatio', formatSFL(earnedRatioVal) + ' SFL / Ticket');
+
+  // 4. CHAPTER END GOAL CALCULATOR
+  var targetGoal = parseInt(document.getElementById('targetGoalInput').value) || 1000;
+  var remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
+  var targetPerWeek = Math.ceil(remainingNeeded / 12);
+
+  setElemText('statGoalRemaining', remainingNeeded + ' Tickets');
+  setElemText('statGoalPerWeek', targetPerWeek + ' Tickets / Wk');
 }
