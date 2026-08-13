@@ -210,7 +210,7 @@
                 ${d.isChapterNpc ? `<span class="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">Chapter NPC</span>` : ''}
               </span>
               <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded ${d.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
+                <span class="text-[10px] px-2 py-0.5 rounded ${d.completed ? 'bg-emerald-900 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-amber-300 border border-amber-500/30'} font-mono font-bold">
                   ${d.completed ? 'Done' : 'Active'}
                 </span>
                 <span class="text-[10px] text-slate-500 font-mono">${d.id}</span>
@@ -248,7 +248,7 @@
             <div class="flex justify-between items-center">
               <span class="font-bold text-slate-200 capitalize">${b.name} ${b.level ? `<span class="text-[10px] text-amber-400 font-mono">(Lvl ${b.level})</span>` : ''}</span>
               <div class="flex items-center gap-2">
-                <span class="text-[10px] px-2 py-0.5 rounded ${b.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
+                <span class="text-[10px] px-2 py-0.5 rounded ${b.completed ? 'bg-emerald-900 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-amber-300 border border-amber-500/30'} font-mono font-bold">
                   ${b.completed ? 'Done' : 'Active'}
                 </span>
                 <span class="text-[10px] text-slate-500 font-mono">ID: ${b.id}</span>
@@ -277,7 +277,7 @@
           <div class="bg-slate-900/80 p-2.5 rounded-lg border ${c.completed ? 'border-emerald-500/40 bg-emerald-950/20 opacity-75' : 'border-slate-700'} text-xs space-y-1.5">
             <div class="flex justify-between items-center">
               <span class="font-bold capitalize text-slate-200">${c.npc}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded ${c.completed ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-amber-300'} font-mono">
+              <span class="text-[10px] px-2 py-0.5 rounded ${c.completed ? 'bg-emerald-900 text-emerald-300 border border-emerald-500/40' : 'bg-slate-800 text-amber-300 border border-amber-500/30'} font-mono font-bold">
                 ${c.completed ? 'Done' : 'Active'}
               </span>
             </div>
