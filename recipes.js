@@ -5,10 +5,10 @@ export const SFL_RECIPES = {
   // ==========================================
   // UTENSILS & TOOLS
   // ==========================================
+  "axe": { "coins": 20 },
   "crab pot": { "feather": 5, "wool": 3, "coins": 250 },
   "mariner pot": { "feather": 10, "merino wool": 10, "coins": 500 },
   "rod": { "wood": 3, "stone": 1, "coins": 20 },
-  "axe": { "coins": 20 },
   "pickaxe": { "wood": 3, "coins": 16 },
   "stone pickaxe": { "wood": 3, "stone": 5, "coins": 16 },
   "iron pickaxe": { "wood": 3, "iron": 5, "coins": 64 },
@@ -30,6 +30,62 @@ export const SFL_RECIPES = {
   "doll": { "leather": 4, "wool": 5 },
   "hardened leather": { "leather": 9 },
   "merino cushion": { "merino wool": 9 },
+
+  // ==========================================
+  // FLOWER SEEDS & FLOWERS (Costs & Requirements)
+  // ==========================================
+  "sunpetal seed / yellow pansy": { "sunflower": 50, "coins": 16 },
+  "sunpetal seed / purple cosmos": { "beetroot": 10, "coins": 16 },
+  "sunpetal seed / blue cosmos": { "cauliflower": 5, "coins": 16 },
+  "sunpetal seed / red pansy": { "radish": 5, "coins": 16 },
+  
+  "lily seed / yellow carnation": { "sunflower": 50, "coins": 48 },
+  "lily seed / red lotus": { "beetroot": 10, "coins": 48 },
+  "lily seed / white lotus": { "cauliflower": 5, "coins": 48 },
+  "lily seed / purple carnation": { "eggplant": 5, "coins": 48 },
+  "lily seed / purple lotus": { "blue carnation": 1, "coins": 48 },
+  "lily seed / blue lotus": { "blue pansy": 1, "coins": 48 },
+  "lily seed / primula enigma": { "purple balloon flower": 1, "coins": 48 },
+  "lily seed / blue carnation": { "purple daffodil": 1, "coins": 48 },
+  "lily seed / red carnation": { "purple pansy": 1, "coins": 48 },
+  "lily seed / yellow lotus": { "red pansy": 1, "coins": 48 },
+  "lily seed / white carnation": { "yellow pansy": 1, "coins": 48 },
+
+  "lavender seed / white lavender": { "rhubarb": 25, "coins": 96 },
+  "lavender seed / red lavender": { "pepper": 15, "coins": 96 },
+  "lavender seed / blue lavender": { "blue clover": 1, "coins": 96 },
+  "lavender seed / purple lavender": { "purple gladiolus": 1, "coins": 96 },
+  "lavender seed / yellow lavender": { "yellow gladiolus": 1, "coins": 96 },
+
+  "gladiolus seed / blue gladiolus": { "rhubarb": 30, "coins": 96 },
+  "gladiolus seed / yellow gladiolus": { "pepper": 5, "coins": 96 },
+  "gladiolus seed / purple gladiolus": { "artichoke": 5, "coins": 96 },
+  "gladiolus seed / white gladiolus": { "white edelweiss": 1, "coins": 96 },
+  "gladiolus seed / red gladiolus": { "yellow gladiolus": 1, "coins": 96 },
+
+  "edelweiss seed / purple edelweiss": { "rhubarb": 30, "coins": 96 },
+  "edelweiss seed / red edelweiss": { "artichoke": 5, "coins": 96 },
+  "edelweiss seed / yellow edelweiss": { "onion": 5, "coins": 96 },
+  "edelweiss seed / white edelweiss": { "blue edelweiss": 1, "coins": 96 },
+  "edelweiss seed / blue edelweiss": { "purple edelweiss": 1, "coins": 96 },
+
+  "clover seed / blue clover": { "rhubarb": 30, "coins": 96 },
+  "clover seed / yellow clover": { "pepper": 5, "coins": 96 },
+  "clover seed / white clover": { "blue edelweiss": 1, "coins": 96 },
+  "clover seed / red clover": { "red edelweiss": 1, "coins": 96 },
+  "clover seed / purple clover": { "red lavender": 1, "coins": 96 },
+
+  "bloom seed / red balloon flower": { "sunflower": 50, "coins": 32 },
+  "bloom seed / blue balloon flower": { "cauliflower": 5, "coins": 32 },
+  "bloom seed / purple daffodil": { "radish": 5, "coins": 32 },
+  "bloom seed / purple balloon flower": { "blue carnation": 1, "coins": 32 },
+  "bloom seed / blue daffodil": { "purple carnation": 1, "coins": 32 },
+  "bloom seed / white balloon flower": { "white daffodil": 1, "coins": 32 },
+  "bloom seed / yellow daffodil": { "white lotus": 1, "coins": 32 },
+  "bloom seed / celestial frostbloom": { "white pansy": 1, "coins": 32 },
+  "bloom seed / white daffodil": { "yellow cosmos": 1, "coins": 32 },
+  "bloom seed / yellow balloon flower": { "yellow lotus": 1, "coins": 32 },
+  "bloom seed / red daffodil": { "yellow pansy": 1, "coins": 32 },
 
   // ==========================================
   // EXOTICS & GIANT FRUITS
