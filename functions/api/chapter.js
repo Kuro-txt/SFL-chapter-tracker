@@ -61,19 +61,29 @@ function getDirectMarketPrice(name, priceMap) {
   const stripped = clean.replace(/[^a-z0-9]/g, '');
   if (clean === 'coins' || clean === 'coin') return 0.001;
 
-  const variations = [
+  // Handle Crustacean variants 'a' / 'b' by checking both or stripping suffix for cheaper alternative
+  let searchNames = [
     clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
     clean + 's', clean + 'es',
     clean.endsWith('s') ? clean.slice(0, -1) : clean,
     clean.endsWith('es') ? clean.slice(0, -2) : clean,
-    clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean,
-    stripped + 's', stripped.endsWith('s') ? stripped.slice(0, -1) : stripped
+    clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean
   ];
 
-  for (const v of variations) {
-    if (priceMap[v] !== undefined && priceMap[v] > 0) return priceMap[v];
+  if (clean.endsWith(' a') || clean.endsWith(' b')) {
+    const baseName = clean.slice(0, -2).trim();
+    searchNames.push(baseName, baseName + ' a', baseName + ' b');
   }
-  return 0;
+
+  let lowestPrice = 0;
+  for (const v of searchNames) {
+    if (priceMap[v] !== undefined && priceMap[v] > 0) {
+      if (lowestPrice === 0 || priceMap[v] < lowestPrice) {
+        lowestPrice = priceMap[v];
+      }
+    }
+  }
+  return lowestPrice;
 }
 
 function getMondayBasedWeekId(date = new Date()) {
@@ -210,13 +220,13 @@ export async function onRequest(context) {
           existingData.cumulativeCost -= (oldLog.costSaved || 0);
 
           existingData.logs[existingTodayLogIndex] = {
-            date: todayDate, timestamp: new Date().toISOString(),
+            date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
             deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
           };
         } else {
           existingData.logs.unshift({
-            date: todayDate, timestamp: new Date().toISOString(),
+            date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
             ticketsSaved: newTickets, costSaved: newCost,
             deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
           });
