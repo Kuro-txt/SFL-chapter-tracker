@@ -1,4 +1,4 @@
-// Base Chapter Ticket Table
+// Base Chapter Ticket Table for Deliveries
 const CHAPTER_NPC_TICKETS = {
   "pumpkin' pete": 1,
   "bert": 2,
@@ -38,10 +38,9 @@ export async function onRequest(context) {
     const payload = await sflResponse.json();
     const farm = payload.farm || {};
 
-    // Check if player currently has active VIP
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // 1. FILTER & CALCULATE DELIVERIES
+    // 1. DELIVERIES
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
 
@@ -49,77 +48,58 @@ export async function onRequest(context) {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
 
-      let ticketCalculation = null;
+      let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
 
-      if (baseTickets !== undefined) {
-        const A = baseTickets;
-        const B = isVipActive ? 2 : 0;
-        const basePlusVip = A + B;
-
-        ticketCalculation = {
-          isChapterNpc: true,
-          baseA: A,
-          vipB: B,
-          basePlusVip: basePlusVip,
-          oneBoost: basePlusVip + 1,
-          twoBoosts: basePlusVip + 2,
-          threeBoosts: basePlusVip + 3
-        };
-      }
-
-      const rewardsFormatted = {};
+      // Check if order has raw Ticket/Shiny Feather item rewards
       if (order.reward?.items) {
         Object.entries(order.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather') {
-            rewardsFormatted['Tickets'] = qty;
-          } else {
-            rewardsFormatted[item] = qty;
+          if (item === 'Shiny Feather' || item === 'Tickets') {
+            baseTicketCount += qty;
           }
         });
       }
 
-      if (ticketCalculation || Object.keys(rewardsFormatted).length > 0) {
+      if (baseTicketCount > 0) {
         deliveryList.push({
           id: order.id,
           from: order.from,
           items: order.items || {},
-          rewardItems: rewardsFormatted,
-          ticketCalculation
+          baseTickets: baseTicketCount,
+          isChapterNpc: baseTickets !== undefined
         });
       }
     });
 
-    // 2. FILTER BOUNTIES
-    const activeBounties = (farm.bounties?.requests || []).map(b => {
-      const rewardsFormatted = {};
+    // 2. BOUNTIES
+    const activeBounties = [];
+    (farm.bounties?.requests || []).forEach(b => {
+      let baseTicketCount = 0;
       if (b.items) {
         Object.entries(b.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather') {
-            rewardsFormatted['Tickets'] = qty;
-          } else {
-            rewardsFormatted[item] = qty;
+          if (item === 'Shiny Feather' || item === 'Tickets') {
+            baseTicketCount += qty;
           }
         });
       }
 
-      return {
-        id: b.id,
-        name: b.name,
-        level: b.level || null,
-        rewards: rewardsFormatted
-      };
-    }).filter(b => Object.keys(b.rewards).length > 0);
+      if (baseTicketCount > 0) {
+        activeBounties.push({
+          id: b.id,
+          name: b.name,
+          level: b.level || null,
+          baseTickets: baseTicketCount
+        });
+      }
+    });
 
-    // 3. FILTER CHORES
+    // 3. CHORES
     const rawChores = farm.choreBoard?.chores || {};
     const choresList = Object.entries(rawChores).map(([npc, details]) => {
-      const rewardsFormatted = {};
+      let baseTicketCount = 0;
       if (details.reward?.items) {
         Object.entries(details.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather') {
-            rewardsFormatted['Tickets'] = qty;
-          } else {
-            rewardsFormatted[item] = qty;
+          if (item === 'Shiny Feather' || item === 'Tickets') {
+            baseTicketCount += qty;
           }
         });
       }
@@ -127,7 +107,7 @@ export async function onRequest(context) {
       return {
         npc: npc,
         task: details.name,
-        reward: rewardsFormatted,
+        baseTickets: baseTicketCount,
         progress: details.initialProgress || 0,
         completed: !!details.completedAt
       };
