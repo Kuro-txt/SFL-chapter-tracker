@@ -1,6 +1,11 @@
 import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
 import { recalculateAll } from './render.js';
 
+export function toggleGuideModal() {
+  const modal = document.getElementById('guideModal');
+  if (modal) modal.classList.toggle('show');
+}
+
 export function openCategorySummaryModal(cat) {
   const modal = document.getElementById('categorySummaryModal');
   const titleEl = document.getElementById('categorySummaryTitle');
@@ -202,7 +207,7 @@ export function renderColumnHistoryModalList() {
           <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />
           <span>Tix:</span>
           <input type="number" value="${r.baseTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:45px; padding:2px; font-size:10px;" />
-          <button onclick="${deleteHandler}" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
+          <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
     }).join('');
@@ -370,7 +375,7 @@ export function toggleHistoryModal() {
         return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">
           <div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">
             <span style="color:#8B4513;">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
-            <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>
+            <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>
           </div>
           <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
             <span>Daily Yield: +${logTickets} | Cost: ${formatSFL(logCost)} SFL</span>
