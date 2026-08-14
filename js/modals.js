@@ -46,6 +46,29 @@ function formatRequestedItems(items) {
   return String(items);
 }
 
+// Helper to extract or lookup animal level
+function resolveAnimalLevel(item) {
+  if (item.level) return item.level;
+  if (item.tier) return item.tier;
+
+  const rawName = typeof item === 'string' ? item : (item.name || '');
+  
+  // Extract number from name if present (e.g. "Cow Lvl 3", "Level 2 Chicken", "Sheep (3)")
+  const lvlMatch = rawName.match(/(?:lvl|level|#|\()\s*(\d+)/i);
+  if (lvlMatch) return lvlMatch[1];
+
+  // Lookup in live globalData bounties
+  if (state.globalData?.bounties) {
+    const liveMatch = state.globalData.bounties.find(b => 
+      (b.id && item.id && String(b.id) === String(item.id)) ||
+      (b.name && rawName && b.name.toLowerCase() === rawName.toLowerCase())
+    );
+    if (liveMatch?.level) return liveMatch.level;
+  }
+
+  return null;
+}
+
 export function toggleGuideModal() {
   const modal = document.getElementById('guideModal');
   if (modal) modal.classList.toggle('show');
@@ -109,9 +132,10 @@ export function openCategorySummaryModal(cat) {
         catTickets += finalTickets;
         catCost += (b.itemsCost || 0);
       }
+      const lvl = resolveAnimalLevel(b);
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
-          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</strong><br/>
+          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${b.name.toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
           <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
         </div>
         <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
@@ -194,7 +218,18 @@ export function renderColumnHistoryModalList() {
       });
     });
   } else {
+    const currentWeekId = getMondayBasedWeekId();
     const weeks = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
+    
+    // Ensure current week is populated from live globalData if empty
+    if (!weeks[currentWeekId] && state.globalData) {
+      weeks[currentWeekId] = {
+        weekId: currentWeekId,
+        bounties: state.globalData.bounties || [],
+        chores: state.globalData.chores || []
+      };
+    }
+
     Object.entries(weeks).forEach(([weekId, wk]) => {
       let rawItems = [];
       if (type === 'chore') {
@@ -209,14 +244,16 @@ export function renderColumnHistoryModalList() {
       }
 
       rawItems.forEach((item, itemIdx) => {
-        const baseTix = item.tickets !== undefined ? item.tickets : 1;
+        const baseTix = item.tickets !== undefined ? item.tickets : (item.baseTickets || 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        const lvl = resolveAnimalLevel(item);
+
         records.push({
           weekId,
           itemIdx,
           name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
-          level: item.level || null,
-          cost: item.cost || 0,
+          level: lvl,
+          cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
           displayTickets: finalTix,
           baseTickets: baseTix,
           checked: item.checked !== undefined ? item.checked : !!item.completed,
@@ -246,8 +283,10 @@ export function renderColumnHistoryModalList() {
         ? `deleteDeliveryLogItem(${r.logIdx}, ${r.itemIdx})`
         : `deleteWeeklyItem('${r.weekId}', ${r.itemIdx})`;
 
-      // Animal Level Tag
-      const animalLevelTag = (type === 'animalBounty' && r.level) ? `<span style="color:#8E44AD; font-weight:900;"> (Lvl ${r.level})</span>` : '';
+      // Animal Level Tag badge
+      const animalLevelTag = (type === 'animalBounty' && r.level) 
+        ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
+        : '';
 
       // Requested Items Display for Deliveries
       const itemsRow = (type === 'delivery' && r.requestedItems) 
@@ -320,7 +359,6 @@ export async function updateHistoryItemTickets(idKey, itemIdx, val) {
     const logs = state.globalData.cloudHistory.logs;
     const logIdx = parseInt(idKey);
     if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
-      // Calculate base tickets so booster addition produces exactly the input value
       const base = Math.max(0, inputVal - (vipBonus + boostCount));
       logs[logIdx].deliveriesDone[itemIdx].tickets = base;
     }
@@ -396,7 +434,19 @@ export async function addCustomHistoryItem() {
     }
     const targetArray = type === 'chore' ? 'chores' : 'bounties';
     const baseTickets = Math.max(0, inputTickets - boostCount);
-    state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name, cost, tickets: baseTickets, completed: true, checked: true });
+    
+    // Extract level if user typed e.g. "Chicken Lvl 3"
+    const lvlMatch = name.match(/(?:lvl|level|#|\()\s*(\d+)/i);
+    const customLevel = lvlMatch ? lvlMatch[1] : null;
+
+    state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ 
+      name, 
+      level: customLevel, 
+      cost, 
+      tickets: baseTickets, 
+      completed: true, 
+      checked: true 
+    });
   }
 
   renderColumnHistoryModalList();
