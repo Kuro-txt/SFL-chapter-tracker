@@ -1,6 +1,51 @@
 import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
 import { recalculateAll } from './render.js';
 
+// Auto-sync any modifications in the Edit Modal directly to Cloud KV
+export async function syncCurrentVaultToCloud() {
+  if (!state.currentUser || !state.globalData?.cloudHistory) return;
+  try {
+    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
+    const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+
+    const response = await fetch('/api/chapter?action=saveVault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: state.currentUser,
+        trackTickets,
+        trackCost,
+        logs: state.globalData.cloudHistory.logs || [],
+        bounties: state.globalData.bounties || [],
+        chores: state.globalData.chores || [],
+        deliveries: state.globalData.deliveries || []
+      })
+    });
+    const resData = await response.json();
+    if (resData.vaultData) {
+      state.currentVaultData = resData.vaultData;
+      state.globalData.cloudHistory = resData.vaultData;
+    }
+  } catch (err) {
+    console.error('Failed to auto-sync edit to Cloud KV:', err);
+  }
+}
+
+// Helper to format requested items string
+function formatRequestedItems(items) {
+  if (!items) return '';
+  if (Array.isArray(items)) {
+    if (items.length === 0) return '';
+    return items.map(it => typeof it === 'string' ? it : `${it.qty || 1}x ${it.name}`).join(', ');
+  }
+  if (typeof items === 'object') {
+    const entries = Object.entries(items);
+    if (entries.length === 0) return '';
+    return entries.map(([name, qty]) => `${qty}x ${name}`).join(', ');
+  }
+  return String(items);
+}
+
 export function toggleGuideModal() {
   const modal = document.getElementById('guideModal');
   if (modal) modal.classList.toggle('show');
@@ -130,15 +175,18 @@ export function renderColumnHistoryModalList() {
     const logs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
     logs.forEach((log, logIdx) => {
       (log.deliveriesDone || []).forEach((item, itemIdx) => {
-        const baseTix = item.tickets || 2;
-        const finalTix = baseTix + vipBonus + boostCount;
+        const baseTix = item.tickets !== undefined ? item.tickets : 2;
+        const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+        const requestedStr = formatRequestedItems(item.itemDetails || item.items);
+
         records.push({
           logIdx,
           itemIdx,
           date: log.date || 'Past Run',
           name: typeof item === 'string' ? item : (item.name || 'NPC Delivery'),
+          requestedItems: requestedStr,
           cost: item.cost || 0,
-          tickets: finalTix,
+          displayTickets: finalTix,
           baseTickets: baseTix,
           checked: item.checked !== undefined ? item.checked : !!item.completed,
           status: item.completed ? '✨ Done' : '⏳ Active'
@@ -161,14 +209,15 @@ export function renderColumnHistoryModalList() {
       }
 
       rawItems.forEach((item, itemIdx) => {
-        const baseTix = item.tickets || 1;
+        const baseTix = item.tickets !== undefined ? item.tickets : 1;
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         records.push({
           weekId,
           itemIdx,
           name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
+          level: item.level || null,
           cost: item.cost || 0,
-          tickets: finalTix,
+          displayTickets: finalTix,
           baseTickets: baseTix,
           checked: item.checked !== undefined ? item.checked : !!item.completed,
           status: item.completed ? '✨ Done' : '⏳ Active'
@@ -185,7 +234,7 @@ export function renderColumnHistoryModalList() {
   } else {
     bodyEl.innerHTML = records.map(r => {
       if (r.checked) {
-        totalTickedTickets += r.tickets;
+        totalTickedTickets += r.displayTickets;
         totalTickedCost += r.cost;
       }
       const labelId = type === 'delivery' ? `${r.date}` : `${r.weekId}`;
@@ -197,16 +246,28 @@ export function renderColumnHistoryModalList() {
         ? `deleteDeliveryLogItem(${r.logIdx}, ${r.itemIdx})`
         : `deleteWeeklyItem('${r.weekId}', ${r.itemIdx})`;
 
+      // Animal Level Tag
+      const animalLevelTag = (type === 'animalBounty' && r.level) ? `<span style="color:#8E44AD; font-weight:900;"> (Lvl ${r.level})</span>` : '';
+
+      // Requested Items Display for Deliveries
+      const itemsRow = (type === 'delivery' && r.requestedItems) 
+        ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
+        : '';
+
       return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:14px; height:14px;" />
-          <div><span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/><strong style="color:#3E2723;">${r.name}</strong></div>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; padding-right:8px;">
+          <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
+          <div>
+            <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
+            <strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}
+            ${itemsRow}
+          </div>
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
           <span>SFL:</span>
           <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />
           <span>Tix:</span>
-          <input type="number" value="${r.baseTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:45px; padding:2px; font-size:10px;" />
+          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
@@ -216,26 +277,28 @@ export function renderColumnHistoryModalList() {
   setElemText('columnHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
 }
 
-export function toggleDeliveryLogCheck(logIdx, itemIdx) {
+export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
   const logs = state.globalData.cloudHistory.logs;
   if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
     const item = logs[logIdx].deliveriesDone[itemIdx];
     item.checked = (item.checked === undefined ? !item.completed : !item.checked);
     renderColumnHistoryModalList();
     recalculateAll();
+    await syncCurrentVaultToCloud();
   }
 }
 
-export function deleteDeliveryLogItem(logIdx, itemIdx) {
+export async function deleteDeliveryLogItem(logIdx, itemIdx) {
   const logs = state.globalData.cloudHistory.logs;
   if (logs[logIdx]?.deliveriesDone) {
     logs[logIdx].deliveriesDone.splice(itemIdx, 1);
     renderColumnHistoryModalList();
     recalculateAll();
+    await syncCurrentVaultToCloud();
   }
 }
 
-export function toggleWeeklyItemCheck(weekId, itemIdx) {
+export async function toggleWeeklyItemCheck(weekId, itemIdx) {
   const weeks = state.globalData.cloudHistory.weeks;
   const targetArray = state.activeColumnType === 'chore' ? 'chores' : 'bounties';
   if (weeks[weekId]?.[targetArray]?.[itemIdx]) {
@@ -243,29 +306,38 @@ export function toggleWeeklyItemCheck(weekId, itemIdx) {
     item.checked = (item.checked === undefined ? !item.completed : !item.checked);
     renderColumnHistoryModalList();
     recalculateAll();
+    await syncCurrentVaultToCloud();
   }
 }
 
-export function updateHistoryItemTickets(idKey, itemIdx, val) {
+export async function updateHistoryItemTickets(idKey, itemIdx, val) {
   const type = state.activeColumnType;
+  const boostCount = getActiveBoostCount();
+  const vipBonus = getActiveVipBonus();
+  const inputVal = parseInt(val) || 0;
+
   if (type === 'delivery') {
     const logs = state.globalData.cloudHistory.logs;
     const logIdx = parseInt(idKey);
     if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
-      logs[logIdx].deliveriesDone[itemIdx].tickets = parseInt(val) || 0;
+      // Calculate base tickets so booster addition produces exactly the input value
+      const base = Math.max(0, inputVal - (vipBonus + boostCount));
+      logs[logIdx].deliveriesDone[itemIdx].tickets = base;
     }
   } else {
     const weeks = state.globalData.cloudHistory.weeks;
     const targetArray = type === 'chore' ? 'chores' : 'bounties';
     if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
-      weeks[idKey][targetArray][itemIdx].tickets = parseInt(val) || 0;
+      const base = Math.max(0, inputVal - boostCount);
+      weeks[idKey][targetArray][itemIdx].tickets = base;
     }
   }
   renderColumnHistoryModalList();
   recalculateAll();
+  await syncCurrentVaultToCloud();
 }
 
-export function updateHistoryItemCost(idKey, itemIdx, val) {
+export async function updateHistoryItemCost(idKey, itemIdx, val) {
   const type = state.activeColumnType;
   if (type === 'delivery') {
     const logs = state.globalData.cloudHistory.logs;
@@ -282,25 +354,30 @@ export function updateHistoryItemCost(idKey, itemIdx, val) {
   }
   renderColumnHistoryModalList();
   recalculateAll();
+  await syncCurrentVaultToCloud();
 }
 
-export function deleteWeeklyItem(weekId, itemIdx) {
+export async function deleteWeeklyItem(weekId, itemIdx) {
   const weeks = state.globalData.cloudHistory.weeks;
   const targetArray = state.activeColumnType === 'chore' ? 'chores' : 'bounties';
   if (weeks[weekId]?.[targetArray]) {
     weeks[weekId][targetArray].splice(itemIdx, 1);
     renderColumnHistoryModalList();
     recalculateAll();
+    await syncCurrentVaultToCloud();
   }
 }
 
-export function addCustomHistoryItem() {
+export async function addCustomHistoryItem() {
   const name = document.getElementById('addHistName').value.trim() || 'Custom Task';
-  const tickets = parseInt(document.getElementById('addHistTickets').value) || 1;
+  const inputTickets = parseInt(document.getElementById('addHistTickets').value) || 1;
   const cost = parseFloat(document.getElementById('addHistCost').value) || 0;
   const type = state.activeColumnType;
   const todayDate = new Date().toISOString().split('T')[0];
   const currentWeekId = getMondayBasedWeekId();
+
+  const boostCount = getActiveBoostCount();
+  const vipBonus = getActiveVipBonus();
 
   if (type === 'delivery') {
     if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
@@ -310,43 +387,28 @@ export function addCustomHistoryItem() {
       state.globalData.cloudHistory.logs.unshift(targetLog);
     }
     if (!targetLog.deliveriesDone) targetLog.deliveriesDone = [];
-    targetLog.deliveriesDone.push({ name, cost, tickets, completed: true, checked: true });
+    const baseTickets = Math.max(0, inputTickets - (vipBonus + boostCount));
+    targetLog.deliveriesDone.push({ name, cost, tickets: baseTickets, completed: true, checked: true });
   } else {
     if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
     if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
       state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
     }
     const targetArray = type === 'chore' ? 'chores' : 'bounties';
-    state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name, cost, tickets, completed: true, checked: true });
+    const baseTickets = Math.max(0, inputTickets - boostCount);
+    state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name, cost, tickets: baseTickets, completed: true, checked: true });
   }
 
   renderColumnHistoryModalList();
   recalculateAll();
+  await syncCurrentVaultToCloud();
 }
 
 export async function deleteMasterLog(logIdx) {
   if (!state.globalData?.cloudHistory?.logs) return;
   if (confirm('🗑️ Delete this snapshot log?')) {
     state.globalData.cloudHistory.logs.splice(logIdx, 1);
-    
-    if (state.currentUser) {
-      try {
-        await fetch('/api/chapter?action=saveVault', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: state.currentUser,
-            logs: state.globalData.cloudHistory.logs,
-            deliveries: state.globalData.deliveries,
-            bounties: state.globalData.bounties,
-            chores: state.globalData.chores
-          })
-        });
-      } catch (err) {
-        console.error('Failed to sync log deletion to cloud:', err);
-      }
-    }
-
+    await syncCurrentVaultToCloud();
     toggleHistoryModal();
     toggleHistoryModal();
     recalculateAll();
