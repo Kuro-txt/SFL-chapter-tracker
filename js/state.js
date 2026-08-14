@@ -1,7 +1,7 @@
 export const state = {
   globalData: null,
   currentUser: null,
-  currentVaultData: { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] },
+  currentVaultData: { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0, deliveries: [], bounties: [], chores: [] },
   isFetchCooldown: false,
   activeColumnType: null
 };
@@ -28,7 +28,6 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-// Unified ISO Monday-based Week ID generator (Matches backend exactly)
 export function getMondayBasedWeekId(date = new Date()) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const day = d.getUTCDay();
