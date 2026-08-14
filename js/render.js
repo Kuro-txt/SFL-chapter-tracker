@@ -96,8 +96,10 @@ export function recalculateAll() {
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
       if (isTicked) {
-        const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
-        const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 0);
+        if (baseTix <= 0) return; // Skip coin bounties
+
+        const finalTix = baseTix + boostCount;
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
 
         totalBountyTix += finalTix;
@@ -118,33 +120,57 @@ export function recalculateAll() {
     });
   });
 
-  // 3. Process Current Week Bounties & Chores
-  const currentWeekBounties = (state.globalData.bounties || []).map(liveB => {
-    const saved = (weeks[currentWeekId]?.bounties || []).find(sb => (sb.name || '').toLowerCase() === (liveB.name || '').toLowerCase());
-    return {
-      ...liveB,
-      checked: saved?.checked !== undefined ? saved.checked : liveB.completed,
-      cost: saved?.cost !== undefined ? saved.cost : liveB.itemsCost,
-      tickets: saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets
-    };
-  });
+  // 3. Process Current Week Bounties & Chores (Deduplicated & Ticket Bounties Only)
+  const seenWeekBountyKeys = new Set();
+  const currentWeekBounties = (state.globalData.bounties || [])
+    .filter(liveB => {
+      const tix = liveB.baseTickets || 0;
+      if (tix <= 0) return false; // Strictly tickets only
 
-  const currentWeekChores = (state.globalData.chores || []).map(liveC => {
-    const saved = (weeks[currentWeekId]?.chores || []).find(sc => (sc.task || sc.name || '').toLowerCase() === (liveC.task || liveC.name || '').toLowerCase());
-    return {
-      ...liveC,
-      checked: saved?.checked !== undefined ? saved.checked : liveC.completed,
-      cost: saved?.cost !== undefined ? saved.cost : (liveC.itemsCost || 0),
-      tickets: saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets
-    };
-  });
+      const key = liveB.id ? String(liveB.id) : `${(liveB.name || '').toLowerCase()}_${liveB.level || 0}`;
+      if (seenWeekBountyKeys.has(key)) return false; // Deduplicate
+      seenWeekBountyKeys.add(key);
+      return true;
+    })
+    .map(liveB => {
+      const saved = (weeks[currentWeekId]?.bounties || []).find(sb => 
+        (sb.id && liveB.id && String(sb.id) === String(liveB.id)) ||
+        (sb.name || '').toLowerCase() === (liveB.name || '').toLowerCase()
+      );
+      return {
+        ...liveB,
+        checked: saved?.checked !== undefined ? saved.checked : liveB.completed,
+        cost: saved?.cost !== undefined ? saved.cost : liveB.itemsCost,
+        tickets: saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets
+      };
+    });
+
+  const seenWeekChoreKeys = new Set();
+  const currentWeekChores = (state.globalData.chores || [])
+    .filter(liveC => {
+      const key = (liveC.task || liveC.name || '').toLowerCase();
+      if (seenWeekChoreKeys.has(key)) return false;
+      seenWeekChoreKeys.add(key);
+      return true;
+    })
+    .map(liveC => {
+      const saved = (weeks[currentWeekId]?.chores || []).find(sc => (sc.task || sc.name || '').toLowerCase() === (liveC.task || liveC.name || '').toLowerCase());
+      return {
+        ...liveC,
+        checked: saved?.checked !== undefined ? saved.checked : liveC.completed,
+        cost: saved?.cost !== undefined ? saved.cost : (liveC.itemsCost || 0),
+        tickets: saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets
+      };
+    });
 
   // Calculate Current Week Bounties
   currentWeekBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
-      const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
-      const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+      const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 0);
+      if (baseTix <= 0) return; // Skip coin bounties
+
+      const finalTix = baseTix + boostCount;
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
 
       totalBountyTix += finalTix;
@@ -198,7 +224,7 @@ export function recalculateAll() {
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix;
 
   // 5. Update Counts on Overview Cards
-  const allBounties = state.globalData.bounties || [];
+  const allBounties = currentWeekBounties;
   const regularBounties = allBounties.filter(b => {
     const n = (b.name || '').toLowerCase();
     return !(n.includes('chicken') || n.includes('cow') || n.includes('sheep'));
@@ -211,7 +237,7 @@ export function recalculateAll() {
   setElemText('deliveriesCount', `${state.globalData.deliveries?.length || 0} Orders`);
   setElemText('bountiesCount', `${regularBounties.length} Items`);
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
-  setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
+  setElemText('choresCount', `${currentWeekChores.length} Tasks`);
 
   // 6. Update Performance Metrics & Tooltip Values
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
