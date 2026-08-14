@@ -73,13 +73,16 @@ export function openCategorySummaryModal(cat) {
     const sortedChores = [...state.globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedChores.map(c => {
       const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
-      if (c.completed) catTickets += finalTickets;
+      if (c.completed) {
+        catTickets += finalTickets;
+        catCost += (c.itemsCost || c.cost || 0);
+      }
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">🧹 ${c.npc.toUpperCase()}</strong><br/>
           <span style="color:#5C4033; font-weight:bold;">${c.task}</span><br/>
           ${c.requirement > 0 ? '<span style="color:#8C7853;">Progress: ' + c.progress + ' / ' + c.requirement + '</span><br/>' : ''}
-          <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets</span>
+          <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets | ${formatSFL(c.itemsCost || c.cost || 0)} SFL</span>
         </div>
         <span class="badge ${c.completed ? 'badge-done' : 'badge-active'}">${c.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
@@ -98,6 +101,7 @@ export function openColumnHistoryModal(type) {
   state.activeColumnType = type;
   let title = '📜 BOUNTIES EDIT / HISTORY';
   if (type === 'delivery') title = '📦 NPC DELIVERIES EDIT / HISTORY';
+  if (type === 'animalBounty') title = '🐄 ANIMAL BOUNTIES EDIT / HISTORY';
   if (type === 'chore') title = '🧹 CHORES EDIT / HISTORY';
   
   setElemText('columnHistoryTitle', title);
@@ -139,8 +143,19 @@ export function renderColumnHistoryModalList() {
   } else {
     const weeks = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
     Object.entries(weeks).forEach(([weekId, wk]) => {
-      const items = type === 'bounty' ? (wk.bounties || []) : (wk.chores || []);
-      items.forEach((item, itemIdx) => {
+      let rawItems = [];
+      if (type === 'chore') {
+        rawItems = wk.chores || [];
+      } else {
+        const allBounties = wk.bounties || [];
+        rawItems = allBounties.filter(b => {
+          const n = (typeof b === 'string' ? b : (b.name || '')).toLowerCase();
+          const isAnimal = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+          return type === 'animalBounty' ? isAnimal : !isAnimal;
+        });
+      }
+
+      rawItems.forEach((item, itemIdx) => {
         const baseTix = item.tickets || 1;
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         records.push({
@@ -183,9 +198,8 @@ export function renderColumnHistoryModalList() {
           <div><span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/><strong style="color:#3E2723;">${r.name}</strong></div>
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
-          ${type === 'bounty' || type === 'delivery' ? 
-            `<span>SFL:</span><input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />` : ''
-          }
+          <span>SFL:</span>
+          <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />
           <span>Tix:</span>
           <input type="number" value="${r.baseTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:45px; padding:2px; font-size:10px;" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
@@ -218,7 +232,7 @@ export function deleteDeliveryLogItem(logIdx, itemIdx) {
 
 export function toggleWeeklyItemCheck(weekId, itemIdx) {
   const weeks = state.globalData.cloudHistory.weeks;
-  const targetArray = state.activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  const targetArray = state.activeColumnType === 'chore' ? 'chores' : 'bounties';
   if (weeks[weekId]?.[targetArray]?.[itemIdx]) {
     const item = weeks[weekId][targetArray][itemIdx];
     item.checked = (item.checked === undefined ? !item.completed : !item.checked);
@@ -237,7 +251,7 @@ export function updateHistoryItemTickets(idKey, itemIdx, val) {
     }
   } else {
     const weeks = state.globalData.cloudHistory.weeks;
-    const targetArray = type === 'bounty' ? 'bounties' : 'chores';
+    const targetArray = type === 'chore' ? 'chores' : 'bounties';
     if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
       weeks[idKey][targetArray][itemIdx].tickets = parseInt(val) || 0;
     }
@@ -256,7 +270,7 @@ export function updateHistoryItemCost(idKey, itemIdx, val) {
     }
   } else {
     const weeks = state.globalData.cloudHistory.weeks;
-    const targetArray = type === 'bounty' ? 'bounties' : 'chores';
+    const targetArray = type === 'chore' ? 'chores' : 'bounties';
     if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
       weeks[idKey][targetArray][itemIdx].cost = parseFloat(val) || 0;
     }
@@ -267,7 +281,7 @@ export function updateHistoryItemCost(idKey, itemIdx, val) {
 
 export function deleteWeeklyItem(weekId, itemIdx) {
   const weeks = state.globalData.cloudHistory.weeks;
-  const targetArray = state.activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  const targetArray = state.activeColumnType === 'chore' ? 'chores' : 'bounties';
   if (weeks[weekId]?.[targetArray]) {
     weeks[weekId][targetArray].splice(itemIdx, 1);
     renderColumnHistoryModalList();
@@ -297,7 +311,7 @@ export function addCustomHistoryItem() {
     if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
       state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
     }
-    const targetArray = type === 'bounty' ? 'bounties' : 'chores';
+    const targetArray = type === 'chore' ? 'chores' : 'bounties';
     state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name, cost, tickets, completed: true, checked: true });
   }
 
