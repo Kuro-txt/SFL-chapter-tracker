@@ -6,9 +6,11 @@ export function recalculateAll() {
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
 
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const localTodayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  const now = new Date();
+  const todayDateStr = now.toISOString().split('T')[0];
+  const localTodayStr = now.toLocaleDateString('en-CA');
   const currentWeekId = getMondayBasedWeekId();
+
   const logs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
@@ -32,9 +34,18 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
+  // Strict check: item MUST have a valid timestamp that matches today
+  const checkIsCompletedToday = (completedAt) => {
+    if (!completedAt || typeof completedAt !== 'number') return false;
+    const itemDate = new Date(completedAt);
+    const isoDate = itemDate.toISOString().split('T')[0];
+    const locDate = itemDate.toLocaleDateString('en-CA');
+    return isoDate === todayDateStr || locDate === localTodayStr;
+  };
+
   // 1. Process Historical Daily Deliveries across logs
   logs.forEach(log => {
-    const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === new Date().getFullYear().toString());
+    const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
     const isToday = log.date === todayDateStr || log.date === localTodayStr;
 
     (log.deliveriesDone || []).forEach(item => {
@@ -89,19 +100,13 @@ export function recalculateAll() {
       if (isTicked) {
         const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
+        totalSflCostAll += cCost;
       }
     });
   });
-
-  // Helper to check if a completed task belongs to today
-  const checkIsToday = (completedAt) => {
-    if (!completedAt) return true; // Default to today if completed live but timestamp is missing
-    const isoDate = new Date(completedAt).toISOString().split('T')[0];
-    const locDate = new Date(completedAt).toLocaleDateString('en-CA');
-    return isoDate === todayDateStr || locDate === localTodayStr;
-  };
 
   // Current Week Bounties
   activeWeeklyBounties.forEach(b => {
@@ -117,7 +122,7 @@ export function recalculateAll() {
       weekBountyTix += finalTix;
       weekCostAll += bCost;
 
-      if (checkIsToday(b.completedAt)) {
+      if (checkIsCompletedToday(b.completedAt)) {
         todayBountyTix += finalTix;
         todayCostAll += bCost;
       }
@@ -137,19 +142,20 @@ export function recalculateAll() {
       totalSflCostAll += cCost;
       weekCostAll += cCost;
 
-      if (checkIsToday(c.completedAt)) {
+      if (checkIsCompletedToday(c.completedAt)) {
         todayChoreTix += finalTix;
         todayCostAll += cCost;
       }
     }
   });
 
-  // 3. Live Active Deliveries
+  // 3. Process Live Active Deliveries
   const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   sortedDeliveries.forEach(d => {
     if (d.completed && todayDelivTix === 0) {
-      if (checkIsToday(d.completedAt)) {
+      const isDoneToday = checkIsCompletedToday(d.completedAt) || (d.completedAt === null);
+      if (isDoneToday) {
         const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
         todayDelivTix += (d.baseTickets + deliveryAddon);
         todayCostAll += (d.itemsCost || 0);
@@ -313,7 +319,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Update Hover Tooltips Breakdowns with Track Tickets
+  // Update Hover Tooltips Breakdowns
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
