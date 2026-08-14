@@ -41,6 +41,12 @@ window.saveGoalAndRecalculate = function() {
   Render.recalculateAll();
 };
 
+window.saveTrackAndRecalculate = function() {
+  localStorage.setItem('sfl_trackTickets', document.getElementById('trackTicketsInput').value);
+  localStorage.setItem('sfl_trackCost', document.getElementById('trackCostInput').value);
+  Render.recalculateAll();
+};
+
 window.saveAndRecalculate = function() {
   localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
   localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
@@ -61,6 +67,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const savedWeeks = localStorage.getItem('sfl_targetWeeks');
   if (savedWeeks !== null) document.getElementById('targetWeeksInput').value = savedWeeks;
 
+  const savedTrackTickets = localStorage.getItem('sfl_trackTickets');
+  if (savedTrackTickets !== null) document.getElementById('trackTicketsInput').value = savedTrackTickets;
+  const savedTrackCost = localStorage.getItem('sfl_trackCost');
+  if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
+
   const savedVip = localStorage.getItem('sfl_vip');
   if (savedVip !== null) document.getElementById('vipToggle').checked = savedVip === 'true';
 
@@ -77,5 +88,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('authLoggedIn').style.display = 'flex';
     document.getElementById('displayUsername').textContent = State.state.currentUser;
     await Auth.fetchUserVault(State.state.currentUser);
+
+    // Sync saved cloud track values if loaded
+    if (State.state.currentVaultData.trackTickets !== undefined) {
+      document.getElementById('trackTicketsInput').value = State.state.currentVaultData.trackTickets;
+      localStorage.setItem('sfl_trackTickets', State.state.currentVaultData.trackTickets);
+    }
+    if (State.state.currentVaultData.trackCost !== undefined) {
+      document.getElementById('trackCostInput').value = State.state.currentVaultData.trackCost;
+      localStorage.setItem('sfl_trackCost', State.state.currentVaultData.trackCost);
+    }
   }
 });
