@@ -20,7 +20,7 @@
       align-items: center;
       min-height: 100vh;
     }
-    .wrapper { max-width: 1400px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    .wrapper { max-width: 1100px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
     
     header {
       background: linear-gradient(to bottom, #8B5A2B, #5C4033);
@@ -93,20 +93,38 @@
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
     .btn-sm { padding: 4px 8px; font-size: 10px; box-shadow: 0 2px 0px #3E2723; }
 
-    .btn-pop-title {
-      background: transparent;
-      border: none;
-      color: #5C4033;
+    /* Category Navigation Grid */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+    .overview-card {
+      background-color: #FFF8DC;
+      border: 3px solid #8B5A2B;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 4px 0px #5C4033;
+    }
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-weight: 900;
       font-size: 13px;
-      font-family: inherit;
-      cursor: pointer;
-      text-decoration: underline;
-      padding: 2px 4px;
+      color: #5C4033;
+      border-bottom: 2px dashed #D2B48C;
+      padding-bottom: 6px;
     }
-    .btn-pop-title:hover { color: #D2691E; }
+    .overview-actions {
+      display: flex;
+      gap: 6px;
+    }
 
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
     
     .stat-box {
       position: relative;
@@ -166,45 +184,6 @@
       opacity: 1;
     }
 
-    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-    .column-card {
-      background-color: #FDF5E6;
-      border: 4px solid #8B5A2B;
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      max-height: 650px;
-      box-shadow: 0 6px 0px #5C4033;
-    }
-    .column-title {
-      font-size: 13px;
-      font-weight: 900;
-      padding-bottom: 10px;
-      border-bottom: 3px solid #8B5A2B;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      color: #5C4033;
-    }
-    .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
-    
-    .card-item {
-      background-color: #FFF8DC;
-      border: 2px solid #C49A6C;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      box-shadow: 0 2px 0px rgba(92,64,51,0.2);
-    }
-    .card-item.done { border-color: #4CAF50; opacity: 0.8; background-color: #F1F8E9; }
-    .card-item.active { border-color: #FFB300; background-color: #FFFDE7; }
-    .card-item.manual { border-color: #8E44AD; background-color: #F4ECF7; }
-
     .badge {
       padding: 2px 8px;
       font-size: 10px;
@@ -215,8 +194,6 @@
     }
     .badge-done { background-color: #C8E6C9; color: #2E7D32; }
     .badge-active { background-color: #FFE0B2; color: #E65100; }
-    .badge-manual { background-color: #EBDEF0; color: #6C3483; }
-    .badge-recipe { background-color: #EFEBE9; color: #5D4037; font-size: 9px; padding: 1px 4px; border: 1px solid #BCAAA4; border-radius: 4px; }
 
     .modal {
       display: none;
@@ -298,29 +275,10 @@
         <!-- Manual Chapter Track Section -->
         <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:8px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
-          
           <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">Tix:</label>
-          <input 
-            type="number" 
-            id="trackTicketsInput" 
-            value="0" 
-            placeholder="0" 
-            onchange="saveTrackAndRecalculate()" 
-            style="width: 65px; padding: 4px 6px; font-size: 11px;" 
-            title="Total Track Tickets Claimed" 
-          />
-          
+          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 4px 6px; font-size: 11px;" title="Total Track Tickets Claimed" />
           <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">SFL:</label>
-          <input 
-            type="number" 
-            step="0.01" 
-            id="trackCostInput" 
-            value="0" 
-            placeholder="0.00" 
-            onchange="saveTrackAndRecalculate()" 
-            style="width: 75px; padding: 4px 6px; font-size: 11px;" 
-            title="Total SFL Spent on Track" 
-          />
+          <input type="number" step="0.01" id="trackCostInput" value="0" placeholder="0.00" onchange="saveTrackAndRecalculate()" style="width: 75px; padding: 4px 6px; font-size: 11px;" title="Total SFL Spent on Track" />
         </div>
 
         <div class="input-group">
@@ -399,50 +357,54 @@
       </div>
     </div>
 
-    <!-- 4-Column Grid -->
-    <div class="grid-4">
-      <div id="cardDeliveries" class="column-card">
-        <div class="column-title">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('delivery')">📜 EDIT</button>
-            <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
-          </div>
+    <!-- Category Overview Control Cards -->
+    <div class="overview-grid">
+      <!-- NPC Deliveries Overview Card -->
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>📦 DELIVERIES</span>
+          <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Orders</span>
         </div>
-        <div id="deliveriesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load orders...</p></div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo">📜 EDIT</button>
+        </div>
       </div>
 
-      <div id="cardBounties" class="column-card">
-        <div class="column-title">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT</button>
-            <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
-          </div>
+      <!-- Regular Bounties Overview Card -->
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>📜 BOUNTIES</span>
+          <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Items</span>
         </div>
-        <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('bounty')" class="btn btn-indigo">📜 EDIT</button>
+        </div>
       </div>
 
-      <div id="cardAnimalBounties" class="column-card">
-        <div class="column-title">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('animalBounty')">🐄 ANIMAL BOUNTIES</button>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('animalBounty')">📜 EDIT</button>
-            <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
-          </div>
+      <!-- Animal Bounties Overview Card -->
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>🐄 ANIMAL BOUNTIES</span>
+          <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Animals</span>
         </div>
-        <div id="animalBountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load animal bounties...</p></div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo">📜 EDIT</button>
+        </div>
       </div>
 
-      <div id="cardChores" class="column-card">
-        <div class="column-title">
-          <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT</button>
-            <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
-          </div>
+      <!-- Chores Overview Card -->
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>🧹 CHORES</span>
+          <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Tasks</span>
         </div>
-        <div id="choresList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load chores...</p></div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('chore')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('chore')" class="btn btn-indigo">📜 EDIT</button>
+        </div>
       </div>
     </div>
   </div>
@@ -459,7 +421,7 @@
           <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
           <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
-        <div id="categorySummaryBody" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <div id="categorySummaryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
           <p style="font-size: 12px; color: #8C7853; font-weight: bold;">Loading summary...</p>
         </div>
       </div>
