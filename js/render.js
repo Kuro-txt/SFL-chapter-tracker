@@ -99,7 +99,7 @@ export function recalculateAll() {
 
   const sortedBounties = [...regularBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   const sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-  const sortedChores = [...state.globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  const sortedChores = [...(state.globalData.chores || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   // Render Deliveries
   const deliveriesContainer = document.getElementById('deliveriesList');
@@ -150,58 +150,66 @@ export function recalculateAll() {
   const bountiesContainer = document.getElementById('bountiesList');
   if (bountiesContainer) {
     setElemText('bountiesCount', sortedBounties.length);
-    bountiesContainer.innerHTML = sortedBounties.map(b => {
-      const finalTickets = b.baseTickets + boostCount;
-      const totalSflCost = b.itemsCost || 0;
-      const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-      const badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
+    if (sortedBounties.length === 0) {
+      bountiesContainer.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No active item bounties right now.</p>';
+    } else {
+      bountiesContainer.innerHTML = sortedBounties.map(b => {
+        const finalTickets = b.baseTickets + boostCount;
+        const totalSflCost = b.itemsCost || 0;
+        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        const badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
 
-      return `<div class="card-item ${b.completed ? 'done' : 'active'}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</span>
-          <span class="${badgeClass}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
-        </div>
-        <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-          <div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">
-            <span>Yield: ${finalTickets} Tickets</span>
-            <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
+        return `<div class="card-item ${b.completed ? 'done' : 'active'}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</span>
+            <span class="${badgeClass}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
-            <span>Cost / Ticket:</span>
-            <span>${formatSFL(costPerTicket)} SFL</span>
+          <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
+            <div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">
+              <span>Yield: ${finalTickets} Tickets</span>
+              <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
+              <span>Cost / Ticket:</span>
+              <span>${formatSFL(costPerTicket)} SFL</span>
+            </div>
           </div>
-        </div>
-      </div>`;
-    }).join('');
+        </div>`;
+      }).join('');
+    }
   }
 
   // Render Animal Bounties
   const animalBountiesContainer = document.getElementById('animalBountiesList');
   if (animalBountiesContainer) {
     setElemText('animalBountiesCount', sortedAnimalBounties.length);
-    animalBountiesContainer.innerHTML = sortedAnimalBounties.map(b => {
-      const finalTickets = b.baseTickets + boostCount;
-      const totalSflCost = b.itemsCost || 0;
-      const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-      const badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
+    if (sortedAnimalBounties.length === 0) {
+      animalBountiesContainer.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No active animal bounties right now.</p>';
+    } else {
+      animalBountiesContainer.innerHTML = sortedAnimalBounties.map(b => {
+        const finalTickets = b.baseTickets + boostCount;
+        const totalSflCost = b.itemsCost || 0;
+        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
+        const badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
 
-      return `<div class="card-item ${b.completed ? 'done' : 'active'}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🐄 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</span>
-          <span class="${badgeClass}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
-        </div>
-        <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-          <div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">
-            <span>Yield: ${finalTickets} Tickets</span>
-            <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
+        return `<div class="card-item ${b.completed ? 'done' : 'active'}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🐄 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</span>
+            <span class="${badgeClass}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
           </div>
-          <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
-            <span>Cost / Ticket:</span>
-            <span>${formatSFL(costPerTicket)} SFL</span>
+          <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
+            <div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">
+              <span>Yield: ${finalTickets} Tickets</span>
+              <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
+              <span>Cost / Ticket:</span>
+              <span>${formatSFL(costPerTicket)} SFL</span>
+            </div>
           </div>
-        </div>
-      </div>`;
-    }).join('');
+        </div>`;
+      }).join('');
+    }
   }
 
   // Render Chores
