@@ -74,6 +74,7 @@
       font-weight: 900;
     }
 
+    /* Core Action Buttons */
     .btn {
       font-family: inherit;
       font-weight: 900;
@@ -85,29 +86,47 @@
       cursor: pointer;
       box-shadow: 0 4px 0px #3E2723;
       transition: all 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
+    .btn:hover { filter: brightness(1.06); }
     .btn:active { transform: translateY(2px); box-shadow: 0 2px 0px #3E2723; }
-    .btn-amber { background-color: #FFB300; color: #3E2723; border-color: #B26A00; box-shadow: 0 4px 0px #B26A00; }
-    .btn-emerald { background-color: #4CAF50; color: #FFF8DC; border-color: #2E7D32; box-shadow: 0 4px 0px #2E7D32; }
-    .btn-indigo { background-color: #795548; color: #FFF8DC; border-color: #4E342E; box-shadow: 0 4px 0px #4E342E; }
-    .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
-    .btn-sm { padding: 4px 8px; font-size: 10px; box-shadow: 0 2px 0px #3E2723; }
 
-    /* Category Navigation Grid */
+    /* Button Colors */
+    .btn-wood {
+      background: linear-gradient(180deg, #C27B38 0%, #8B4E1D 100%);
+      color: #FFF8DC;
+      border-color: #4A280E;
+      box-shadow: 0 4px 0px #341B07;
+      text-shadow: 1px 1px 0px #241103;
+    }
+    .btn-amber { background-color: #FFB300; color: #3E2723; border-color: #B26A00; box-shadow: 0 4px 0px #B26A00; }
+    .btn-emerald { background-color: #388E3C; color: #FFF8DC; border-color: #1B5E20; box-shadow: 0 4px 0px #1B5E20; text-shadow: 1px 1px 0px #0F3812; }
+    .btn-indigo { background-color: #6D4C41; color: #FFF8DC; border-color: #3E2723; box-shadow: 0 4px 0px #2E1B17; }
+    .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; box-shadow: 0 3px 0px #2E1B17; }
+
+    /* Category Overview Cards */
     .overview-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 16px;
     }
     .overview-card {
-      background-color: #FFF8DC;
+      background: #FFFDF7;
       border: 3px solid #8B5A2B;
-      border-radius: 10px;
-      padding: 14px;
+      border-radius: 12px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      box-shadow: 0 4px 0px #5C4033;
+      gap: 12px;
+      box-shadow: 0 5px 0px #5C4033;
+      transition: transform 0.15s ease;
+    }
+    .overview-card:hover {
+      transform: translateY(-2px);
     }
     .overview-header {
       display: flex;
@@ -115,15 +134,25 @@
       align-items: center;
       font-weight: 900;
       font-size: 13px;
-      color: #5C4033;
-      border-bottom: 2px dashed #D2B48C;
-      padding-bottom: 6px;
+      color: #4E342E;
+      border-bottom: 2px dashed #D7CCC8;
+      padding-bottom: 8px;
+    }
+    .overview-count {
+      background: #EFEBE9;
+      color: #4E342E;
+      padding: 3px 9px;
+      border: 2px solid #A1887F;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 900;
     }
     .overview-actions {
       display: flex;
-      gap: 6px;
+      gap: 8px;
     }
 
+    /* Key Performance Metric Boxes */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
     
     .stat-box {
@@ -238,12 +267,12 @@
           <input type="text" id="authUsername" placeholder="Username" style="width: 110px;" autocomplete="username" />
           <input type="password" id="authPassword" placeholder="Password" style="width: 110px;" autocomplete="current-password" />
           <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
-          <button type="button" onclick="userRegister()" class="btn btn-sm btn-amber">REGISTER</button>
+          <button type="button" onclick="userRegister()" class="btn btn-sm btn-wood">REGISTER</button>
         </form>
 
         <div id="authLoggedIn" style="display: none; align-items: center; gap: 12px;">
           <span style="font-size: 12px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
-          <button type="button" onclick="userLogout()" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff;">LOGOUT</button>
+          <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; box-shadow:0 3px 0px #78281F;">LOGOUT</button>
         </div>
       </div>
     </div>
@@ -282,16 +311,15 @@
         </div>
 
         <div class="input-group">
-          <button onclick="loadTrackerData()" class="btn btn-amber">FETCH DATA</button>
+          <button onclick="loadTrackerData()" class="btn btn-wood">🌾 FETCH DATA</button>
           <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE KV</button>
           <button onclick="toggleHistoryModal()" class="btn btn-indigo">📜 LOGS</button>
         </div>
       </div>
     </div>
 
-    <!-- 4-Box Key Performance Metrics Dashboard with Hover Breakdown Tooltips -->
+    <!-- 4-Box Key Performance Metrics Dashboard -->
     <div class="stats-grid">
-      <!-- Total Tickets Box -->
       <div id="boxTotalTickets" class="stat-box">
         <div class="tooltip" id="tooltipTotal">
           <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
@@ -308,8 +336,7 @@
         </div>
       </div>
 
-      <!-- This Week's Progress Box -->
-      <div id="boxWeekTickets" class="stat-box" style="border-color: #FFB300;">
+      <div id="boxWeekTickets" class="stat-box" style="border-color: #D2691E;">
         <div class="tooltip" id="tooltipWeek">
           <div>📅 <strong>WEEK BREAKDOWN:</strong></div>
           <div id="tipWeekDeliv">📦 Deliveries: 0 Tix</div>
@@ -317,15 +344,14 @@
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
           <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
         </div>
-        <div class="stat-title" style="color: #B26A00;">📅 THIS WEEK'S PROGRESS</div>
-        <div id="statWeekTickets" class="stat-val" style="color: #B26A00;">0 Tickets</div>
+        <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK'S PROGRESS</div>
+        <div id="statWeekTickets" class="stat-val" style="color: #D2691E;">0 Tickets</div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Week Cost Spent:</span><strong id="statWeekCost" style="color:#B26A00;">0.00 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Week Cost Spent:</span><strong id="statWeekCost" style="color:#8B4513;">0.00 SFL</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Week Efficiency:</span><strong id="statWeekRatio" style="color:#2E7D32;">0.00 SFL / Ticket</strong></div>
         </div>
       </div>
 
-      <!-- Done Today Box -->
       <div id="boxTodayTickets" class="stat-box" style="border-color: #4CAF50;">
         <div class="tooltip" id="tooltipToday">
           <div>✨ <strong>TODAY'S BREAKDOWN:</strong></div>
@@ -341,7 +367,6 @@
         </div>
       </div>
 
-      <!-- Chapter Target Calculator Box -->
       <div class="stat-box" style="border-color: #8E44AD; cursor: default;">
         <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER END GOAL TARGET</div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
@@ -357,53 +382,53 @@
       </div>
     </div>
 
-    <!-- Category Overview Control Cards -->
+    <!-- Category Overview Navigation Cards -->
     <div class="overview-grid">
-      <!-- NPC Deliveries Overview Card -->
+      <!-- NPC Deliveries -->
       <div class="overview-card">
         <div class="overview-header">
-          <span>📦 DELIVERIES</span>
-          <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Orders</span>
+          <span>📦 NPC DELIVERIES</span>
+          <span id="deliveriesCount" class="overview-count">0 Orders</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
-          <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo">📜 EDIT</button>
+          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
 
-      <!-- Regular Bounties Overview Card -->
+      <!-- Bounties -->
       <div class="overview-card">
         <div class="overview-header">
           <span>📜 BOUNTIES</span>
-          <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Items</span>
+          <span id="bountiesCount" class="overview-count">0 Items</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
-          <button onclick="openColumnHistoryModal('bounty')" class="btn btn-indigo">📜 EDIT</button>
+          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('bounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
 
-      <!-- Animal Bounties Overview Card -->
+      <!-- Animal Bounties -->
       <div class="overview-card">
         <div class="overview-header">
           <span>🐄 ANIMAL BOUNTIES</span>
-          <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Animals</span>
+          <span id="animalBountiesCount" class="overview-count">0 Animals</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
-          <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo">📜 EDIT</button>
+          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
 
-      <!-- Chores Overview Card -->
+      <!-- Chores -->
       <div class="overview-card">
         <div class="overview-header">
           <span>🧹 CHORES</span>
-          <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; font-size:11px;">0 Tasks</span>
+          <span id="choresCount" class="overview-count">0 Tasks</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('chore')" class="btn btn-amber" style="flex:1;">📋 OVERVIEW</button>
-          <button onclick="openColumnHistoryModal('chore')" class="btn btn-indigo">📜 EDIT</button>
+          <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
+          <button onclick="openColumnHistoryModal('chore')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
     </div>
@@ -414,7 +439,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="categorySummaryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📋 SUMMARY OVERVIEW</h3>
-        <button onclick="closeCategorySummaryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
         <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
@@ -433,7 +458,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 SAVED CLOUD LOGS & HISTORY</h3>
-        <button onclick="toggleHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <button onclick="toggleHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div id="modalLogList" class="modal-body">
         <p style="color:#8C7853; font-size:12px; font-weight:bold;">No logs loaded yet. Login and save KV first.</p>
@@ -446,7 +471,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
-        <button onclick="closeColumnHistoryModal()" class="btn btn-amber" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
         <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
