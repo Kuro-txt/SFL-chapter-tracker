@@ -76,19 +76,25 @@ export async function loadTrackerData() {
       localStorage.setItem('sfl_vip', data.isVipActive);
     }
 
+    // Refresh UI with newly loaded data
     recalculateAll();
+
+    // AUTO-SAVE TO CLOUD KV (Silent background sync if user is logged in)
+    if (state.currentUser) {
+      await saveProgressToCloudKV(true);
+    }
   } catch (err) {
     alert('Error fetching data after 3 attempts: ' + err.message);
   }
 }
 
-export async function saveProgressToCloudKV() {
+export async function saveProgressToCloudKV(isSilent = false) {
   if (!state.currentUser) {
-    alert('⚠️ Please LOGIN to your secure vault before saving to Cloud!');
+    if (!isSilent) alert('⚠️ Please LOGIN to your secure vault before saving to Cloud!');
     return;
   }
   if (!state.globalData) {
-    alert('Please click "FETCH DATA" first before saving!');
+    if (!isSilent) alert('Please click "FETCH DATA" first before saving!');
     return;
   }
 
@@ -105,8 +111,8 @@ export async function saveProgressToCloudKV() {
     }
   });
 
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput').value) || 0;
-  const trackCost = parseFloat(document.getElementById('trackCostInput').value) || 0;
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
 
   try {
     const response = await fetch('/api/chapter?action=saveVault', {
@@ -130,9 +136,16 @@ export async function saveProgressToCloudKV() {
     state.currentVaultData = resData.vaultData;
     state.globalData.cloudHistory = state.currentVaultData;
 
-    alert(`☁️ SAVED IN CLOUD!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nTrack Progress: ${trackTickets} Tickets (${formatSFL(trackCost)} SFL)\nWeekly Bounties & Chores Synced!`);
+    if (!isSilent) {
+      alert(`☁️ SAVED IN CLOUD!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nTrack Progress: ${trackTickets} Tickets (${formatSFL(trackCost)} SFL)\nWeekly Bounties & Chores Synced!`);
+    }
+
     recalculateAll();
   } catch (err) {
-    alert('Cloud Save Failed: ' + err.message);
+    if (!isSilent) {
+      alert('Cloud Save Failed: ' + err.message);
+    } else {
+      console.error('Background auto-save failed:', err);
+    }
   }
 }
