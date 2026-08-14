@@ -27,14 +27,6 @@ window.deleteDeliveryLogItem = Modals.deleteDeliveryLogItem;
 window.updateHistoryItemTickets = Modals.updateHistoryItemTickets;
 window.updateHistoryItemCost = Modals.updateHistoryItemCost;
 
-window.toggleColumnCard = function(cardId, btn) {
-  const card = document.getElementById(cardId);
-  if (card) {
-    card.classList.toggle('collapsed');
-    if (btn) btn.textContent = card.classList.contains('collapsed') ? '▲' : '▼';
-  }
-};
-
 window.saveGoalAndRecalculate = function() {
   localStorage.setItem('sfl_targetGoal', document.getElementById('targetGoalInput').value);
   localStorage.setItem('sfl_targetWeeks', document.getElementById('targetWeeksInput').value);
@@ -89,7 +81,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('displayUsername').textContent = State.state.currentUser;
     await Auth.fetchUserVault(State.state.currentUser);
 
-    // Sync saved cloud track values if loaded
     if (State.state.currentVaultData.trackTickets !== undefined) {
       document.getElementById('trackTicketsInput').value = State.state.currentVaultData.trackTickets;
       localStorage.setItem('sfl_trackTickets', State.state.currentVaultData.trackTickets);
