@@ -58,6 +58,7 @@ export async function onRequest(context) {
                   if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
                   return {
                     id: b.id || null,
+                    level: b.level || null,
                     name: b.name || 'Bounty',
                     cost: bCost,
                     tickets: b.tickets !== undefined ? b.tickets : (b.baseTickets || 0),
@@ -97,6 +98,7 @@ export async function onRequest(context) {
                 completed: isDone, 
                 completedAt: d.completedAt || null,
                 items: d.items || d.itemDetails || [], 
+                itemDetails: d.itemDetails || d.items || [],
                 checked: isDone 
               };
             });
@@ -236,7 +238,7 @@ export async function onRequest(context) {
     }
   }
 
-  // 5. Save Vault Progress
+  // 5. Save Vault Progress (Auto-syncs any edits)
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -261,11 +263,12 @@ export async function onRequest(context) {
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
 
-      // Strictly save ticket bounties only (filter out coin-only bounties)
+      // Preserve level on bounties
       const incomingBounties = (body.bounties || [])
         .filter(b => (b.baseTickets || b.tickets || 0) > 0)
         .map(b => ({
           id: b.id || null,
+          level: b.level || null,
           weekId: currentWeekId, 
           name: b.name, 
           cost: b.itemsCost || b.cost || 0,
@@ -286,8 +289,16 @@ export async function onRequest(context) {
         checked: c.completed
       }));
 
-      existingData.weeks[currentWeekId] = { weekId: currentWeekId, bounties: incomingBounties, chores: incomingChores };
+      // Update current week if incoming bounties/chores are present
+      if (incomingBounties.length > 0 || incomingChores.length > 0) {
+        existingData.weeks[currentWeekId] = { 
+          weekId: currentWeekId, 
+          bounties: incomingBounties.length > 0 ? incomingBounties : (existingData.weeks[currentWeekId]?.bounties || []), 
+          chores: incomingChores.length > 0 ? incomingChores : (existingData.weeks[currentWeekId]?.chores || []) 
+        };
+      }
 
+      // If full log array is explicitly passed (e.g. from Edit modal sync)
       if (body.logs && Array.isArray(body.logs)) {
         existingData.logs = body.logs;
       } else {
@@ -298,6 +309,7 @@ export async function onRequest(context) {
           completed: d.completed, 
           completedAt: d.completedAt || null,
           items: d.itemDetails || d.items || [], 
+          itemDetails: d.itemDetails || d.items || [], 
           checked: d.completed
         }));
 
@@ -326,11 +338,16 @@ export async function onRequest(context) {
         }
       }
 
+      // Recalculate cumulative vault values
       let totalTix = existingData.trackTickets || 0;
       let totalCost = existingData.trackCost || 0;
       existingData.logs.forEach(l => {
-        totalTix += (l.ticketsSaved || 0);
-        totalCost += (l.costSaved || 0);
+        (l.deliveriesDone || []).forEach(d => {
+          if (d.checked !== undefined ? d.checked : d.completed) {
+            totalTix += (d.tickets || 0);
+            totalCost += (d.cost || 0);
+          }
+        });
       });
 
       Object.values(existingData.weeks).forEach(wk => {
@@ -350,9 +367,9 @@ export async function onRequest(context) {
 
       existingData.cumulativeTickets = totalTix;
       existingData.cumulativeCost = totalCost;
-      existingData.deliveries = body.deliveries || [];
-      existingData.bounties = incomingBounties;
-      existingData.chores = incomingChores;
+      existingData.deliveries = body.deliveries || existingData.deliveries || [];
+      existingData.bounties = incomingBounties.length > 0 ? incomingBounties : (existingData.bounties || []);
+      existingData.chores = incomingChores.length > 0 ? incomingChores : (existingData.chores || []);
 
       await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
       return jsonRes({ success: true, vaultData: existingData });
@@ -430,7 +447,7 @@ export async function onRequest(context) {
       }
     });
 
-    // Bounties Parser (Strict Tickets Filter + Deduplication)
+    // Bounties Parser (Strict Tickets Filter + Deduplication + Preserve Level)
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -450,15 +467,12 @@ export async function onRequest(context) {
     const rawBountyArray = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
 
     rawBountyArray.forEach(b => {
-      // 1. Calculate actual ticket rewards (strictly tickets, NO coins)
       let baseTicketCount = extractRewardTickets(b.reward) + extractRewardTickets(b.items);
       if (b.tickets && typeof b.tickets === 'number') baseTicketCount += b.tickets;
       if (b.reward?.tickets && typeof b.reward.tickets === 'number') baseTicketCount += b.reward.tickets;
 
-      // STRICT FILTER: If it rewards 0 tickets (it only rewards coins/SFL), IGNORE IT!
       if (baseTicketCount <= 0) return;
 
-      // 2. Prevent duplication by ID or Name + Level
       const uniqueKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
       if (seenBountyKeys.has(uniqueKey)) return;
       seenBountyKeys.add(uniqueKey);
