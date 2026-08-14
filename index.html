@@ -108,7 +108,6 @@
 
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
     
-    /* Interactive Hover Stat Boxes */
     .stat-box {
       position: relative;
       background-color: #FFF8DC;
@@ -130,7 +129,6 @@
     .stat-val { font-size: 22px; font-weight: 900; color: #D2691E; }
     .stat-footer { border-top: 2px dashed #D2B48C; padding-top: 6px; display: flex; flex-direction: column; gap: 4px; font-size: 10px; font-weight: bold; color: #5C4033; }
 
-    /* Custom Tooltip Styling on Hover */
     .stat-box .tooltip {
       visibility: hidden;
       opacity: 0;
@@ -238,7 +236,7 @@
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
       max-height: 80vh;
       border-radius: 12px;
       display: flex;
@@ -410,7 +408,10 @@
             <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardAnimalBounties', this)" style="padding:2px 6px;">▲</button>
             <button class="btn-pop-title" onclick="openCategorySummaryModal('animalBounty')">🐄 ANIMAL BOUNTIES</button>
           </div>
-          <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('animalBounty')">📜 EDIT</button>
+            <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
+          </div>
         </div>
         <div id="animalBountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load animal bounties...</p></div>
       </div>
@@ -478,8 +479,8 @@
 
         <div style="display: flex; gap: 8px; align-items: center; background: #F4ECF7; padding: 10px; border: 2px solid #8E44AD; border-radius: 8px;">
           <input type="text" id="addHistName" placeholder="Name/Task" style="flex: 2;" />
+          <input type="number" step="0.01" id="addHistCost" placeholder="SFL Cost" style="width: 80px;" value="0.00" />
           <input type="number" id="addHistTickets" placeholder="Tickets" style="width: 70px;" value="1" />
-          <input type="number" step="0.01" id="addHistCost" placeholder="SFL" style="width: 80px;" value="0.00" />
           <button onclick="addCustomHistoryItem()" class="btn btn-sm btn-purple">➕ ADD</button>
         </div>
 
@@ -490,7 +491,6 @@
     </div>
   </div>
 
-  <!-- Modular Main Script -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
