@@ -1,4 +1,4 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus } from './state.js';
+import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
 
 export function recalculateAll() {
   if (!state.globalData) return;
@@ -16,16 +16,13 @@ export function recalculateAll() {
   let weekTicketsAll = 0;
   let weekCostAll = 0;
 
-  const now = new Date();
-  const startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
-  const currentWeekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
-  const currentWeekId = `${now.getFullYear()}-W${String(currentWeekNum).padStart(2, '0')}`;
-
+  const currentWeekId = getMondayBasedWeekId();
   const logs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
+  // 1. Process Historical Daily Deliveries across logs
   logs.forEach(log => {
-    const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
+    const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === new Date().getFullYear().toString());
     (log.deliveriesDone || []).forEach(item => {
       const isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
@@ -44,45 +41,78 @@ export function recalculateAll() {
     });
   });
 
+  // 2. Process Weekly Bounties and Chores
+  // Use saved weeks if present; otherwise fall back to active live data for current week
+  const activeWeeklyBounties = (weeks[currentWeekId]?.bounties?.length) 
+    ? weeks[currentWeekId].bounties 
+    : (state.globalData.bounties || []);
+
+  const activeWeeklyChores = (weeks[currentWeekId]?.chores?.length) 
+    ? weeks[currentWeekId].chores 
+    : (state.globalData.chores || []);
+
+  // Process all stored past weeks (historical)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    const isThisWeek = wkId === currentWeekId;
+    if (wkId === currentWeekId) return; // Processed below to avoid duplication
 
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
       if (isTicked) {
-        const baseTix = b.tickets || 1;
+        const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-        const bCost = b.cost || 0;
+        const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
 
         bountyCatTickets += finalTix;
         totalSflCostAll += bCost;
-
-        if (isThisWeek) {
-          weekTicketsAll += finalTix;
-          weekCostAll += bCost;
-        }
       }
     });
 
     (wk.chores || []).forEach(c => {
       const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
       if (isTicked) {
-        const baseTix = c.tickets || 1;
+        const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
 
         choreCatTickets += finalTix;
-
-        if (isThisWeek) weekTicketsAll += finalTix;
       }
     });
   });
 
+  // Process Current Week Bounties
+  activeWeeklyBounties.forEach(b => {
+    const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
+    if (isTicked) {
+      const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
+      const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+      const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+
+      bountyCatTickets += finalTix;
+      totalSflCostAll += bCost;
+
+      weekTicketsAll += finalTix;
+      weekCostAll += bCost;
+    }
+  });
+
+  // Process Current Week Chores
+  activeWeeklyChores.forEach(c => {
+    const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
+    if (isTicked) {
+      const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
+      const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+
+      choreCatTickets += finalTix;
+      weekTicketsAll += finalTix;
+    }
+  });
+
   totalTicketsAll = delivCatTickets + bountyCatTickets + choreCatTickets;
 
+  // 3. Process Live Deliveries for "Done Today"
   let earnedTicketsToday = 0;
   let earnedCostToday = 0;
 
-  const sortedDeliveries = [...state.globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   
   const allBounties = state.globalData.bounties || [];
   const regularBountiesRaw = [];
@@ -101,7 +131,7 @@ export function recalculateAll() {
   const sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   const sortedChores = [...(state.globalData.chores || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
-  // Render Deliveries
+  // Render Deliveries Column
   const deliveriesContainer = document.getElementById('deliveriesList');
   if (deliveriesContainer && state.globalData.deliveries) {
     setElemText('deliveriesCount', state.globalData.deliveries.length);
@@ -146,7 +176,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // Render Bounties
+  // Render Regular Bounties Column
   const bountiesContainer = document.getElementById('bountiesList');
   if (bountiesContainer) {
     setElemText('bountiesCount', sortedBounties.length);
@@ -179,7 +209,7 @@ export function recalculateAll() {
     }
   }
 
-  // Render Animal Bounties
+  // Render Animal Bounties Column
   const animalBountiesContainer = document.getElementById('animalBountiesList');
   if (animalBountiesContainer) {
     setElemText('animalBountiesCount', sortedAnimalBounties.length);
@@ -212,7 +242,7 @@ export function recalculateAll() {
     }
   }
 
-  // Render Chores
+  // Render Chores Column
   const choresContainer = document.getElementById('choresList');
   if (choresContainer && state.globalData.chores) {
     setElemText('choresCount', state.globalData.chores.length);
@@ -233,7 +263,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // Summaries
+  // 4. Update Header Metrics
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
