@@ -334,10 +334,7 @@ export async function onRequest(context) {
           }
         });
         (wk.chores || []).forEach(c => {
-          if (c.completed || c.checked) {
-            totalTix += (c.tickets || 0);
-            totalCost += (c.cost || 0);
-          }
+          if (c.completed || c.checked) totalTix += (c.tickets || 0);
         });
       });
 
@@ -423,7 +420,7 @@ export async function onRequest(context) {
       }
     });
 
-    // Bounties Parser (Only map valid numbers, NEVER fallback to Date.now())
+    // Bounties Parser
     const activeBounties = [];
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
     const completedMap = {};
