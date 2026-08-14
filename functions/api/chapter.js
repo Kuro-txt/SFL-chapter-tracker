@@ -95,6 +95,29 @@ function getMondayBasedWeekId(date = new Date()) {
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 
+// Helper to extract tickets from any reward structure
+function extractRewardTickets(rewardObj) {
+  if (!rewardObj) return 0;
+  let count = 0;
+  
+  const items = rewardObj.items || rewardObj;
+  if (typeof items === 'object') {
+    for (const [key, qty] of Object.entries(items)) {
+      const lower = key.toLowerCase();
+      if (
+        lower.includes('ticket') || 
+        lower.includes('feather') || 
+        lower.includes('scale') || 
+        lower.includes('scroll') ||
+        lower.includes('token')
+      ) {
+        count += (typeof qty === 'number' ? qty : parseInt(qty) || 0);
+      }
+    }
+  }
+  return count;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -120,7 +143,7 @@ export async function onRequest(context) {
     return 0;
   };
 
-  // Secure External Cron Ping Endpoint (Daily reset for Deliveries, Weekly reset for Bounties/Chores)
+  // Secure External Cron Ping Endpoint
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -153,7 +176,6 @@ export async function onRequest(context) {
             if (!vaultData.logs) vaultData.logs = [];
             if (!vaultData.weeks) vaultData.weeks = {};
 
-            // Store weekly items once per week
             if (vaultData.bounties || vaultData.chores) {
               const currentWeekBounties = (vaultData.bounties || []).map(b => {
                 let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -182,7 +204,6 @@ export async function onRequest(context) {
               };
             }
 
-            // Daily Deliveries Only
             let dailyDeliveryTickets = 0;
             let dailyDeliveryCost = 0;
 
@@ -222,7 +243,6 @@ export async function onRequest(context) {
               });
             }
 
-            // Recalculate Master Cumulative Totals (Daily Deliveries + Unique Weekly Items)
             let totalTix = 0;
             let totalCost = 0;
 
@@ -258,7 +278,7 @@ export async function onRequest(context) {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} user vaults without duplicating weekly items.` 
+      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} user vaults.` 
     }), {
       status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
@@ -360,7 +380,6 @@ export async function onRequest(context) {
           tickets: c.baseTickets || 0, completed: c.completed, checked: c.completed
         }));
 
-        // Store active bounties and chores strictly under the current week key
         existingData.weeks[currentWeekId] = {
           weekId: currentWeekId,
           bounties: incomingBounties,
@@ -394,7 +413,6 @@ export async function onRequest(context) {
           }
         }
 
-        // Recalculate cumulative sums: Daily Deliveries + Unique Weekly Items
         let totalTix = 0;
         let totalCost = 0;
         existingData.logs.forEach(l => {
@@ -465,6 +483,7 @@ export async function onRequest(context) {
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
+    // 1. Deliveries Parser
     const rawDeliveries = farm.delivery?.orders || [];
     const deliveryList = [];
     rawDeliveries.forEach(order => {
@@ -472,11 +491,7 @@ export async function onRequest(context) {
       const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean];
       let baseTicketCount = baseTickets !== undefined ? baseTickets : 0;
 
-      if (order.reward?.items) {
-        Object.entries(order.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
-        });
-      }
+      baseTicketCount += extractRewardTickets(order.reward);
 
       if (baseTicketCount > 0) {
         let itemsCost = 0;
@@ -493,31 +508,31 @@ export async function onRequest(context) {
       }
     });
 
+    // 2. Bounties Parser (Support requests, active board, and direct lists)
     const activeBounties = [];
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
     let completedBountyIds = Array.isArray(completedBountiesRaw) ? completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b)) : [];
 
-    (farm.bounties?.requests || []).forEach(b => {
-      let baseTicketCount = 0;
-      if (b.items) {
-        Object.entries(b.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
-        });
+    const rawBountyArray = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
+
+    rawBountyArray.forEach(b => {
+      let baseTicketCount = extractRewardTickets(b.reward) + extractRewardTickets(b.items);
+      // Fallback: If SFL didn't label the item as ticket, default to 1 ticket per bounty request
+      if (baseTicketCount === 0) {
+        baseTicketCount = b.tickets || b.reward?.tickets || 1;
       }
-      if (baseTicketCount > 0) {
-        const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
-        const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
-        activeBounties.push({ id: b.id, name: b.name, level: b.level || null, baseTickets: baseTicketCount, itemsCost: unitPrice, completed: isCompleted });
-      }
+
+      const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
+      const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
+      activeBounties.push({ id: b.id, name: b.name, level: b.level || null, baseTickets: baseTicketCount, itemsCost: unitPrice, completed: isCompleted });
     });
 
+    // 3. Chores Parser
     const choreObj = farm.choreBoard?.chores || farm.chores || {};
     const choresList = Object.entries(choreObj).map(([key, details]) => {
-      let baseTicketCount = 0;
-      if (details.reward?.items) {
-        Object.entries(details.reward.items).forEach(([item, qty]) => {
-          if (item === 'Shiny Feather' || item === 'Tickets') baseTicketCount += qty;
-        });
+      let baseTicketCount = extractRewardTickets(details.reward);
+      if (baseTicketCount === 0) {
+        baseTicketCount = details.tickets || details.baseTickets || 1;
       }
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
