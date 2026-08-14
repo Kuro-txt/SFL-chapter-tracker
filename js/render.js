@@ -34,15 +34,13 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
-  // Robust function to check if a task was completed today
   const isDoneToday = (item, category) => {
     if (!item || (!item.completed && !item.checked)) return false;
 
-    // 1. If timestamp is provided by SFL API (handles both seconds and milliseconds)
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
-        const ms = ts < 1e11 ? ts * 1000 : ts; // Convert seconds to ms if needed
+        const ms = ts < 1e11 ? ts * 1000 : ts;
         const itemDate = new Date(ms);
         const iso = itemDate.toISOString().split('T')[0];
         const loc = itemDate.toLocaleDateString('en-CA');
@@ -50,7 +48,6 @@ export function recalculateAll() {
       }
     }
 
-    // 2. Fallback if SFL API sent no timestamp: Check if this was already logged on a prior day
     const prevLogs = logs.filter(l => l.date && l.date !== todayDateStr && l.date !== localTodayStr && l.weekId === currentWeekId);
     const wasDoneInPrevLog = prevLogs.some(l => {
       const list = category === 'bounty' ? (l.bountiesDone || []) : (l.choresDone || l.deliveriesDone || []);
@@ -61,10 +58,7 @@ export function recalculateAll() {
       });
     });
 
-    // If it was already completed in a previous day's log, it's not today's
     if (wasDoneInPrevLog) return false;
-
-    // Otherwise, it was completed today during this week!
     return true;
   };
 
@@ -97,7 +91,7 @@ export function recalculateAll() {
 
   // 2. Process Past Weeks (Historical Bounties & Chores)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return; // Current week is processed live below
+    if (wkId === currentWeekId) return;
 
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
@@ -124,7 +118,7 @@ export function recalculateAll() {
     });
   });
 
-  // 3. Process Current Week Bounties & Chores (Merge Live API Data with any custom saved overrides)
+  // 3. Process Current Week Bounties & Chores
   const currentWeekBounties = (state.globalData.bounties || []).map(liveB => {
     const saved = (weeks[currentWeekId]?.bounties || []).find(sb => (sb.name || '').toLowerCase() === (liveB.name || '').toLowerCase());
     return {
@@ -145,7 +139,7 @@ export function recalculateAll() {
     };
   });
 
-  // Calculate Current Week Bounties (Total, Week, Today)
+  // Calculate Current Week Bounties
   currentWeekBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
@@ -166,7 +160,7 @@ export function recalculateAll() {
     }
   });
 
-  // Calculate Current Week Chores (Total, Week, Today)
+  // Calculate Current Week Chores
   currentWeekChores.forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
     if (isTicked) {
@@ -203,145 +197,23 @@ export function recalculateAll() {
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix;
 
-  // 5. Render 4 Column Cards in DOM
+  // 5. Update Counts on Overview Cards
   const allBounties = state.globalData.bounties || [];
-  const regularBountiesRaw = [];
-  const animalBountiesRaw = [];
-
-  allBounties.forEach(b => {
+  const regularBounties = allBounties.filter(b => {
     const n = (b.name || '').toLowerCase();
-    if (n.includes('chicken') || n.includes('cow') || n.includes('sheep')) {
-      animalBountiesRaw.push(b);
-    } else {
-      regularBountiesRaw.push(b);
-    }
+    return !(n.includes('chicken') || n.includes('cow') || n.includes('sheep'));
+  });
+  const animalBounties = allBounties.filter(b => {
+    const n = (b.name || '').toLowerCase();
+    return n.includes('chicken') || n.includes('cow') || n.includes('sheep');
   });
 
-  const sortedBounties = [...regularBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-  const sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-  const sortedChores = [...(state.globalData.chores || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+  setElemText('deliveriesCount', `${state.globalData.deliveries?.length || 0} Orders`);
+  setElemText('bountiesCount', `${regularBounties.length} Items`);
+  setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
+  setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
 
-  // Render Deliveries
-  const deliveriesContainer = document.getElementById('deliveriesList');
-  if (deliveriesContainer && state.globalData.deliveries) {
-    setElemText('deliveriesCount', state.globalData.deliveries.length);
-    deliveriesContainer.innerHTML = sortedDeliveries.map(d => {
-      const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      const finalTickets = d.baseTickets + deliveryAddon;
-      const totalSflCost = d.itemsCost || 0;
-      const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-      const badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
-
-      const itemRows = (d.itemDetails || []).map(detail => `
-        <div style="display:flex; justify-content:space-between; font-size:11px;">
-          <span>• ${detail.qty}x <strong style="color:#3E2723;">${detail.name}</strong> ${detail.isRecipe ? '<span class="badge badge-recipe">RECIPE</span>' : ''}</span>
-          <span style="color:#8C7853; font-weight:bold;">${detail.lineCost > 0 ? formatSFL(detail.lineCost) + ' SFL' : '0.00'}</span>
-        </div>`).join('');
-
-      return `<div class="card-item ${d.isManual ? 'manual' : (d.completed ? 'done' : 'active')}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:900; color:#8B4513; font-size:12px;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
-          <span class="${badgeClass}">${d.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
-        </div>
-        <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">${itemRows}</div>
-        <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-          <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
-            <span style="color:#B26A00; font-weight:900;">Yield: ${finalTickets} Tickets</span>
-            <span style="color:#3E2723; font-weight:900;">${formatSFL(totalSflCost)} SFL</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
-            <span>Cost / Ticket:</span>
-            <span>${formatSFL(costPerTicket)} SFL</span>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // Render Regular Bounties
-  const bountiesContainer = document.getElementById('bountiesList');
-  if (bountiesContainer) {
-    setElemText('bountiesCount', sortedBounties.length);
-    bountiesContainer.innerHTML = sortedBounties.length === 0 
-      ? '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No active item bounties right now.</p>'
-      : sortedBounties.map(b => {
-        const finalTickets = b.baseTickets + boostCount;
-        const totalSflCost = b.itemsCost || 0;
-        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-        const badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
-
-        return `<div class="card-item ${b.completed ? 'done' : 'active'}">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">📜 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</span>
-            <span class="${badgeClass}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
-          </div>
-          <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-            <div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">
-              <span>Yield: ${finalTickets} Tickets</span>
-              <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
-              <span>Cost / Ticket:</span>
-              <span>${formatSFL(costPerTicket)} SFL</span>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-  }
-
-  // Render Animal Bounties
-  const animalBountiesContainer = document.getElementById('animalBountiesList');
-  if (animalBountiesContainer) {
-    setElemText('animalBountiesCount', sortedAnimalBounties.length);
-    animalBountiesContainer.innerHTML = sortedAnimalBounties.length === 0
-      ? '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No active animal bounties right now.</p>'
-      : sortedAnimalBounties.map(b => {
-        const finalTickets = b.baseTickets + boostCount;
-        const totalSflCost = b.itemsCost || 0;
-        const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
-        const badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
-
-        return `<div class="card-item ${b.completed ? 'done' : 'active'}">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🐄 ${b.name.toUpperCase()} ${b.level ? '(Lvl ' + b.level + ')' : ''}</span>
-            <span class="${badgeClass}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
-          </div>
-          <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-            <div style="display:flex; justify-content:space-between; color:#5C4033; font-weight:bold;">
-              <span>Yield: ${finalTickets} Tickets</span>
-              <span>Cost: ${formatSFL(totalSflCost)} SFL</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900;">
-              <span>Cost / Ticket:</span>
-              <span>${formatSFL(costPerTicket)} SFL</span>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-  }
-
-  // Render Chores
-  const choresContainer = document.getElementById('choresList');
-  if (choresContainer && state.globalData.chores) {
-    setElemText('choresCount', state.globalData.chores.length);
-    choresContainer.innerHTML = sortedChores.map(c => {
-      const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
-      const hasProgress = c.requirement > 0;
-      const badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
-
-      return `<div class="card-item ${c.completed ? 'done' : 'active'}">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-weight:900; color:#3E2723; text-transform:capitalize;">🧹 ${c.npc.toUpperCase()}</span>
-          <span class="${badgeClass}">${c.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
-        </div>
-        <div style="color:#5C4033; font-weight:bold;">${c.task}</div>
-        ${hasProgress ? `<div style="font-size:11px; color:#8C7853; font-weight:bold;">Progress: ${c.progress} / ${c.requirement}</div>` : ''}
-        ${c.baseTickets > 0 ? `<div style="background:#FFFACD; padding:6px 8px; border-radius:6px; border:1px solid #D2B48C; display:flex; justify-content:space-between; align-items:center; font-size:11px;"><span style="color:#8C7853; font-weight:bold;">Yield:</span><span style="color:#2E7D32; font-weight:900;">${finalTickets} Tickets</span></div>` : ''}
-      </div>`;
-    }).join('');
-  }
-
-  // 6. Update Metrics & Tooltip Values
+  // 6. Update Performance Metrics & Tooltip Values
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
