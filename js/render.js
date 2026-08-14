@@ -42,7 +42,6 @@ export function recalculateAll() {
   });
 
   // 2. Process Weekly Bounties and Chores
-  // Use saved weeks if present; otherwise fall back to active live data for current week
   const activeWeeklyBounties = (weeks[currentWeekId]?.bounties?.length) 
     ? weeks[currentWeekId].bounties 
     : (state.globalData.bounties || []);
@@ -51,9 +50,9 @@ export function recalculateAll() {
     ? weeks[currentWeekId].chores 
     : (state.globalData.chores || []);
 
-  // Process all stored past weeks (historical)
+  // Process past weeks
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return; // Processed below to avoid duplication
+    if (wkId === currentWeekId) return;
 
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
@@ -108,7 +107,7 @@ export function recalculateAll() {
 
   totalTicketsAll = delivCatTickets + bountyCatTickets + choreCatTickets;
 
-  // 3. Process Live Deliveries for "Done Today"
+  // 3. Live Deliveries for "Done Today"
   let earnedTicketsToday = 0;
   let earnedCostToday = 0;
 
@@ -131,7 +130,7 @@ export function recalculateAll() {
   const sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   const sortedChores = [...(state.globalData.chores || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
-  // Render Deliveries Column
+  // Render Deliveries Column (Clean layout without repeated edit buttons)
   const deliveriesContainer = document.getElementById('deliveriesList');
   if (deliveriesContainer && state.globalData.deliveries) {
     setElemText('deliveriesCount', state.globalData.deliveries.length);
@@ -153,14 +152,12 @@ export function recalculateAll() {
 
       const costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
       const badgeClass = d.isManual ? 'badge badge-manual' : (d.completed ? 'badge badge-done' : 'badge badge-active');
-      const escapedName = d.from.replace(/'/g, "\\'");
 
       return `<div class="card-item ${d.isManual ? 'manual' : (d.completed ? 'done' : 'active')}">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <button class="btn-pop" onclick="openNpcHistoryModal('${escapedName}')">📜 EDIT / HISTORY</button>
+          <span style="font-weight:900; color:#8B4513; font-size:12px;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
           <span class="${badgeClass}">${d.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
         </div>
-        <div style="font-weight:900; color:#8B4513; font-size:12px;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</div>
         <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px;">${itemRows}</div>
         <div style="background:#FFFACD; padding:8px; border-radius:6px; border:1px solid #D2B48C; display:flex; flex-direction:column; gap:4px; font-size:11px;">
           <div style="display:flex; justify-content:space-between; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
@@ -263,7 +260,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // 4. Update Header Metrics
+  // Metric Summaries
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
