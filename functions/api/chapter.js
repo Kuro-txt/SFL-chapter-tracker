@@ -116,8 +116,9 @@ export async function onRequest(context) {
               });
             }
 
-            let totalTix = 0;
-            let totalCost = 0;
+            let totalTix = vaultData.trackTickets || 0;
+            let totalCost = vaultData.trackCost || 0;
+
             vaultData.logs.forEach(l => {
               totalTix += (l.ticketsSaved || 0);
               totalCost += (l.costSaved || 0);
@@ -153,7 +154,7 @@ export async function onRequest(context) {
   if (action === 'getVault') {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env?.TRACKER_KV && username) {
-      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] };
+      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0, deliveries: [], bounties: [], chores: [] };
       return jsonRes({ success: true, vaultData });
     }
     return jsonRes({ vaultData: null });
@@ -174,7 +175,7 @@ export async function onRequest(context) {
 
       const passwordHash = await hashPassword(password);
       await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
-      await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] }));
+      await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0, deliveries: [], bounties: [], chores: [] }));
 
       return jsonRes({ success: true, username });
     } catch (err) {
@@ -198,14 +199,14 @@ export async function onRequest(context) {
       const userData = JSON.parse(userDataStr);
       if (userData.passwordHash !== await hashPassword(password)) return jsonRes({ error: 'Incorrect password.' }, 401);
 
-      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {} };
+      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0 };
       return jsonRes({ success: true, username, vaultData });
     } catch (err) {
       return jsonRes({ error: err.message }, 500);
     }
   }
 
-  // 5. Save Vault Progress
+  // 5. Save Vault Progress (Stores permanent Track Tickets & Cost)
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -214,11 +215,14 @@ export async function onRequest(context) {
       if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
 
       const vaultKey = `user_${username}_vault`;
-      let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {} };
+      let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0 };
 
       const todayDate = new Date().toISOString().split('T')[0];
       const currentWeekId = getMondayBasedWeekId();
       if (!existingData.weeks) existingData.weeks = {};
+
+      if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
+      if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
 
       const incomingBounties = (body.bounties || []).map(b => ({
         weekId: currentWeekId, 
@@ -266,8 +270,8 @@ export async function onRequest(context) {
         }
       }
 
-      let totalTix = 0;
-      let totalCost = 0;
+      let totalTix = existingData.trackTickets || 0;
+      let totalCost = existingData.trackCost || 0;
       existingData.logs.forEach(l => {
         totalTix += (l.ticketsSaved || 0);
         totalCost += (l.costSaved || 0);
