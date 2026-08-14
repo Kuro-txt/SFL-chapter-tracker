@@ -4,8 +4,31 @@ import * as Api from './api.js';
 import * as Modals from './modals.js';
 import * as Render from './render.js';
 
-// Expose all functions to the global window scope so HTML attributes work seamlessly
+// Bind all module functions and variables to the global window object
 Object.assign(window, State, Auth, Api, Modals, Render);
+
+// Explicitly register critical inline event handlers
+window.userLogin = Auth.userLogin;
+window.userRegister = Auth.userRegister;
+window.userLogout = Auth.userLogout;
+window.loadTrackerData = Api.loadTrackerData;
+window.saveProgressToCloudKV = Api.saveProgressToCloudKV;
+window.toggleHistoryModal = Modals.toggleHistoryModal;
+window.deleteMasterLog = Modals.deleteMasterLog;
+window.openCategorySummaryModal = Modals.openCategorySummaryModal;
+window.closeCategorySummaryModal = Modals.closeCategorySummaryModal;
+window.openNpcHistoryModal = Modals.openNpcHistoryModal;
+window.closeNpcHistoryModal = Modals.closeNpcHistoryModal;
+window.openColumnHistoryModal = Modals.openColumnHistoryModal;
+window.closeColumnHistoryModal = Modals.closeColumnHistoryModal;
+window.addNpcHistoryItem = Modals.addNpcHistoryItem;
+window.deleteNpcHistItem = Modals.deleteNpcHistItem;
+window.toggleNpcHistCheck = Modals.toggleNpcHistCheck;
+window.addCustomHistoryItem = Modals.addCustomHistoryItem;
+window.deleteWeeklyItem = Modals.deleteWeeklyItem;
+window.toggleWeeklyItemCheck = Modals.toggleWeeklyItemCheck;
+window.updateWeeklyItemTickets = Modals.updateWeeklyItemTickets;
+window.updateWeeklyItemCost = Modals.updateWeeklyItemCost;
 
 window.toggleColumnCard = function(cardId, btn) {
   const card = document.getElementById(cardId);
