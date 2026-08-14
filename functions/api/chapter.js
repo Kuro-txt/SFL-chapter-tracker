@@ -154,7 +154,17 @@ export async function onRequest(context) {
   if (action === 'getVault') {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env?.TRACKER_KV && username) {
-      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0, deliveries: [], bounties: [], chores: [] };
+      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0, 
+        deliveries: [], 
+        bounties: [], 
+        chores: [] 
+      };
       return jsonRes({ success: true, vaultData });
     }
     return jsonRes({ vaultData: null });
@@ -175,7 +185,17 @@ export async function onRequest(context) {
 
       const passwordHash = await hashPassword(password);
       await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
-      await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0, deliveries: [], bounties: [], chores: [] }));
+      await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0, 
+        deliveries: [], 
+        bounties: [], 
+        chores: [] 
+      }));
 
       return jsonRes({ success: true, username });
     } catch (err) {
@@ -199,14 +219,21 @@ export async function onRequest(context) {
       const userData = JSON.parse(userDataStr);
       if (userData.passwordHash !== await hashPassword(password)) return jsonRes({ error: 'Incorrect password.' }, 401);
 
-      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0 };
+      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0 
+      };
       return jsonRes({ success: true, username, vaultData });
     } catch (err) {
       return jsonRes({ error: err.message }, 500);
     }
   }
 
-  // 5. Save Vault Progress (Stores permanent Track Tickets & Cost)
+  // 5. Save Vault Progress
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -215,7 +242,14 @@ export async function onRequest(context) {
       if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
 
       const vaultKey = `user_${username}_vault`;
-      let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0 };
+      let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0 
+      };
 
       const todayDate = new Date().toISOString().split('T')[0];
       const currentWeekId = getMondayBasedWeekId();
@@ -264,9 +298,23 @@ export async function onRequest(context) {
 
         const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
         if (existingTodayLogIndex !== -1) {
-          existingData.logs[existingTodayLogIndex] = { date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(), ticketsSaved: dailyTickets, costSaved: dailyCost, deliveriesDone: allDeliveries };
+          existingData.logs[existingTodayLogIndex] = { 
+            date: todayDate, 
+            weekId: currentWeekId, 
+            timestamp: new Date().toISOString(), 
+            ticketsSaved: dailyTickets, 
+            costSaved: dailyCost, 
+            deliveriesDone: allDeliveries 
+          };
         } else {
-          existingData.logs.unshift({ date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(), ticketsSaved: dailyTickets, costSaved: dailyCost, deliveriesDone: allDeliveries });
+          existingData.logs.unshift({ 
+            date: todayDate, 
+            weekId: currentWeekId, 
+            timestamp: new Date().toISOString(), 
+            ticketsSaved: dailyTickets, 
+            costSaved: dailyCost, 
+            deliveriesDone: allDeliveries 
+          });
         }
       }
 
@@ -347,7 +395,13 @@ export async function onRequest(context) {
           const unitPrice = getItemUnitPrice(itemName, priceMap);
           const lineCost = unitPrice * qty;
           itemsCost += lineCost;
-          itemDetails.push({ name: itemName, qty, unitPrice, lineCost, isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] });
+          itemDetails.push({ 
+            name: itemName, 
+            qty, 
+            unitPrice, 
+            lineCost, 
+            isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] 
+          });
         });
 
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
@@ -365,10 +419,20 @@ export async function onRequest(context) {
       }
     });
 
-    // Bounties Parser
+    // Bounties Parser (with completedMap to preserve completedAt timestamps)
     const activeBounties = [];
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
-    const completedBountyIds = Array.isArray(completedBountiesRaw) ? completedBountiesRaw.map(b => typeof b === 'object' ? String(b.id) : String(b)) : [];
+    const completedMap = {};
+    if (Array.isArray(completedBountiesRaw)) {
+      completedBountiesRaw.forEach(b => {
+        if (typeof b === 'object' && b.id) {
+          completedMap[String(b.id)] = b.completedAt || b.claimedAt || Date.now();
+        } else if (b) {
+          completedMap[String(b)] = Date.now();
+        }
+      });
+    }
+
     const rawBountyArray = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
 
     rawBountyArray.forEach(b => {
@@ -376,7 +440,9 @@ export async function onRequest(context) {
       if (baseTicketCount === 0) baseTicketCount = b.tickets || b.reward?.tickets || 1;
 
       const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
-      const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
+      const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
+      const completionTime = b.completedAt || b.claimedAt || completedMap[String(b.id)] || null;
+
       activeBounties.push({ 
         id: b.id, 
         name: b.name, 
@@ -384,7 +450,7 @@ export async function onRequest(context) {
         baseTickets: baseTicketCount, 
         itemsCost: unitPrice, 
         completed: isCompleted,
-        completedAt: b.completedAt || null
+        completedAt: completionTime
       });
     });
 
@@ -408,9 +474,12 @@ export async function onRequest(context) {
     });
 
     return jsonRes({
-      farmId, isVipActive,
+      farmId, 
+      isVipActive,
       pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: deliveryList, bounties: activeBounties, chores: choresList
+      deliveries: deliveryList, 
+      bounties: activeBounties, 
+      chores: choresList
     });
   } catch (err) {
     return jsonRes({ error: err.message }, 500);
