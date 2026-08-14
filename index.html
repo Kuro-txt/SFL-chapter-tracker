@@ -298,6 +298,13 @@
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #3</label>
         </div>
 
+        <!-- Manual Chapter Track Section -->
+        <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px;">
+          <label style="color:#1B5E20; font-weight:900;">🛤️ TRACK:</label>
+          <input type="number" id="trackTicketsInput" value="0" placeholder="Tickets" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 4px 6px; font-size: 11px;" title="Total Track Tickets Claimed" />
+          <input type="number" step="0.01" id="trackCostInput" value="0" placeholder="SFL Cost" onchange="saveTrackAndRecalculate()" style="width: 75px; padding: 4px 6px; font-size: 11px;" title="Total SFL Spent on Track" />
+        </div>
+
         <div class="input-group">
           <button onclick="loadTrackerData()" class="btn btn-amber">FETCH DATA</button>
           <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE KV</button>
@@ -315,6 +322,7 @@
           <div id="tipTotalDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipTotalBounty">📜 Bounties: 0 Tix</div>
           <div id="tipTotalChore">🧹 Chores: 0 Tix</div>
+          <div id="tipTotalTrack">🛤️ Track: 0 Tix</div>
         </div>
         <div class="stat-title">🏆 TOTAL TICKETS COLLECTED</div>
         <div id="statTotalTickets" class="stat-val">0</div>
@@ -331,6 +339,7 @@
           <div id="tipWeekDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipWeekBounty">📜 Bounties: 0 Tix</div>
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
+          <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #B26A00;">📅 THIS WEEK'S PROGRESS</div>
         <div id="statWeekTickets" class="stat-val" style="color: #B26A00;">0 Tickets</div>
