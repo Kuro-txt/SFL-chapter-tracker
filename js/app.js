@@ -14,6 +14,7 @@ window.userLogout = Auth.userLogout;
 window.loadTrackerData = Api.loadTrackerData;
 window.saveProgressToCloudKV = Api.saveProgressToCloudKV;
 window.toggleHistoryModal = Modals.toggleHistoryModal;
+window.toggleGuideModal = Modals.toggleGuideModal;
 window.deleteMasterLog = Modals.deleteMasterLog;
 window.openCategorySummaryModal = Modals.openCategorySummaryModal;
 window.closeCategorySummaryModal = Modals.closeCategorySummaryModal;
