@@ -105,6 +105,9 @@ export async function saveProgressToCloudKV() {
     }
   });
 
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput').value) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput').value) || 0;
+
   try {
     const response = await fetch('/api/chapter?action=saveVault', {
       method: 'POST',
@@ -113,6 +116,8 @@ export async function saveProgressToCloudKV() {
         username: state.currentUser,
         dailyDeliveryTicketsSaved: dailyDelivTickets,
         dailyDeliveryCostSaved: dailyDelivCost,
+        trackTickets: trackTickets,
+        trackCost: trackCost,
         deliveries: state.globalData.deliveries,
         bounties: state.globalData.bounties,
         chores: state.globalData.chores
@@ -125,7 +130,7 @@ export async function saveProgressToCloudKV() {
     state.currentVaultData = resData.vaultData;
     state.globalData.cloudHistory = state.currentVaultData;
 
-    alert(`☁️ MASTER VAULT SAVED!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nWeekly Bounties & Chores Synced!`);
+    alert(`☁️ MASTER VAULT SAVED!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nTrack Progress: ${trackTickets} Tickets (${formatSFL(trackCost)} SFL)\nWeekly Bounties & Chores Synced!`);
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
