@@ -1,7 +1,6 @@
 import { state, formatSFL, getActiveVipBonus, getActiveBoostCount } from './state.js';
 import { recalculateAll } from './render.js';
 
-// Helper function to retry an async operation up to 3 times with an 8-second delay
 export async function retryOperation(fn, retries = 3, delay = 8000) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -14,7 +13,6 @@ export async function retryOperation(fn, retries = 3, delay = 8000) {
   }
 }
 
-// Fetch live farm data from Sunflower Land API via backend
 export async function loadTrackerData() {
   if (state.isFetchCooldown) return;
 
@@ -50,7 +48,7 @@ export async function loadTrackerData() {
         btn.disabled = false;
         btn.style.opacity = '1';
         btn.style.cursor = 'pointer';
-        btn.textContent = 'FETCH DATA';
+        btn.textContent = '🌾 FETCH DATA';
       });
     }
   }, 1000);
@@ -70,9 +68,7 @@ export async function loadTrackerData() {
     state.globalData.cloudHistory = state.currentVaultData;
 
     if (priceBadge) {
-      priceBadge.textContent = data.pricesLoadedCount > 0 
-        ? `${data.pricesLoadedCount} PRICES LOADED` 
-        : 'PRICE API OFFLINE';
+      priceBadge.textContent = data.pricesLoadedCount > 0 ? `${data.pricesLoadedCount} PRICES LOADED` : 'PRICE API OFFLINE';
     }
 
     if (localStorage.getItem('sfl_vip') === null) {
@@ -86,10 +82,9 @@ export async function loadTrackerData() {
   }
 }
 
-// Save active progress, today's snapshot, and fixed track progress to Cloudflare KV
 export async function saveProgressToCloudKV() {
   if (!state.currentUser) {
-    alert('⚠️ Please LOGIN to your secure vault before saving to Cloud KV!');
+    alert('⚠️ Please LOGIN to your secure vault before saving to Cloud!');
     return;
   }
   if (!state.globalData) {
@@ -110,8 +105,8 @@ export async function saveProgressToCloudKV() {
     }
   });
 
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
-  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput').value) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput').value) || 0;
 
   try {
     const response = await fetch('/api/chapter?action=saveVault', {
@@ -135,9 +130,9 @@ export async function saveProgressToCloudKV() {
     state.currentVaultData = resData.vaultData;
     state.globalData.cloudHistory = state.currentVaultData;
 
-    alert(`☁️ MASTER VAULT SAVED!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nTrack Progress: ${trackTickets} Tickets (${formatSFL(trackCost)} SFL)\nWeekly Bounties & Chores Synced!`);
+    alert(`☁️ SAVED IN CLOUD!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nTrack Progress: ${trackTickets} Tickets (${formatSFL(trackCost)} SFL)\nWeekly Bounties & Chores Synced!`);
     recalculateAll();
   } catch (err) {
-    alert('Vault Save Failed: ' + err.message);
+    alert('Cloud Save Failed: ' + err.message);
   }
 }
