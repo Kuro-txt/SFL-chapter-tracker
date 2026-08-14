@@ -18,7 +18,7 @@ export function recalculateAll() {
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
-  // Category totals for hover tooltips
+  // Category trackers for metrics and hover tooltips
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalChoreTix = 0;
@@ -34,13 +34,38 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
-  // Strict check: item MUST have a valid timestamp that matches today
-  const checkIsCompletedToday = (completedAt) => {
-    if (!completedAt || typeof completedAt !== 'number') return false;
-    const itemDate = new Date(completedAt);
-    const isoDate = itemDate.toISOString().split('T')[0];
-    const locDate = itemDate.toLocaleDateString('en-CA');
-    return isoDate === todayDateStr || locDate === localTodayStr;
+  // Robust function to check if a task was completed today
+  const isDoneToday = (item, category) => {
+    if (!item || (!item.completed && !item.checked)) return false;
+
+    // 1. If timestamp is provided by SFL API (handles both seconds and milliseconds)
+    if (item.completedAt) {
+      const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
+      if (!isNaN(ts) && ts > 0) {
+        const ms = ts < 1e11 ? ts * 1000 : ts; // Convert seconds to ms if needed
+        const itemDate = new Date(ms);
+        const iso = itemDate.toISOString().split('T')[0];
+        const loc = itemDate.toLocaleDateString('en-CA');
+        return (iso === todayDateStr || loc === localTodayStr);
+      }
+    }
+
+    // 2. Fallback if SFL API sent no timestamp: Check if this was already logged on a prior day
+    const prevLogs = logs.filter(l => l.date && l.date !== todayDateStr && l.date !== localTodayStr && l.weekId === currentWeekId);
+    const wasDoneInPrevLog = prevLogs.some(l => {
+      const list = category === 'bounty' ? (l.bountiesDone || []) : (l.choresDone || l.deliveriesDone || []);
+      return list.some(past => {
+        const pastName = (typeof past === 'string' ? past : (past.name || past.npc || past.task || '')).toLowerCase().trim();
+        const curName = (item.name || item.task || item.npc || item.from || '').toLowerCase().trim();
+        return pastName === curName && (past.completed || past.checked);
+      });
+    });
+
+    // If it was already completed in a previous day's log, it's not today's
+    if (wasDoneInPrevLog) return false;
+
+    // Otherwise, it was completed today during this week!
+    return true;
   };
 
   // 1. Process Historical Daily Deliveries across logs
@@ -70,18 +95,9 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process Weekly Bounties and Chores
-  const activeWeeklyBounties = (weeks[currentWeekId]?.bounties?.length) 
-    ? weeks[currentWeekId].bounties 
-    : (state.globalData.bounties || []);
-
-  const activeWeeklyChores = (weeks[currentWeekId]?.chores?.length) 
-    ? weeks[currentWeekId].chores 
-    : (state.globalData.chores || []);
-
-  // Past weeks accumulation
+  // 2. Process Past Weeks (Historical Bounties & Chores)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return;
+    if (wkId === currentWeekId) return; // Current week is processed live below
 
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
@@ -108,8 +124,29 @@ export function recalculateAll() {
     });
   });
 
-  // Current Week Bounties
-  activeWeeklyBounties.forEach(b => {
+  // 3. Process Current Week Bounties & Chores (Merge Live API Data with any custom saved overrides)
+  const currentWeekBounties = (state.globalData.bounties || []).map(liveB => {
+    const saved = (weeks[currentWeekId]?.bounties || []).find(sb => (sb.name || '').toLowerCase() === (liveB.name || '').toLowerCase());
+    return {
+      ...liveB,
+      checked: saved?.checked !== undefined ? saved.checked : liveB.completed,
+      cost: saved?.cost !== undefined ? saved.cost : liveB.itemsCost,
+      tickets: saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets
+    };
+  });
+
+  const currentWeekChores = (state.globalData.chores || []).map(liveC => {
+    const saved = (weeks[currentWeekId]?.chores || []).find(sc => (sc.task || sc.name || '').toLowerCase() === (liveC.task || liveC.name || '').toLowerCase());
+    return {
+      ...liveC,
+      checked: saved?.checked !== undefined ? saved.checked : liveC.completed,
+      cost: saved?.cost !== undefined ? saved.cost : (liveC.itemsCost || 0),
+      tickets: saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets
+    };
+  });
+
+  // Calculate Current Week Bounties (Total, Week, Today)
+  currentWeekBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
       const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
@@ -122,15 +159,15 @@ export function recalculateAll() {
       weekBountyTix += finalTix;
       weekCostAll += bCost;
 
-      if (checkIsCompletedToday(b.completedAt)) {
+      if (isDoneToday(b, 'bounty')) {
         todayBountyTix += finalTix;
         todayCostAll += bCost;
       }
     }
   });
 
-  // Current Week Chores
-  activeWeeklyChores.forEach(c => {
+  // Calculate Current Week Chores (Total, Week, Today)
+  currentWeekChores.forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
     if (isTicked) {
       const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
@@ -142,20 +179,19 @@ export function recalculateAll() {
       totalSflCostAll += cCost;
       weekCostAll += cCost;
 
-      if (checkIsCompletedToday(c.completedAt)) {
+      if (isDoneToday(c, 'chore')) {
         todayChoreTix += finalTix;
         todayCostAll += cCost;
       }
     }
   });
 
-  // 3. Process Live Active Deliveries
+  // 4. Process Live Active Deliveries for Today
   const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   sortedDeliveries.forEach(d => {
     if (d.completed && todayDelivTix === 0) {
-      const isDoneToday = checkIsCompletedToday(d.completedAt) || (d.completedAt === null);
-      if (isDoneToday) {
+      if (isDoneToday(d, 'delivery')) {
         const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
         todayDelivTix += (d.baseTickets + deliveryAddon);
         todayCostAll += (d.itemsCost || 0);
@@ -167,7 +203,7 @@ export function recalculateAll() {
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix;
 
-  // 4. Render 4 Columns in DOM
+  // 5. Render 4 Column Cards in DOM
   const allBounties = state.globalData.bounties || [];
   const regularBountiesRaw = [];
   const animalBountiesRaw = [];
@@ -185,7 +221,7 @@ export function recalculateAll() {
   const sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   const sortedChores = [...(state.globalData.chores || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
-  // Render Deliveries Column
+  // Render Deliveries
   const deliveriesContainer = document.getElementById('deliveriesList');
   if (deliveriesContainer && state.globalData.deliveries) {
     setElemText('deliveriesCount', state.globalData.deliveries.length);
@@ -222,7 +258,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // Render Regular Bounties Column
+  // Render Regular Bounties
   const bountiesContainer = document.getElementById('bountiesList');
   if (bountiesContainer) {
     setElemText('bountiesCount', sortedBounties.length);
@@ -253,7 +289,7 @@ export function recalculateAll() {
       }).join('');
   }
 
-  // Render Animal Bounties Column
+  // Render Animal Bounties
   const animalBountiesContainer = document.getElementById('animalBountiesList');
   if (animalBountiesContainer) {
     setElemText('animalBountiesCount', sortedAnimalBounties.length);
@@ -284,7 +320,7 @@ export function recalculateAll() {
       }).join('');
   }
 
-  // Render Chores Column
+  // Render Chores
   const choresContainer = document.getElementById('choresList');
   if (choresContainer && state.globalData.chores) {
     setElemText('choresCount', state.globalData.chores.length);
@@ -305,7 +341,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // 5. Update Metrics & Tooltip Values
+  // 6. Update Metrics & Tooltip Values
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
