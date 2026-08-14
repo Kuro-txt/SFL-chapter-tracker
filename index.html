@@ -20,7 +20,7 @@
       align-items: center;
       min-height: 100vh;
     }
-    .wrapper { max-width: 1100px; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+    .wrapper { max-width: 1100px; width: 100%; display: flex; flex-direction: column; gap: 16px; }
     
     header {
       background: linear-gradient(to bottom, #8B5A2B, #5C4033);
@@ -33,6 +33,21 @@
     h1 { font-size: 26px; font-weight: 900; color: #FFF8DC; text-shadow: 2px 2px #271813; margin-bottom: 4px; letter-spacing: 1px; }
     p { font-size: 13px; color: #EEDC82; font-weight: bold; text-shadow: 1px 1px #271813; }
     
+    /* Top Tip Banner */
+    .tip-banner {
+      background: #FFF8DC;
+      border: 2px dashed #D2691E;
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 900;
+      color: #8B4513;
+    }
+
     .panel {
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
@@ -284,6 +299,11 @@
       <p>Harvest Tickets & Chapter End Goal Calculator</p>
     </header>
 
+    <!-- Reminder Banner -->
+    <div class="tip-banner">
+      <span>💡 <strong>FARMER'S TIP:</strong> Always click <strong style="color: #2E7D32;">"☁️ SAVE IN CLOUD"</strong> before closing your browser or shutting down to keep your daily snapshot synced!</span>
+    </div>
+
     <!-- Account Bar -->
     <div class="panel" style="padding: 10px 16px; background: #FFFACD;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -468,6 +488,13 @@
         <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
+        <div class="guide-card" style="background:#E8F5E9; border-color:#2E7D32;">
+          <div class="guide-card-title" style="color:#1B5E20;">💾 IMPORTANT: SAVE BEFORE CLOSING</div>
+          <div class="guide-card-text">
+            • Always click <strong>☁️ SAVE IN CLOUD</strong> before you close your browser tab or shut down your PC. This writes your latest daily delivery snapshot and weekly tasks into your permanent cloud vault.
+          </div>
+        </div>
+
         <div class="guide-card">
           <div class="guide-card-title">🌾 1. DAILY VS. WEEKLY RESETS</div>
           <div class="guide-card-text">
