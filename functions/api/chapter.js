@@ -59,6 +59,7 @@ export async function onRequest(context) {
                   cost: bCost,
                   tickets: b.tickets !== undefined ? b.tickets : (b.baseTickets || 1),
                   completed: b.completed || b.checked,
+                  completedAt: b.completedAt || null,
                   checked: b.completed || b.checked
                 };
               });
@@ -68,6 +69,7 @@ export async function onRequest(context) {
                 npc: c.npc || 'NPC',
                 tickets: c.tickets !== undefined ? c.tickets : (c.baseTickets || 1),
                 completed: c.completed || c.checked,
+                completedAt: c.completedAt || null,
                 checked: c.completed || c.checked
               }));
 
@@ -85,7 +87,15 @@ export async function onRequest(context) {
                 dailyDeliveryTickets += dTix;
                 dailyDeliveryCost += dCost;
               }
-              return { name: d.name || d.from || 'NPC', cost: dCost, tickets: dTix, completed: isDone, items: d.items || d.itemDetails || [], checked: isDone };
+              return { 
+                name: d.name || d.from || 'NPC', 
+                cost: dCost, 
+                tickets: dTix, 
+                completed: isDone, 
+                completedAt: d.completedAt || null,
+                items: d.items || d.itemDetails || [], 
+                checked: isDone 
+              };
             });
 
             const existingTodayLogIndex = vaultData.logs.findIndex(l => l.date === todayDate);
@@ -211,13 +221,23 @@ export async function onRequest(context) {
       if (!existingData.weeks) existingData.weeks = {};
 
       const incomingBounties = (body.bounties || []).map(b => ({
-        weekId: currentWeekId, name: b.name, cost: b.itemsCost || 0,
-        tickets: b.baseTickets || 0, completed: b.completed, checked: b.completed
+        weekId: currentWeekId, 
+        name: b.name, 
+        cost: b.itemsCost || b.cost || 0,
+        tickets: b.baseTickets || b.tickets || 0, 
+        completed: b.completed, 
+        completedAt: b.completedAt || null,
+        checked: b.completed
       }));
 
       const incomingChores = (body.chores || []).map(c => ({
-        weekId: currentWeekId, name: c.task, npc: c.npc,
-        tickets: c.baseTickets || 0, completed: c.completed, checked: c.completed
+        weekId: currentWeekId, 
+        name: c.task || c.name, 
+        npc: c.npc,
+        tickets: c.baseTickets || c.tickets || 0, 
+        completed: c.completed, 
+        completedAt: c.completedAt || null,
+        checked: c.completed
       }));
 
       existingData.weeks[currentWeekId] = { weekId: currentWeekId, bounties: incomingBounties, chores: incomingChores };
@@ -226,8 +246,13 @@ export async function onRequest(context) {
         existingData.logs = body.logs;
       } else {
         const allDeliveries = (body.deliveries || []).map(d => ({
-          name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
-          completed: d.completed, items: d.itemDetails || [], checked: d.completed
+          name: d.from || d.name, 
+          cost: d.itemsCost || d.cost || 0, 
+          tickets: d.baseTickets || d.tickets || 0,
+          completed: d.completed, 
+          completedAt: d.completedAt || null,
+          items: d.itemDetails || d.items || [], 
+          checked: d.completed
         }));
 
         const dailyTickets = body.dailyDeliveryTicketsSaved || 0;
@@ -322,7 +347,17 @@ export async function onRequest(context) {
         });
 
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-        deliveryList.push({ id: order.id, from: order.from, items: order.items || {}, itemsCost, itemDetails, baseTickets: totalTickets, isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, completed: isCompleted });
+        deliveryList.push({ 
+          id: order.id, 
+          from: order.from, 
+          items: order.items || {}, 
+          itemsCost, 
+          itemDetails, 
+          baseTickets: totalTickets, 
+          isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, 
+          completed: isCompleted,
+          completedAt: order.completedAt || null
+        });
       }
     });
 
@@ -338,7 +373,15 @@ export async function onRequest(context) {
 
       const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedBountyIds.includes(String(b.id));
-      activeBounties.push({ id: b.id, name: b.name, level: b.level || null, baseTickets: baseTicketCount, itemsCost: unitPrice, completed: isCompleted });
+      activeBounties.push({ 
+        id: b.id, 
+        name: b.name, 
+        level: b.level || null, 
+        baseTickets: baseTicketCount, 
+        itemsCost: unitPrice, 
+        completed: isCompleted,
+        completedAt: b.completedAt || null
+      });
     });
 
     // Chores Parser
@@ -349,7 +392,15 @@ export async function onRequest(context) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      return { npc: details.npc || details.from || key, task: details.name || details.description || key, baseTickets: baseTicketCount, progress: currentProgress, requirement, completed: isCompleted };
+      return { 
+        npc: details.npc || details.from || key, 
+        task: details.name || details.description || key, 
+        baseTickets: baseTicketCount, 
+        progress: currentProgress, 
+        requirement, 
+        completed: isCompleted,
+        completedAt: details.completedAt || null
+      };
     });
 
     return jsonRes({
