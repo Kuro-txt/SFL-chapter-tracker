@@ -120,7 +120,7 @@ export async function onRequest(context) {
     return 0;
   };
 
-  // Secure External Cron Ping Endpoint with Fixed Property Mapping
+  // Secure External Cron Ping Endpoint (Daily reset for Deliveries, Weekly reset for Bounties/Chores)
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -133,6 +133,7 @@ export async function onRequest(context) {
     let backedUpCount = 0;
     const backupTimestamp = new Date().toISOString();
     const todayDate = backupTimestamp.split('T')[0];
+    const currentWeekId = getMondayBasedWeekId();
 
     let priceMap = {};
     try {
@@ -150,97 +151,100 @@ export async function onRequest(context) {
           let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
           if (vaultData) {
             if (!vaultData.logs) vaultData.logs = [];
+            if (!vaultData.weeks) vaultData.weeks = {};
 
-            let calculatedTickets = 0;
-            let calculatedCost = 0;
+            // Store weekly items once per week
+            if (vaultData.bounties || vaultData.chores) {
+              const currentWeekBounties = (vaultData.bounties || []).map(b => {
+                let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+                if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
+                return {
+                  name: b.name || 'Bounty',
+                  cost: bCost,
+                  tickets: b.tickets !== undefined ? b.tickets : (b.baseTickets || 1),
+                  completed: b.completed || b.checked,
+                  checked: b.completed || b.checked
+                };
+              });
+
+              const currentWeekChores = (vaultData.chores || []).map(c => ({
+                name: c.name || c.task || 'Chore',
+                npc: c.npc || 'NPC',
+                tickets: c.tickets !== undefined ? c.tickets : (c.baseTickets || 1),
+                completed: c.completed || c.checked,
+                checked: c.completed || c.checked
+              }));
+
+              vaultData.weeks[currentWeekId] = {
+                weekId: currentWeekId,
+                bounties: currentWeekBounties,
+                chores: currentWeekChores
+              };
+            }
+
+            // Daily Deliveries Only
+            let dailyDeliveryTickets = 0;
+            let dailyDeliveryCost = 0;
 
             const formattedDeliveries = (vaultData.deliveries || []).map(d => {
               const dCost = d.cost !== undefined ? d.cost : (d.itemsCost || 0);
               const dTix = d.tickets !== undefined ? d.tickets : (d.baseTickets || 2);
+              const isDone = d.completed || d.checked;
+              if (isDone) {
+                dailyDeliveryTickets += dTix;
+                dailyDeliveryCost += dCost;
+              }
               return {
                 name: d.name || d.from || 'NPC',
                 cost: dCost,
                 tickets: dTix,
-                completed: d.completed || d.checked,
+                completed: isDone,
                 items: d.items || d.itemDetails || [],
-                checked: d.completed || d.checked
+                checked: isDone
               };
-            });
-
-            const formattedBounties = (vaultData.bounties || []).map(b => {
-              let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
-              if (!bCost && b.name) {
-                bCost = getItemUnitPrice(b.name, priceMap);
-              }
-              const bTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 1);
-              return {
-                weekId: b.weekId || getMondayBasedWeekId(),
-                name: b.name || 'Bounty',
-                cost: bCost,
-                tickets: bTix,
-                completed: b.completed || b.checked,
-                checked: b.completed || b.checked
-              };
-            });
-
-            const formattedChores = (vaultData.chores || []).map(c => {
-              const cTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
-              return {
-                weekId: c.weekId || getMondayBasedWeekId(),
-                name: c.name || c.task || 'Chore',
-                npc: c.npc || 'NPC',
-                tickets: cTix,
-                completed: c.completed || c.checked,
-                checked: c.completed || c.checked
-              };
-            });
-
-            formattedDeliveries.forEach(d => {
-              if (d.completed || d.checked) {
-                calculatedTickets += d.tickets;
-                calculatedCost += d.cost;
-              }
-            });
-            formattedBounties.forEach(b => {
-              if (b.completed || b.checked) {
-                calculatedTickets += b.tickets;
-                calculatedCost += b.cost;
-              }
-            });
-            formattedChores.forEach(c => {
-              if (c.completed || c.checked) {
-                calculatedTickets += c.tickets;
-              }
             });
 
             const existingTodayLogIndex = vaultData.logs.findIndex(l => l.date === todayDate);
             if (existingTodayLogIndex !== -1) {
-              vaultData.logs[existingTodayLogIndex].ticketsSaved = calculatedTickets;
-              vaultData.logs[existingTodayLogIndex].costSaved = calculatedCost;
+              vaultData.logs[existingTodayLogIndex].ticketsSaved = dailyDeliveryTickets;
+              vaultData.logs[existingTodayLogIndex].costSaved = dailyDeliveryCost;
               vaultData.logs[existingTodayLogIndex].timestamp = backupTimestamp;
               vaultData.logs[existingTodayLogIndex].deliveriesDone = formattedDeliveries;
-              vaultData.logs[existingTodayLogIndex].bountiesDone = formattedBounties;
-              vaultData.logs[existingTodayLogIndex].choresDone = formattedChores;
             } else {
               vaultData.logs.unshift({
                 date: todayDate,
-                weekId: getMondayBasedWeekId(),
+                weekId: currentWeekId,
                 timestamp: backupTimestamp,
-                ticketsSaved: calculatedTickets,
-                costSaved: calculatedCost,
+                ticketsSaved: dailyDeliveryTickets,
+                costSaved: dailyDeliveryCost,
                 autoBackup: true,
-                deliveriesDone: formattedDeliveries,
-                bountiesDone: formattedBounties,
-                choresDone: formattedChores
+                deliveriesDone: formattedDeliveries
               });
             }
 
+            // Recalculate Master Cumulative Totals (Daily Deliveries + Unique Weekly Items)
             let totalTix = 0;
             let totalCost = 0;
+
             vaultData.logs.forEach(l => {
               totalTix += (l.ticketsSaved || 0);
               totalCost += (l.costSaved || 0);
             });
+
+            Object.values(vaultData.weeks).forEach(wk => {
+              (wk.bounties || []).forEach(b => {
+                if (b.completed || b.checked) {
+                  totalTix += (b.tickets || 1);
+                  totalCost += (b.cost || 0);
+                }
+              });
+              (wk.chores || []).forEach(c => {
+                if (c.completed || c.checked) {
+                  totalTix += (c.tickets || 1);
+                }
+              });
+            });
+
             vaultData.cumulativeTickets = totalTix;
             vaultData.cumulativeCost = totalCost;
 
@@ -254,7 +258,7 @@ export async function onRequest(context) {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced and recalculated ${backedUpCount} user vaults.` 
+      message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} user vaults without duplicating weekly items.` 
     }), {
       status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
@@ -356,6 +360,7 @@ export async function onRequest(context) {
           tickets: c.baseTickets || 0, completed: c.completed, checked: c.completed
         }));
 
+        // Store active bounties and chores strictly under the current week key
         existingData.weeks[currentWeekId] = {
           weekId: currentWeekId,
           bounties: incomingBounties,
@@ -364,46 +369,55 @@ export async function onRequest(context) {
 
         if (body.logs && Array.isArray(body.logs)) {
           existingData.logs = body.logs;
-          let totalTix = 0;
-          let totalCost = 0;
-          existingData.logs.forEach(l => {
-            totalTix += (l.ticketsSaved || 0);
-            totalCost += (l.costSaved || 0);
-          });
-          existingData.cumulativeTickets = totalTix;
-          existingData.cumulativeCost = totalCost;
         } else {
           const allDeliveries = (body.deliveries || []).map(d => ({
             name: d.from, cost: d.itemsCost || 0, tickets: d.baseTickets || 0,
             completed: d.completed, items: d.itemDetails || [], checked: d.completed
           }));
 
-          const newTickets = body.ticketsSaved || 0;
-          const newCost = body.costSaved || 0;
+          const dailyTickets = body.dailyDeliveryTicketsSaved || 0;
+          const dailyCost = body.dailyDeliveryCostSaved || 0;
 
           const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
           if (existingTodayLogIndex !== -1) {
-            const oldLog = existingData.logs[existingTodayLogIndex];
-            existingData.cumulativeTickets -= (oldLog.ticketsSaved || 0);
-            existingData.cumulativeCost -= (oldLog.costSaved || 0);
-
             existingData.logs[existingTodayLogIndex] = {
               date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
-              ticketsSaved: newTickets, costSaved: newCost,
-              deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
+              ticketsSaved: dailyTickets, costSaved: dailyCost,
+              deliveriesDone: allDeliveries
             };
           } else {
             existingData.logs.unshift({
               date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(),
-              ticketsSaved: newTickets, costSaved: newCost,
-              deliveriesDone: allDeliveries, bountiesDone: incomingBounties, choresDone: incomingChores
+              ticketsSaved: dailyTickets, costSaved: dailyCost,
+              deliveriesDone: allDeliveries
             });
           }
-
-          existingData.cumulativeTickets += newTickets;
-          existingData.cumulativeCost += newCost;
         }
 
+        // Recalculate cumulative sums: Daily Deliveries + Unique Weekly Items
+        let totalTix = 0;
+        let totalCost = 0;
+        existingData.logs.forEach(l => {
+          totalTix += (l.ticketsSaved || 0);
+          totalCost += (l.costSaved || 0);
+        });
+
+        Object.values(existingData.weeks).forEach(wk => {
+          (wk.bounties || []).forEach(b => {
+            if (b.completed || b.checked) {
+              totalTix += (b.tickets || 0);
+              totalCost += (b.cost || 0);
+            }
+          });
+          (wk.chores || []).forEach(c => {
+            if (c.completed || c.checked) {
+              totalTix += (c.tickets || 0);
+            }
+          });
+        });
+
+        existingData.cumulativeTickets = totalTix;
+        existingData.cumulativeCost = totalCost;
         existingData.deliveries = body.deliveries || [];
         existingData.bounties = incomingBounties;
         existingData.chores = incomingChores;
