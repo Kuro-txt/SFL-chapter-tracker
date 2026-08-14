@@ -1,4 +1,4 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus } from './state.js';
+import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
 import { recalculateAll } from './render.js';
 
 export function openCategorySummaryModal(cat) {
@@ -94,123 +94,13 @@ export function closeCategorySummaryModal() {
   document.getElementById('categorySummaryModal').classList.remove('show');
 }
 
-export function openNpcHistoryModal(npcName) {
-  document.getElementById('activeNpcHistoryName').value = npcName;
-  setElemText('npcHistoryTitle', '📜 HISTORY: ' + npcName.toUpperCase());
-  document.getElementById('addNpcHistDate').value = new Date().toISOString().split('T')[0];
-  renderNpcHistoryModalList();
-  document.getElementById('npcHistoryModal').classList.add('show');
-}
-
-export function closeNpcHistoryModal() {
-  document.getElementById('npcHistoryModal').classList.remove('show');
-}
-
-export function renderNpcHistoryModalList() {
-  const npcName = document.getElementById('activeNpcHistoryName').value;
-  const bodyEl = document.getElementById('npcHistoryBody');
-
-  const logs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-  const records = [];
-  const boostCount = getActiveBoostCount();
-  const vipBonus = getActiveVipBonus();
-
-  logs.forEach((log, logIdx) => {
-    (log.deliveriesDone || []).forEach((past, itemIdx) => {
-      const name = (typeof past === 'string' ? past : past.name || '').toLowerCase().trim();
-      if (name === npcName.toLowerCase().trim()) {
-        const baseTix = past.tickets || 2;
-        const finalTix = baseTix + vipBonus + boostCount;
-        const isChecked = past.checked !== undefined ? past.checked : !!past.completed;
-
-        records.push({
-          logIdx, itemIdx,
-          date: log.date || 'Past Run',
-          cost: past.cost || 0,
-          tickets: finalTix,
-          items: past.items || [],
-          checked: isChecked,
-          status: past.completed ? '✨ Done' : '⏳ Active'
-        });
-      }
-    });
-  });
-
-  let totalTickedTickets = 0;
-  let totalTickedCost = 0;
-
-  if (records.length === 0) {
-    bodyEl.innerHTML = `<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found for ${npcName}.</p>`;
-  } else {
-    bodyEl.innerHTML = records.map(r => {
-      if (r.checked) {
-        totalTickedTickets += r.tickets;
-        totalTickedCost += r.cost;
-      }
-      const itemsHtml = (r.items || []).map(it => `• ${it.qty}x ${it.name}`).join(', ');
-
-      return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="toggleNpcHistCheck(${r.logIdx}, ${r.itemIdx})" style="accent-color:#D2691E; width:14px; height:14px;" />
-            <span style="font-weight:bold; color:#8B4513;">📅 ${r.date} (${r.status})</span>
-          </label>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="color:#2E7D32; font-weight:bold;">+${r.tickets} Tickets (${formatSFL(r.cost)} SFL)</span>
-            <button onclick="deleteNpcHistItem(${r.logIdx}, ${r.itemIdx})" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
-          </div>
-        </div>
-        ${itemsHtml ? `<div style="color:#5C4033; font-size:10px; padding-left:22px;"><strong>Requested:</strong> ${itemsHtml}</div>` : ''}
-      </div>`;
-    }).join('');
-  }
-
-  setElemText('npcHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
-}
-
-export function toggleNpcHistCheck(logIdx, itemIdx) {
-  const logs = state.globalData.cloudHistory.logs;
-  if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
-    const item = logs[logIdx].deliveriesDone[itemIdx];
-    item.checked = (item.checked === undefined ? !item.completed : !item.checked);
-    renderNpcHistoryModalList();
-    recalculateAll();
-  }
-}
-
-export function addNpcHistoryItem() {
-  const npcName = document.getElementById('activeNpcHistoryName').value;
-  const dateStr = document.getElementById('addNpcHistDate').value.trim() || new Date().toISOString().split('T')[0];
-  const tickets = parseInt(document.getElementById('addNpcHistTickets').value) || 2;
-  const cost = parseFloat(document.getElementById('addNpcHistCost').value) || 0;
-
-  if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
-  
-  let targetLog = state.globalData.cloudHistory.logs.find(l => l.date === dateStr);
-  if (!targetLog) {
-    targetLog = { date: dateStr, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [] };
-    state.globalData.cloudHistory.logs.unshift(targetLog);
-  }
-
-  if (!targetLog.deliveriesDone) targetLog.deliveriesDone = [];
-  targetLog.deliveriesDone.push({ name: npcName, cost, tickets, completed: true, items: [], checked: true });
-
-  renderNpcHistoryModalList();
-  recalculateAll();
-}
-
-export function deleteNpcHistItem(logIdx, itemIdx) {
-  const logs = state.globalData.cloudHistory.logs;
-  if (logs[logIdx]?.deliveriesDone) {
-    logs[logIdx].deliveriesDone.splice(itemIdx, 1);
-    renderNpcHistoryModalList();
-    recalculateAll();
-  }
-}
-
 export function openColumnHistoryModal(type) {
   state.activeColumnType = type;
-  setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
+  let title = '📜 BOUNTIES EDIT / HISTORY';
+  if (type === 'delivery') title = '📦 NPC DELIVERIES EDIT / HISTORY';
+  if (type === 'chore') title = '🧹 CHORES EDIT / HISTORY';
+  
+  setElemText('columnHistoryTitle', title);
   renderColumnHistoryModalList();
   document.getElementById('columnHistoryModal').classList.add('show');
 }
@@ -222,55 +112,108 @@ export function closeColumnHistoryModal() {
 export function renderColumnHistoryModalList() {
   const type = state.activeColumnType;
   const bodyEl = document.getElementById('columnHistoryBody');
-  const weeks = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
-  const records = [];
   const boostCount = getActiveBoostCount();
+  const vipBonus = getActiveVipBonus();
 
-  Object.entries(weeks).forEach(([weekId, wk]) => {
-    const items = type === 'bounty' ? (wk.bounties || []) : (wk.chores || []);
-    items.forEach((item, itemIdx) => {
-      const baseTix = item.tickets || 1;
-      const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-      records.push({
-        weekId, itemIdx,
-        name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
-        cost: item.cost || 0,
-        tickets: finalTix,
-        baseTickets: baseTix,
-        checked: item.checked !== undefined ? item.checked : !!item.completed,
-        status: item.completed ? '✨ Done' : '⏳ Active'
+  const records = [];
+
+  if (type === 'delivery') {
+    const logs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
+    logs.forEach((log, logIdx) => {
+      (log.deliveriesDone || []).forEach((item, itemIdx) => {
+        const baseTix = item.tickets || 2;
+        const finalTix = baseTix + vipBonus + boostCount;
+        records.push({
+          logIdx,
+          itemIdx,
+          date: log.date || 'Past Run',
+          name: typeof item === 'string' ? item : (item.name || 'NPC Delivery'),
+          cost: item.cost || 0,
+          tickets: finalTix,
+          baseTickets: baseTix,
+          checked: item.checked !== undefined ? item.checked : !!item.completed,
+          status: item.completed ? '✨ Done' : '⏳ Active'
+        });
       });
     });
-  });
+  } else {
+    const weeks = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
+    Object.entries(weeks).forEach(([weekId, wk]) => {
+      const items = type === 'bounty' ? (wk.bounties || []) : (wk.chores || []);
+      items.forEach((item, itemIdx) => {
+        const baseTix = item.tickets || 1;
+        const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        records.push({
+          weekId,
+          itemIdx,
+          name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
+          cost: item.cost || 0,
+          tickets: finalTix,
+          baseTickets: baseTix,
+          checked: item.checked !== undefined ? item.checked : !!item.completed,
+          status: item.completed ? '✨ Done' : '⏳ Active'
+        });
+      });
+    });
+  }
 
   let totalTickedTickets = 0;
   let totalTickedCost = 0;
 
   if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No weekly records found.</p>';
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No past records found.</p>';
   } else {
     bodyEl.innerHTML = records.map(r => {
       if (r.checked) {
         totalTickedTickets += r.tickets;
         totalTickedCost += r.cost;
       }
+      const labelId = type === 'delivery' ? `${r.date}` : `${r.weekId}`;
+      const changeHandler = type === 'delivery'
+        ? `toggleDeliveryLogCheck(${r.logIdx}, ${r.itemIdx})`
+        : `toggleWeeklyItemCheck('${r.weekId}', ${r.itemIdx})`;
+      
+      const deleteHandler = type === 'delivery'
+        ? `deleteDeliveryLogItem(${r.logIdx}, ${r.itemIdx})`
+        : `deleteWeeklyItem('${r.weekId}', ${r.itemIdx})`;
+
       return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="toggleWeeklyItemCheck('${r.weekId}', ${r.itemIdx})" style="accent-color:#D2691E; width:14px; height:14px;" />
-          <div><span style="font-weight:bold; color:#8B4513;">📅 ${r.weekId} (${r.status})</span><br/><strong style="color:#3E2723;">${r.name}</strong></div>
+          <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:14px; height:14px;" />
+          <div><span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/><strong style="color:#3E2723;">${r.name}</strong></div>
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
-          ${type === 'bounty' ? 
-            `<span>Tickets:</span><input type="number" value="${r.baseTickets}" onchange="updateWeeklyItemTickets('${r.weekId}', ${r.itemIdx}, this.value)" style="width:50px; padding:2px; font-size:10px;" />` : 
-            `<span>SFL:</span><input type="number" step="0.01" value="${r.cost}" onchange="updateWeeklyItemCost('${r.weekId}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />`
+          ${type === 'bounty' || type === 'delivery' ? 
+            `<span>SFL:</span><input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />` : ''
           }
-          <button onclick="deleteWeeklyItem('${r.weekId}', ${r.itemIdx})" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
+          <span>Tix:</span>
+          <input type="number" value="${r.baseTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:45px; padding:2px; font-size:10px;" />
+          <button onclick="${deleteHandler}" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
     }).join('');
   }
 
   setElemText('columnHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
+}
+
+export function toggleDeliveryLogCheck(logIdx, itemIdx) {
+  const logs = state.globalData.cloudHistory.logs;
+  if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
+    const item = logs[logIdx].deliveriesDone[itemIdx];
+    item.checked = (item.checked === undefined ? !item.completed : !item.checked);
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
+export function deleteDeliveryLogItem(logIdx, itemIdx) {
+  const logs = state.globalData.cloudHistory.logs;
+  if (logs[logIdx]?.deliveriesDone) {
+    logs[logIdx].deliveriesDone.splice(itemIdx, 1);
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
 }
 
 export function toggleWeeklyItemCheck(weekId, itemIdx) {
@@ -284,24 +227,42 @@ export function toggleWeeklyItemCheck(weekId, itemIdx) {
   }
 }
 
-export function updateWeeklyItemTickets(weekId, itemIdx, val) {
-  const weeks = state.globalData.cloudHistory.weeks;
-  const targetArray = state.activeColumnType === 'bounty' ? 'bounties' : 'chores';
-  if (weeks[weekId]?.[targetArray]?.[itemIdx]) {
-    weeks[weekId][targetArray][itemIdx].tickets = parseInt(val) || 0;
-    renderColumnHistoryModalList();
-    recalculateAll();
+export function updateHistoryItemTickets(idKey, itemIdx, val) {
+  const type = state.activeColumnType;
+  if (type === 'delivery') {
+    const logs = state.globalData.cloudHistory.logs;
+    const logIdx = parseInt(idKey);
+    if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
+      logs[logIdx].deliveriesDone[itemIdx].tickets = parseInt(val) || 0;
+    }
+  } else {
+    const weeks = state.globalData.cloudHistory.weeks;
+    const targetArray = type === 'bounty' ? 'bounties' : 'chores';
+    if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
+      weeks[idKey][targetArray][itemIdx].tickets = parseInt(val) || 0;
+    }
   }
+  renderColumnHistoryModalList();
+  recalculateAll();
 }
 
-export function updateWeeklyItemCost(weekId, itemIdx, val) {
-  const weeks = state.globalData.cloudHistory.weeks;
-  const targetArray = state.activeColumnType === 'bounty' ? 'bounties' : 'chores';
-  if (weeks[weekId]?.[targetArray]?.[itemIdx]) {
-    weeks[weekId][targetArray][itemIdx].cost = parseFloat(val) || 0;
-    renderColumnHistoryModalList();
-    recalculateAll();
+export function updateHistoryItemCost(idKey, itemIdx, val) {
+  const type = state.activeColumnType;
+  if (type === 'delivery') {
+    const logs = state.globalData.cloudHistory.logs;
+    const logIdx = parseInt(idKey);
+    if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
+      logs[logIdx].deliveriesDone[itemIdx].cost = parseFloat(val) || 0;
+    }
+  } else {
+    const weeks = state.globalData.cloudHistory.weeks;
+    const targetArray = type === 'bounty' ? 'bounties' : 'chores';
+    if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
+      weeks[idKey][targetArray][itemIdx].cost = parseFloat(val) || 0;
+    }
   }
+  renderColumnHistoryModalList();
+  recalculateAll();
 }
 
 export function deleteWeeklyItem(weekId, itemIdx) {
@@ -318,19 +279,27 @@ export function addCustomHistoryItem() {
   const name = document.getElementById('addHistName').value.trim() || 'Custom Task';
   const tickets = parseInt(document.getElementById('addHistTickets').value) || 1;
   const cost = parseFloat(document.getElementById('addHistCost').value) || 0;
+  const type = state.activeColumnType;
+  const todayDate = new Date().toISOString().split('T')[0];
+  const currentWeekId = getMondayBasedWeekId();
 
-  const now = new Date();
-  const startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
-  const currentWeekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
-  const currentWeekId = `${now.getFullYear()}-W${String(currentWeekNum).padStart(2, '0')}`;
-
-  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-  if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
-    state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
+  if (type === 'delivery') {
+    if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
+    let targetLog = state.globalData.cloudHistory.logs.find(l => l.date === todayDate);
+    if (!targetLog) {
+      targetLog = { date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [] };
+      state.globalData.cloudHistory.logs.unshift(targetLog);
+    }
+    if (!targetLog.deliveriesDone) targetLog.deliveriesDone = [];
+    targetLog.deliveriesDone.push({ name, cost, tickets, completed: true, checked: true });
+  } else {
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+    if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
+      state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
+    }
+    const targetArray = type === 'bounty' ? 'bounties' : 'chores';
+    state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name, cost, tickets, completed: true, checked: true });
   }
-
-  const targetArray = state.activeColumnType === 'bounty' ? 'bounties' : 'chores';
-  state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name, cost, tickets, completed: true, checked: true });
 
   renderColumnHistoryModalList();
   recalculateAll();
