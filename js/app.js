@@ -1,8 +1,6 @@
 var globalData = null;
 var currentUser = null;
-var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
-var currentDoneTicketsToday = 0;
-var currentDoneCostToday = 0;
+var currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] };
 var isFetchCooldown = false;
 var activeColumnType = null;
 
@@ -39,28 +37,18 @@ window.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
 
   var savedGoal = localStorage.getItem('sfl_targetGoal');
-  if (savedGoal !== null) {
-    document.getElementById('targetGoalInput').value = savedGoal;
-  }
+  if (savedGoal !== null) document.getElementById('targetGoalInput').value = savedGoal;
   var savedWeeks = localStorage.getItem('sfl_targetWeeks');
-  if (savedWeeks !== null) {
-    document.getElementById('targetWeeksInput').value = savedWeeks;
-  }
+  if (savedWeeks !== null) document.getElementById('targetWeeksInput').value = savedWeeks;
 
   var savedVip = localStorage.getItem('sfl_vip');
-  if (savedVip !== null) {
-    document.getElementById('vipToggle').checked = savedVip === 'true';
-  }
+  if (savedVip !== null) document.getElementById('vipToggle').checked = savedVip === 'true';
 
   var savedFarmId = localStorage.getItem('sfl_farmId');
-  if (savedFarmId) {
-    document.getElementById('farmId').value = savedFarmId;
-  }
+  if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
 
   var savedApiKey = localStorage.getItem('sfl_apiKey');
-  if (savedApiKey) {
-    document.getElementById('apiKey').value = savedApiKey;
-  }
+  if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
 
   var savedUser = localStorage.getItem('sfl_username');
   if (savedUser) {
@@ -68,7 +56,6 @@ window.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('authLoggedOut').style.display = 'none';
     document.getElementById('authLoggedIn').style.display = 'flex';
     document.getElementById('displayUsername').textContent = currentUser;
-    
     await fetchUserVault(currentUser);
   }
 });
@@ -135,7 +122,7 @@ async function userLogin() {
     if (data.error) throw new Error(data.error);
 
     currentUser = data.username;
-    currentVaultData = data.vaultData || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
+    currentVaultData = data.vaultData || { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] };
     
     localStorage.setItem('sfl_username', currentUser);
     document.getElementById('authLoggedOut').style.display = 'none';
@@ -154,7 +141,7 @@ async function userLogin() {
 
 function userLogout() {
   currentUser = null;
-  currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, deliveries: [], bounties: [], chores: [] };
+  currentVaultData = { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, deliveries: [], bounties: [], chores: [] };
   localStorage.removeItem('sfl_username');
   document.getElementById('authLoggedOut').style.display = 'flex';
   document.getElementById('authLoggedIn').style.display = 'none';
@@ -175,15 +162,12 @@ function saveAndRecalculate() {
   recalculateAll();
 }
 
-// Retry wrapper helper: 3 tries, 8 seconds (8000ms) delay per try
 async function retryOperation(fn, retries = 3, delay = 8000) {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
     } catch (err) {
-      if (i === retries - 1) {
-        throw err;
-      }
+      if (i === retries - 1) throw err;
       console.warn(`Attempt ${i + 1} failed. Retrying in ${delay / 1000} seconds...`, err);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -264,7 +248,6 @@ async function loadTrackerData() {
   }
 }
 
-// Category Summary Overview Popup Modal with Header Totals & Animal Separation
 function openCategorySummaryModal(cat) {
   var modal = document.getElementById('categorySummaryModal');
   var titleEl = document.getElementById('categorySummaryTitle');
@@ -337,9 +320,7 @@ function openCategorySummaryModal(cat) {
     var sortedChores = [...globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedChores.map(c => {
       var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
-      if (c.completed) {
-        catTickets += finalTickets;
-      }
+      if (c.completed) catTickets += finalTickets;
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
           <strong style="color:#3E2723;">🧹 ${c.npc.toUpperCase()}</strong><br/>
@@ -360,7 +341,6 @@ function closeCategorySummaryModal() {
   document.getElementById('categorySummaryModal').classList.remove('show');
 }
 
-// NPC Delivery History Modal
 function openNpcHistoryModal(npcName) {
   document.getElementById('activeNpcHistoryName').value = npcName;
   setElemText('npcHistoryTitle', '📜 HISTORY: ' + npcName.toUpperCase());
@@ -456,7 +436,7 @@ function addNpcHistoryItem() {
   
   var targetLog = globalData.cloudHistory.logs.find(l => l.date === dateStr);
   if (!targetLog) {
-    targetLog = { date: dateStr, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [], bountiesDone: [], choresDone: [] };
+    targetLog = { date: dateStr, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [] };
     globalData.cloudHistory.logs.unshift(targetLog);
   }
 
@@ -476,7 +456,6 @@ function deleteNpcHistItem(logIdx, itemIdx) {
   }
 }
 
-// Column History Modal
 function openColumnHistoryModal(type) {
   activeColumnType = type;
   setElemText('columnHistoryTitle', type === 'bounty' ? '📜 BOUNTIES EDIT / HISTORY' : '📜 CHORES EDIT / HISTORY');
@@ -491,27 +470,23 @@ function closeColumnHistoryModal() {
 function renderColumnHistoryModalList() {
   var type = activeColumnType;
   var bodyEl = document.getElementById('columnHistoryBody');
-
-  var logs = (globalData && globalData.cloudHistory && globalData.cloudHistory.logs) || [];
+  var weeks = (globalData && globalData.cloudHistory && globalData.cloudHistory.weeks) || {};
   var records = [];
   var boostCount = getActiveBoostCount();
 
-  logs.forEach((log, logIdx) => {
-    var items = type === 'bounty' ? (log.bountiesDone || []) : (log.choresDone || []);
+  Object.entries(weeks).forEach(([weekId, wk]) => {
+    var items = type === 'bounty' ? (wk.bounties || []) : (wk.chores || []);
     items.forEach((item, itemIdx) => {
       var baseTix = item.tickets || 1;
       var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-      var isChecked = item.checked !== undefined ? item.checked : !!item.completed;
-
       records.push({
-        logIdx: logIdx,
+        weekId: weekId,
         itemIdx: itemIdx,
-        date: log.date || 'Past Run',
         name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
         cost: item.cost || 0,
         tickets: finalTix,
         baseTickets: baseTix,
-        checked: isChecked,
+        checked: item.checked !== undefined ? item.checked : !!item.completed,
         status: item.completed ? '✨ Done' : '⏳ Active'
       });
     });
@@ -521,7 +496,7 @@ function renderColumnHistoryModalList() {
   var totalTickedCost = 0;
 
   if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No past history records found.</p>';
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No weekly records found.</p>';
   } else {
     bodyEl.innerHTML = records.map((r) => {
       if (r.checked) {
@@ -530,15 +505,15 @@ function renderColumnHistoryModalList() {
       }
       return '<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">' +
         '<label style="display:flex; align-items:center; gap:8px; cursor:pointer;">' +
-          '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleColumnHistCheck(' + r.logIdx + ', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
-          '<div><span style="font-weight:bold; color:#8B4513;">📅 ' + r.date + ' (' + r.status + ')</span><br/><strong style="color:#3E2723;">' + r.name + '</strong></div>' +
+          '<input type="checkbox" ' + (r.checked ? 'checked' : '') + ' onchange="toggleWeeklyItemCheck(\'' + r.weekId + '\', ' + r.itemIdx + ')" style="accent-color:#D2691E; width:14px; height:14px;" />' +
+          '<div><span style="font-weight:bold; color:#8B4513;">📅 ' + r.weekId + ' (' + r.status + ')</span><br/><strong style="color:#3E2723;">' + r.name + '</strong></div>' +
         '</label>' +
         '<div style="display:flex; align-items:center; gap:6px;">' +
           (type === 'bounty' ? 
-            '<span>Tickets:</span><input type="number" value="' + r.baseTickets + '" onchange="updateHistoryItemTickets(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:50px; padding:2px; font-size:10px;" />' : 
-            '<span>SFL:</span><input type="number" step="0.01" value="' + r.cost + '" onchange="updateHistoryItemCost(' + r.logIdx + ', ' + r.itemIdx + ', this.value)" style="width:60px; padding:2px; font-size:10px;" />'
+            '<span>Tickets:</span><input type="number" value="' + r.baseTickets + '" onchange="updateWeeklyItemTickets(\'' + r.weekId + '\', ' + r.itemIdx + ', this.value)" style="width:50px; padding:2px; font-size:10px;" />' : 
+            '<span>SFL:</span><input type="number" step="0.01" value="' + r.cost + '" onchange="updateWeeklyItemCost(\'' + r.weekId + '\', ' + r.itemIdx + ', this.value)" style="width:60px; padding:2px; font-size:10px;" />'
           ) +
-          '<button onclick="deleteColumnHistItem(' + r.logIdx + ', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
+          '<button onclick="deleteWeeklyItem(\'' + r.weekId + '\', ' + r.itemIdx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -547,32 +522,42 @@ function renderColumnHistoryModalList() {
   setElemText('columnHistoryStats', totalTickedTickets + ' Tickets | ' + formatSFL(totalTickedCost) + ' SFL');
 }
 
-function updateHistoryItemTickets(logIdx, itemIdx, val) {
-  var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
-    logs[logIdx][targetArray][itemIdx].tickets = parseInt(val) || 0;
-    renderColumnHistoryModalList();
-    recalculateAll();
-  }
-}
-
-function updateHistoryItemCost(logIdx, itemIdx, val) {
-  var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
-    logs[logIdx][targetArray][itemIdx].cost = parseFloat(val) || 0;
-    renderColumnHistoryModalList();
-    recalculateAll();
-  }
-}
-
-function toggleColumnHistCheck(logIdx, itemIdx) {
-  var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (logs[logIdx] && logs[logIdx][targetArray] && logs[logIdx][targetArray][itemIdx]) {
-    var item = logs[logIdx][targetArray][itemIdx];
+function toggleWeeklyItemCheck(weekId, itemIdx) {
+  var weeks = globalData.cloudHistory.weeks;
+  var targetArray = activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  if (weeks[weekId] && weeks[weekId][targetArray] && weeks[weekId][targetArray][itemIdx]) {
+    var item = weeks[weekId][targetArray][itemIdx];
     item.checked = (item.checked === undefined ? !item.completed : !item.checked);
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
+function updateWeeklyItemTickets(weekId, itemIdx, val) {
+  var weeks = globalData.cloudHistory.weeks;
+  var targetArray = activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  if (weeks[weekId] && weeks[weekId][targetArray] && weeks[weekId][targetArray][itemIdx]) {
+    weeks[weekId][targetArray][itemIdx].tickets = parseInt(val) || 0;
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
+function updateWeeklyItemCost(weekId, itemIdx, val) {
+  var weeks = globalData.cloudHistory.weeks;
+  var targetArray = activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  if (weeks[weekId] && weeks[weekId][targetArray] && weeks[weekId][targetArray][itemIdx]) {
+    weeks[weekId][targetArray][itemIdx].cost = parseFloat(val) || 0;
+    renderColumnHistoryModalList();
+    recalculateAll();
+  }
+}
+
+function deleteWeeklyItem(weekId, itemIdx) {
+  var weeks = globalData.cloudHistory.weeks;
+  var targetArray = activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  if (weeks[weekId] && weeks[weekId][targetArray]) {
+    weeks[weekId][targetArray].splice(itemIdx, 1);
     renderColumnHistoryModalList();
     recalculateAll();
   }
@@ -582,32 +567,22 @@ function addCustomHistoryItem() {
   var name = document.getElementById('addHistName').value.trim() || 'Custom Task';
   var tickets = parseInt(document.getElementById('addHistTickets').value) || 1;
   var cost = parseFloat(document.getElementById('addHistCost').value) || 0;
-  var todayDate = new Date().toISOString().split('T')[0];
 
-  if (!globalData.cloudHistory.logs) globalData.cloudHistory.logs = [];
+  var now = new Date();
+  var startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
+  var currentWeekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
+  var currentWeekId = `${now.getFullYear()}-W${String(currentWeekNum).padStart(2, '0')}`;
 
-  var targetLog = globalData.cloudHistory.logs.find(l => l.date === todayDate);
-  if (!targetLog) {
-    targetLog = { date: todayDate, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [], bountiesDone: [], choresDone: [] };
-    globalData.cloudHistory.logs.unshift(targetLog);
+  if (!globalData.cloudHistory.weeks) globalData.cloudHistory.weeks = {};
+  if (!globalData.cloudHistory.weeks[currentWeekId]) {
+    globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
   }
 
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (!targetLog[targetArray]) targetLog[targetArray] = [];
-  targetLog[targetArray].push({ name: name, cost: cost, tickets: tickets, completed: true, checked: true });
+  var targetArray = activeColumnType === 'bounty' ? 'bounties' : 'chores';
+  globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ name: name, cost: cost, tickets: tickets, completed: true, checked: true });
 
   renderColumnHistoryModalList();
   recalculateAll();
-}
-
-function deleteColumnHistItem(logIdx, itemIdx) {
-  var logs = globalData.cloudHistory.logs;
-  var targetArray = activeColumnType === 'bounty' ? 'bountiesDone' : 'choresDone';
-  if (logs[logIdx] && logs[logIdx][targetArray]) {
-    logs[logIdx][targetArray].splice(itemIdx, 1);
-    renderColumnHistoryModalList();
-    recalculateAll();
-  }
 }
 
 async function deleteMasterLog(logIdx) {
@@ -615,15 +590,6 @@ async function deleteMasterLog(logIdx) {
   if (confirm('🗑️ Delete this snapshot log?')) {
     globalData.cloudHistory.logs.splice(logIdx, 1);
     
-    var totalTix = 0;
-    var totalCost = 0;
-    globalData.cloudHistory.logs.forEach(l => {
-      totalTix += (l.ticketsSaved || 0);
-      totalCost += (l.costSaved || 0);
-    });
-    globalData.cloudHistory.cumulativeTickets = totalTix;
-    globalData.cloudHistory.cumulativeCost = totalCost;
-
     if (currentUser) {
       try {
         await fetch('/api/chapter?action=saveVault', {
@@ -658,14 +624,28 @@ async function saveProgressToCloudKV() {
     return;
   }
 
+  // Calculate daily deliveries total for today's snapshot
+  var dailyDelivTickets = 0;
+  var dailyDelivCost = 0;
+  var vipBonus = getActiveVipBonus();
+  var boostCount = getActiveBoostCount();
+
+  (globalData.deliveries || []).forEach(d => {
+    if (d.completed) {
+      var deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
+      dailyDelivTickets += (d.baseTickets + deliveryAddon);
+      dailyDelivCost += (d.itemsCost || 0);
+    }
+  });
+
   try {
     var response = await fetch('/api/chapter?action=saveVault', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: currentUser,
-        ticketsSaved: currentDoneTicketsToday,
-        costSaved: currentDoneCostToday,
+        dailyDeliveryTicketsSaved: dailyDelivTickets,
+        dailyDeliveryCostSaved: dailyDelivCost,
         deliveries: globalData.deliveries,
         bounties: globalData.bounties,
         chores: globalData.chores
@@ -678,7 +658,7 @@ async function saveProgressToCloudKV() {
     currentVaultData = resData.vaultData;
     globalData.cloudHistory = currentVaultData;
 
-    alert('☁️ MASTER VAULT SAVED!\nSaved +' + currentDoneTicketsToday + ' Tickets (' + formatSFL(currentDoneCostToday) + ' SFL)');
+    alert('☁️ MASTER VAULT SAVED!\nDaily Deliveries Recorded (+' + dailyDelivTickets + ' Tickets, ' + formatSFL(dailyDelivCost) + ' SFL)\nWeekly Bounties & Chores Synced Once!');
     recalculateAll();
   } catch (err) {
     alert('Vault Save Failed: ' + err.message);
@@ -698,16 +678,8 @@ function toggleHistoryModal() {
     } else {
       container.innerHTML = logs.map(function(log, idx) {
         var delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
-          '<div style="color:#5C4033; font-size:11px;"><strong>📦 Deliveries:</strong> ' + 
+          '<div style="color:#5C4033; font-size:11px;"><strong>📦 Daily Deliveries:</strong> ' + 
           log.deliveriesDone.map(function(d) { return (typeof d === 'string' ? d : d.name + ' (' + formatSFL(d.cost) + ' SFL)'); }).join(', ') + '</div>' : '';
-
-        var bountiesHtml = (log.bountiesDone && log.bountiesDone.length > 0) ? 
-          '<div style="color:#B26A00; font-size:11px;"><strong>📜 Bounties:</strong> ' + 
-          log.bountiesDone.map(function(b) { return (typeof b === 'string' ? b : b.name + ' (' + formatSFL(b.cost) + ' SFL)'); }).join(', ') + '</div>' : '';
-
-        var choresHtml = (log.choresDone && log.choresDone.length > 0) ? 
-          '<div style="color:#2E7D32; font-size:11px;"><strong>🧹 Chores:</strong> ' + 
-          log.choresDone.map(function(c) { return (typeof c === 'string' ? c : c.name); }).join(', ') + '</div>' : '';
 
         var logTickets = log.ticketsSaved || 0;
         var logCost = log.costSaved || 0;
@@ -719,10 +691,10 @@ function toggleHistoryModal() {
             '<button onclick="deleteMasterLog(' + idx + ')" class="btn btn-sm btn-amber" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>' +
           '</div>' +
           '<div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">' +
-            '<span>Tickets: +' + logTickets + ' | Cost: ' + formatSFL(logCost) + ' SFL</span>' +
+            '<span>Daily Yield: +' + logTickets + ' | Cost: ' + formatSFL(logCost) + ' SFL</span>' +
             '<span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">' + logRatio + ' SFL / Ticket</span>' +
           '</div>' +
-          '<div style="display:flex; flex-direction:column; gap:3px;">' + delivHtml + bountiesHtml + choresHtml + '</div>' +
+          '<div style="display:flex; flex-direction:column; gap:3px;">' + delivHtml + '</div>' +
         '</div>';
       }).join('');
     }
@@ -736,9 +708,7 @@ function recalculateAll() {
   var boostCount = getActiveBoostCount();
 
   var totalTicketsAll = 0;
-  var earnedTicketsAll = 0;
   var totalSflCostAll = 0;
-  var earnedSflCostAll = 0;
 
   var delivCatTickets = 0;
   var bountyCatTickets = 0;
@@ -747,18 +717,18 @@ function recalculateAll() {
   var weekTicketsAll = 0;
   var weekCostAll = 0;
 
-  var todayDateStr = new Date().toISOString().split('T')[0];
   var now = new Date();
   var startOfYear = new Date(Date.UTC(now.getFullYear(), 0, 1));
   var currentWeekNum = Math.ceil((((now - startOfYear) / 86400000) + startOfYear.getUTCDay() + 1) / 7);
   var currentWeekId = `${now.getFullYear()}-W${String(currentWeekNum).padStart(2, '0')}`;
 
   var logs = (globalData.cloudHistory && globalData.cloudHistory.logs) || [];
-  
+  var weeks = (globalData.cloudHistory && globalData.cloudHistory.weeks) || {};
+
+  // 1. Process Historical Daily Deliveries across logs
   logs.forEach(log => {
     var isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
 
-    // Process Deliveries
     (log.deliveriesDone || []).forEach(item => {
       var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
@@ -775,39 +745,39 @@ function recalculateAll() {
         }
       }
     });
+  });
 
-    // Process Bounties
-    (log.bountiesDone || []).forEach(item => {
-      var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
+  // 2. Process Weekly Bounties and Chores ONCE per week (preventing day-over-day duplication)
+  Object.entries(weeks).forEach(([wkId, wk]) => {
+    var isThisWeek = wkId === currentWeekId;
+
+    (wk.bounties || []).forEach(b => {
+      var isTicked = b.checked !== undefined ? b.checked : !!b.completed;
       if (isTicked) {
-        var baseTix = item.tickets || 1;
+        var baseTix = b.tickets || 1;
         var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-        var itemCost = item.cost || 0;
+        var bCost = b.cost || 0;
 
         bountyCatTickets += finalTix;
-        totalSflCostAll += itemCost;
+        totalSflCostAll += bCost;
 
         if (isThisWeek) {
           weekTicketsAll += finalTix;
-          weekCostAll += itemCost;
+          weekCostAll += bCost;
         }
       }
     });
 
-    // Process Chores
-    (log.choresDone || []).forEach(item => {
-      var isTicked = item.checked !== undefined ? item.checked : !!item.completed;
+    (wk.chores || []).forEach(c => {
+      var isTicked = c.checked !== undefined ? c.checked : !!c.completed;
       if (isTicked) {
-        var baseTix = item.tickets || 1;
+        var baseTix = c.tickets || 1;
         var finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-        var itemCost = item.cost || 0;
 
         choreCatTickets += finalTix;
-        totalSflCostAll += itemCost;
 
         if (isThisWeek) {
           weekTicketsAll += finalTix;
-          weekCostAll += itemCost;
         }
       }
     });
@@ -815,11 +785,10 @@ function recalculateAll() {
 
   totalTicketsAll = delivCatTickets + bountyCatTickets + choreCatTickets;
 
-  setElemText('catDelivTickets', delivCatTickets + ' Tickets');
-  setElemText('catBountyTickets', bountyCatTickets + ' Tickets');
-  setElemText('catChoreTickets', choreCatTickets + ' Tickets');
+  // Render live columns (Today)
+  var earnedTicketsToday = 0;
+  var earnedCostToday = 0;
 
-  // SORTING: Active items placed ABOVE completed items
   var sortedDeliveries = [...globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   
   var allBounties = globalData.bounties || [];
@@ -849,8 +818,8 @@ function recalculateAll() {
       var totalSflCost = d.itemsCost || 0;
 
       if (d.completed) {
-        earnedTicketsAll += finalTickets;
-        earnedSflCostAll += totalSflCost;
+        earnedTicketsToday += finalTickets;
+        earnedCostToday += totalSflCost;
       }
 
       var itemRows = (d.itemDetails || []).map(function(detail) {
@@ -885,19 +854,13 @@ function recalculateAll() {
     }).join('');
   }
 
-  // BOUNTIES COLUMN (Regular Item/Flower Bounties)
+  // BOUNTIES COLUMN
   var bountiesContainer = document.getElementById('bountiesList');
   if (bountiesContainer) {
     setElemText('bountiesCount', sortedBounties.length);
     bountiesContainer.innerHTML = sortedBounties.map(function(b) {
       var finalTickets = b.baseTickets + boostCount;
       var totalSflCost = b.itemsCost || 0;
-
-      if (b.completed) {
-        earnedTicketsAll += finalTickets;
-        earnedSflCostAll += totalSflCost;
-      }
-
       var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
       var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
 
@@ -927,12 +890,6 @@ function recalculateAll() {
     animalBountiesContainer.innerHTML = sortedAnimalBounties.map(function(b) {
       var finalTickets = b.baseTickets + boostCount;
       var totalSflCost = b.itemsCost || 0;
-
-      if (b.completed) {
-        earnedTicketsAll += finalTickets;
-        earnedSflCostAll += totalSflCost;
-      }
-
       var costPerTicket = finalTickets > 0 ? (totalSflCost / finalTickets) : 0;
       var badgeClass = b.completed ? 'badge badge-done' : 'badge badge-active';
 
@@ -962,11 +919,6 @@ function recalculateAll() {
     choresContainer.innerHTML = sortedChores.map(function(c) {
       var finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
       var hasProgress = c.requirement > 0;
-
-      if (c.completed) {
-        earnedTicketsAll += finalTickets;
-      }
-
       var badgeClass = c.completed ? 'badge badge-done' : 'badge badge-active';
 
       return '<div class="card-item ' + (c.completed ? 'done' : 'active') + '">' +
@@ -981,9 +933,6 @@ function recalculateAll() {
     }).join('');
   }
 
-  currentDoneTicketsToday = earnedTicketsAll;
-  currentDoneCostToday = earnedSflCostAll;
-
   // 1. OVERALL STATS
   setElemText('statTotalTickets', totalTicketsAll + ' Tickets');
   setElemText('statTotalCost', formatSFL(totalSflCostAll) + ' SFL');
@@ -994,10 +943,10 @@ function recalculateAll() {
   setElemText('statWeekCost', formatSFL(weekCostAll) + ' SFL');
   setElemText('statWeekRatio', (weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.00") + ' SFL / Ticket');
 
-  // 3. TODAY'S STATS
-  setElemText('statEarnedTickets', earnedTicketsAll + ' Tickets');
-  setElemText('statEarnedCost', formatSFL(earnedSflCostAll) + ' SFL');
-  var earnedRatioVal = earnedTicketsAll > 0 ? (earnedSflCostAll / earnedTicketsAll) : 0;
+  // 3. TODAY'S STATS (Daily Deliveries Completed Today)
+  setElemText('statEarnedTickets', earnedTicketsToday + ' Tickets');
+  setElemText('statEarnedCost', formatSFL(earnedCostToday) + ' SFL');
+  var earnedRatioVal = earnedTicketsToday > 0 ? (earnedCostToday / earnedTicketsToday) : 0;
   setElemText('statEarnedRatio', formatSFL(earnedRatioVal) + ' SFL / Ticket');
 
   // 4. CHAPTER END GOAL CALCULATOR
