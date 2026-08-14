@@ -177,8 +177,6 @@
       max-height: 650px;
       box-shadow: 0 6px 0px #5C4033;
     }
-    .column-card.collapsed { max-height: fit-content; }
-    .column-card.collapsed .list-container { display: none; }
     .column-title {
       font-size: 13px;
       font-weight: 900;
@@ -190,7 +188,6 @@
       margin-bottom: 12px;
       color: #5C4033;
     }
-    .column-card.collapsed .column-title { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
     .list-container { overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
     
     .card-item {
@@ -298,7 +295,7 @@
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #3</label>
         </div>
 
-        <!-- Manual Chapter Track Section with Clear Labels -->
+        <!-- Manual Chapter Track Section -->
         <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:8px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
           
@@ -404,12 +401,9 @@
 
     <!-- 4-Column Grid -->
     <div class="grid-4">
-      <div id="cardDeliveries" class="column-card collapsed">
+      <div id="cardDeliveries" class="column-card">
         <div class="column-title">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardDeliveries', this)" style="padding:2px 6px;">▲</button>
-            <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
-          </div>
+          <button class="btn-pop-title" onclick="openCategorySummaryModal('delivery')">📦 NPC DELIVERIES</button>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('delivery')">📜 EDIT</button>
             <span id="deliveriesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -418,12 +412,9 @@
         <div id="deliveriesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load orders...</p></div>
       </div>
 
-      <div id="cardBounties" class="column-card collapsed">
+      <div id="cardBounties" class="column-card">
         <div class="column-title">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardBounties', this)" style="padding:2px 6px;">▲</button>
-            <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
-          </div>
+          <button class="btn-pop-title" onclick="openCategorySummaryModal('bounty')">📜 BOUNTIES</button>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('bounty')">📜 EDIT</button>
             <span id="bountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -432,12 +423,9 @@
         <div id="bountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load bounties...</p></div>
       </div>
 
-      <div id="cardAnimalBounties" class="column-card collapsed">
+      <div id="cardAnimalBounties" class="column-card">
         <div class="column-title">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardAnimalBounties', this)" style="padding:2px 6px;">▲</button>
-            <button class="btn-pop-title" onclick="openCategorySummaryModal('animalBounty')">🐄 ANIMAL BOUNTIES</button>
-          </div>
+          <button class="btn-pop-title" onclick="openCategorySummaryModal('animalBounty')">🐄 ANIMAL BOUNTIES</button>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('animalBounty')">📜 EDIT</button>
             <span id="animalBountiesCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
@@ -446,12 +434,9 @@
         <div id="animalBountiesList" class="list-container"><p style="color:#8C7853; font-size:12px; font-weight:bold;">Click Fetch Data to load animal bounties...</p></div>
       </div>
 
-      <div id="cardChores" class="column-card collapsed">
+      <div id="cardChores" class="column-card">
         <div class="column-title">
-          <div style="display:flex; align-items:center; gap:6px;">
-            <button class="btn btn-sm btn-amber" onclick="toggleColumnCard('cardChores', this)" style="padding:2px 6px;">▲</button>
-            <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
-          </div>
+          <button class="btn-pop-title" onclick="openCategorySummaryModal('chore')">🧹 CHORES</button>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn btn-sm btn-indigo" onclick="openColumnHistoryModal('chore')">📜 EDIT</button>
             <span id="choresCount" style="background:#FFFACD; padding:2px 8px; border:2px solid #8B5A2B; border-radius:6px; color:#5C4033;">0</span>
