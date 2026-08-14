@@ -51,18 +51,21 @@ export async function onRequest(context) {
             if (!vaultData.weeks) vaultData.weeks = {};
 
             if (vaultData.bounties || vaultData.chores) {
-              const currentWeekBounties = (vaultData.bounties || []).map(b => {
-                let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
-                if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
-                return {
-                  name: b.name || 'Bounty',
-                  cost: bCost,
-                  tickets: b.tickets !== undefined ? b.tickets : (b.baseTickets || 1),
-                  completed: b.completed || b.checked,
-                  completedAt: b.completedAt || null,
-                  checked: b.completed || b.checked
-                };
-              });
+              const currentWeekBounties = (vaultData.bounties || [])
+                .filter(b => (b.baseTickets || b.tickets || 0) > 0)
+                .map(b => {
+                  let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+                  if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
+                  return {
+                    id: b.id || null,
+                    name: b.name || 'Bounty',
+                    cost: bCost,
+                    tickets: b.tickets !== undefined ? b.tickets : (b.baseTickets || 0),
+                    completed: b.completed || b.checked,
+                    completedAt: b.completedAt || null,
+                    checked: b.completed || b.checked
+                  };
+                });
 
               const currentWeekChores = (vaultData.chores || []).map(c => ({
                 name: c.name || c.task || 'Chore',
@@ -127,12 +130,12 @@ export async function onRequest(context) {
             Object.values(vaultData.weeks).forEach(wk => {
               (wk.bounties || []).forEach(b => {
                 if (b.completed || b.checked) {
-                  totalTix += (b.tickets || 1);
+                  totalTix += (b.tickets || 0);
                   totalCost += (b.cost || 0);
                 }
               });
               (wk.chores || []).forEach(c => {
-                if (c.completed || c.checked) totalTix += (c.tickets || 1);
+                if (c.completed || c.checked) totalTix += (c.tickets || 0);
               });
             });
 
@@ -258,15 +261,19 @@ export async function onRequest(context) {
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
 
-      const incomingBounties = (body.bounties || []).map(b => ({
-        weekId: currentWeekId, 
-        name: b.name, 
-        cost: b.itemsCost || b.cost || 0,
-        tickets: b.baseTickets || b.tickets || 0, 
-        completed: b.completed, 
-        completedAt: b.completedAt || null,
-        checked: b.completed
-      }));
+      // Strictly save ticket bounties only (filter out coin-only bounties)
+      const incomingBounties = (body.bounties || [])
+        .filter(b => (b.baseTickets || b.tickets || 0) > 0)
+        .map(b => ({
+          id: b.id || null,
+          weekId: currentWeekId, 
+          name: b.name, 
+          cost: b.itemsCost || b.cost || 0,
+          tickets: b.baseTickets || b.tickets || 0, 
+          completed: b.completed, 
+          completedAt: b.completedAt || null,
+          checked: b.completed
+        }));
 
       const incomingChores = (body.chores || []).map(c => ({
         weekId: currentWeekId, 
@@ -334,7 +341,10 @@ export async function onRequest(context) {
           }
         });
         (wk.chores || []).forEach(c => {
-          if (c.completed || c.checked) totalTix += (c.tickets || 0);
+          if (c.completed || c.checked) {
+            totalTix += (c.tickets || 0);
+            totalCost += (c.cost || 0);
+          }
         });
       });
 
@@ -420,10 +430,12 @@ export async function onRequest(context) {
       }
     });
 
-    // Bounties Parser
+    // Bounties Parser (Strict Tickets Filter + Deduplication)
     const activeBounties = [];
+    const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
     const completedMap = {};
+
     if (Array.isArray(completedBountiesRaw)) {
       completedBountiesRaw.forEach(b => {
         if (typeof b === 'object' && b.id) {
@@ -438,8 +450,18 @@ export async function onRequest(context) {
     const rawBountyArray = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
 
     rawBountyArray.forEach(b => {
+      // 1. Calculate actual ticket rewards (strictly tickets, NO coins)
       let baseTicketCount = extractRewardTickets(b.reward) + extractRewardTickets(b.items);
-      if (baseTicketCount === 0) baseTicketCount = b.tickets || b.reward?.tickets || 1;
+      if (b.tickets && typeof b.tickets === 'number') baseTicketCount += b.tickets;
+      if (b.reward?.tickets && typeof b.reward.tickets === 'number') baseTicketCount += b.reward.tickets;
+
+      // STRICT FILTER: If it rewards 0 tickets (it only rewards coins/SFL), IGNORE IT!
+      if (baseTicketCount <= 0) return;
+
+      // 2. Prevent duplication by ID or Name + Level
+      const uniqueKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+      if (seenBountyKeys.has(uniqueKey)) return;
+      seenBountyKeys.add(uniqueKey);
 
       const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
@@ -454,7 +476,7 @@ export async function onRequest(context) {
       }
 
       activeBounties.push({ 
-        id: b.id, 
+        id: b.id || uniqueKey, 
         name: b.name, 
         level: b.level || null, 
         baseTickets: baseTicketCount, 
