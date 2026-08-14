@@ -273,6 +273,7 @@ export async function onRequest(context) {
         name: c.task || c.name, 
         npc: c.npc,
         tickets: c.baseTickets || c.tickets || 0, 
+        cost: c.itemsCost || c.cost || 0,
         completed: c.completed, 
         completedAt: c.completedAt || null,
         checked: c.completed
@@ -333,7 +334,10 @@ export async function onRequest(context) {
           }
         });
         (wk.chores || []).forEach(c => {
-          if (c.completed || c.checked) totalTix += (c.tickets || 0);
+          if (c.completed || c.checked) {
+            totalTix += (c.tickets || 0);
+            totalCost += (c.cost || 0);
+          }
         });
       });
 
@@ -414,21 +418,22 @@ export async function onRequest(context) {
           baseTickets: totalTickets, 
           isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, 
           completed: isCompleted,
-          completedAt: order.completedAt || null
+          completedAt: (typeof order.completedAt === 'number') ? order.completedAt : null
         });
       }
     });
 
-    // Bounties Parser (with completedMap to preserve completedAt timestamps)
+    // Bounties Parser (Only map valid numbers, NEVER fallback to Date.now())
     const activeBounties = [];
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
     const completedMap = {};
     if (Array.isArray(completedBountiesRaw)) {
       completedBountiesRaw.forEach(b => {
         if (typeof b === 'object' && b.id) {
-          completedMap[String(b.id)] = b.completedAt || b.claimedAt || Date.now();
+          const t = (typeof b.completedAt === 'number') ? b.completedAt : ((typeof b.claimedAt === 'number') ? b.claimedAt : null);
+          completedMap[String(b.id)] = t;
         } else if (b) {
-          completedMap[String(b)] = Date.now();
+          completedMap[String(b)] = null;
         }
       });
     }
@@ -441,7 +446,15 @@ export async function onRequest(context) {
 
       const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
-      const completionTime = b.completedAt || b.claimedAt || completedMap[String(b.id)] || null;
+      
+      let completionTime = null;
+      if (typeof b.completedAt === 'number') {
+        completionTime = b.completedAt;
+      } else if (typeof b.claimedAt === 'number') {
+        completionTime = b.claimedAt;
+      } else if (completedMap[String(b.id)]) {
+        completionTime = completedMap[String(b.id)];
+      }
 
       activeBounties.push({ 
         id: b.id, 
@@ -462,6 +475,9 @@ export async function onRequest(context) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
+      
+      const completionTime = (typeof details.completedAt === 'number') ? details.completedAt : null;
+
       return { 
         npc: details.npc || details.from || key, 
         task: details.name || details.description || key, 
@@ -469,7 +485,7 @@ export async function onRequest(context) {
         progress: currentProgress, 
         requirement, 
         completed: isCompleted,
-        completedAt: details.completedAt || null
+        completedAt: completionTime
       };
     });
 
