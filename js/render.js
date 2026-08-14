@@ -11,16 +11,20 @@ export function recalculateAll() {
   const logs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Category trackers for hover tooltips
+  // Track Tickets & Costs from inputs or saved vault
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
+  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
+
+  // Category totals for hover tooltips
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalChoreTix = 0;
-  let totalSflCostAll = 0;
+  let totalSflCostAll = trackCost;
 
   let weekDelivTix = 0;
   let weekBountyTix = 0;
   let weekChoreTix = 0;
-  let weekCostAll = 0;
+  let weekCostAll = trackCost;
 
   let todayDelivTix = 0;
   let todayBountyTix = 0;
@@ -104,7 +108,6 @@ export function recalculateAll() {
       weekBountyTix += finalTix;
       weekCostAll += bCost;
 
-      // Check if completed today via timestamp
       const isDoneToday = b.completedAt 
         ? (new Date(b.completedAt).toISOString().split('T')[0] === todayDateStr)
         : false;
@@ -126,7 +129,6 @@ export function recalculateAll() {
       totalChoreTix += finalTix;
       weekChoreTix += finalTix;
 
-      // Check if completed today via timestamp
       const isDoneToday = c.completedAt 
         ? (new Date(c.completedAt).toISOString().split('T')[0] === todayDateStr)
         : false;
@@ -137,7 +139,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Live Active Deliveries (check for live today progress)
+  // 3. Live Active Deliveries
   const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   sortedDeliveries.forEach(d => {
@@ -154,8 +156,8 @@ export function recalculateAll() {
     }
   });
 
-  const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix;
-  const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix;
+  const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix + trackTickets;
+  const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix;
 
   // 4. Render 4 Columns in DOM
@@ -296,7 +298,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // 5. Update Key Performance Metrics & Breakdowns
+  // 5. Update Metrics & Tooltip Values
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
@@ -310,14 +312,16 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Update Hover Tooltips Breakdowns
+  // Update Hover Tooltips Breakdowns with Track Tickets
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
+  setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
 
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
   setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
+  setElemText('tipWeekTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
 
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
