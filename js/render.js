@@ -7,11 +7,12 @@ export function recalculateAll() {
   const boostCount = getActiveBoostCount();
 
   const todayDateStr = new Date().toISOString().split('T')[0];
+  const localTodayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
   const currentWeekId = getMondayBasedWeekId();
   const logs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Track Tickets & Costs from inputs or saved vault
+  // Track Tickets & Costs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
@@ -34,7 +35,7 @@ export function recalculateAll() {
   // 1. Process Historical Daily Deliveries across logs
   logs.forEach(log => {
     const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === new Date().getFullYear().toString());
-    const isToday = log.date === todayDateStr;
+    const isToday = log.date === todayDateStr || log.date === localTodayStr;
 
     (log.deliveriesDone || []).forEach(item => {
       const isTicked = item.checked !== undefined ? item.checked : !!item.completed;
@@ -94,6 +95,14 @@ export function recalculateAll() {
     });
   });
 
+  // Helper to check if a completed task belongs to today
+  const checkIsToday = (completedAt) => {
+    if (!completedAt) return true; // Default to today if completed live but timestamp is missing
+    const isoDate = new Date(completedAt).toISOString().split('T')[0];
+    const locDate = new Date(completedAt).toLocaleDateString('en-CA');
+    return isoDate === todayDateStr || locDate === localTodayStr;
+  };
+
   // Current Week Bounties
   activeWeeklyBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
@@ -108,11 +117,7 @@ export function recalculateAll() {
       weekBountyTix += finalTix;
       weekCostAll += bCost;
 
-      const isDoneToday = b.completedAt 
-        ? (new Date(b.completedAt).toISOString().split('T')[0] === todayDateStr)
-        : false;
-
-      if (isDoneToday) {
+      if (checkIsToday(b.completedAt)) {
         todayBountyTix += finalTix;
         todayCostAll += bCost;
       }
@@ -125,16 +130,16 @@ export function recalculateAll() {
     if (isTicked) {
       const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
       const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+      const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
       totalChoreTix += finalTix;
       weekChoreTix += finalTix;
+      totalSflCostAll += cCost;
+      weekCostAll += cCost;
 
-      const isDoneToday = c.completedAt 
-        ? (new Date(c.completedAt).toISOString().split('T')[0] === todayDateStr)
-        : false;
-
-      if (isDoneToday) {
+      if (checkIsToday(c.completedAt)) {
         todayChoreTix += finalTix;
+        todayCostAll += cCost;
       }
     }
   });
@@ -143,12 +148,8 @@ export function recalculateAll() {
   const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   sortedDeliveries.forEach(d => {
-    if (d.completed) {
-      const isDoneToday = d.completedAt 
-        ? (new Date(d.completedAt).toISOString().split('T')[0] === todayDateStr) 
-        : true;
-
-      if (isDoneToday && todayDelivTix === 0) {
+    if (d.completed && todayDelivTix === 0) {
+      if (checkIsToday(d.completedAt)) {
         const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
         todayDelivTix += (d.baseTickets + deliveryAddon);
         todayCostAll += (d.itemsCost || 0);
@@ -178,7 +179,7 @@ export function recalculateAll() {
   const sortedAnimalBounties = [...animalBountiesRaw].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
   const sortedChores = [...(state.globalData.chores || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
-  // Render Deliveries
+  // Render Deliveries Column
   const deliveriesContainer = document.getElementById('deliveriesList');
   if (deliveriesContainer && state.globalData.deliveries) {
     setElemText('deliveriesCount', state.globalData.deliveries.length);
@@ -215,7 +216,7 @@ export function recalculateAll() {
     }).join('');
   }
 
-  // Render Regular Bounties
+  // Render Regular Bounties Column
   const bountiesContainer = document.getElementById('bountiesList');
   if (bountiesContainer) {
     setElemText('bountiesCount', sortedBounties.length);
@@ -246,7 +247,7 @@ export function recalculateAll() {
       }).join('');
   }
 
-  // Render Animal Bounties
+  // Render Animal Bounties Column
   const animalBountiesContainer = document.getElementById('animalBountiesList');
   if (animalBountiesContainer) {
     setElemText('animalBountiesCount', sortedAnimalBounties.length);
@@ -277,7 +278,7 @@ export function recalculateAll() {
       }).join('');
   }
 
-  // Render Chores
+  // Render Chores Column
   const choresContainer = document.getElementById('choresList');
   if (choresContainer && state.globalData.chores) {
     setElemText('choresCount', state.globalData.chores.length);
