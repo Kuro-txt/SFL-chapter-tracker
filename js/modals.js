@@ -181,11 +181,35 @@ export function openColumnHistoryModal(type) {
   const filterContainer = document.getElementById('editFilterContainer');
   const addContainer = document.getElementById('editAddContainer');
   const searchInput = document.getElementById('editSearchFilter');
+  const npcDropdown = document.getElementById('editNpcDropdown');
+
   if (searchInput) searchInput.value = '';
 
   if (type === 'delivery') {
     if (filterContainer) filterContainer.style.display = 'flex';
     if (addContainer) addContainer.style.display = 'none';
+
+    // Populate NPC Dropdown dynamically with all unique NPCs present in logs & live deliveries
+    if (npcDropdown) {
+      const npcSet = new Set();
+      const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
+      rawLogs.forEach(log => {
+        (log.deliveriesDone || []).forEach(d => {
+          const name = typeof d === 'string' ? d : (d.name || d.from);
+          if (name) npcSet.add(name.trim());
+        });
+      });
+      (state.globalData?.deliveries || []).forEach(d => {
+        const name = d.from || d.name;
+        if (name) npcSet.add(name.trim());
+      });
+
+      const sortedNpcs = Array.from(npcSet).sort((a, b) => a.localeCompare(b));
+      npcDropdown.innerHTML = '<option value="">👤 ALL NPCS</option>' + sortedNpcs.map(npc => 
+        `<option value="${npc.toLowerCase()}">${npc.toUpperCase()}</option>`
+      ).join('');
+      npcDropdown.value = '';
+    }
   } else {
     if (filterContainer) filterContainer.style.display = 'none';
     if (addContainer) addContainer.style.display = 'flex';
@@ -205,6 +229,7 @@ export function renderColumnHistoryModalList() {
   const boostCount = getActiveBoostCount();
   const vipBonus = getActiveVipBonus();
   const filterTerm = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
+  const selectedNpc = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
 
   let records = [];
 
@@ -221,7 +246,7 @@ export function renderColumnHistoryModalList() {
         const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
-        const itemName = typeof item === 'string' ? item : (item.name || 'NPC Delivery');
+        const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
         const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
         records.push({
@@ -239,10 +264,17 @@ export function renderColumnHistoryModalList() {
       });
     });
 
+    // 1. Dropdown Filter: Match selected NPC name
+    if (selectedNpc) {
+      records = records.filter(r => r.name.toLowerCase() === selectedNpc || r.name.toLowerCase().includes(selectedNpc));
+    }
+
+    // 2. Text Search: Match date, requested items, or search terms
     if (filterTerm) {
       records = records.filter(r => 
         r.name.toLowerCase().includes(filterTerm) ||
-        r.date.toLowerCase().includes(filterTerm)
+        r.date.toLowerCase().includes(filterTerm) ||
+        r.requestedItems.toLowerCase().includes(filterTerm)
       );
     }
   } else {
