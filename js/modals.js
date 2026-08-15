@@ -31,7 +31,6 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// Helper to format requested items string
 function formatRequestedItems(items) {
   if (!items) return '';
   if (Array.isArray(items)) {
@@ -46,18 +45,14 @@ function formatRequestedItems(items) {
   return String(items);
 }
 
-// Helper to extract or lookup animal level
 function resolveAnimalLevel(item) {
   if (item.level) return item.level;
   if (item.tier) return item.tier;
 
   const rawName = typeof item === 'string' ? item : (item.name || '');
-  
-  // Extract number from name if present (e.g. "Cow Lvl 3", "Level 2 Chicken", "Sheep (3)")
   const lvlMatch = rawName.match(/(?:lvl|level|#|\()\s*(\d+)/i);
   if (lvlMatch) return lvlMatch[1];
 
-  // Lookup in live globalData bounties
   if (state.globalData?.bounties) {
     const liveMatch = state.globalData.bounties.find(b => 
       (b.id && item.id && String(b.id) === String(item.id)) ||
@@ -179,6 +174,21 @@ export function openColumnHistoryModal(type) {
   if (type === 'chore') title = '🧹 CHORES EDIT / HISTORY';
   
   setElemText('columnHistoryTitle', title);
+
+  // Toggle filter bar visibility for Deliveries vs. Add Bar for others
+  const filterContainer = document.getElementById('editFilterContainer');
+  const addContainer = document.getElementById('editAddContainer');
+  const searchInput = document.getElementById('editSearchFilter');
+  if (searchInput) searchInput.value = '';
+
+  if (type === 'delivery') {
+    if (filterContainer) filterContainer.style.display = 'flex';
+    if (addContainer) addContainer.style.display = 'none';
+  } else {
+    if (filterContainer) filterContainer.style.display = 'none';
+    if (addContainer) addContainer.style.display = 'flex';
+  }
+
   renderColumnHistoryModalList();
   document.getElementById('columnHistoryModal').classList.add('show');
 }
@@ -192,8 +202,9 @@ export function renderColumnHistoryModalList() {
   const bodyEl = document.getElementById('columnHistoryBody');
   const boostCount = getActiveBoostCount();
   const vipBonus = getActiveVipBonus();
+  const filterTerm = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
 
-  const records = [];
+  let records = [];
 
   if (type === 'delivery') {
     const logs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
@@ -202,12 +213,13 @@ export function renderColumnHistoryModalList() {
         const baseTix = item.tickets !== undefined ? item.tickets : 2;
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
+        const itemName = typeof item === 'string' ? item : (item.name || 'NPC Delivery');
 
         records.push({
           logIdx,
           itemIdx,
           date: log.date || 'Past Run',
-          name: typeof item === 'string' ? item : (item.name || 'NPC Delivery'),
+          name: itemName,
           requestedItems: requestedStr,
           cost: item.cost || 0,
           displayTickets: finalTix,
@@ -217,11 +229,20 @@ export function renderColumnHistoryModalList() {
         });
       });
     });
+
+    // Apply Delivery Filter Bar search
+    if (filterTerm) {
+      records = records.filter(r => 
+        r.name.toLowerCase().includes(filterTerm) ||
+        r.date.toLowerCase().includes(filterTerm) ||
+        r.requestedItems.toLowerCase().includes(filterTerm) ||
+        r.status.toLowerCase().includes(filterTerm)
+      );
+    }
   } else {
     const currentWeekId = getMondayBasedWeekId();
     const weeks = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
     
-    // Ensure current week is populated from live globalData if empty
     if (!weeks[currentWeekId] && state.globalData) {
       weeks[currentWeekId] = {
         weekId: currentWeekId,
@@ -267,7 +288,7 @@ export function renderColumnHistoryModalList() {
   let totalTickedCost = 0;
 
   if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No past records found.</p>';
+    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No records found.</p>';
   } else {
     bodyEl.innerHTML = records.map(r => {
       if (r.checked) {
@@ -283,12 +304,10 @@ export function renderColumnHistoryModalList() {
         ? `deleteDeliveryLogItem(${r.logIdx}, ${r.itemIdx})`
         : `deleteWeeklyItem('${r.weekId}', ${r.itemIdx})`;
 
-      // Animal Level Tag badge
       const animalLevelTag = (type === 'animalBounty' && r.level) 
         ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
         : '';
 
-      // Requested Items Display for Deliveries
       const itemsRow = (type === 'delivery' && r.requestedItems) 
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
         : '';
@@ -411,43 +430,28 @@ export async function addCustomHistoryItem() {
   const inputTickets = parseInt(document.getElementById('addHistTickets').value) || 1;
   const cost = parseFloat(document.getElementById('addHistCost').value) || 0;
   const type = state.activeColumnType;
-  const todayDate = new Date().toISOString().split('T')[0];
   const currentWeekId = getMondayBasedWeekId();
 
   const boostCount = getActiveBoostCount();
-  const vipBonus = getActiveVipBonus();
 
-  if (type === 'delivery') {
-    if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
-    let targetLog = state.globalData.cloudHistory.logs.find(l => l.date === todayDate);
-    if (!targetLog) {
-      targetLog = { date: todayDate, weekId: currentWeekId, timestamp: new Date().toISOString(), ticketsSaved: 0, costSaved: 0, deliveriesDone: [] };
-      state.globalData.cloudHistory.logs.unshift(targetLog);
-    }
-    if (!targetLog.deliveriesDone) targetLog.deliveriesDone = [];
-    const baseTickets = Math.max(0, inputTickets - (vipBonus + boostCount));
-    targetLog.deliveriesDone.push({ name, cost, tickets: baseTickets, completed: true, checked: true });
-  } else {
-    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-    if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
-      state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
-    }
-    const targetArray = type === 'chore' ? 'chores' : 'bounties';
-    const baseTickets = Math.max(0, inputTickets - boostCount);
-    
-    // Extract level if user typed e.g. "Chicken Lvl 3"
-    const lvlMatch = name.match(/(?:lvl|level|#|\()\s*(\d+)/i);
-    const customLevel = lvlMatch ? lvlMatch[1] : null;
-
-    state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ 
-      name, 
-      level: customLevel, 
-      cost, 
-      tickets: baseTickets, 
-      completed: true, 
-      checked: true 
-    });
+  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+  if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
+    state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
   }
+  const targetArray = type === 'chore' ? 'chores' : 'bounties';
+  const baseTickets = Math.max(0, inputTickets - boostCount);
+  
+  const lvlMatch = name.match(/(?:lvl|level|#|\()\s*(\d+)/i);
+  const customLevel = lvlMatch ? lvlMatch[1] : null;
+
+  state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ 
+    name, 
+    level: customLevel, 
+    cost, 
+    tickets: baseTickets, 
+    completed: true, 
+    checked: true 
+  });
 
   renderColumnHistoryModalList();
   recalculateAll();
