@@ -44,7 +44,23 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // 1. Process Past Daily Deliveries from saved logs (Exclude today's date)
+  // Helper: Only items finished today with verified timestamp count for "Done Today"
+  const isWeeklyItemDoneToday = (item) => {
+    if (!isTicked(item)) return false;
+    if (item.completedAt) {
+      const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
+      if (!isNaN(ts) && ts > 0) {
+        const ms = ts < 1e11 ? ts * 1000 : ts;
+        const itemDate = new Date(ms);
+        const iso = itemDate.toISOString().split('T')[0];
+        const loc = itemDate.toLocaleDateString('en-CA');
+        return (iso === todayUtcStr || loc === localTodayStr);
+      }
+    }
+    return false;
+  };
+
+  // 1. Process Past Daily Deliveries from saved logs (Strictly exclude today's logs)
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
@@ -52,7 +68,7 @@ export function recalculateAll() {
     seenDates.add(rawDate);
 
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
-    if (isTodayLog) return; // Skip today's log to avoid duplicating live state
+    if (isTodayLog) return; // Skip today's log to prevent double-counting live state
 
     const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
@@ -90,53 +106,12 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process PRIOR Weeks ONLY (e.g. 2026-W32, not current 2026-W33)
-  Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return; // STRICT GUARD: Skip current week completely
-
-    (wk.bounties || []).forEach(b => {
-      if (isTicked(b)) {
-        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
-        if (baseTix <= 0) return;
-
-        const finalTix = baseTix + boostCount;
-        const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
-
-        totalBountyTix += finalTix;
-        totalSflCostAll += bCost;
-      }
-    });
-
-    (wk.chores || []).forEach(c => {
-      if (isTicked(c)) {
-        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
-        const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-        const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
-
-        totalChoreTix += finalTix;
-        totalSflCostAll += cCost;
-      }
-    });
-  });
-
-  // Helper: Only items finished today with verified timestamp count for "Done Today"
-  const isWeeklyItemDoneToday = (item) => {
-    if (!isTicked(item)) return false;
-    if (item.completedAt) {
-      const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
-      if (!isNaN(ts) && ts > 0) {
-        const ms = ts < 1e11 ? ts * 1000 : ts;
-        const itemDate = new Date(ms);
-        const iso = itemDate.toISOString().split('T')[0];
-        const loc = itemDate.toLocaleDateString('en-CA');
-        return (iso === todayUtcStr || loc === localTodayStr);
-      }
-    }
-    return false;
-  };
-
-  // 4. Process CURRENT Week Bounties (Single source of truth)
+  // 3. Process CURRENT Week Bounties (Primary Source)
+  const countedBountyKeys = new Set();
   (state.globalData.bounties || []).forEach(b => {
+    const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+    countedBountyKeys.add(key);
+
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       if (baseTix <= 0) return;
@@ -156,8 +131,12 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process CURRENT Week Chores (Single source of truth)
+  // 4. Process CURRENT Week Chores (Primary Source)
+  const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
+    const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+    countedChoreKeys.add(key);
+
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
@@ -173,6 +152,45 @@ export function recalculateAll() {
         todayCostAll += cCost;
       }
     }
+  });
+
+  // 5. Process PAST Weeks from KV (Guarded against ghost test duplicates)
+  Object.entries(weeks).forEach(([wkId, wk]) => {
+    if (wkId === currentWeekId) return;
+
+    (wk.bounties || []).forEach(b => {
+      const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+      // STRICT GUARD: Skip if this bounty is already on the active board
+      if (countedBountyKeys.has(key)) return;
+
+      if (isTicked(b)) {
+        countedBountyKeys.add(key);
+        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
+        if (baseTix <= 0) return;
+
+        const finalTix = baseTix + boostCount;
+        const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+
+        totalBountyTix += finalTix;
+        totalSflCostAll += bCost;
+      }
+    });
+
+    (wk.chores || []).forEach(c => {
+      const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+      // STRICT GUARD: Skip if this chore is already on the active board
+      if (countedChoreKeys.has(key)) return;
+
+      if (isTicked(c)) {
+        countedChoreKeys.add(key);
+        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
+        const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
+
+        totalChoreTix += finalTix;
+        totalSflCostAll += cCost;
+      }
+    });
   });
 
   // Calculate Cumulative Dashboard Totals
