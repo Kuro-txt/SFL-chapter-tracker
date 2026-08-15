@@ -339,11 +339,21 @@
           <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
+        <!-- Boosts & Daily Login Reward -->
         <div class="input-group" style="background:#FFFACD; padding:8px 12px; border:2px solid #D2691E; border-radius:8px;">
           <label style="color:#8B4513;">+1 BOOSTS:</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #1</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #2</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #3</label>
+          
+          <!-- Daily Login Tick & Count -->
+          <div style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
+            <label class="checkbox-label" style="padding: 3px 6px; font-size: 11px;" title="Check when you log in today to add +1 ticket">
+              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 14px; height: 14px;" />
+              🎁 LOGIN
+            </label>
+            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 50px; padding: 3px 5px; font-size: 11px; text-align: center;" title="Total Daily Login Tickets Collected" />
+          </div>
         </div>
 
         <!-- Manual Chapter Track Section -->
@@ -373,6 +383,7 @@
           <div id="tipTotalBounty">📜 Bounties: 0 Tix</div>
           <div id="tipTotalChore">🧹 Chores: 0 Tix</div>
           <div id="tipTotalTrack">🛤️ Track: 0 Tix</div>
+          <div id="tipTotalLogin">🎁 Daily Login: 0 Tix</div>
         </div>
         <div class="stat-title">🏆 TOTAL TICKETS COLLECTED</div>
         <div id="statTotalTickets" class="stat-val">0</div>
@@ -389,6 +400,7 @@
           <div id="tipWeekBounty">📜 Bounties: 0 Tix</div>
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
           <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
+          <div id="tipWeekLogin">🎁 Daily Login: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK'S PROGRESS</div>
         <div id="statWeekTickets" class="stat-val" style="color: #D2691E;">0 Tickets</div>
@@ -404,6 +416,7 @@
           <div id="tipTodayDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipTodayBounty">📜 Bounties: 0 Tix</div>
           <div id="tipTodayChore">🧹 Chores: 0 Tix</div>
+          <div id="tipTodayLogin">🎁 Daily Login: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #2E7D32;">✨ DONE TODAY</div>
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0 Tickets</div>
@@ -496,7 +509,14 @@
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">🌾 1. DAILY VS. WEEKLY RESETS</div>
+          <div class="guide-card-title">🎁 1. DAILY LOGIN REWARD (+1 TICKET)</div>
+          <div class="guide-card-text">
+            • Tick the <strong>🎁 LOGIN</strong> checkbox once each day to increment your total daily login tickets by +1. You can also manually adjust the count directly in the number box.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">🌾 2. DAILY VS. WEEKLY RESETS</div>
           <div class="guide-card-text">
             • <strong>NPC Deliveries</strong> reset daily. Any delivery completed today adds directly to <em>Done Today</em>, <em>This Week</em>, and <em>Total</em>.<br/>
             • <strong>Bounties & Chores</strong> reset weekly on Monday (00:00 UTC). Completed tasks remain tracked for the whole week.
@@ -504,7 +524,7 @@
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">👑 2. BOOSTS & VIP BONUSES</div>
+          <div class="guide-card-title">👑 3. BOOSTS & VIP BONUSES</div>
           <div class="guide-card-text">
             • <strong>VIP (+2)</strong>: Adds +2 bonus tickets to all NPC Deliveries.<br/>
             • <strong>+1 Boosts (#1-#3)</strong>: Adds +1 ticket per active booster across all deliveries, bounties, and chores.
@@ -512,16 +532,9 @@
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">🛤️ 3. CHAPTER TRACK INPUT</div>
+          <div class="guide-card-title">🛤️ 4. CHAPTER TRACK INPUT</div>
           <div class="guide-card-text">
-            • Enter the tickets and SFL cost you claimed from the chapter reward track into the <strong>🛤️ TRACK</strong> input. These are fixed rewards and will automatically save with your cloud vault.
-          </div>
-        </div>
-
-        <div class="guide-card">
-          <div class="guide-card-title">☁️ 4. SAVING & VAULT LOGS</div>
-          <div class="guide-card-text">
-            • Log in to your secure account and click <strong>☁️ SAVE IN CLOUD</strong> after finishing your tasks. It saves a historical snapshot of your daily progress and syncs your weekly totals.
+            • Enter the tickets and SFL cost you claimed from the chapter reward track into the <strong>🛤️ TRACK</strong> input.
           </div>
         </div>
       </div>
@@ -573,10 +586,10 @@
           <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
 
-        <!-- Filter & Search Bar (Active for Deliveries) -->
+        <!-- Filter Bar strictly by NPC name or Date -->
         <div id="editFilterContainer" style="display: none; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 8px;">
           <span style="font-size: 12px;">🔍</span>
-          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter deliveries by NPC name, date, or item..." style="flex: 1; padding: 6px 10px; font-size: 11px;" />
+          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter deliveries by NPC name or Date (YYYY-MM-DD)..." style="flex: 1; padding: 6px 10px; font-size: 11px;" />
         </div>
 
         <!-- Add Custom Bar (Active for Bounties & Chores) -->
