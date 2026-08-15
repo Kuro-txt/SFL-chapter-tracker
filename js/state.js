@@ -1,15 +1,15 @@
 export const state = {
   globalData: null,
+  currentVaultData: null,
   currentUser: null,
-  currentVaultData: { logs: [], cumulativeTickets: 0, cumulativeCost: 0, weeks: {}, trackTickets: 0, trackCost: 0, deliveries: [], bounties: [], chores: [] },
-  isFetchCooldown: false,
-  activeColumnType: null
+  activeColumnType: 'delivery',
+  isFetchCooldown: false
 };
 
 export function formatSFL(val) {
-  if (val === undefined || val === null || isNaN(val) || val === 0) return "0.00";
-  if (val < 0.01) return Number(val).toFixed(4);
-  return Number(val).toFixed(2);
+  const num = parseFloat(val);
+  if (isNaN(num)) return "0.00";
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function setElemText(id, text) {
@@ -18,22 +18,68 @@ export function setElemText(id, text) {
 }
 
 export function getActiveBoostCount() {
-  const b1 = document.getElementById('boost1')?.checked ? 1 : 0;
-  const b2 = document.getElementById('boost2')?.checked ? 1 : 0;
-  const b3 = document.getElementById('boost3')?.checked ? 1 : 0;
-  return b1 + b2 + b3;
+  let count = 0;
+  if (document.getElementById('boost1')?.checked) count++;
+  if (document.getElementById('boost2')?.checked) count++;
+  if (document.getElementById('boost3')?.checked) count++;
+  return count;
 }
 
 export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-export function getMondayBasedWeekId(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  d.setUTCDate(diff);
+export function getMondayBasedWeekId(dateObj = new Date()) {
+  const d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+
+export function getTodayDateString() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// Daily Login Handlers
+export function isLoginClaimedToday() {
+  const lastDate = localStorage.getItem('sfl_daily_login_last_date');
+  return lastDate === getTodayDateString();
+}
+
+export function initDailyLoginUI() {
+  const storedCount = localStorage.getItem('sfl_daily_login_count') || '0';
+  const countInput = document.getElementById('dailyLoginCount');
+  if (countInput) countInput.value = storedCount;
+
+  const checkInput = document.getElementById('dailyLoginCheck');
+  if (checkInput) checkInput.checked = isLoginClaimedToday();
+}
+
+export function handleDailyLoginToggle() {
+  const checkInput = document.getElementById('dailyLoginCheck');
+  const countInput = document.getElementById('dailyLoginCount');
+  if (!checkInput || !countInput) return;
+
+  let currentCount = parseInt(countInput.value) || 0;
+  const todayStr = getTodayDateString();
+
+  if (checkInput.checked) {
+    // If not already claimed today, increment by 1
+    if (localStorage.getItem('sfl_daily_login_last_date') !== todayStr) {
+      currentCount += 1;
+      countInput.value = currentCount;
+      localStorage.setItem('sfl_daily_login_count', currentCount);
+      localStorage.setItem('sfl_daily_login_last_date', todayStr);
+    }
+  } else {
+    // Unticking un-claims today's ticket
+    if (localStorage.getItem('sfl_daily_login_last_date') === todayStr) {
+      currentCount = Math.max(0, currentCount - 1);
+      countInput.value = currentCount;
+      localStorage.setItem('sfl_daily_login_count', currentCount);
+      localStorage.removeItem('sfl_daily_login_last_date');
+    }
+  }
 }

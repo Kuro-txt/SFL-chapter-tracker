@@ -1,12 +1,12 @@
 import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
 import { recalculateAll } from './render.js';
 
-// Auto-sync any modifications in the Edit Modal directly to Cloud KV
 export async function syncCurrentVaultToCloud() {
   if (!state.currentUser || !state.globalData?.cloudHistory) return;
   try {
     const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
     const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
 
     const response = await fetch('/api/chapter?action=saveVault', {
       method: 'POST',
@@ -15,6 +15,7 @@ export async function syncCurrentVaultToCloud() {
         username: state.currentUser,
         trackTickets,
         trackCost,
+        dailyLoginTickets,
         logs: state.globalData.cloudHistory.logs || [],
         bounties: state.globalData.bounties || [],
         chores: state.globalData.chores || [],
@@ -175,7 +176,6 @@ export function openColumnHistoryModal(type) {
   
   setElemText('columnHistoryTitle', title);
 
-  // Toggle filter bar visibility for Deliveries vs. Add Bar for others
   const filterContainer = document.getElementById('editFilterContainer');
   const addContainer = document.getElementById('editAddContainer');
   const searchInput = document.getElementById('editSearchFilter');
@@ -230,13 +230,11 @@ export function renderColumnHistoryModalList() {
       });
     });
 
-    // Apply Delivery Filter Bar search
+    // STRICT FILTER: Match ONLY NPC Name or Date
     if (filterTerm) {
       records = records.filter(r => 
         r.name.toLowerCase().includes(filterTerm) ||
-        r.date.toLowerCase().includes(filterTerm) ||
-        r.requestedItems.toLowerCase().includes(filterTerm) ||
-        r.status.toLowerCase().includes(filterTerm)
+        r.date.toLowerCase().includes(filterTerm)
       );
     }
   } else {
