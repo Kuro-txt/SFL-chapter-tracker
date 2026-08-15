@@ -50,7 +50,6 @@ export async function onRequest(context) {
             if (!vaultData.logs) vaultData.logs = [];
             if (!vaultData.weeks) vaultData.weeks = {};
 
-            // STRICT ONCE-PER-DAY AUTO-INCREMENT: Add +1 daily login ticket if not logged yet today
             if (vaultData.lastDailyLoginDate !== todayDate) {
               vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
               vaultData.lastDailyLoginDate = todayDate;
@@ -72,7 +71,8 @@ export async function onRequest(context) {
                     tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
                     completed: isCompleted,
                     completedAt: b.completedAt || null,
-                    checked: isCompleted
+                    checked: isCompleted,
+                    checkedToday: b.checkedToday || false
                   };
                 });
 
@@ -88,7 +88,8 @@ export async function onRequest(context) {
                   cost: c.cost !== undefined ? c.cost : (c.itemsCost || 0),
                   completed: isCompleted,
                   completedAt: c.completedAt || null,
-                  checked: isCompleted
+                  checked: isCompleted,
+                  checkedToday: c.checkedToday || false
                 };
               });
 
@@ -406,7 +407,7 @@ export async function onRequest(context) {
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (b.baseTickets || b.tickets || 0);
+            totalTix += (c.baseTickets || c.tickets || 0);
           }
         });
       });
@@ -497,7 +498,7 @@ export async function onRequest(context) {
       }
     });
 
-    // Clean Bounties Parser (Never auto-assign today's timestamp to pre-completed weekly bounties)
+    // Clean Bounties Parser
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
