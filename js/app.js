@@ -19,7 +19,7 @@ import {
 import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
-// Expose handlers to window for inline HTML events
+// Explicitly expose handlers to window for inline HTML events
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
