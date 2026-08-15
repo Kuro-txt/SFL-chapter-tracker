@@ -71,7 +71,7 @@ export async function onRequest(context) {
                     baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
                     tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
                     completed: isCompleted,
-                    completedAt: b.completedAt || (isCompleted ? Date.now() : null),
+                    completedAt: b.completedAt || null,
                     checked: isCompleted
                   };
                 });
@@ -87,7 +87,7 @@ export async function onRequest(context) {
                   tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
                   cost: c.cost !== undefined ? c.cost : (c.itemsCost || 0),
                   completed: isCompleted,
-                  completedAt: c.completedAt || (isCompleted ? Date.now() : null),
+                  completedAt: c.completedAt || null,
                   checked: isCompleted
                 };
               });
@@ -155,7 +155,6 @@ export async function onRequest(context) {
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   totalTix += (c.baseTickets || c.tickets || 0);
-                  totalCost += (c.cost || 0);
                 }
               });
             });
@@ -290,7 +289,6 @@ export async function onRequest(context) {
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
       
-      // Auto-increment login ticket once per day
       if (body.dailyLoginTickets !== undefined) {
         existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets) || 0;
       }
@@ -313,8 +311,9 @@ export async function onRequest(context) {
             baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
             tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0), 
             completed: isDone, 
-            completedAt: b.completedAt || (isDone ? Date.now() : null),
-            checked: isDone
+            completedAt: b.completedAt || null,
+            checked: isDone,
+            checkedToday: b.checkedToday || false
           };
         });
 
@@ -330,8 +329,9 @@ export async function onRequest(context) {
           tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1), 
           cost: c.itemsCost || c.cost || 0,
           completed: isDone, 
-          completedAt: c.completedAt || (isDone ? Date.now() : null),
-          checked: isDone
+          completedAt: c.completedAt || null,
+          checked: isDone,
+          checkedToday: c.checkedToday || false
         };
       });
 
@@ -406,8 +406,7 @@ export async function onRequest(context) {
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (c.baseTickets || c.tickets || 0);
-            totalCost += (c.cost || 0);
+            totalTix += (b.baseTickets || b.tickets || 0);
           }
         });
       });
@@ -498,7 +497,7 @@ export async function onRequest(context) {
       }
     });
 
-    // Clean Bounties Parser
+    // Clean Bounties Parser (Never auto-assign today's timestamp to pre-completed weekly bounties)
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -539,8 +538,6 @@ export async function onRequest(context) {
         completionTime = b.claimedAt;
       } else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) {
         completionTime = completedMap[String(b.id)];
-      } else if (isCompleted) {
-        completionTime = Date.now();
       }
 
       activeBounties.push({ 
@@ -552,7 +549,7 @@ export async function onRequest(context) {
         completed: isCompleted,
         checked: isCompleted,
         completedAt: completionTime,
-        completedToday: isCompleted
+        checkedToday: false
       });
     });
 
@@ -564,7 +561,7 @@ export async function onRequest(context) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      const completionTime = (typeof details.completedAt === 'number') ? details.completedAt : (isCompleted ? Date.now() : null);
+      const completionTime = (typeof details.completedAt === 'number') ? details.completedAt : null;
       const taskLabel = details.name || details.description || key;
 
       return { 
@@ -577,7 +574,7 @@ export async function onRequest(context) {
         completed: isCompleted,
         checked: isCompleted,
         completedAt: completionTime,
-        completedToday: isCompleted
+        checkedToday: false
       };
     });
 
