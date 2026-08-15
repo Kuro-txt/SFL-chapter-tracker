@@ -1,4 +1,4 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
+import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isAnimalBounty } from './state.js';
 import { recalculateAll } from './render.js';
 
 export async function syncCurrentVaultToCloud() {
@@ -116,8 +116,7 @@ export function openCategorySummaryModal(cat) {
     titleEl.textContent = isAnimal ? '🐄 ANIMAL BOUNTIES OVERVIEW' : '📜 BOUNTIES OVERVIEW';
     
     const filteredBounties = (state.globalData.bounties || []).filter(b => {
-      const n = (b.name || '').toLowerCase();
-      const checkAnimal = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      const checkAnimal = isAnimalBounty(b);
       return isAnimal ? checkAnimal : !checkAnimal;
     });
 
@@ -256,8 +255,7 @@ export function renderColumnHistoryModalList() {
       listSource = state.globalData?.chores || [];
     } else {
       listSource = (state.globalData?.bounties || []).filter(b => {
-        const n = (b.name || '').toLowerCase();
-        const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+        const animalCheck = isAnimalBounty(b);
         return isAnimal ? animalCheck : !animalCheck;
       });
     }
@@ -367,8 +365,7 @@ export async function toggleWeeklyItemCheck(weekId, itemIdx) {
   } else {
     const isAnimal = type === 'animalBounty';
     const bounties = (state.globalData?.bounties || []).filter(b => {
-      const n = (b.name || '').toLowerCase();
-      const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      const animalCheck = isAnimalBounty(b);
       return isAnimal ? animalCheck : !animalCheck;
     });
     targetItem = bounties?.[itemIdx];
@@ -379,7 +376,6 @@ export async function toggleWeeklyItemCheck(weekId, itemIdx) {
     targetItem.checked = newStatus;
     targetItem.completed = newStatus;
 
-    // Sync state to Cloud History structure
     if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
     if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
     if (!state.globalData.cloudHistory.weeks[weekId]) {
@@ -418,8 +414,7 @@ export async function updateHistoryItemTickets(idKey, itemIdx, val) {
     } else {
       const isAnimal = type === 'animalBounty';
       const bounties = (state.globalData?.bounties || []).filter(b => {
-        const n = (b.name || '').toLowerCase();
-        const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+        const animalCheck = isAnimalBounty(b);
         return isAnimal ? animalCheck : !animalCheck;
       });
       if (bounties?.[itemIdx]) {
@@ -452,8 +447,7 @@ export async function updateHistoryItemCost(idKey, itemIdx, val) {
   } else {
     const isAnimal = type === 'animalBounty';
     const bounties = (state.globalData?.bounties || []).filter(b => {
-      const n = (b.name || '').toLowerCase();
-      const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      const animalCheck = isAnimalBounty(b);
       return isAnimal ? animalCheck : !animalCheck;
     });
     if (bounties?.[itemIdx]) {
@@ -477,8 +471,7 @@ export async function deleteWeeklyItem(weekId, itemIdx) {
     let count = 0;
     const all = state.globalData?.bounties || [];
     for (let i = 0; i < all.length; i++) {
-      const n = (all[i].name || '').toLowerCase();
-      const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      const animalCheck = isAnimalBounty(all[i]);
       if ((isAnimal && animalCheck) || (!isAnimal && !animalCheck)) {
         if (count === itemIdx) {
           all.splice(i, 1);
