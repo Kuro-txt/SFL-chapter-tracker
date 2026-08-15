@@ -14,7 +14,7 @@ export function recalculateAll() {
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Track & Login Inputs (Added exactly once to totals)
+  // Track & Login Inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
@@ -38,7 +38,14 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
-  // 1. Process PAST Daily Deliveries from saved history logs (strictly excluding today to prevent double-counting)
+  // Strict helper: Is an item completed/claimed?
+  const isItemCompleted = (item) => {
+    if (!item) return false;
+    if (item.checked !== undefined) return Boolean(item.checked);
+    return Boolean(item.completed);
+  };
+
+  // 1. Process PAST Daily Deliveries from saved history logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
@@ -46,13 +53,12 @@ export function recalculateAll() {
     seenDates.add(rawDate);
 
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
-    if (isTodayLog) return; // Skip today's log here; today's deliveries are processed from live state below
+    if (isTodayLog) return; // Skip today's log; handled live below
 
     const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
     (log.deliveriesDone || []).forEach(item => {
-      const isTicked = item.checked !== undefined ? item.checked : !!item.completed;
-      if (isTicked) {
+      if (isItemCompleted(item)) {
         const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets !== undefined ? item.tickets : 2);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const itemCost = item.cost || 0;
@@ -68,9 +74,9 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process TODAY'S Live Deliveries (Counted exactly once)
+  // 2. Process TODAY'S Live Deliveries
   (state.globalData.deliveries || []).forEach(d => {
-    if (d.completed) {
+    if (isItemCompleted(d)) {
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       const finalTix = d.baseTickets + deliveryAddon;
       const dCost = d.itemsCost || 0;
@@ -87,11 +93,10 @@ export function recalculateAll() {
 
   // 3. Process PAST Weeks (Historical Bounties & Chores from prior weeks)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return; // Skip current week to avoid duplicating with current live week below
+    if (wkId === currentWeekId) return; // Skip current week to prevent duplicate addition
 
     (wk.bounties || []).forEach(b => {
-      const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
-      if (isTicked) {
+      if (isItemCompleted(b)) {
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
         if (baseTix <= 0) return;
 
@@ -104,8 +109,7 @@ export function recalculateAll() {
     });
 
     (wk.chores || []).forEach(c => {
-      const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
-      if (isTicked) {
+      if (isItemCompleted(c)) {
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -116,7 +120,7 @@ export function recalculateAll() {
     });
   });
 
-  // 4. Process CURRENT Week Bounties & Chores (Deduplicated & Merged)
+  // 4. Process CURRENT Week Bounties & Chores
   const seenWeekBountyKeys = new Set();
   const currentWeekBounties = (state.globalData.bounties || [])
     .filter(liveB => {
@@ -135,7 +139,8 @@ export function recalculateAll() {
       );
       return {
         ...liveB,
-        checked: saved?.checked !== undefined ? saved.checked : liveB.completed,
+        completed: liveB.completed || false,
+        checked: saved?.checked !== undefined ? saved.checked : (saved?.completed !== undefined ? saved.completed : liveB.completed),
         cost: saved?.cost !== undefined ? saved.cost : liveB.itemsCost,
         baseTickets: saved?.baseTickets !== undefined ? saved.baseTickets : (saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets),
         completedAt: liveB.completedAt || saved?.completedAt || null
@@ -154,7 +159,8 @@ export function recalculateAll() {
       const saved = (weeks[currentWeekId]?.chores || []).find(sc => (sc.task || sc.name || '').toLowerCase() === (liveC.task || liveC.name || '').toLowerCase());
       return {
         ...liveC,
-        checked: saved?.checked !== undefined ? saved.checked : liveC.completed,
+        completed: liveC.completed || false,
+        checked: saved?.checked !== undefined ? saved.checked : (saved?.completed !== undefined ? saved.completed : liveC.completed),
         cost: saved?.cost !== undefined ? saved.cost : (liveC.itemsCost || 0),
         baseTickets: saved?.baseTickets !== undefined ? saved.baseTickets : (saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets),
         completedAt: liveC.completedAt || saved?.completedAt || null
@@ -162,7 +168,7 @@ export function recalculateAll() {
     });
 
   const isWeeklyItemDoneToday = (item) => {
-    if (!item || (!item.completed && !item.checked)) return false;
+    if (!isItemCompleted(item)) return false;
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -176,9 +182,9 @@ export function recalculateAll() {
     return false;
   };
 
+  // ONLY count completed/ticked bounties
   currentWeekBounties.forEach(b => {
-    const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
-    if (isTicked) {
+    if (isItemCompleted(b)) {
       const baseTix = b.baseTickets || 0;
       if (baseTix <= 0) return;
 
@@ -197,9 +203,9 @@ export function recalculateAll() {
     }
   });
 
+  // ONLY count completed/ticked chores
   currentWeekChores.forEach(c => {
-    const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
-    if (isTicked) {
+    if (isItemCompleted(c)) {
       const baseTix = c.baseTickets || 1;
       const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -221,7 +227,7 @@ export function recalculateAll() {
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix + todayLoginTickets;
 
-  // 5. Update Overview Card Counts
+  // 5. Update Overview Card Counts (Shows total available board count)
   const regularBounties = currentWeekBounties.filter(b => {
     const n = (b.name || '').toLowerCase();
     return !(n.includes('chicken') || n.includes('cow') || n.includes('sheep'));
