@@ -18,7 +18,7 @@ export function recalculateAll() {
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
-  // Category trackers for metrics and hover tooltips
+  // Category trackers
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalChoreTix = 0;
@@ -34,6 +34,7 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
+  // Strict check: Weekly items ONLY count for Today if an explicit timestamp proves it was finished today
   const isDoneToday = (item, category) => {
     if (!item || (!item.completed && !item.checked)) return false;
 
@@ -48,18 +49,13 @@ export function recalculateAll() {
       }
     }
 
-    const prevLogs = logs.filter(l => l.date && l.date !== todayDateStr && l.date !== localTodayStr && l.weekId === currentWeekId);
-    const wasDoneInPrevLog = prevLogs.some(l => {
-      const list = category === 'bounty' ? (l.bountiesDone || []) : (l.choresDone || l.deliveriesDone || []);
-      return list.some(past => {
-        const pastName = (typeof past === 'string' ? past : (past.name || past.npc || past.task || '')).toLowerCase().trim();
-        const curName = (item.name || item.task || item.npc || item.from || '').toLowerCase().trim();
-        return pastName === curName && (past.completed || past.checked);
-      });
-    });
+    // Deliveries reset daily, so checked active deliveries are for today
+    if (category === 'delivery') {
+      return true;
+    }
 
-    if (wasDoneInPrevLog) return false;
-    return true;
+    // Weekly bounties and chores do NOT default to today without a proven today's timestamp
+    return false;
   };
 
   // 1. Process Historical Daily Deliveries across logs
@@ -97,7 +93,7 @@ export function recalculateAll() {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
       if (isTicked) {
         const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 0);
-        if (baseTix <= 0) return; // Skip coin bounties
+        if (baseTix <= 0) return;
 
         const finalTix = baseTix + boostCount;
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -120,15 +116,15 @@ export function recalculateAll() {
     });
   });
 
-  // 3. Process Current Week Bounties & Chores (Deduplicated & Ticket Bounties Only)
+  // 3. Process Current Week Bounties & Chores
   const seenWeekBountyKeys = new Set();
   const currentWeekBounties = (state.globalData.bounties || [])
     .filter(liveB => {
       const tix = liveB.baseTickets || 0;
-      if (tix <= 0) return false; // Strictly tickets only
+      if (tix <= 0) return false;
 
       const key = liveB.id ? String(liveB.id) : `${(liveB.name || '').toLowerCase()}_${liveB.level || 0}`;
-      if (seenWeekBountyKeys.has(key)) return false; // Deduplicate
+      if (seenWeekBountyKeys.has(key)) return false;
       seenWeekBountyKeys.add(key);
       return true;
     })
@@ -141,7 +137,8 @@ export function recalculateAll() {
         ...liveB,
         checked: saved?.checked !== undefined ? saved.checked : liveB.completed,
         cost: saved?.cost !== undefined ? saved.cost : liveB.itemsCost,
-        tickets: saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets
+        tickets: saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets,
+        completedAt: liveB.completedAt || saved?.completedAt || null
       };
     });
 
@@ -159,7 +156,8 @@ export function recalculateAll() {
         ...liveC,
         checked: saved?.checked !== undefined ? saved.checked : liveC.completed,
         cost: saved?.cost !== undefined ? saved.cost : (liveC.itemsCost || 0),
-        tickets: saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets
+        tickets: saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets,
+        completedAt: liveC.completedAt || saved?.completedAt || null
       };
     });
 
@@ -168,7 +166,7 @@ export function recalculateAll() {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
       const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 0);
-      if (baseTix <= 0) return; // Skip coin bounties
+      if (baseTix <= 0) return;
 
       const finalTix = baseTix + boostCount;
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -206,18 +204,18 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process Live Active Deliveries for Today
+  // 4. Process Live Active Deliveries for Today (if not already counted in logs)
   const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
-  sortedDeliveries.forEach(d => {
-    if (d.completed && todayDelivTix === 0) {
-      if (isDoneToday(d, 'delivery')) {
+  if (todayDelivTix === 0) {
+    sortedDeliveries.forEach(d => {
+      if (d.completed) {
         const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
         todayDelivTix += (d.baseTickets + deliveryAddon);
         todayCostAll += (d.itemsCost || 0);
       }
-    }
-  });
+    });
+  }
 
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix + trackTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets;
@@ -253,7 +251,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Update Hover Tooltips Breakdowns
+  // Tooltips
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
@@ -268,7 +266,7 @@ export function recalculateAll() {
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
-  // Target Goal Calculator
+  // Goal Calculator
   const targetGoal = parseInt(document.getElementById('targetGoalInput').value) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput').value) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);

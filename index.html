@@ -560,7 +560,7 @@
     </div>
   </div>
 
-  <!-- Column History Modal -->
+  <!-- Column History / Edit Modal -->
   <div id="columnHistoryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -573,7 +573,14 @@
           <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
 
-        <div style="display: flex; gap: 8px; align-items: center; background: #F4ECF7; padding: 10px; border: 2px solid #8E44AD; border-radius: 8px;">
+        <!-- Filter & Search Bar (Active for Deliveries) -->
+        <div id="editFilterContainer" style="display: none; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 8px;">
+          <span style="font-size: 12px;">🔍</span>
+          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter deliveries by NPC name, date, or item..." style="flex: 1; padding: 6px 10px; font-size: 11px;" />
+        </div>
+
+        <!-- Add Custom Bar (Active for Bounties & Chores) -->
+        <div id="editAddContainer" style="display: flex; gap: 8px; align-items: center; background: #F4ECF7; padding: 10px; border: 2px solid #8E44AD; border-radius: 8px;">
           <input type="text" id="addHistName" placeholder="Name/Task" style="flex: 2;" />
           <input type="number" step="0.01" id="addHistCost" placeholder="SFL Cost" style="width: 80px;" value="0.00" />
           <input type="number" id="addHistTickets" placeholder="Tickets" style="width: 70px;" value="1" />
