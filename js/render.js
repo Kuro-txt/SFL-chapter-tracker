@@ -47,14 +47,10 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // STRICT Done-Today Check for Bounties & Chores
   const isWeeklyItemDoneToday = (item) => {
     if (!isTicked(item)) return false;
-    
-    // 1. If explicitly checked off in the modal today, count it
     if (item.checkedToday === true) return true;
     
-    // 2. If it has a verified timestamp matching today's date, count it
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -65,8 +61,6 @@ export function recalculateAll() {
         return (iso === todayUtcStr || loc === localTodayStr);
       }
     }
-    
-    // 3. Otherwise, do NOT count live board completed items toward "Done Today" unless explicitly ticked today
     return false;
   };
 
@@ -78,7 +72,7 @@ export function recalculateAll() {
     seenDates.add(rawDate);
 
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
-    if (isTodayLog) return; // Exclude today's logs to prevent duplicating live state
+    if (isTodayLog) return;
 
     const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
@@ -126,7 +120,7 @@ export function recalculateAll() {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       if (baseTix <= 0) return;
 
-      const finalTix = baseTix + boostCount;
+      const finalTix = baseTix + boostCount; // Bounties get boost only
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
 
@@ -152,7 +146,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process CURRENT Week Chores
+  // 4. Process CURRENT Week Chores (Chores now receive VIP + Boost)
   const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -160,7 +154,7 @@ export function recalculateAll() {
 
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+      const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
       totalChoreTix += finalTix;
@@ -209,7 +203,7 @@ export function recalculateAll() {
       if (isTicked(c)) {
         countedChoreKeys.add(key);
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
-        const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+        const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
