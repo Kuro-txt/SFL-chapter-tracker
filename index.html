@@ -260,7 +260,7 @@
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
       width: 100%;
-      max-width: 600px;
+      max-width: 620px;
       max-height: 85vh;
       border-radius: 12px;
       display: flex;
@@ -491,6 +491,7 @@
     </div>
   </div>
 
+  <!-- Comprehensive Guide Modal -->
   <div id="guideModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -499,39 +500,45 @@
       </div>
       <div class="modal-body">
         <div class="guide-card" style="background:#E8F5E9; border-color:#2E7D32;">
-          <div class="guide-card-title" style="color:#1B5E20;">💾 IMPORTANT: SAVE BEFORE CLOSING</div>
+          <div class="guide-card-title" style="color:#1B5E20;">💾 1. SAVE BEFORE CLOSING</div>
           <div class="guide-card-text">
             • Always click <strong>☁️ SAVE IN CLOUD</strong> before you close your browser tab or shut down your PC. This writes your latest daily delivery snapshot and weekly tasks into your permanent cloud vault.
           </div>
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">🎁 1. DAILY LOGIN REWARD (+1 TICKET)</div>
+          <div class="guide-card-title">📦 2. STACKED SAME-DAY DELIVERIES</div>
           <div class="guide-card-text">
-            • Your daily login ticket auto-increments by +1 once every calendar day. You can also manually adjust the count directly in the number box.
+            • If you complete yesterday's saved delivery and today's new delivery from the same NPC on the same day, open <strong>📦 NPC DELIVERIES > EDIT</strong> and tick the extra order so all tickets count.
           </div>
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">🌾 2. DAILY VS. WEEKLY RESETS</div>
+          <div class="guide-card-title">⚡ 3. 2x DOUBLE DELIVERY EVENTS</div>
           <div class="guide-card-text">
-            • <strong>NPC Deliveries</strong> reset daily. Any delivery completed today adds directly to <em>Done Today</em>, <em>This Week</em>, and <em>Total</em>.<br/>
-            • <strong>Bounties & Chores</strong> reset weekly on Monday (00:00 UTC). Completed tasks remain tracked for the whole week.
+            • During double delivery events, game APIs often report standard base ticket rewards. Open <strong>📦 NPC DELIVERIES > EDIT</strong> and manually increase the <strong>Tix</strong> number field to match the double reward.
           </div>
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">👑 3. BOOSTS & VIP BONUSES</div>
+          <div class="guide-card-title">🛤️ 4. CHAPTER TRACK & MANUAL ADJUSTMENTS</div>
+          <div class="guide-card-text">
+            • Use the <strong>🛤️ TRACK</strong> section on the dashboard to log tickets and SFL spent on the chapter reward track, or to adjust for any missed tickets, price mismatches, or special event items.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">🎁 5. DAILY LOGIN REWARD (+1 TICKET)</div>
+          <div class="guide-card-text">
+            • Your daily login ticket auto-increments by +1 once every calendar day when you visit the site or via the automated 23:00 UTC server cron. You can also manually adjust the count directly in the number box.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">👑 6. BOOSTS & VIP BONUSES</div>
           <div class="guide-card-text">
             • <strong>VIP (+2)</strong>: Adds +2 bonus tickets to all NPC Deliveries.<br/>
             • <strong>+1 Boosts (#1-#3)</strong>: Adds +1 ticket per active booster across all deliveries, bounties, and chores.
-          </div>
-        </div>
-
-        <div class="guide-card">
-          <div class="guide-card-title">🛤️ 4. CHAPTER TRACK & MANUAL ADJUSTMENT</div>
-          <div class="guide-card-text">
-            • Enter chapter track rewards or any missed/mismatched tickets and SFL cost into the <strong>🛤️ TRACK</strong> input to keep your totals 100% accurate.
           </div>
         </div>
       </div>
