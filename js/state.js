@@ -42,19 +42,29 @@ export function getTodayDateString() {
   return new Date().toISOString().split('T')[0];
 }
 
-// Daily Login Handlers
 export function isLoginClaimedToday() {
   const lastDate = localStorage.getItem('sfl_daily_login_last_date');
   return lastDate === getTodayDateString();
 }
 
-export function initDailyLoginUI() {
-  const storedCount = localStorage.getItem('sfl_daily_login_count') || '0';
+// Strictly increments once per calendar day (never on every save or refresh)
+export function checkAndAutoClaimDailyLogin() {
+  const todayStr = getTodayDateString();
+  const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
+  let currentCount = parseInt(localStorage.getItem('sfl_daily_login_count')) || 0;
+
+  // New day check: only increments if today's date hasn't been claimed yet
+  if (lastClaimed !== todayStr) {
+    currentCount += 1;
+    localStorage.setItem('sfl_daily_login_count', currentCount);
+    localStorage.setItem('sfl_daily_login_last_date', todayStr);
+  }
+
   const countInput = document.getElementById('dailyLoginCount');
-  if (countInput) countInput.value = storedCount;
+  if (countInput) countInput.value = currentCount;
 
   const checkInput = document.getElementById('dailyLoginCheck');
-  if (checkInput) checkInput.checked = isLoginClaimedToday();
+  if (checkInput) checkInput.checked = true;
 }
 
 export function handleDailyLoginToggle() {
@@ -66,7 +76,6 @@ export function handleDailyLoginToggle() {
   const todayStr = getTodayDateString();
 
   if (checkInput.checked) {
-    // If not already claimed today, increment by 1
     if (localStorage.getItem('sfl_daily_login_last_date') !== todayStr) {
       currentCount += 1;
       countInput.value = currentCount;
@@ -74,7 +83,6 @@ export function handleDailyLoginToggle() {
       localStorage.setItem('sfl_daily_login_last_date', todayStr);
     }
   } else {
-    // Unticking un-claims today's ticket
     if (localStorage.getItem('sfl_daily_login_last_date') === todayStr) {
       currentCount = Math.max(0, currentCount - 1);
       countInput.value = currentCount;
