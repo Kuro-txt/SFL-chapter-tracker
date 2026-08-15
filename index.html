@@ -249,7 +249,7 @@
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
       width: 100%;
-      max-width: 560px;
+      max-width: 600px;
       max-height: 85vh;
       border-radius: 12px;
       display: flex;
@@ -288,18 +288,15 @@
 <body>
 
   <div class="wrapper">
-    <!-- Header -->
     <header>
       <h1>🌻 SUNFLOWER LAND CHAPTER TRACKER</h1>
       <p>Harvest Tickets & Chapter End Goal Calculator</p>
     </header>
 
-    <!-- Reminder Banner -->
     <div class="tip-banner">
       <span>💡 <strong>FARMER'S TIP:</strong> Always click <strong style="color: #2E7D32;">"☁️ SAVE IN CLOUD"</strong> before closing your browser or shutting down to keep your daily snapshot synced!</span>
     </div>
 
-    <!-- Account Bar -->
     <div class="panel" style="padding: 10px 16px; background: #FFFACD;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
@@ -317,7 +314,6 @@
       </div>
     </div>
 
-    <!-- Controls Panel -->
     <div class="panel">
       <div class="controls-row">
         <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
@@ -334,14 +330,12 @@
           <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
-        <!-- Boosts & Daily Login Reward -->
         <div class="input-group" style="background:#FFFACD; padding:8px 12px; border:2px solid #D2691E; border-radius:8px;">
           <label style="color:#8B4513;">+1 BOOSTS:</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #1</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #2</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #3</label>
           
-          <!-- Daily Login Tick & Count -->
           <div style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
             <label class="checkbox-label" style="padding: 3px 6px; font-size: 11px;" title="Auto-increments +1 ticket every calendar day">
               <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 14px; height: 14px;" />
@@ -351,7 +345,6 @@
           </div>
         </div>
 
-        <!-- Manual Chapter Track Section -->
         <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:8px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
           <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">Tix:</label>
@@ -369,7 +362,6 @@
       </div>
     </div>
 
-    <!-- 4-Box Key Performance Metrics Dashboard -->
     <div class="stats-grid">
       <div id="boxTotalTickets" class="stat-box">
         <div class="tooltip" id="tooltipTotal">
@@ -439,9 +431,7 @@
       </div>
     </div>
 
-    <!-- Category Overview Navigation Cards -->
     <div class="overview-grid">
-      <!-- NPC Deliveries -->
       <div class="overview-card">
         <div class="overview-header">
           <span>📦 NPC DELIVERIES</span>
@@ -453,7 +443,6 @@
         </div>
       </div>
 
-      <!-- Bounties -->
       <div class="overview-card">
         <div class="overview-header">
           <span>📜 BOUNTIES</span>
@@ -465,7 +454,6 @@
         </div>
       </div>
 
-      <!-- Animal Bounties -->
       <div class="overview-card">
         <div class="overview-header">
           <span>🐄 ANIMAL BOUNTIES</span>
@@ -477,7 +465,6 @@
         </div>
       </div>
 
-      <!-- Chores -->
       <div class="overview-card">
         <div class="overview-header">
           <span>🧹 CHORES</span>
@@ -491,7 +478,6 @@
     </div>
   </div>
 
-  <!-- Guide Popup Modal -->
   <div id="guideModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -539,7 +525,6 @@
     </div>
   </div>
 
-  <!-- Category Popup Summary Modal -->
   <div id="categorySummaryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -558,7 +543,6 @@
     </div>
   </div>
 
-  <!-- History Logs Modal -->
   <div id="historyModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -571,7 +555,7 @@
     </div>
   </div>
 
-  <!-- Column History / Edit Modal -->
+  <!-- Column History / Edit Modal with Dropdown NPC Filter -->
   <div id="columnHistoryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -584,10 +568,12 @@
           <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
 
-        <!-- Filter Bar strictly by NPC name or Date -->
-        <div id="editFilterContainer" style="display: none; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 8px;">
-          <span style="font-size: 12px;">🔍</span>
-          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter deliveries by NPC name or Date (YYYY-MM-DD)..." style="flex: 1; padding: 6px 10px; font-size: 11px;" />
+        <!-- Filter Bar with NPC Dropdown & Text/Date Search for Deliveries -->
+        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 8px;">
+          <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px;">
+            <option value="">👤 ALL NPCS</option>
+          </select>
+          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter by date (YYYY-MM-DD) or search..." style="flex: 2; min-width: 170px; padding: 6px 10px; font-size: 11px;" />
         </div>
 
         <!-- Add Custom Bar (Active for Bounties & Chores) -->
