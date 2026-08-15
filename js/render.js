@@ -44,7 +44,7 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // 1. Process Past Daily Deliveries from saved logs (Strictly exclude today's logs)
+  // 1. Process Past Daily Deliveries from saved logs (Exclude today's date)
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
@@ -52,7 +52,7 @@ export function recalculateAll() {
     seenDates.add(rawDate);
 
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
-    if (isTodayLog) return; // Skip today's log to avoid double-counting live state
+    if (isTodayLog) return; // Skip today's log to avoid duplicating live state
 
     const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
@@ -90,9 +90,9 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process PAST Weeks (Historical Prior Weeks Only)
+  // 3. Process PRIOR Weeks ONLY (e.g. 2026-W32, not current 2026-W33)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return; // Strictly ignore current week here
+    if (wkId === currentWeekId) return; // STRICT GUARD: Skip current week completely
 
     (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
@@ -119,7 +119,7 @@ export function recalculateAll() {
     });
   });
 
-  // 4. Process CURRENT Week Bounties (Single-Pass Loop)
+  // Helper: Only items finished today with verified timestamp count for "Done Today"
   const isWeeklyItemDoneToday = (item) => {
     if (!isTicked(item)) return false;
     if (item.completedAt) {
@@ -135,6 +135,7 @@ export function recalculateAll() {
     return false;
   };
 
+  // 4. Process CURRENT Week Bounties (Single source of truth)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -155,7 +156,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process CURRENT Week Chores (Single-Pass Loop)
+  // 5. Process CURRENT Week Chores (Single source of truth)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
