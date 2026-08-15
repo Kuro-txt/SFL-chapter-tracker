@@ -47,13 +47,12 @@ export function isLoginClaimedToday() {
   return lastDate === getTodayDateString();
 }
 
-// Strictly increments once per calendar day (never on every save or refresh)
+// Automatically claim +1 ticket once per calendar day on app load
 export function checkAndAutoClaimDailyLogin() {
   const todayStr = getTodayDateString();
   const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
   let currentCount = parseInt(localStorage.getItem('sfl_daily_login_count')) || 0;
 
-  // New day check: only increments if today's date hasn't been claimed yet
   if (lastClaimed !== todayStr) {
     currentCount += 1;
     localStorage.setItem('sfl_daily_login_count', currentCount);
@@ -65,6 +64,11 @@ export function checkAndAutoClaimDailyLogin() {
 
   const checkInput = document.getElementById('dailyLoginCheck');
   if (checkInput) checkInput.checked = true;
+}
+
+// Alias export to satisfy older app.js imports
+export function initDailyLoginUI() {
+  checkAndAutoClaimDailyLogin();
 }
 
 export function handleDailyLoginToggle() {
