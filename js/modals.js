@@ -179,7 +179,6 @@ export function openColumnHistoryModal(type) {
   setElemText('columnHistoryTitle', title);
 
   const filterContainer = document.getElementById('editFilterContainer');
-  const addContainer = document.getElementById('editAddContainer');
   const searchInput = document.getElementById('editSearchFilter');
   const npcDropdown = document.getElementById('editNpcDropdown');
 
@@ -187,9 +186,7 @@ export function openColumnHistoryModal(type) {
 
   if (type === 'delivery') {
     if (filterContainer) filterContainer.style.display = 'flex';
-    if (addContainer) addContainer.style.display = 'none';
 
-    // Populate NPC Dropdown dynamically with all unique NPCs present in logs & live deliveries
     if (npcDropdown) {
       const npcSet = new Set();
       const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
@@ -212,7 +209,6 @@ export function openColumnHistoryModal(type) {
     }
   } else {
     if (filterContainer) filterContainer.style.display = 'none';
-    if (addContainer) addContainer.style.display = 'flex';
   }
 
   renderColumnHistoryModalList();
@@ -264,12 +260,10 @@ export function renderColumnHistoryModalList() {
       });
     });
 
-    // 1. Dropdown Filter: Match selected NPC name
     if (selectedNpc) {
       records = records.filter(r => r.name.toLowerCase() === selectedNpc || r.name.toLowerCase().includes(selectedNpc));
     }
 
-    // 2. Text Search: Match date, requested items, or search terms
     if (filterTerm) {
       records = records.filter(r => 
         r.name.toLowerCase().includes(filterTerm) ||
@@ -513,51 +507,6 @@ export async function deleteWeeklyItem(weekId, itemIdx) {
       }
     }
   }
-  renderColumnHistoryModalList();
-  recalculateAll();
-  await syncCurrentVaultToCloud();
-}
-
-export async function addCustomHistoryItem() {
-  const name = document.getElementById('addHistName').value.trim() || 'Custom Task';
-  const inputTickets = parseInt(document.getElementById('addHistTickets').value) || 1;
-  const cost = parseFloat(document.getElementById('addHistCost').value) || 0;
-  const type = state.activeColumnType;
-  const currentWeekId = getMondayBasedWeekId();
-  const boostCount = getActiveBoostCount();
-  const baseTickets = Math.max(0, inputTickets - boostCount);
-  
-  const lvlMatch = name.match(/(?:lvl|level|#|\()\s*(\d+)/i);
-  const customLevel = lvlMatch ? lvlMatch[1] : null;
-
-  if (type === 'chore') {
-    if (!state.globalData.chores) state.globalData.chores = [];
-    state.globalData.chores.push({
-      npc: 'Manual',
-      task: name,
-      name,
-      baseTickets,
-      tickets: baseTickets,
-      itemsCost: cost,
-      cost,
-      completed: true,
-      checked: true
-    });
-  } else {
-    if (!state.globalData.bounties) state.globalData.bounties = [];
-    state.globalData.bounties.push({
-      id: 'custom_' + Date.now(),
-      name,
-      level: customLevel,
-      baseTickets,
-      tickets: baseTickets,
-      itemsCost: cost,
-      cost,
-      completed: true,
-      checked: true
-    });
-  }
-
   renderColumnHistoryModalList();
   recalculateAll();
   await syncCurrentVaultToCloud();
