@@ -21,7 +21,7 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // 1. Cron Backup Handler
+  // 1. Cron Backup Handler (23:00 UTC)
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -49,6 +49,12 @@ export async function onRequest(context) {
           if (vaultData) {
             if (!vaultData.logs) vaultData.logs = [];
             if (!vaultData.weeks) vaultData.weeks = {};
+
+            // STRICT ONCE-PER-DAY AUTO-INCREMENT: Add +1 daily login ticket if not logged yet today
+            if (vaultData.lastDailyLoginDate !== todayDate) {
+              vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
+              vaultData.lastDailyLoginDate = todayDate;
+            }
 
             if (vaultData.bounties || vaultData.chores) {
               const currentWeekBounties = (vaultData.bounties || [])
@@ -176,6 +182,7 @@ export async function onRequest(context) {
         trackTickets: 0, 
         trackCost: 0,
         dailyLoginTickets: 0,
+        lastDailyLoginDate: null,
         deliveries: [], 
         bounties: [], 
         chores: [] 
@@ -208,6 +215,7 @@ export async function onRequest(context) {
         trackTickets: 0, 
         trackCost: 0,
         dailyLoginTickets: 0,
+        lastDailyLoginDate: null,
         deliveries: [], 
         bounties: [], 
         chores: [] 
@@ -242,7 +250,8 @@ export async function onRequest(context) {
         weeks: {}, 
         trackTickets: 0, 
         trackCost: 0,
-        dailyLoginTickets: 0
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null
       };
       return jsonRes({ success: true, username, vaultData });
     } catch (err) {
@@ -266,7 +275,8 @@ export async function onRequest(context) {
         weeks: {}, 
         trackTickets: 0, 
         trackCost: 0,
-        dailyLoginTickets: 0
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null
       };
 
       const todayDate = new Date().toISOString().split('T')[0];
@@ -275,7 +285,16 @@ export async function onRequest(context) {
 
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
-      if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets) || 0;
+      
+      // Auto-increment login ticket once per day
+      if (body.dailyLoginTickets !== undefined) {
+        existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets) || 0;
+      }
+      if (body.lastDailyLoginDate !== undefined) {
+        existingData.lastDailyLoginDate = body.lastDailyLoginDate;
+      } else if (existingData.lastDailyLoginDate !== todayDate) {
+        existingData.lastDailyLoginDate = todayDate;
+      }
 
       const incomingBounties = (body.bounties || [])
         .filter(b => (b.baseTickets || b.tickets || 0) > 0)
@@ -301,7 +320,7 @@ export async function onRequest(context) {
         return {
           weekId: currentWeekId, 
           name: taskName, 
-          task: taskName,
+          task: taskName, 
           npc: c.npc || 'NPC',
           baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
           tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1), 
