@@ -89,7 +89,13 @@ export function openCategorySummaryModal(cat) {
 
   if (cat === 'delivery') {
     titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
-    const sortedDeliv = [...state.globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    // Active/Uncompleted sorted on top
+    const sortedDeliv = [...state.globalData.deliveries].sort((a, b) => {
+      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
+      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
+      return aDone === bDone ? 0 : aDone ? 1 : -1;
+    });
+
     bodyEl.innerHTML = sortedDeliv.map(d => {
       const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
@@ -120,7 +126,12 @@ export function openCategorySummaryModal(cat) {
       return isAnimal ? checkAnimal : !checkAnimal;
     });
 
-    const sortedBounties = [...filteredBounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    // Active/Uncompleted sorted on top
+    const sortedBounties = [...filteredBounties].sort((a, b) => {
+      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
+      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
+      return aDone === bDone ? 0 : aDone ? 1 : -1;
+    });
 
     bodyEl.innerHTML = sortedBounties.map(b => {
       const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
@@ -141,7 +152,13 @@ export function openCategorySummaryModal(cat) {
 
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
-    const sortedChores = [...state.globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    // Active/Uncompleted sorted on top
+    const sortedChores = [...state.globalData.chores].sort((a, b) => {
+      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
+      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
+      return aDone === bDone ? 0 : aDone ? 1 : -1;
+    });
+
     bodyEl.innerHTML = sortedChores.map(c => {
       const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
       const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
@@ -306,6 +323,12 @@ export function renderColumnHistoryModalList() {
       });
     });
   }
+
+  // Active / Uncompleted items always on top
+  records.sort((a, b) => {
+    if (a.checked === b.checked) return 0;
+    return a.checked ? 1 : -1;
+  });
 
   let totalTickedTickets = 0;
   let totalTickedCost = 0;
