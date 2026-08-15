@@ -71,6 +71,43 @@ window.saveLoginCountAndRecalculate = () => {
   recalculateAll();
 };
 
+// 4 Focused Gameplay Tips Rotation
+const FARMER_TIPS = [
+  '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? Open <em>📦 NPC Deliveries > EDIT</em> to manually tick the extra order!',
+  '⚡ <strong>DOUBLE DELIVERIES:</strong> During 2x delivery events, open <em>📦 NPC Deliveries > EDIT</em> to manually increase the ticket amount!',
+  '🛤️ <strong>MANUAL ADJUSTMENT:</strong> Have missed tickets, special events, or price mismatches? Add them to the <em>🛤️ TRACK</em> input anytime!',
+  '☁️ <strong>SAVE PROGRESS:</strong> Always click <em>"SAVE IN CLOUD"</em> before closing your tab to write your daily snapshot into your vault.'
+];
+
+let currentTipIndex = 0;
+let tipIntervalTimer = null;
+
+function startTipRotation() {
+  const tipTextEl = document.getElementById('rotatingTipText');
+  const tipBannerEl = document.getElementById('tipBanner');
+  if (!tipTextEl || !tipBannerEl) return;
+
+  const cycleTip = () => {
+    tipTextEl.classList.add('fade-out');
+    setTimeout(() => {
+      currentTipIndex = (currentTipIndex + 1) % FARMER_TIPS.length;
+      tipTextEl.innerHTML = FARMER_TIPS[currentTipIndex];
+      tipTextEl.classList.remove('fade-out');
+    }, 300);
+  };
+
+  tipIntervalTimer = setInterval(cycleTip, 7000);
+
+  // Pause on hover or touch
+  tipBannerEl.addEventListener('mouseenter', () => {
+    if (tipIntervalTimer) clearInterval(tipIntervalTimer);
+  });
+  tipBannerEl.addEventListener('mouseleave', () => {
+    if (tipIntervalTimer) clearInterval(tipIntervalTimer);
+    tipIntervalTimer = setInterval(cycleTip, 7000);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const savedFarmId = localStorage.getItem('sfl_farmId');
   if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
@@ -99,4 +136,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
   checkAndAutoClaimDailyLogin();
   checkSavedAuth();
+  startTipRotation();
 });
