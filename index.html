@@ -33,18 +33,29 @@
     h1 { font-size: 26px; font-weight: 900; color: #FFF8DC; text-shadow: 2px 2px #271813; margin-bottom: 4px; letter-spacing: 1px; }
     p { font-size: 13px; color: #EEDC82; font-weight: bold; text-shadow: 1px 1px #271813; }
     
+    /* Rotating Tip Banner Styles */
     .tip-banner {
       background: #FFF8DC;
       border: 2px dashed #D2691E;
       border-radius: 8px;
-      padding: 8px 12px;
+      padding: 8px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      min-height: 38px;
       font-size: 11px;
       font-weight: 900;
       color: #8B4513;
+      cursor: pointer;
+      user-select: none;
+    }
+    #rotatingTipText {
+      transition: opacity 0.3s ease;
+      opacity: 1;
+      line-height: 1.4;
+    }
+    #rotatingTipText.fade-out {
+      opacity: 0;
     }
 
     .panel {
@@ -117,6 +128,7 @@
     .btn-emerald { background-color: #388E3C; color: #FFF8DC; border-color: #1B5E20; box-shadow: 0 4px 0px #1B5E20; text-shadow: 1px 1px 0px #0F3812; }
     .btn-indigo { background-color: #6D4C41; color: #FFF8DC; border-color: #3E2723; box-shadow: 0 4px 0px #2E1B17; }
     .btn-guide { background-color: #2980B9; color: #FFF8DC; border-color: #1B4F72; box-shadow: 0 4px 0px #154360; text-shadow: 1px 1px 0px #0E2F44; }
+    .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
     .btn-sm { padding: 5px 10px; font-size: 11px; box-shadow: 0 3px 0px #2E1B17; }
 
     .overview-grid {
@@ -292,8 +304,10 @@
       <p>Harvest Tickets & Chapter End Goal Calculator</p>
     </header>
 
-    <div class="tip-banner">
-      <span>💡 <strong>FARMER'S TIP:</strong> Always click <strong style="color: #2E7D32;">"☁️ SAVE IN CLOUD"</strong> before closing your browser or shutting down to keep your daily snapshot synced!</span>
+    <!-- Interactive Rotating Tip Banner -->
+    <div class="tip-banner" id="tipBanner">
+      <span id="rotatingTipText">📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? Open <em>📦 NPC Deliveries > EDIT</em> to manually tick the extra order!</span>
+      <span style="font-size: 10px; opacity: 0.6;">(Hover to Pause)</span>
     </div>
 
     <div class="panel" style="padding: 10px 16px; background: #FFFACD;">
@@ -347,9 +361,9 @@
         <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:8px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
           <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">Tix:</label>
-          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 4px 6px; font-size: 11px;" title="Total Track Tickets Claimed" />
+          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 4px 6px; font-size: 11px;" title="Total Track / Adjustment Tickets" />
           <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">SFL:</label>
-          <input type="number" step="0.01" id="trackCostInput" value="0" placeholder="0.00" onchange="saveTrackAndRecalculate()" style="width: 75px; padding: 4px 6px; font-size: 11px;" title="Total SFL Spent on Track" />
+          <input type="number" step="0.01" id="trackCostInput" value="0" placeholder="0.00" onchange="saveTrackAndRecalculate()" style="width: 75px; padding: 4px 6px; font-size: 11px;" title="Total Track / Adjustment SFL Cost" />
         </div>
 
         <div class="input-group">
@@ -515,9 +529,9 @@
         </div>
 
         <div class="guide-card">
-          <div class="guide-card-title">🛤️ 4. CHAPTER TRACK INPUT</div>
+          <div class="guide-card-title">🛤️ 4. CHAPTER TRACK & MANUAL ADJUSTMENT</div>
           <div class="guide-card-text">
-            • Enter the tickets and SFL cost you claimed from the chapter reward track into the <strong>🛤️ TRACK</strong> input.
+            • Enter chapter track rewards or any missed/mismatched tickets and SFL cost into the <strong>🛤️ TRACK</strong> input to keep your totals 100% accurate.
           </div>
         </div>
       </div>
@@ -554,7 +568,6 @@
     </div>
   </div>
 
-  <!-- Column History / Edit Modal (Without Add Task bar) -->
   <div id="columnHistoryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -567,7 +580,6 @@
           <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
 
-        <!-- Filter Bar strictly for Deliveries -->
         <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 8px;">
           <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px;">
             <option value="">👤 ALL NPCS</option>
