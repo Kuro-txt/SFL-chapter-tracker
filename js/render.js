@@ -47,11 +47,14 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // STRICT Done-Today Check: Only count if verified timestamp matches today or explicitly flagged as checked today
+  // STRICT Done-Today Check for Bounties & Chores
   const isWeeklyItemDoneToday = (item) => {
     if (!isTicked(item)) return false;
+    
+    // 1. If explicitly checked off in the modal today, count it
     if (item.checkedToday === true) return true;
     
+    // 2. If it has a verified timestamp matching today's date, count it
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -62,7 +65,9 @@ export function recalculateAll() {
         return (iso === todayUtcStr || loc === localTodayStr);
       }
     }
-    return false; // Never count items towards "Done Today" if they lack a verified today timestamp
+    
+    // 3. Otherwise, do NOT count live board completed items toward "Done Today" unless explicitly ticked today
+    return false;
   };
 
   // 1. Process Past Daily Deliveries from saved logs
