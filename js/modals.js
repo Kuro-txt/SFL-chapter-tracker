@@ -207,10 +207,17 @@ export function renderColumnHistoryModalList() {
   let records = [];
 
   if (type === 'delivery') {
-    const logs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-    logs.forEach((log, logIdx) => {
+    const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
+    
+    // Deduplicate logs in edit list
+    const seenDates = new Set();
+    rawLogs.forEach((log, logIdx) => {
+      const cleanDate = (log.date || 'Past Run').split('T')[0];
+      if (seenDates.has(cleanDate)) return;
+      seenDates.add(cleanDate);
+
       (log.deliveriesDone || []).forEach((item, itemIdx) => {
-        const baseTix = item.tickets !== undefined ? item.tickets : 2;
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
         const itemName = typeof item === 'string' ? item : (item.name || 'NPC Delivery');
@@ -218,7 +225,7 @@ export function renderColumnHistoryModalList() {
         records.push({
           logIdx,
           itemIdx,
-          date: log.date || 'Past Run',
+          date: cleanDate,
           name: itemName,
           requestedItems: requestedStr,
           cost: item.cost || 0,
@@ -263,7 +270,7 @@ export function renderColumnHistoryModalList() {
       }
 
       rawItems.forEach((item, itemIdx) => {
-        const baseTix = item.tickets !== undefined ? item.tickets : (item.baseTickets || 1);
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         const lvl = resolveAnimalLevel(item);
 
@@ -377,6 +384,7 @@ export async function updateHistoryItemTickets(idKey, itemIdx, val) {
     const logIdx = parseInt(idKey);
     if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
       const base = Math.max(0, inputVal - (vipBonus + boostCount));
+      logs[logIdx].deliveriesDone[itemIdx].baseTickets = base;
       logs[logIdx].deliveriesDone[itemIdx].tickets = base;
     }
   } else {
@@ -384,6 +392,7 @@ export async function updateHistoryItemTickets(idKey, itemIdx, val) {
     const targetArray = type === 'chore' ? 'chores' : 'bounties';
     if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
       const base = Math.max(0, inputVal - boostCount);
+      weeks[idKey][targetArray][itemIdx].baseTickets = base;
       weeks[idKey][targetArray][itemIdx].tickets = base;
     }
   }
@@ -446,6 +455,7 @@ export async function addCustomHistoryItem() {
     name, 
     level: customLevel, 
     cost, 
+    baseTickets: baseTickets,
     tickets: baseTickets, 
     completed: true, 
     checked: true 
