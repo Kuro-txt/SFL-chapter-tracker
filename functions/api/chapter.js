@@ -1,4 +1,535 @@
-// Inside bounties loop in functions/api/chapter.js:
+import { hashPassword } from '../utils/auth-crypto.js';
+import { getMondayBasedWeekId } from '../utils/dates.js';
+import { 
+  CHAPTER_NPC_TICKETS, 
+  extractPricesRecursive, 
+  getDirectMarketPrice, 
+  getItemUnitPrice, 
+  extractRewardTickets 
+} from '../utils/sfl-pricing.js';
+import { SFL_RECIPES } from '../../recipes.js';
+
+const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
+  status,
+  headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+});
+
+export async function onRequest(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const action = url.searchParams.get('action');
+  const farmId = url.searchParams.get('farmId') || '8472883706403914';
+  const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
+
+  // 1. Cron Backup Handler (23:00 UTC)
+  if (action === 'cronBackup') {
+    const secretKey = url.searchParams.get('key');
+    const expectedKey = env?.CRON_SECRET || 'kuro123';
+    if (secretKey !== expectedKey) return jsonRes({ error: 'Unauthorized cron key.' }, 401);
+
+    let backedUpCount = 0;
+    const backupTimestamp = new Date().toISOString();
+    const todayDate = backupTimestamp.split('T')[0];
+    const currentWeekId = getMondayBasedWeekId();
+
+    let priceMap = {};
+    try {
+      const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (pricesRes.ok) {
+        const rawData = await pricesRes.json();
+        if (rawData) priceMap = extractPricesRecursive(rawData);
+      }
+    } catch (e) {}
+
+    if (env && env.TRACKER_KV) {
+      const list = await env.TRACKER_KV.list({ prefix: "user_" });
+      for (const keyObj of list.keys) {
+        if (keyObj.name.endsWith("_vault")) {
+          let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
+          if (vaultData) {
+            if (!vaultData.logs) vaultData.logs = [];
+            if (!vaultData.weeks) vaultData.weeks = {};
+
+            // STRICT ONCE-PER-DAY AUTO-INCREMENT: Add +1 daily login ticket if not logged yet today
+            if (vaultData.lastDailyLoginDate !== todayDate) {
+              vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
+              vaultData.lastDailyLoginDate = todayDate;
+            }
+
+            if (vaultData.bounties || vaultData.chores) {
+              const currentWeekBounties = (vaultData.bounties || [])
+                .filter(b => (b.baseTickets || b.tickets || 0) > 0)
+                .map(b => {
+                  let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+                  if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
+                  const isCompleted = b.checked !== undefined ? b.checked : Boolean(b.completed);
+                  return {
+                    id: b.id || null,
+                    level: b.level || null,
+                    name: b.name || 'Bounty',
+                    cost: bCost,
+                    baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
+                    tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
+                    completed: isCompleted,
+                    completedAt: b.completedAt || (isCompleted ? Date.now() : null),
+                    checked: isCompleted
+                  };
+                });
+
+              const currentWeekChores = (vaultData.chores || []).map(c => {
+                const isCompleted = c.checked !== undefined ? c.checked : Boolean(c.completed);
+                const taskName = c.task || c.name || 'Chore';
+                return {
+                  name: taskName,
+                  task: taskName,
+                  npc: c.npc || 'NPC',
+                  baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+                  tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+                  cost: c.cost !== undefined ? c.cost : (c.itemsCost || 0),
+                  completed: isCompleted,
+                  completedAt: c.completedAt || (isCompleted ? Date.now() : null),
+                  checked: isCompleted
+                };
+              });
+
+              vaultData.weeks[currentWeekId] = { weekId: currentWeekId, bounties: currentWeekBounties, chores: currentWeekChores };
+            }
+
+            let dailyDeliveryTickets = 0;
+            let dailyDeliveryCost = 0;
+
+            const formattedDeliveries = (vaultData.deliveries || []).map(d => {
+              const dCost = d.cost !== undefined ? d.cost : (d.itemsCost || 0);
+              const dTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+              const isDone = d.checked !== undefined ? d.checked : Boolean(d.completed);
+              if (isDone) {
+                dailyDeliveryTickets += dTix;
+                dailyDeliveryCost += dCost;
+              }
+              return { 
+                name: d.name || d.from || 'NPC', 
+                cost: dCost, 
+                baseTickets: dTix,
+                tickets: dTix, 
+                completed: isDone, 
+                completedAt: d.completedAt || (isDone ? Date.now() : null),
+                items: d.items || d.itemDetails || [], 
+                itemDetails: d.itemDetails || d.items || [], 
+                checked: isDone 
+              };
+            });
+
+            const existingTodayLogIndex = vaultData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+            if (existingTodayLogIndex !== -1) {
+              vaultData.logs[existingTodayLogIndex].ticketsSaved = dailyDeliveryTickets;
+              vaultData.logs[existingTodayLogIndex].costSaved = dailyDeliveryCost;
+              vaultData.logs[existingTodayLogIndex].timestamp = backupTimestamp;
+              vaultData.logs[existingTodayLogIndex].deliveriesDone = formattedDeliveries;
+            } else {
+              vaultData.logs.unshift({
+                date: todayDate,
+                weekId: currentWeekId,
+                timestamp: backupTimestamp,
+                ticketsSaved: dailyDeliveryTickets,
+                costSaved: dailyDeliveryCost,
+                autoBackup: true,
+                deliveriesDone: formattedDeliveries
+              });
+            }
+
+            let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
+            let totalCost = vaultData.trackCost || 0;
+
+            vaultData.logs.forEach(l => {
+              totalTix += (l.ticketsSaved || 0);
+              totalCost += (l.costSaved || 0);
+            });
+
+            Object.values(vaultData.weeks).forEach(wk => {
+              (wk.bounties || []).forEach(b => {
+                if (b.completed || b.checked) {
+                  totalTix += (b.baseTickets || b.tickets || 0);
+                  totalCost += (b.cost || 0);
+                }
+              });
+              (wk.chores || []).forEach(c => {
+                if (c.completed || c.checked) {
+                  totalTix += (c.baseTickets || c.tickets || 0);
+                  totalCost += (c.cost || 0);
+                }
+              });
+            });
+
+            vaultData.cumulativeTickets = totalTix;
+            vaultData.cumulativeCost = totalCost;
+
+            await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
+            backedUpCount++;
+          }
+        }
+      }
+      await env.TRACKER_KV.put(`system_last_cron_backup`, JSON.stringify({ timestamp: backupTimestamp, vaultsProcessed: backedUpCount }));
+    }
+
+    return jsonRes({ success: true, message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} vaults.` });
+  }
+
+  // 2. Fetch Vault
+  if (action === 'getVault') {
+    const username = (url.searchParams.get('username') || '').toLowerCase().trim();
+    if (env?.TRACKER_KV && username) {
+      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0,
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null,
+        deliveries: [], 
+        bounties: [], 
+        chores: [] 
+      };
+      return jsonRes({ success: true, vaultData });
+    }
+    return jsonRes({ vaultData: null });
+  }
+
+  // 3. User Registration
+  if (request.method === 'POST' && action === 'register') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      const password = body.password || '';
+
+      if (!username || !password) return jsonRes({ error: 'Username and password required.' }, 400);
+      if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
+
+      const userKey = `user_${username}_auth`;
+      if (await env.TRACKER_KV.get(userKey)) return jsonRes({ error: 'Username already taken.' }, 400);
+
+      const passwordHash = await hashPassword(password);
+      await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
+      await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0,
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null,
+        deliveries: [], 
+        bounties: [], 
+        chores: [] 
+      }));
+
+      return jsonRes({ success: true, username });
+    } catch (err) {
+      return jsonRes({ error: err.message }, 500);
+    }
+  }
+
+  // 4. User Login
+  if (request.method === 'POST' && action === 'login') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      const password = body.password || '';
+
+      if (!username || !password) return jsonRes({ error: 'Username and password required.' }, 400);
+      if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
+
+      const userDataStr = await env.TRACKER_KV.get(`user_${username}_auth`);
+      if (!userDataStr) return jsonRes({ error: 'Account not found.' }, 401);
+
+      const userData = JSON.parse(userDataStr);
+      if (userData.passwordHash !== await hashPassword(password)) return jsonRes({ error: 'Incorrect password.' }, 401);
+
+      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0,
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null
+      };
+      return jsonRes({ success: true, username, vaultData });
+    } catch (err) {
+      return jsonRes({ error: err.message }, 500);
+    }
+  }
+
+  // 5. Save Vault Progress
+  if (request.method === 'POST' && action === 'saveVault') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const username = (body.username || '').toLowerCase().trim();
+      if (!username) return jsonRes({ error: 'Not logged in.' }, 401);
+      if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
+
+      const vaultKey = `user_${username}_vault`;
+      let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { 
+        logs: [], 
+        cumulativeTickets: 0, 
+        cumulativeCost: 0, 
+        weeks: {}, 
+        trackTickets: 0, 
+        trackCost: 0,
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null
+      };
+
+      const todayDate = new Date().toISOString().split('T')[0];
+      const currentWeekId = getMondayBasedWeekId();
+      if (!existingData.weeks) existingData.weeks = {};
+
+      if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
+      if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
+      
+      // Auto-increment login ticket once per day
+      if (body.dailyLoginTickets !== undefined) {
+        existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets) || 0;
+      }
+      if (body.lastDailyLoginDate !== undefined) {
+        existingData.lastDailyLoginDate = body.lastDailyLoginDate;
+      } else if (existingData.lastDailyLoginDate !== todayDate) {
+        existingData.lastDailyLoginDate = todayDate;
+      }
+
+      const incomingBounties = (body.bounties || [])
+        .filter(b => (b.baseTickets || b.tickets || 0) > 0)
+        .map(b => {
+          const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
+          return {
+            id: b.id || null,
+            level: b.level || null,
+            weekId: currentWeekId, 
+            name: b.name, 
+            cost: b.itemsCost || b.cost || 0,
+            baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
+            tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0), 
+            completed: isDone, 
+            completedAt: b.completedAt || (isDone ? Date.now() : null),
+            checked: isDone
+          };
+        });
+
+      const incomingChores = (body.chores || []).map(c => {
+        const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
+        const taskName = c.task || c.name || 'Chore';
+        return {
+          weekId: currentWeekId, 
+          name: taskName, 
+          task: taskName, 
+          npc: c.npc || 'NPC',
+          baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+          tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1), 
+          cost: c.itemsCost || c.cost || 0,
+          completed: isDone, 
+          completedAt: c.completedAt || (isDone ? Date.now() : null),
+          checked: isDone
+        };
+      });
+
+      if (incomingBounties.length > 0 || incomingChores.length > 0) {
+        existingData.weeks[currentWeekId] = { 
+          weekId: currentWeekId, 
+          bounties: incomingBounties.length > 0 ? incomingBounties : (existingData.weeks[currentWeekId]?.bounties || []), 
+          chores: incomingChores.length > 0 ? incomingChores : (existingData.weeks[currentWeekId]?.chores || []) 
+        };
+      }
+
+      if (body.logs && Array.isArray(body.logs)) {
+        existingData.logs = body.logs;
+      } else {
+        const allDeliveries = (body.deliveries || []).map(d => {
+          const isDone = d.checked !== undefined ? d.checked : Boolean(d.completed);
+          return {
+            name: d.from || d.name, 
+            cost: d.itemsCost || d.cost || 0, 
+            baseTickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
+            tickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
+            completed: isDone, 
+            completedAt: d.completedAt || (isDone ? Date.now() : null),
+            items: d.itemDetails || d.items || [], 
+            itemDetails: d.itemDetails || d.items || [], 
+            checked: isDone
+          };
+        });
+
+        const dailyTickets = body.dailyDeliveryTicketsSaved || 0;
+        const dailyCost = body.dailyDeliveryCostSaved || 0;
+
+        const existingTodayLogIndex = existingData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+        if (existingTodayLogIndex !== -1) {
+          existingData.logs[existingTodayLogIndex] = { 
+            date: todayDate, 
+            weekId: currentWeekId, 
+            timestamp: new Date().toISOString(), 
+            ticketsSaved: dailyTickets, 
+            costSaved: dailyCost, 
+            deliveriesDone: allDeliveries 
+          };
+        } else {
+          existingData.logs.unshift({ 
+            date: todayDate, 
+            weekId: currentWeekId, 
+            timestamp: new Date().toISOString(), 
+            ticketsSaved: dailyTickets, 
+            costSaved: dailyCost, 
+            deliveriesDone: allDeliveries 
+          });
+        }
+      }
+
+      let totalTix = (existingData.trackTickets || 0) + (existingData.dailyLoginTickets || 0);
+      let totalCost = existingData.trackCost || 0;
+      existingData.logs.forEach(l => {
+        (l.deliveriesDone || []).forEach(d => {
+          if (d.checked !== undefined ? d.checked : d.completed) {
+            totalTix += (d.baseTickets || d.tickets || 0);
+            totalCost += (d.cost || 0);
+          }
+        });
+      });
+
+      Object.values(existingData.weeks).forEach(wk => {
+        (wk.bounties || []).forEach(b => {
+          if (b.completed || b.checked) {
+            totalTix += (b.baseTickets || b.tickets || 0);
+            totalCost += (b.cost || 0);
+          }
+        });
+        (wk.chores || []).forEach(c => {
+          if (c.completed || c.checked) {
+            totalTix += (c.baseTickets || c.tickets || 0);
+            totalCost += (c.cost || 0);
+          }
+        });
+      });
+
+      existingData.cumulativeTickets = totalTix;
+      existingData.cumulativeCost = totalCost;
+      existingData.deliveries = body.deliveries || existingData.deliveries || [];
+      existingData.bounties = incomingBounties.length > 0 ? incomingBounties : (existingData.bounties || []);
+      existingData.chores = incomingChores.length > 0 ? incomingChores : (existingData.chores || []);
+
+      await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
+      return jsonRes({ success: true, vaultData: existingData });
+    } catch (err) {
+      return jsonRes({ error: err.message }, 500);
+    }
+  }
+
+  // 6. Live SFL API Fetch Handler
+  try {
+    const sflHeaders = {
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Referer': 'https://sunflower-land.com/',
+      'Origin': 'https://sunflower-land.com'
+    };
+    if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
+
+    const [sflResponse, pricesResponse] = await Promise.all([
+      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => ({ ok: false, status: 500 })),
+      fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
+    ]);
+
+    if (!sflResponse || !sflResponse.ok) {
+      const status = sflResponse?.status || 500;
+      throw new Error(status === 401 ? 'SFL API returned 401 Unauthorized.' : `SFL API error (${status}). Check Farm ID.`);
+    }
+
+    const payload = await sflResponse.json().catch(() => ({}));
+    const farm = payload.farm || {};
+
+    let priceMap = {};
+    if (pricesResponse && pricesResponse.ok) {
+      const rawPricesData = await pricesResponse.json().catch(() => null);
+      if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
+    }
+
+    const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
+
+    // Clean Deliveries Parser
+    const deliveryList = [];
+    (farm.delivery?.orders || []).forEach(order => {
+      const npcNameClean = (order.from || '').toLowerCase().trim();
+      let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
+      
+      if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcNameClean] !== undefined) {
+        totalTickets = CHAPTER_NPC_TICKETS[npcNameClean];
+      }
+
+      if (totalTickets > 0) {
+        let itemsCost = 0;
+        const itemDetails = [];
+        Object.entries(order.items || {}).forEach(([itemName, qty]) => {
+          const unitPrice = getItemUnitPrice(itemName, priceMap);
+          const lineCost = unitPrice * qty;
+          itemsCost += lineCost;
+          itemDetails.push({ 
+            name: itemName, 
+            qty, 
+            unitPrice, 
+            lineCost, 
+            isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] 
+          });
+        });
+
+        const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+        deliveryList.push({ 
+          id: order.id, 
+          from: order.from, 
+          items: order.items || {}, 
+          itemsCost, 
+          itemDetails, 
+          baseTickets: totalTickets, 
+          isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, 
+          completed: isCompleted,
+          checked: isCompleted,
+          completedAt: (typeof order.completedAt === 'number') ? order.completedAt : (isCompleted ? Date.now() : null)
+        });
+      }
+    });
+
+    // Clean Bounties Parser
+    const activeBounties = [];
+    const seenBountyKeys = new Set();
+    const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
+    const completedMap = {};
+
+    if (Array.isArray(completedBountiesRaw)) {
+      completedBountiesRaw.forEach(b => {
+        if (typeof b === 'object' && b.id) {
+          const t = (typeof b.completedAt === 'number') ? b.completedAt : ((typeof b.claimedAt === 'number') ? b.claimedAt : null);
+          completedMap[String(b.id)] = t;
+        } else if (b) {
+          completedMap[String(b)] = null;
+        }
+      });
+    }
+
+    const rawBountyArray = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
+
+    rawBountyArray.forEach(b => {
+      let baseTicketCount = 0;
+      if (b.reward) baseTicketCount = extractRewardTickets(b.reward);
+      if (baseTicketCount === 0 && b.items) baseTicketCount = extractRewardTickets(b.items);
+      if (baseTicketCount === 0 && typeof b.tickets === 'number') baseTicketCount = b.tickets;
+
+      if (baseTicketCount <= 0) return;
+
+      const uniqueKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+      if (seenBountyKeys.has(uniqueKey)) return;
+      seenBountyKeys.add(uniqueKey);
+
+      const unitPrice = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
       
       let completionTime = null;
@@ -9,7 +540,6 @@
       } else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) {
         completionTime = completedMap[String(b.id)];
       } else if (isCompleted) {
-        // Fallback: If completed on active board without timestamp, stamp with current time
         completionTime = Date.now();
       }
 
@@ -24,3 +554,42 @@
         completedAt: completionTime,
         completedToday: isCompleted
       });
+    });
+
+    // Clean Chores Parser
+    const choreObj = farm.choreBoard?.chores || farm.chores || {};
+    const choresList = Object.entries(choreObj).map(([key, details]) => {
+      let baseTicketCount = extractRewardTickets(details.reward);
+      if (baseTicketCount === 0) baseTicketCount = details.tickets || details.baseTickets || 1;
+      const currentProgress = details.initialProgress ?? details.progress ?? 0;
+      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
+      const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
+      const completionTime = (typeof details.completedAt === 'number') ? details.completedAt : (isCompleted ? Date.now() : null);
+      const taskLabel = details.name || details.description || key;
+
+      return { 
+        npc: details.npc || details.from || 'Chore NPC', 
+        name: taskLabel,
+        task: taskLabel, 
+        baseTickets: baseTicketCount, 
+        progress: currentProgress, 
+        requirement, 
+        completed: isCompleted,
+        checked: isCompleted,
+        completedAt: completionTime,
+        completedToday: isCompleted
+      };
+    });
+
+    return jsonRes({
+      farmId, 
+      isVipActive,
+      pricesLoadedCount: Object.keys(priceMap).length,
+      deliveries: deliveryList, 
+      bounties: activeBounties, 
+      chores: choresList
+    });
+  } catch (err) {
+    return jsonRes({ error: err.message }, 500);
+  }
+}
