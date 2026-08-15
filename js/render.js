@@ -47,6 +47,7 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
+  // Robust Done-Today Check for Bounties & Chores
   const isWeeklyItemDoneToday = (item) => {
     if (!isTicked(item)) return false;
     if (item.completedAt) {
@@ -59,7 +60,8 @@ export function recalculateAll() {
         return (iso === todayUtcStr || loc === localTodayStr);
       }
     }
-    return false;
+    // Fallback: If completed on active live board and no prior week date is set
+    return item.completedToday === true || item.checkedToday === true || (item.completed === true && !item.completedAt);
   };
 
   // 1. Process Past Daily Deliveries from saved logs
@@ -70,7 +72,7 @@ export function recalculateAll() {
     seenDates.add(rawDate);
 
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
-    if (isTodayLog) return;
+    if (isTodayLog) return; // Exclude today's logs to prevent duplicating live state
 
     const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
@@ -108,7 +110,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process CURRENT Week Bounties (Classify using isAnimalBounty)
+  // 3. Process CURRENT Week Bounties
   const countedBountyKeys = new Set();
   (state.globalData.bounties || []).forEach(b => {
     const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -167,7 +169,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST Weeks from KV (Classify using isAnimalBounty)
+  // 5. Process PAST Weeks from KV
   Object.entries(weeks).forEach(([wkId, wk]) => {
     if (wkId === currentWeekId) return;
 
@@ -210,7 +212,7 @@ export function recalculateAll() {
     });
   });
 
-  // Calculate Cumulative Dashboard Totals
+  // Calculate Cumulative Totals
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix + todayLoginTickets;
@@ -238,7 +240,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Tooltips Breakdown (Independently populated)
+  // Tooltips Breakdown
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
