@@ -1,4 +1,4 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isLoginClaimedToday } from './state.js';
+import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isLoginClaimedToday, isAnimalBounty } from './state.js';
 
 export function recalculateAll() {
   if (!state.globalData) return;
@@ -25,16 +25,19 @@ export function recalculateAll() {
   // Category counters
   let totalDelivTix = 0;
   let totalBountyTix = 0;
+  let totalAnimalBountyTix = 0;
   let totalChoreTix = 0;
   let totalSflCostAll = trackCost;
 
   let weekDelivTix = 0;
   let weekBountyTix = 0;
+  let weekAnimalBountyTix = 0;
   let weekChoreTix = 0;
   let weekCostAll = trackCost;
 
   let todayDelivTix = 0;
   let todayBountyTix = 0;
+  let todayAnimalBountyTix = 0;
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
@@ -44,7 +47,6 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // Helper: Only items finished today with verified timestamp count for "Done Today"
   const isWeeklyItemDoneToday = (item) => {
     if (!isTicked(item)) return false;
     if (item.completedAt) {
@@ -60,7 +62,7 @@ export function recalculateAll() {
     return false;
   };
 
-  // 1. Process Past Daily Deliveries from saved logs (Strictly exclude today's logs)
+  // 1. Process Past Daily Deliveries from saved logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
@@ -68,7 +70,7 @@ export function recalculateAll() {
     seenDates.add(rawDate);
 
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
-    if (isTodayLog) return; // Skip today's log to prevent double-counting live state
+    if (isTodayLog) return;
 
     const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
@@ -106,7 +108,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process CURRENT Week Bounties (Primary Source)
+  // 3. Process CURRENT Week Bounties (Classify using isAnimalBounty)
   const countedBountyKeys = new Set();
   (state.globalData.bounties || []).forEach(b => {
     const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -118,20 +120,31 @@ export function recalculateAll() {
 
       const finalTix = baseTix + boostCount;
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+      const isAnimal = isAnimalBounty(b);
 
-      totalBountyTix += finalTix;
-      weekBountyTix += finalTix;
+      if (isAnimal) {
+        totalAnimalBountyTix += finalTix;
+        weekAnimalBountyTix += finalTix;
+      } else {
+        totalBountyTix += finalTix;
+        weekBountyTix += finalTix;
+      }
+
       totalSflCostAll += bCost;
       weekCostAll += bCost;
 
       if (isWeeklyItemDoneToday(b)) {
-        todayBountyTix += finalTix;
+        if (isAnimal) {
+          todayAnimalBountyTix += finalTix;
+        } else {
+          todayBountyTix += finalTix;
+        }
         todayCostAll += bCost;
       }
     }
   });
 
-  // 4. Process CURRENT Week Chores (Primary Source)
+  // 4. Process CURRENT Week Chores
   const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -154,13 +167,12 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST Weeks from KV (Guarded against ghost test duplicates)
+  // 5. Process PAST Weeks from KV (Classify using isAnimalBounty)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     if (wkId === currentWeekId) return;
 
     (wk.bounties || []).forEach(b => {
       const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-      // STRICT GUARD: Skip if this bounty is already on the active board
       if (countedBountyKeys.has(key)) return;
 
       if (isTicked(b)) {
@@ -170,15 +182,20 @@ export function recalculateAll() {
 
         const finalTix = baseTix + boostCount;
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
+        const isAnimal = isAnimalBounty(b);
 
-        totalBountyTix += finalTix;
+        if (isAnimal) {
+          totalAnimalBountyTix += finalTix;
+        } else {
+          totalBountyTix += finalTix;
+        }
+
         totalSflCostAll += bCost;
       }
     });
 
     (wk.chores || []).forEach(c => {
       const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-      // STRICT GUARD: Skip if this chore is already on the active board
       if (countedChoreKeys.has(key)) return;
 
       if (isTicked(c)) {
@@ -194,19 +211,13 @@ export function recalculateAll() {
   });
 
   // Calculate Cumulative Dashboard Totals
-  const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
-  const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
-  const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix + todayLoginTickets;
+  const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
+  const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
+  const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix + todayLoginTickets;
 
   // 6. Update Overview Card Counts
-  const regularBounties = (state.globalData.bounties || []).filter(b => {
-    const n = (b.name || '').toLowerCase();
-    return !(n.includes('chicken') || n.includes('cow') || n.includes('sheep'));
-  });
-  const animalBounties = (state.globalData.bounties || []).filter(b => {
-    const n = (b.name || '').toLowerCase();
-    return n.includes('chicken') || n.includes('cow') || n.includes('sheep');
-  });
+  const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
+  const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
   setElemText('deliveriesCount', `${state.globalData.deliveries?.length || 0} Orders`);
   setElemText('bountiesCount', `${regularBounties.length} Items`);
@@ -227,21 +238,24 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Tooltips Breakdown
+  // Tooltips Breakdown (Independently populated)
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
+  setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
   setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
+  setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix} Tix`);
   setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
   setElemText('tipWeekTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
   setElemText('tipWeekLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
+  setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
   setElemText('tipTodayLogin', `🎁 Daily Login: ${todayLoginTickets} Tix`);
 
