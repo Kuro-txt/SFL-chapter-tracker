@@ -11,19 +11,18 @@ export function recalculateAll() {
   const localTodayStr = now.toLocaleDateString('en-CA');
   const currentWeekId = getMondayBasedWeekId();
 
-  const logs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
+  const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Track Tickets & Costs
+  // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
-  // Daily Login Tickets
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
   const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
   const todayLoginTickets = isDoneLoginToday ? 1 : 0;
 
-  // Category trackers
+  // Category counters
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalChoreTix = 0;
@@ -39,9 +38,9 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
+  // Strict check: Weekly items ONLY count for Today if an explicit timestamp proves it was finished today
   const isDoneToday = (item, category) => {
     if (!item || (!item.completed && !item.checked)) return false;
-
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -52,20 +51,32 @@ export function recalculateAll() {
         return (iso === todayDateStr || loc === localTodayStr);
       }
     }
-
-    if (category === 'delivery') return true;
-    return false;
+    return category === 'delivery';
   };
 
-  // 1. Process Historical Daily Deliveries across logs
-  logs.forEach(log => {
+  // 1. DEDUPLICATE LOGS (Keep only the latest log per unique YYYY-MM-DD date)
+  const seenDates = new Set();
+  const uniqueLogs = [];
+  rawLogs.forEach(log => {
+    const cleanDate = (log.date || '').split('T')[0];
+    if (!cleanDate) return;
+    if (!seenDates.has(cleanDate)) {
+      seenDates.add(cleanDate);
+      uniqueLogs.push({ ...log, date: cleanDate });
+    }
+  });
+
+  let todayHasDeliveriesInLog = false;
+
+  // Process unique daily delivery logs
+  uniqueLogs.forEach(log => {
     const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
-    const isToday = log.date === todayDateStr || log.date === localTodayStr;
+    const isToday = (log.date === todayDateStr || log.date === localTodayStr);
 
     (log.deliveriesDone || []).forEach(item => {
       const isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
-        const baseTix = item.tickets || 2;
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const itemCost = item.cost || 0;
 
@@ -77,6 +88,7 @@ export function recalculateAll() {
           weekCostAll += itemCost;
         }
         if (isToday) {
+          todayHasDeliveriesInLog = true;
           todayDelivTix += finalTix;
           todayCostAll += itemCost;
         }
@@ -84,14 +96,33 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process Past Weeks (Historical Bounties & Chores)
+  // 2. If today's deliveries aren't in logs yet, calculate from live deliveries
+  if (!todayHasDeliveriesInLog) {
+    (state.globalData.deliveries || []).forEach(d => {
+      if (d.completed) {
+        const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
+        const finalTix = d.baseTickets + deliveryAddon;
+        const dCost = d.itemsCost || 0;
+
+        totalDelivTix += finalTix;
+        weekDelivTix += finalTix;
+        todayDelivTix += finalTix;
+
+        totalSflCostAll += dCost;
+        weekCostAll += dCost;
+        todayCostAll += dCost;
+      }
+    });
+  }
+
+  // 3. Process Past Weeks (Historical Bounties & Chores)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return;
+    if (wkId === currentWeekId) return; // Skip current week here to prevent double addition
 
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
       if (isTicked) {
-        const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 0);
+        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
         if (baseTix <= 0) return;
 
         const finalTix = baseTix + boostCount;
@@ -105,7 +136,7 @@ export function recalculateAll() {
     (wk.chores || []).forEach(c => {
       const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
       if (isTicked) {
-        const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
+        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
@@ -115,7 +146,7 @@ export function recalculateAll() {
     });
   });
 
-  // 3. Process Current Week Bounties & Chores
+  // 4. Process Current Week Bounties & Chores (Merged & Deduplicated)
   const seenWeekBountyKeys = new Set();
   const currentWeekBounties = (state.globalData.bounties || [])
     .filter(liveB => {
@@ -136,7 +167,7 @@ export function recalculateAll() {
         ...liveB,
         checked: saved?.checked !== undefined ? saved.checked : liveB.completed,
         cost: saved?.cost !== undefined ? saved.cost : liveB.itemsCost,
-        tickets: saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets,
+        baseTickets: saved?.baseTickets !== undefined ? saved.baseTickets : (saved?.tickets !== undefined ? saved.tickets : liveB.baseTickets),
         completedAt: liveB.completedAt || saved?.completedAt || null
       };
     });
@@ -155,15 +186,16 @@ export function recalculateAll() {
         ...liveC,
         checked: saved?.checked !== undefined ? saved.checked : liveC.completed,
         cost: saved?.cost !== undefined ? saved.cost : (liveC.itemsCost || 0),
-        tickets: saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets,
+        baseTickets: saved?.baseTickets !== undefined ? saved.baseTickets : (saved?.tickets !== undefined ? saved.tickets : liveC.baseTickets),
         completedAt: liveC.completedAt || saved?.completedAt || null
       };
     });
 
+  // Calculate current week bounties
   currentWeekBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
-      const baseTix = b.tickets !== undefined ? b.tickets : (b.baseTickets || 0);
+      const baseTix = b.baseTickets || 0;
       if (baseTix <= 0) return;
 
       const finalTix = baseTix + boostCount;
@@ -182,10 +214,11 @@ export function recalculateAll() {
     }
   });
 
+  // Calculate current week chores
   currentWeekChores.forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
     if (isTicked) {
-      const baseTix = c.tickets !== undefined ? c.tickets : (c.baseTickets || 1);
+      const baseTix = c.baseTickets || 1;
       const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
@@ -201,31 +234,17 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process Live Active Deliveries for Today
-  const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-
-  if (todayDelivTix === 0) {
-    sortedDeliveries.forEach(d => {
-      if (d.completed) {
-        const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-        todayDelivTix += (d.baseTickets + deliveryAddon);
-        todayCostAll += (d.itemsCost || 0);
-      }
-    });
-  }
-
-  // Calculate Cumulative Totals (including Daily Login)
+  // Calculate Cumulative Dashboard Totals
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix + todayLoginTickets;
 
-  // 5. Update Counts on Overview Cards
-  const allBounties = currentWeekBounties;
-  const regularBounties = allBounties.filter(b => {
+  // 5. Update Overview Card Counts
+  const regularBounties = currentWeekBounties.filter(b => {
     const n = (b.name || '').toLowerCase();
     return !(n.includes('chicken') || n.includes('cow') || n.includes('sheep'));
   });
-  const animalBounties = allBounties.filter(b => {
+  const animalBounties = currentWeekBounties.filter(b => {
     const n = (b.name || '').toLowerCase();
     return n.includes('chicken') || n.includes('cow') || n.includes('sheep');
   });
@@ -235,7 +254,7 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${currentWeekChores.length} Tasks`);
 
-  // 6. Update Performance Metrics & Tooltip Values
+  // 6. Update Stats Grid & Tooltips
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
@@ -249,7 +268,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Tooltips
+  // Tooltips Breakdown
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
@@ -267,9 +286,9 @@ export function recalculateAll() {
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
   setElemText('tipTodayLogin', `🎁 Daily Login: ${todayLoginTickets} Tix`);
 
-  // Goal Calculator
-  const targetGoal = parseInt(document.getElementById('targetGoalInput').value) || 1000;
-  const targetWeeks = parseInt(document.getElementById('targetWeeksInput').value) || 12;
+  // Goal Tracker Target
+  const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value) || 1000;
+  const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
   const targetPerWeek = targetWeeks > 0 ? Math.ceil(remainingNeeded / targetWeeks) : 0;
 
