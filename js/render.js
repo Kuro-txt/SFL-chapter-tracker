@@ -1,4 +1,4 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId } from './state.js';
+import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isLoginClaimedToday } from './state.js';
 
 export function recalculateAll() {
   if (!state.globalData) return;
@@ -18,6 +18,11 @@ export function recalculateAll() {
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
+  // Daily Login Tickets
+  const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
+  const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
+  const todayLoginTickets = isDoneLoginToday ? 1 : 0;
+
   // Category trackers
   let totalDelivTix = 0;
   let totalBountyTix = 0;
@@ -34,7 +39,6 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
-  // Strict check: Weekly items ONLY count for Today if an explicit timestamp proves it was finished today
   const isDoneToday = (item, category) => {
     if (!item || (!item.completed && !item.checked)) return false;
 
@@ -49,12 +53,7 @@ export function recalculateAll() {
       }
     }
 
-    // Deliveries reset daily, so checked active deliveries are for today
-    if (category === 'delivery') {
-      return true;
-    }
-
-    // Weekly bounties and chores do NOT default to today without a proven today's timestamp
+    if (category === 'delivery') return true;
     return false;
   };
 
@@ -161,7 +160,6 @@ export function recalculateAll() {
       };
     });
 
-  // Calculate Current Week Bounties
   currentWeekBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
@@ -184,7 +182,6 @@ export function recalculateAll() {
     }
   });
 
-  // Calculate Current Week Chores
   currentWeekChores.forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
     if (isTicked) {
@@ -204,7 +201,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process Live Active Deliveries for Today (if not already counted in logs)
+  // 4. Process Live Active Deliveries for Today
   const sortedDeliveries = [...(state.globalData.deliveries || [])].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
   if (todayDelivTix === 0) {
@@ -217,9 +214,10 @@ export function recalculateAll() {
     });
   }
 
-  const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix + trackTickets;
-  const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets;
-  const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix;
+  // Calculate Cumulative Totals (including Daily Login)
+  const totalTicketsAll = totalDelivTix + totalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
+  const weekTicketsAll = weekDelivTix + weekBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
+  const todayTicketsAll = todayDelivTix + todayBountyTix + todayChoreTix + todayLoginTickets;
 
   // 5. Update Counts on Overview Cards
   const allBounties = currentWeekBounties;
@@ -256,15 +254,18 @@ export function recalculateAll() {
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
   setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
+  setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
   setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
   setElemText('tipWeekTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
+  setElemText('tipWeekLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
+  setElemText('tipTodayLogin', `🎁 Daily Login: ${todayLoginTickets} Tix`);
 
   // Goal Calculator
   const targetGoal = parseInt(document.getElementById('targetGoalInput').value) || 1000;
