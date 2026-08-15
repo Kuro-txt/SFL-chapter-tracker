@@ -61,7 +61,8 @@ export async function onRequest(context) {
                     level: b.level || null,
                     name: b.name || 'Bounty',
                     cost: bCost,
-                    tickets: b.tickets !== undefined ? b.tickets : (b.baseTickets || 0),
+                    baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
+                    tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
                     completed: b.completed || b.checked,
                     completedAt: b.completedAt || null,
                     checked: b.completed || b.checked
@@ -71,7 +72,8 @@ export async function onRequest(context) {
               const currentWeekChores = (vaultData.chores || []).map(c => ({
                 name: c.name || c.task || 'Chore',
                 npc: c.npc || 'NPC',
-                tickets: c.tickets !== undefined ? c.tickets : (c.baseTickets || 1),
+                baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+                tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
                 completed: c.completed || c.checked,
                 completedAt: c.completedAt || null,
                 checked: c.completed || c.checked
@@ -85,7 +87,7 @@ export async function onRequest(context) {
 
             const formattedDeliveries = (vaultData.deliveries || []).map(d => {
               const dCost = d.cost !== undefined ? d.cost : (d.itemsCost || 0);
-              const dTix = d.tickets !== undefined ? d.tickets : (d.baseTickets || 2);
+              const dTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
               const isDone = d.completed || d.checked;
               if (isDone) {
                 dailyDeliveryTickets += dTix;
@@ -94,6 +96,7 @@ export async function onRequest(context) {
               return { 
                 name: d.name || d.from || 'NPC', 
                 cost: dCost, 
+                baseTickets: dTix,
                 tickets: dTix, 
                 completed: isDone, 
                 completedAt: d.completedAt || null,
@@ -103,7 +106,7 @@ export async function onRequest(context) {
               };
             });
 
-            const existingTodayLogIndex = vaultData.logs.findIndex(l => l.date === todayDate);
+            const existingTodayLogIndex = vaultData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
             if (existingTodayLogIndex !== -1) {
               vaultData.logs[existingTodayLogIndex].ticketsSaved = dailyDeliveryTickets;
               vaultData.logs[existingTodayLogIndex].costSaved = dailyDeliveryCost;
@@ -121,7 +124,7 @@ export async function onRequest(context) {
               });
             }
 
-            let totalTix = vaultData.trackTickets || 0;
+            let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
             let totalCost = vaultData.trackCost || 0;
 
             vaultData.logs.forEach(l => {
@@ -132,12 +135,12 @@ export async function onRequest(context) {
             Object.values(vaultData.weeks).forEach(wk => {
               (wk.bounties || []).forEach(b => {
                 if (b.completed || b.checked) {
-                  totalTix += (b.tickets || 0);
+                  totalTix += (b.baseTickets || b.tickets || 0);
                   totalCost += (b.cost || 0);
                 }
               });
               (wk.chores || []).forEach(c => {
-                if (c.completed || c.checked) totalTix += (c.tickets || 0);
+                if (c.completed || c.checked) totalTix += (c.baseTickets || c.tickets || 0);
               });
             });
 
@@ -165,7 +168,8 @@ export async function onRequest(context) {
         cumulativeCost: 0, 
         weeks: {}, 
         trackTickets: 0, 
-        trackCost: 0, 
+        trackCost: 0,
+        dailyLoginTickets: 0,
         deliveries: [], 
         bounties: [], 
         chores: [] 
@@ -196,7 +200,8 @@ export async function onRequest(context) {
         cumulativeCost: 0, 
         weeks: {}, 
         trackTickets: 0, 
-        trackCost: 0, 
+        trackCost: 0,
+        dailyLoginTickets: 0,
         deliveries: [], 
         bounties: [], 
         chores: [] 
@@ -230,7 +235,8 @@ export async function onRequest(context) {
         cumulativeCost: 0, 
         weeks: {}, 
         trackTickets: 0, 
-        trackCost: 0 
+        trackCost: 0,
+        dailyLoginTickets: 0
       };
       return jsonRes({ success: true, username, vaultData });
     } catch (err) {
@@ -238,7 +244,7 @@ export async function onRequest(context) {
     }
   }
 
-  // 5. Save Vault Progress (Auto-syncs any edits)
+  // 5. Save Vault Progress
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -253,7 +259,8 @@ export async function onRequest(context) {
         cumulativeCost: 0, 
         weeks: {}, 
         trackTickets: 0, 
-        trackCost: 0 
+        trackCost: 0,
+        dailyLoginTickets: 0
       };
 
       const todayDate = new Date().toISOString().split('T')[0];
@@ -262,8 +269,8 @@ export async function onRequest(context) {
 
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
+      if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets) || 0;
 
-      // Preserve level on bounties
       const incomingBounties = (body.bounties || [])
         .filter(b => (b.baseTickets || b.tickets || 0) > 0)
         .map(b => ({
@@ -272,7 +279,8 @@ export async function onRequest(context) {
           weekId: currentWeekId, 
           name: b.name, 
           cost: b.itemsCost || b.cost || 0,
-          tickets: b.baseTickets || b.tickets || 0, 
+          baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
+          tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0), 
           completed: b.completed, 
           completedAt: b.completedAt || null,
           checked: b.completed
@@ -282,14 +290,14 @@ export async function onRequest(context) {
         weekId: currentWeekId, 
         name: c.task || c.name, 
         npc: c.npc,
-        tickets: c.baseTickets || c.tickets || 0, 
+        baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+        tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1), 
         cost: c.itemsCost || c.cost || 0,
         completed: c.completed, 
         completedAt: c.completedAt || null,
         checked: c.completed
       }));
 
-      // Update current week if incoming bounties/chores are present
       if (incomingBounties.length > 0 || incomingChores.length > 0) {
         existingData.weeks[currentWeekId] = { 
           weekId: currentWeekId, 
@@ -298,14 +306,14 @@ export async function onRequest(context) {
         };
       }
 
-      // If full log array is explicitly passed (e.g. from Edit modal sync)
       if (body.logs && Array.isArray(body.logs)) {
         existingData.logs = body.logs;
       } else {
         const allDeliveries = (body.deliveries || []).map(d => ({
           name: d.from || d.name, 
           cost: d.itemsCost || d.cost || 0, 
-          tickets: d.baseTickets || d.tickets || 0,
+          baseTickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
+          tickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
           completed: d.completed, 
           completedAt: d.completedAt || null,
           items: d.itemDetails || d.items || [], 
@@ -316,7 +324,7 @@ export async function onRequest(context) {
         const dailyTickets = body.dailyDeliveryTicketsSaved || 0;
         const dailyCost = body.dailyDeliveryCostSaved || 0;
 
-        const existingTodayLogIndex = existingData.logs.findIndex(l => l.date === todayDate);
+        const existingTodayLogIndex = existingData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
         if (existingTodayLogIndex !== -1) {
           existingData.logs[existingTodayLogIndex] = { 
             date: todayDate, 
@@ -338,13 +346,12 @@ export async function onRequest(context) {
         }
       }
 
-      // Recalculate cumulative vault values
-      let totalTix = existingData.trackTickets || 0;
+      let totalTix = (existingData.trackTickets || 0) + (existingData.dailyLoginTickets || 0);
       let totalCost = existingData.trackCost || 0;
       existingData.logs.forEach(l => {
         (l.deliveriesDone || []).forEach(d => {
           if (d.checked !== undefined ? d.checked : d.completed) {
-            totalTix += (d.tickets || 0);
+            totalTix += (d.baseTickets || d.tickets || 0);
             totalCost += (d.cost || 0);
           }
         });
@@ -353,13 +360,13 @@ export async function onRequest(context) {
       Object.values(existingData.weeks).forEach(wk => {
         (wk.bounties || []).forEach(b => {
           if (b.completed || b.checked) {
-            totalTix += (b.tickets || 0);
+            totalTix += (b.baseTickets || b.tickets || 0);
             totalCost += (b.cost || 0);
           }
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (c.tickets || 0);
+            totalTix += (c.baseTickets || c.tickets || 0);
             totalCost += (c.cost || 0);
           }
         });
@@ -409,12 +416,16 @@ export async function onRequest(context) {
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // Deliveries Parser
+    // Clean Deliveries Parser (Never double extracts)
     const deliveryList = [];
     (farm.delivery?.orders || []).forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
-      const baseTickets = CHAPTER_NPC_TICKETS[npcNameClean] !== undefined ? CHAPTER_NPC_TICKETS[npcNameClean] : 0;
-      const totalTickets = baseTickets + extractRewardTickets(order.reward);
+      let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
+      
+      // Fallback only if reward object didn't have tickets
+      if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcNameClean] !== undefined) {
+        totalTickets = CHAPTER_NPC_TICKETS[npcNameClean];
+      }
 
       if (totalTickets > 0) {
         let itemsCost = 0;
@@ -447,7 +458,7 @@ export async function onRequest(context) {
       }
     });
 
-    // Bounties Parser (Strict Tickets Filter + Deduplication + Preserve Level)
+    // Clean Bounties Parser (Strict single-count reward extraction)
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -467,9 +478,10 @@ export async function onRequest(context) {
     const rawBountyArray = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
 
     rawBountyArray.forEach(b => {
-      let baseTicketCount = extractRewardTickets(b.reward) + extractRewardTickets(b.items);
-      if (b.tickets && typeof b.tickets === 'number') baseTicketCount += b.tickets;
-      if (b.reward?.tickets && typeof b.reward.tickets === 'number') baseTicketCount += b.reward.tickets;
+      let baseTicketCount = 0;
+      if (b.reward) baseTicketCount = extractRewardTickets(b.reward);
+      if (baseTicketCount === 0 && b.items) baseTicketCount = extractRewardTickets(b.items);
+      if (baseTicketCount === 0 && typeof b.tickets === 'number') baseTicketCount = b.tickets;
 
       if (baseTicketCount <= 0) return;
 
@@ -500,7 +512,7 @@ export async function onRequest(context) {
       });
     });
 
-    // Chores Parser
+    // Clean Chores Parser
     const choreObj = farm.choreBoard?.chores || farm.chores || {};
     const choresList = Object.entries(choreObj).map(([key, details]) => {
       let baseTicketCount = extractRewardTickets(details.reward);
@@ -508,7 +520,6 @@ export async function onRequest(context) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      
       const completionTime = (typeof details.completedAt === 'number') ? details.completedAt : null;
 
       return { 
