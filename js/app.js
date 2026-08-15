@@ -1,94 +1,106 @@
-import * as State from './state.js';
-import * as Auth from './auth.js';
-import * as Api from './api.js';
-import * as Modals from './modals.js';
-import * as Render from './render.js';
+import { loadTrackerData, saveProgressToCloudKV } from './api.js';
+import { userRegister, userLogin, userLogout, checkSavedAuth } from './auth.js';
+import { 
+  toggleGuideModal, 
+  openCategorySummaryModal, 
+  closeCategorySummaryModal, 
+  openColumnHistoryModal, 
+  closeColumnHistoryModal, 
+  renderColumnHistoryModalList,
+  toggleDeliveryLogCheck, 
+  deleteDeliveryLogItem, 
+  toggleWeeklyItemCheck, 
+  updateHistoryItemTickets, 
+  updateHistoryItemCost, 
+  deleteWeeklyItem, 
+  addCustomHistoryItem, 
+  deleteMasterLog, 
+  toggleHistoryModal 
+} from './modals.js';
+import { recalculateAll } from './render.js';
+import { initDailyLoginUI, handleDailyLoginToggle } from './state.js';
 
-// Bind all module functions to window
-Object.assign(window, State, Auth, Api, Modals, Render);
+// Expose handlers to window for inline HTML events
+window.loadTrackerData = loadTrackerData;
+window.saveProgressToCloudKV = saveProgressToCloudKV;
+window.userRegister = userRegister;
+window.userLogin = userLogin;
+window.userLogout = userLogout;
+window.toggleGuideModal = toggleGuideModal;
+window.openCategorySummaryModal = openCategorySummaryModal;
+window.closeCategorySummaryModal = closeCategorySummaryModal;
+window.openColumnHistoryModal = openColumnHistoryModal;
+window.closeColumnHistoryModal = closeColumnHistoryModal;
+window.renderColumnHistoryModalList = renderColumnHistoryModalList;
+window.toggleDeliveryLogCheck = toggleDeliveryLogCheck;
+window.deleteDeliveryLogItem = deleteDeliveryLogItem;
+window.toggleWeeklyItemCheck = toggleWeeklyItemCheck;
+window.updateHistoryItemTickets = updateHistoryItemTickets;
+window.updateHistoryItemCost = updateHistoryItemCost;
+window.deleteWeeklyItem = deleteWeeklyItem;
+window.addCustomHistoryItem = addCustomHistoryItem;
+window.deleteMasterLog = deleteMasterLog;
+window.toggleHistoryModal = toggleHistoryModal;
 
-// Explicitly register UI events for inline handlers
-window.userLogin = Auth.userLogin;
-window.userRegister = Auth.userRegister;
-window.userLogout = Auth.userLogout;
-window.loadTrackerData = Api.loadTrackerData;
-window.saveProgressToCloudKV = Api.saveProgressToCloudKV;
-window.toggleHistoryModal = Modals.toggleHistoryModal;
-window.toggleGuideModal = Modals.toggleGuideModal;
-window.deleteMasterLog = Modals.deleteMasterLog;
-window.openCategorySummaryModal = Modals.openCategorySummaryModal;
-window.closeCategorySummaryModal = Modals.closeCategorySummaryModal;
-window.openColumnHistoryModal = Modals.openColumnHistoryModal;
-window.closeColumnHistoryModal = Modals.closeColumnHistoryModal;
-window.addCustomHistoryItem = Modals.addCustomHistoryItem;
-window.deleteWeeklyItem = Modals.deleteWeeklyItem;
-window.toggleWeeklyItemCheck = Modals.toggleWeeklyItemCheck;
-window.toggleDeliveryLogCheck = Modals.toggleDeliveryLogCheck;
-window.deleteDeliveryLogItem = Modals.deleteDeliveryLogItem;
-window.updateHistoryItemTickets = Modals.updateHistoryItemTickets;
-window.updateHistoryItemCost = Modals.updateHistoryItemCost;
-
-window.saveGoalAndRecalculate = function() {
-  localStorage.setItem('sfl_targetGoal', document.getElementById('targetGoalInput').value);
-  localStorage.setItem('sfl_targetWeeks', document.getElementById('targetWeeksInput').value);
-  Render.recalculateAll();
-};
-
-window.saveTrackAndRecalculate = function() {
-  localStorage.setItem('sfl_trackTickets', document.getElementById('trackTicketsInput').value);
-  localStorage.setItem('sfl_trackCost', document.getElementById('trackCostInput').value);
-  Render.recalculateAll();
-};
-
-window.saveAndRecalculate = function() {
+window.saveAndRecalculate = () => {
+  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
   localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
   localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
   localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
-  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
-  localStorage.setItem('sfl_farmId', document.getElementById('farmId').value.trim());
-  localStorage.setItem('sfl_apiKey', document.getElementById('apiKey').value.trim());
-  Render.recalculateAll();
+  recalculateAll();
 };
 
-window.addEventListener('DOMContentLoaded', async () => {
-  document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
-  document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
-  document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+window.saveTrackAndRecalculate = () => {
+  localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput').value);
+  localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput').value);
+  recalculateAll();
+};
 
-  const savedGoal = localStorage.getItem('sfl_targetGoal');
-  if (savedGoal !== null) document.getElementById('targetGoalInput').value = savedGoal;
-  const savedWeeks = localStorage.getItem('sfl_targetWeeks');
-  if (savedWeeks !== null) document.getElementById('targetWeeksInput').value = savedWeeks;
+window.saveGoalAndRecalculate = () => {
+  localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput').value);
+  localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput').value);
+  recalculateAll();
+};
 
-  const savedTrackTickets = localStorage.getItem('sfl_trackTickets');
-  if (savedTrackTickets !== null) document.getElementById('trackTicketsInput').value = savedTrackTickets;
-  const savedTrackCost = localStorage.getItem('sfl_trackCost');
-  if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
+// Daily Login Window Actions
+window.toggleDailyLogin = () => {
+  handleDailyLoginToggle();
+  recalculateAll();
+};
 
-  const savedVip = localStorage.getItem('sfl_vip');
-  if (savedVip !== null) document.getElementById('vipToggle').checked = savedVip === 'true';
+window.saveLoginCountAndRecalculate = () => {
+  const count = parseInt(document.getElementById('dailyLoginCount').value) || 0;
+  localStorage.setItem('sfl_daily_login_count', count);
+  recalculateAll();
+};
 
+// Initialize Application State on Load
+document.addEventListener('DOMContentLoaded', () => {
   const savedFarmId = localStorage.getItem('sfl_farmId');
   if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
 
   const savedApiKey = localStorage.getItem('sfl_apiKey');
   if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
 
-  const savedUser = localStorage.getItem('sfl_username');
-  if (savedUser) {
-    State.state.currentUser = savedUser;
-    document.getElementById('authLoggedOut').style.display = 'none';
-    document.getElementById('authLoggedIn').style.display = 'flex';
-    document.getElementById('displayUsername').textContent = State.state.currentUser;
-    await Auth.fetchUserVault(State.state.currentUser);
-
-    if (State.state.currentVaultData.trackTickets !== undefined) {
-      document.getElementById('trackTicketsInput').value = State.state.currentVaultData.trackTickets;
-      localStorage.setItem('sfl_trackTickets', State.state.currentVaultData.trackTickets);
-    }
-    if (State.state.currentVaultData.trackCost !== undefined) {
-      document.getElementById('trackCostInput').value = State.state.currentVaultData.trackCost;
-      localStorage.setItem('sfl_trackCost', State.state.currentVaultData.trackCost);
-    }
+  if (localStorage.getItem('sfl_vip') !== null) {
+    document.getElementById('vipToggle').checked = localStorage.getItem('sfl_vip') === 'true';
   }
+  document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
+  document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
+  document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+  const savedTrackTix = localStorage.getItem('sfl_track_tix');
+  if (savedTrackTix !== null) document.getElementById('trackTicketsInput').value = savedTrackTix;
+
+  const savedTrackCost = localStorage.getItem('sfl_track_cost');
+  if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
+
+  const savedGoal = localStorage.getItem('sfl_target_goal');
+  if (savedGoal) document.getElementById('targetGoalInput').value = savedGoal;
+
+  const savedWeeks = localStorage.getItem('sfl_target_weeks');
+  if (savedWeeks) document.getElementById('targetWeeksInput').value = savedWeeks;
+
+  initDailyLoginUI();
+  checkSavedAuth();
 });
