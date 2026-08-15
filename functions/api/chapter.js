@@ -56,6 +56,7 @@ export async function onRequest(context) {
                 .map(b => {
                   let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
                   if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
+                  const isCompleted = b.checked !== undefined ? b.checked : Boolean(b.completed);
                   return {
                     id: b.id || null,
                     level: b.level || null,
@@ -63,21 +64,26 @@ export async function onRequest(context) {
                     cost: bCost,
                     baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
                     tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
-                    completed: b.completed || b.checked,
+                    completed: isCompleted,
                     completedAt: b.completedAt || null,
-                    checked: b.completed || b.checked
+                    checked: isCompleted
                   };
                 });
 
-              const currentWeekChores = (vaultData.chores || []).map(c => ({
-                name: c.name || c.task || 'Chore',
-                npc: c.npc || 'NPC',
-                baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
-                tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
-                completed: c.completed || c.checked,
-                completedAt: c.completedAt || null,
-                checked: c.completed || c.checked
-              }));
+              const currentWeekChores = (vaultData.chores || []).map(c => {
+                const isCompleted = c.checked !== undefined ? c.checked : Boolean(c.completed);
+                const taskName = c.task || c.name || 'Chore';
+                return {
+                  name: taskName,
+                  task: taskName,
+                  npc: c.npc || 'NPC',
+                  baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+                  tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+                  completed: isCompleted,
+                  completedAt: c.completedAt || null,
+                  checked: isCompleted
+                };
+              });
 
               vaultData.weeks[currentWeekId] = { weekId: currentWeekId, bounties: currentWeekBounties, chores: currentWeekChores };
             }
@@ -88,7 +94,7 @@ export async function onRequest(context) {
             const formattedDeliveries = (vaultData.deliveries || []).map(d => {
               const dCost = d.cost !== undefined ? d.cost : (d.itemsCost || 0);
               const dTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-              const isDone = d.completed || d.checked;
+              const isDone = d.checked !== undefined ? d.checked : Boolean(d.completed);
               if (isDone) {
                 dailyDeliveryTickets += dTix;
                 dailyDeliveryCost += dCost;
@@ -101,7 +107,7 @@ export async function onRequest(context) {
                 completed: isDone, 
                 completedAt: d.completedAt || null,
                 items: d.items || d.itemDetails || [], 
-                itemDetails: d.itemDetails || d.items || [],
+                itemDetails: d.itemDetails || d.items || [], 
                 checked: isDone 
               };
             });
@@ -273,30 +279,38 @@ export async function onRequest(context) {
 
       const incomingBounties = (body.bounties || [])
         .filter(b => (b.baseTickets || b.tickets || 0) > 0)
-        .map(b => ({
-          id: b.id || null,
-          level: b.level || null,
-          weekId: currentWeekId, 
-          name: b.name, 
-          cost: b.itemsCost || b.cost || 0,
-          baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
-          tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0), 
-          completed: b.completed, 
-          completedAt: b.completedAt || null,
-          checked: b.completed
-        }));
+        .map(b => {
+          const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
+          return {
+            id: b.id || null,
+            level: b.level || null,
+            weekId: currentWeekId, 
+            name: b.name, 
+            cost: b.itemsCost || b.cost || 0,
+            baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
+            tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0), 
+            completed: isDone, 
+            completedAt: b.completedAt || null,
+            checked: isDone
+          };
+        });
 
-      const incomingChores = (body.chores || []).map(c => ({
-        weekId: currentWeekId, 
-        name: c.task || c.name, 
-        npc: c.npc,
-        baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
-        tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1), 
-        cost: c.itemsCost || c.cost || 0,
-        completed: c.completed, 
-        completedAt: c.completedAt || null,
-        checked: c.completed
-      }));
+      const incomingChores = (body.chores || []).map(c => {
+        const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
+        const taskName = c.task || c.name || 'Chore';
+        return {
+          weekId: currentWeekId, 
+          name: taskName, 
+          task: taskName,
+          npc: c.npc || 'NPC',
+          baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
+          tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1), 
+          cost: c.itemsCost || c.cost || 0,
+          completed: isDone, 
+          completedAt: c.completedAt || null,
+          checked: isDone
+        };
+      });
 
       if (incomingBounties.length > 0 || incomingChores.length > 0) {
         existingData.weeks[currentWeekId] = { 
@@ -309,17 +323,20 @@ export async function onRequest(context) {
       if (body.logs && Array.isArray(body.logs)) {
         existingData.logs = body.logs;
       } else {
-        const allDeliveries = (body.deliveries || []).map(d => ({
-          name: d.from || d.name, 
-          cost: d.itemsCost || d.cost || 0, 
-          baseTickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
-          tickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
-          completed: d.completed, 
-          completedAt: d.completedAt || null,
-          items: d.itemDetails || d.items || [], 
-          itemDetails: d.itemDetails || d.items || [], 
-          checked: d.completed
-        }));
+        const allDeliveries = (body.deliveries || []).map(d => {
+          const isDone = d.checked !== undefined ? d.checked : Boolean(d.completed);
+          return {
+            name: d.from || d.name, 
+            cost: d.itemsCost || d.cost || 0, 
+            baseTickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
+            tickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
+            completed: isDone, 
+            completedAt: d.completedAt || null,
+            items: d.itemDetails || d.items || [], 
+            itemDetails: d.itemDetails || d.items || [], 
+            checked: isDone
+          };
+        });
 
         const dailyTickets = body.dailyDeliveryTicketsSaved || 0;
         const dailyCost = body.dailyDeliveryCostSaved || 0;
@@ -385,7 +402,7 @@ export async function onRequest(context) {
     }
   }
 
-  // 6. Default Live SFL Fetch Handler
+  // 6. Live SFL API Fetch Handler
   try {
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
@@ -416,13 +433,12 @@ export async function onRequest(context) {
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-    // Clean Deliveries Parser (Never double extracts)
+    // Clean Deliveries Parser
     const deliveryList = [];
     (farm.delivery?.orders || []).forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
       
-      // Fallback only if reward object didn't have tickets
       if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcNameClean] !== undefined) {
         totalTickets = CHAPTER_NPC_TICKETS[npcNameClean];
       }
@@ -453,12 +469,13 @@ export async function onRequest(context) {
           baseTickets: totalTickets, 
           isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, 
           completed: isCompleted,
+          checked: isCompleted,
           completedAt: (typeof order.completedAt === 'number') ? order.completedAt : null
         });
       }
     });
 
-    // Clean Bounties Parser (Strict single-count reward extraction)
+    // Clean Bounties Parser
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -508,6 +525,7 @@ export async function onRequest(context) {
         baseTickets: baseTicketCount, 
         itemsCost: unitPrice, 
         completed: isCompleted,
+        checked: isCompleted,
         completedAt: completionTime
       });
     });
@@ -521,14 +539,17 @@ export async function onRequest(context) {
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
       const completionTime = (typeof details.completedAt === 'number') ? details.completedAt : null;
+      const taskLabel = details.name || details.description || key;
 
       return { 
-        npc: details.npc || details.from || key, 
-        task: details.name || details.description || key, 
+        npc: details.npc || details.from || 'Chore NPC', 
+        name: taskLabel,
+        task: taskLabel, 
         baseTickets: baseTicketCount, 
         progress: currentProgress, 
         requirement, 
         completed: isCompleted,
+        checked: isCompleted,
         completedAt: completionTime
       };
     });
