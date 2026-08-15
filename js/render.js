@@ -7,14 +7,14 @@ export function recalculateAll() {
   const boostCount = getActiveBoostCount();
 
   const now = new Date();
-  const todayDateStr = now.toISOString().split('T')[0];
+  const todayUtcStr = now.toISOString().split('T')[0];
   const localTodayStr = now.toLocaleDateString('en-CA');
   const currentWeekId = getMondayBasedWeekId();
 
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Track & Login inputs
+  // Track & Login Inputs (Added exactly once to totals)
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
@@ -22,7 +22,7 @@ export function recalculateAll() {
   const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
   const todayLoginTickets = isDoneLoginToday ? 1 : 0;
 
-  // Category counters
+  // Category Counters
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalChoreTix = 0;
@@ -38,45 +38,22 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
-  // Strict check: Weekly items ONLY count for Today if an explicit timestamp proves it was finished today
-  const isDoneToday = (item, category) => {
-    if (!item || (!item.completed && !item.checked)) return false;
-    if (item.completedAt) {
-      const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
-      if (!isNaN(ts) && ts > 0) {
-        const ms = ts < 1e11 ? ts * 1000 : ts;
-        const itemDate = new Date(ms);
-        const iso = itemDate.toISOString().split('T')[0];
-        const loc = itemDate.toLocaleDateString('en-CA');
-        return (iso === todayDateStr || loc === localTodayStr);
-      }
-    }
-    return category === 'delivery';
-  };
-
-  // 1. DEDUPLICATE LOGS (Keep only the latest log per unique YYYY-MM-DD date)
+  // 1. Process PAST Daily Deliveries from saved history logs (strictly excluding today to prevent double-counting)
   const seenDates = new Set();
-  const uniqueLogs = [];
   rawLogs.forEach(log => {
-    const cleanDate = (log.date || '').split('T')[0];
-    if (!cleanDate) return;
-    if (!seenDates.has(cleanDate)) {
-      seenDates.add(cleanDate);
-      uniqueLogs.push({ ...log, date: cleanDate });
-    }
-  });
+    const rawDate = (log.date || '').split('T')[0];
+    if (!rawDate || seenDates.has(rawDate)) return;
+    seenDates.add(rawDate);
 
-  let todayHasDeliveriesInLog = false;
+    const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
+    if (isTodayLog) return; // Skip today's log here; today's deliveries are processed from live state below
 
-  // Process unique daily delivery logs
-  uniqueLogs.forEach(log => {
-    const isThisWeek = log.weekId === currentWeekId || (log.date && log.date.slice(0, 4) === now.getFullYear().toString());
-    const isToday = (log.date === todayDateStr || log.date === localTodayStr);
+    const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
     (log.deliveriesDone || []).forEach(item => {
       const isTicked = item.checked !== undefined ? item.checked : !!item.completed;
       if (isTicked) {
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets !== undefined ? item.tickets : 2);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const itemCost = item.cost || 0;
 
@@ -87,42 +64,35 @@ export function recalculateAll() {
           weekDelivTix += finalTix;
           weekCostAll += itemCost;
         }
-        if (isToday) {
-          todayHasDeliveriesInLog = true;
-          todayDelivTix += finalTix;
-          todayCostAll += itemCost;
-        }
       }
     });
   });
 
-  // 2. If today's deliveries aren't in logs yet, calculate from live deliveries
-  if (!todayHasDeliveriesInLog) {
-    (state.globalData.deliveries || []).forEach(d => {
-      if (d.completed) {
-        const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-        const finalTix = d.baseTickets + deliveryAddon;
-        const dCost = d.itemsCost || 0;
+  // 2. Process TODAY'S Live Deliveries (Counted exactly once)
+  (state.globalData.deliveries || []).forEach(d => {
+    if (d.completed) {
+      const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
+      const finalTix = d.baseTickets + deliveryAddon;
+      const dCost = d.itemsCost || 0;
 
-        totalDelivTix += finalTix;
-        weekDelivTix += finalTix;
-        todayDelivTix += finalTix;
+      todayDelivTix += finalTix;
+      todayCostAll += dCost;
 
-        totalSflCostAll += dCost;
-        weekCostAll += dCost;
-        todayCostAll += dCost;
-      }
-    });
-  }
+      totalDelivTix += finalTix;
+      weekDelivTix += finalTix;
+      totalSflCostAll += dCost;
+      weekCostAll += dCost;
+    }
+  });
 
-  // 3. Process Past Weeks (Historical Bounties & Chores)
+  // 3. Process PAST Weeks (Historical Bounties & Chores from prior weeks)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    if (wkId === currentWeekId) return; // Skip current week here to prevent double addition
+    if (wkId === currentWeekId) return; // Skip current week to avoid duplicating with current live week below
 
     (wk.bounties || []).forEach(b => {
       const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
       if (isTicked) {
-        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
         if (baseTix <= 0) return;
 
         const finalTix = baseTix + boostCount;
@@ -136,7 +106,7 @@ export function recalculateAll() {
     (wk.chores || []).forEach(c => {
       const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
       if (isTicked) {
-        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
         const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
@@ -146,7 +116,7 @@ export function recalculateAll() {
     });
   });
 
-  // 4. Process Current Week Bounties & Chores (Merged & Deduplicated)
+  // 4. Process CURRENT Week Bounties & Chores (Deduplicated & Merged)
   const seenWeekBountyKeys = new Set();
   const currentWeekBounties = (state.globalData.bounties || [])
     .filter(liveB => {
@@ -191,7 +161,21 @@ export function recalculateAll() {
       };
     });
 
-  // Calculate current week bounties
+  const isWeeklyItemDoneToday = (item) => {
+    if (!item || (!item.completed && !item.checked)) return false;
+    if (item.completedAt) {
+      const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
+      if (!isNaN(ts) && ts > 0) {
+        const ms = ts < 1e11 ? ts * 1000 : ts;
+        const itemDate = new Date(ms);
+        const iso = itemDate.toISOString().split('T')[0];
+        const loc = itemDate.toLocaleDateString('en-CA');
+        return (iso === todayUtcStr || loc === localTodayStr);
+      }
+    }
+    return false;
+  };
+
   currentWeekBounties.forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : !!b.completed;
     if (isTicked) {
@@ -203,18 +187,16 @@ export function recalculateAll() {
 
       totalBountyTix += finalTix;
       totalSflCostAll += bCost;
-
       weekBountyTix += finalTix;
       weekCostAll += bCost;
 
-      if (isDoneToday(b, 'bounty')) {
+      if (isWeeklyItemDoneToday(b)) {
         todayBountyTix += finalTix;
         todayCostAll += bCost;
       }
     }
   });
 
-  // Calculate current week chores
   currentWeekChores.forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : !!c.completed;
     if (isTicked) {
@@ -227,7 +209,7 @@ export function recalculateAll() {
       totalSflCostAll += cCost;
       weekCostAll += cCost;
 
-      if (isDoneToday(c, 'chore')) {
+      if (isWeeklyItemDoneToday(c)) {
         todayChoreTix += finalTix;
         todayCostAll += cCost;
       }
@@ -286,7 +268,7 @@ export function recalculateAll() {
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
   setElemText('tipTodayLogin', `🎁 Daily Login: ${todayLoginTickets} Tix`);
 
-  // Goal Tracker Target
+  // Goal Calculator
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
