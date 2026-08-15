@@ -33,7 +33,6 @@
     h1 { font-size: 26px; font-weight: 900; color: #FFF8DC; text-shadow: 2px 2px #271813; margin-bottom: 4px; letter-spacing: 1px; }
     p { font-size: 13px; color: #EEDC82; font-weight: bold; text-shadow: 1px 1px #271813; }
     
-    /* Top Tip Banner */
     .tip-banner {
       background: #FFF8DC;
       border: 2px dashed #D2691E;
@@ -89,7 +88,6 @@
       font-weight: 900;
     }
 
-    /* Core Action Buttons */
     .btn {
       font-family: inherit;
       font-weight: 900;
@@ -109,7 +107,6 @@
     .btn:hover { filter: brightness(1.06); }
     .btn:active { transform: translateY(2px); box-shadow: 0 2px 0px #3E2723; }
 
-    /* Button Colors */
     .btn-wood {
       background: linear-gradient(180deg, #C27B38 0%, #8B4E1D 100%);
       color: #FFF8DC;
@@ -123,7 +120,6 @@
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
     .btn-sm { padding: 5px 10px; font-size: 11px; box-shadow: 0 3px 0px #2E1B17; }
 
-    /* Category Overview Cards */
     .overview-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -167,7 +163,6 @@
       gap: 8px;
     }
 
-    /* Key Performance Metric Boxes */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
     
     .stat-box {
@@ -348,7 +343,7 @@
           
           <!-- Daily Login Tick & Count -->
           <div style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
-            <label class="checkbox-label" style="padding: 3px 6px; font-size: 11px;" title="Check when you log in today to add +1 ticket">
+            <label class="checkbox-label" style="padding: 3px 6px; font-size: 11px;" title="Auto-increments +1 ticket every calendar day">
               <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 14px; height: 14px;" />
               🎁 LOGIN
             </label>
@@ -381,6 +376,7 @@
           <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
           <div id="tipTotalDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipTotalBounty">📜 Bounties: 0 Tix</div>
+          <div id="tipTotalAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
           <div id="tipTotalChore">🧹 Chores: 0 Tix</div>
           <div id="tipTotalTrack">🛤️ Track: 0 Tix</div>
           <div id="tipTotalLogin">🎁 Daily Login: 0 Tix</div>
@@ -398,6 +394,7 @@
           <div>📅 <strong>WEEK BREAKDOWN:</strong></div>
           <div id="tipWeekDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipWeekBounty">📜 Bounties: 0 Tix</div>
+          <div id="tipWeekAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
           <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
           <div id="tipWeekLogin">🎁 Daily Login: 0 Tix</div>
@@ -415,6 +412,7 @@
           <div>✨ <strong>TODAY'S BREAKDOWN:</strong></div>
           <div id="tipTodayDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipTodayBounty">📜 Bounties: 0 Tix</div>
+          <div id="tipTodayAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
           <div id="tipTodayChore">🧹 Chores: 0 Tix</div>
           <div id="tipTodayLogin">🎁 Daily Login: 0 Tix</div>
         </div>
@@ -511,7 +509,7 @@
         <div class="guide-card">
           <div class="guide-card-title">🎁 1. DAILY LOGIN REWARD (+1 TICKET)</div>
           <div class="guide-card-text">
-            • Tick the <strong>🎁 LOGIN</strong> checkbox once each day to increment your total daily login tickets by +1. You can also manually adjust the count directly in the number box.
+            • Your daily login ticket auto-increments by +1 once every calendar day. You can also manually adjust the count directly in the number box.
           </div>
         </div>
 
