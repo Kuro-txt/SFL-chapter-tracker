@@ -47,7 +47,17 @@ export function isLoginClaimedToday() {
   return lastDate === getTodayDateString();
 }
 
-// Automatically claim +1 ticket once per calendar day on app load
+// Robust Animal Bounty Identifier (checks level, tier, animal field, and all animal names)
+export function isAnimalBounty(item) {
+  if (!item) return false;
+  if (item.level !== undefined && item.level !== null && item.level !== '') return true;
+  if (item.tier !== undefined && item.tier !== null && item.tier !== '') return true;
+  if (item.category === 'animal' || item.type === 'animal') return true;
+  if (item.animal) return true;
+  const n = (typeof item === 'string' ? item : (item.name || item.task || item.title || item.deal || '')).toLowerCase();
+  return /chicken|cow|sheep|pig|goat|hen|bull|ox|duck|animal|lvl|level/.test(n);
+}
+
 export function checkAndAutoClaimDailyLogin() {
   const todayStr = getTodayDateString();
   const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
@@ -66,7 +76,6 @@ export function checkAndAutoClaimDailyLogin() {
   if (checkInput) checkInput.checked = true;
 }
 
-// Alias export to satisfy older app.js imports
 export function initDailyLoginUI() {
   checkAndAutoClaimDailyLogin();
 }
