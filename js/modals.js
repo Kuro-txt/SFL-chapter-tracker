@@ -91,9 +91,10 @@ export function openCategorySummaryModal(cat) {
     titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
     const sortedDeliv = [...state.globalData.deliveries].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedDeliv.map(d => {
+      const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
       const finalTickets = d.baseTickets + deliveryAddon;
-      if (d.completed) {
+      if (isTicked) {
         catTickets += finalTickets;
         catCost += (d.itemsCost || 0);
       }
@@ -101,7 +102,7 @@ export function openCategorySummaryModal(cat) {
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; font-weight:900;">
           <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
-          <span class="badge ${d.completed ? 'badge-done' : 'badge-active'}">${d.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
+          <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
         </div>
         <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
         <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
@@ -123,8 +124,9 @@ export function openCategorySummaryModal(cat) {
     const sortedBounties = [...filteredBounties].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
 
     bodyEl.innerHTML = sortedBounties.map(b => {
+      const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
       const finalTickets = b.baseTickets + boostCount;
-      if (b.completed) {
+      if (isTicked) {
         catTickets += finalTickets;
         catCost += (b.itemsCost || 0);
       }
@@ -134,7 +136,7 @@ export function openCategorySummaryModal(cat) {
           <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${b.name.toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
           <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
         </div>
-        <span class="badge ${b.completed ? 'badge-done' : 'badge-active'}">${b.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
+        <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
     }).join('');
 
@@ -142,19 +144,20 @@ export function openCategorySummaryModal(cat) {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
     const sortedChores = [...state.globalData.chores].sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
     bodyEl.innerHTML = sortedChores.map(c => {
+      const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
       const finalTickets = c.baseTickets > 0 ? (c.baseTickets + boostCount) : 0;
-      if (c.completed) {
+      if (isTicked) {
         catTickets += finalTickets;
         catCost += (c.itemsCost || c.cost || 0);
       }
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
-          <strong style="color:#3E2723;">🧹 ${c.npc.toUpperCase()}</strong><br/>
-          <span style="color:#5C4033; font-weight:bold;">${c.task}</span><br/>
+          <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong><br/>
+          <span style="color:#5C4033; font-weight:bold;">${c.task || c.name}</span><br/>
           ${c.requirement > 0 ? '<span style="color:#8C7853;">Progress: ' + c.progress + ' / ' + c.requirement + '</span><br/>' : ''}
           <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets | ${formatSFL(c.itemsCost || c.cost || 0)} SFL</span>
         </div>
-        <span class="badge ${c.completed ? 'badge-done' : 'badge-active'}">${c.completed ? '✨ DONE' : '⏳ ACTIVE'}</span>
+        <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
     }).join('');
   }
@@ -208,9 +211,8 @@ export function renderColumnHistoryModalList() {
 
   if (type === 'delivery') {
     const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-    
-    // Deduplicate logs in edit list
     const seenDates = new Set();
+    
     rawLogs.forEach((log, logIdx) => {
       const cleanDate = (log.date || 'Past Run').split('T')[0];
       if (seenDates.has(cleanDate)) return;
@@ -221,6 +223,7 @@ export function renderColumnHistoryModalList() {
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
         const itemName = typeof item === 'string' ? item : (item.name || 'NPC Delivery');
+        const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
         records.push({
           logIdx,
@@ -231,13 +234,12 @@ export function renderColumnHistoryModalList() {
           cost: item.cost || 0,
           displayTickets: finalTix,
           baseTickets: baseTix,
-          checked: item.checked !== undefined ? item.checked : !!item.completed,
-          status: item.completed ? '✨ Done' : '⏳ Active'
+          checked: isChecked,
+          status: isChecked ? '✨ Done' : '⏳ Active'
         });
       });
     });
 
-    // STRICT FILTER: Match ONLY NPC Name or Date
     if (filterTerm) {
       records = records.filter(r => 
         r.name.toLowerCase().includes(filterTerm) ||
@@ -246,45 +248,37 @@ export function renderColumnHistoryModalList() {
     }
   } else {
     const currentWeekId = getMondayBasedWeekId();
-    const weeks = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
-    
-    if (!weeks[currentWeekId] && state.globalData) {
-      weeks[currentWeekId] = {
-        weekId: currentWeekId,
-        bounties: state.globalData.bounties || [],
-        chores: state.globalData.chores || []
-      };
+    const isChore = type === 'chore';
+    const isAnimal = type === 'animalBounty';
+
+    let listSource = [];
+    if (isChore) {
+      listSource = state.globalData?.chores || [];
+    } else {
+      listSource = (state.globalData?.bounties || []).filter(b => {
+        const n = (b.name || '').toLowerCase();
+        const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+        return isAnimal ? animalCheck : !animalCheck;
+      });
     }
 
-    Object.entries(weeks).forEach(([weekId, wk]) => {
-      let rawItems = [];
-      if (type === 'chore') {
-        rawItems = wk.chores || [];
-      } else {
-        const allBounties = wk.bounties || [];
-        rawItems = allBounties.filter(b => {
-          const n = (typeof b === 'string' ? b : (b.name || '')).toLowerCase();
-          const isAnimal = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
-          return type === 'animalBounty' ? isAnimal : !isAnimal;
-        });
-      }
+    listSource.forEach((item, itemIdx) => {
+      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
+      const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
+      const lvl = resolveAnimalLevel(item);
+      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
-      rawItems.forEach((item, itemIdx) => {
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
-        const finalTix = baseTix > 0 ? (baseTix + boostCount) : 0;
-        const lvl = resolveAnimalLevel(item);
-
-        records.push({
-          weekId,
-          itemIdx,
-          name: typeof item === 'string' ? item : (item.name || item.npc || 'Task'),
-          level: lvl,
-          cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
-          displayTickets: finalTix,
-          baseTickets: baseTix,
-          checked: item.checked !== undefined ? item.checked : !!item.completed,
-          status: item.completed ? '✨ Done' : '⏳ Active'
-        });
+      records.push({
+        weekId: currentWeekId,
+        itemIdx,
+        name: isChore ? (item.task || item.name || 'Chore') : (item.name || 'Bounty'),
+        npc: item.npc || null,
+        level: lvl,
+        cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
+        displayTickets: finalTix,
+        baseTickets: baseTix,
+        checked: isChecked,
+        status: isChecked ? '✨ Done' : '⏳ Active'
       });
     });
   }
@@ -313,6 +307,7 @@ export function renderColumnHistoryModalList() {
         ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
         : '';
 
+      const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
       const itemsRow = (type === 'delivery' && r.requestedItems) 
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
         : '';
@@ -322,7 +317,7 @@ export function renderColumnHistoryModalList() {
           <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
           <div>
             <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
-            <strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}
+            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}
             ${itemsRow}
           </div>
         </label>
@@ -341,10 +336,12 @@ export function renderColumnHistoryModalList() {
 }
 
 export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
-  const logs = state.globalData.cloudHistory.logs;
-  if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
+  const logs = state.globalData?.cloudHistory?.logs;
+  if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
     const item = logs[logIdx].deliveriesDone[itemIdx];
-    item.checked = (item.checked === undefined ? !item.completed : !item.checked);
+    const newStatus = !(item.checked !== undefined ? item.checked : Boolean(item.completed));
+    item.checked = newStatus;
+    item.completed = newStatus;
     renderColumnHistoryModalList();
     recalculateAll();
     await syncCurrentVaultToCloud();
@@ -352,8 +349,8 @@ export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
 }
 
 export async function deleteDeliveryLogItem(logIdx, itemIdx) {
-  const logs = state.globalData.cloudHistory.logs;
-  if (logs[logIdx]?.deliveriesDone) {
+  const logs = state.globalData?.cloudHistory?.logs;
+  if (logs?.[logIdx]?.deliveriesDone) {
     logs[logIdx].deliveriesDone.splice(itemIdx, 1);
     renderColumnHistoryModalList();
     recalculateAll();
@@ -362,11 +359,35 @@ export async function deleteDeliveryLogItem(logIdx, itemIdx) {
 }
 
 export async function toggleWeeklyItemCheck(weekId, itemIdx) {
-  const weeks = state.globalData.cloudHistory.weeks;
-  const targetArray = state.activeColumnType === 'chore' ? 'chores' : 'bounties';
-  if (weeks[weekId]?.[targetArray]?.[itemIdx]) {
-    const item = weeks[weekId][targetArray][itemIdx];
-    item.checked = (item.checked === undefined ? !item.completed : !item.checked);
+  const type = state.activeColumnType;
+  let targetItem = null;
+
+  if (type === 'chore') {
+    targetItem = state.globalData?.chores?.[itemIdx];
+  } else {
+    const isAnimal = type === 'animalBounty';
+    const bounties = (state.globalData?.bounties || []).filter(b => {
+      const n = (b.name || '').toLowerCase();
+      const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      return isAnimal ? animalCheck : !animalCheck;
+    });
+    targetItem = bounties?.[itemIdx];
+  }
+
+  if (targetItem) {
+    const newStatus = !(targetItem.checked !== undefined ? targetItem.checked : Boolean(targetItem.completed));
+    targetItem.checked = newStatus;
+    targetItem.completed = newStatus;
+
+    // Sync state to Cloud History structure
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+    if (!state.globalData.cloudHistory.weeks[weekId]) {
+      state.globalData.cloudHistory.weeks[weekId] = { weekId, bounties: [], chores: [] };
+    }
+    state.globalData.cloudHistory.weeks[weekId].bounties = state.globalData.bounties || [];
+    state.globalData.cloudHistory.weeks[weekId].chores = state.globalData.chores || [];
+
     renderColumnHistoryModalList();
     recalculateAll();
     await syncCurrentVaultToCloud();
@@ -380,20 +401,31 @@ export async function updateHistoryItemTickets(idKey, itemIdx, val) {
   const inputVal = parseInt(val) || 0;
 
   if (type === 'delivery') {
-    const logs = state.globalData.cloudHistory.logs;
+    const logs = state.globalData?.cloudHistory?.logs;
     const logIdx = parseInt(idKey);
-    if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
+    if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
       const base = Math.max(0, inputVal - (vipBonus + boostCount));
       logs[logIdx].deliveriesDone[itemIdx].baseTickets = base;
       logs[logIdx].deliveriesDone[itemIdx].tickets = base;
     }
   } else {
-    const weeks = state.globalData.cloudHistory.weeks;
-    const targetArray = type === 'chore' ? 'chores' : 'bounties';
-    if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
-      const base = Math.max(0, inputVal - boostCount);
-      weeks[idKey][targetArray][itemIdx].baseTickets = base;
-      weeks[idKey][targetArray][itemIdx].tickets = base;
+    const base = Math.max(0, inputVal - boostCount);
+    if (type === 'chore') {
+      if (state.globalData?.chores?.[itemIdx]) {
+        state.globalData.chores[itemIdx].baseTickets = base;
+        state.globalData.chores[itemIdx].tickets = base;
+      }
+    } else {
+      const isAnimal = type === 'animalBounty';
+      const bounties = (state.globalData?.bounties || []).filter(b => {
+        const n = (b.name || '').toLowerCase();
+        const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+        return isAnimal ? animalCheck : !animalCheck;
+      });
+      if (bounties?.[itemIdx]) {
+        bounties[itemIdx].baseTickets = base;
+        bounties[itemIdx].tickets = base;
+      }
     }
   }
   renderColumnHistoryModalList();
@@ -403,17 +435,30 @@ export async function updateHistoryItemTickets(idKey, itemIdx, val) {
 
 export async function updateHistoryItemCost(idKey, itemIdx, val) {
   const type = state.activeColumnType;
+  const costVal = parseFloat(val) || 0;
+
   if (type === 'delivery') {
-    const logs = state.globalData.cloudHistory.logs;
+    const logs = state.globalData?.cloudHistory?.logs;
     const logIdx = parseInt(idKey);
-    if (logs[logIdx]?.deliveriesDone?.[itemIdx]) {
-      logs[logIdx].deliveriesDone[itemIdx].cost = parseFloat(val) || 0;
+    if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
+      logs[logIdx].deliveriesDone[itemIdx].cost = costVal;
+      logs[logIdx].deliveriesDone[itemIdx].itemsCost = costVal;
+    }
+  } else if (type === 'chore') {
+    if (state.globalData?.chores?.[itemIdx]) {
+      state.globalData.chores[itemIdx].cost = costVal;
+      state.globalData.chores[itemIdx].itemsCost = costVal;
     }
   } else {
-    const weeks = state.globalData.cloudHistory.weeks;
-    const targetArray = type === 'chore' ? 'chores' : 'bounties';
-    if (weeks[idKey]?.[targetArray]?.[itemIdx]) {
-      weeks[idKey][targetArray][itemIdx].cost = parseFloat(val) || 0;
+    const isAnimal = type === 'animalBounty';
+    const bounties = (state.globalData?.bounties || []).filter(b => {
+      const n = (b.name || '').toLowerCase();
+      const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      return isAnimal ? animalCheck : !animalCheck;
+    });
+    if (bounties?.[itemIdx]) {
+      bounties[itemIdx].cost = costVal;
+      bounties[itemIdx].itemsCost = costVal;
     }
   }
   renderColumnHistoryModalList();
@@ -422,14 +467,30 @@ export async function updateHistoryItemCost(idKey, itemIdx, val) {
 }
 
 export async function deleteWeeklyItem(weekId, itemIdx) {
-  const weeks = state.globalData.cloudHistory.weeks;
-  const targetArray = state.activeColumnType === 'chore' ? 'chores' : 'bounties';
-  if (weeks[weekId]?.[targetArray]) {
-    weeks[weekId][targetArray].splice(itemIdx, 1);
-    renderColumnHistoryModalList();
-    recalculateAll();
-    await syncCurrentVaultToCloud();
+  const type = state.activeColumnType;
+  if (type === 'chore') {
+    if (state.globalData?.chores) {
+      state.globalData.chores.splice(itemIdx, 1);
+    }
+  } else {
+    const isAnimal = type === 'animalBounty';
+    let count = 0;
+    const all = state.globalData?.bounties || [];
+    for (let i = 0; i < all.length; i++) {
+      const n = (all[i].name || '').toLowerCase();
+      const animalCheck = n.includes('chicken') || n.includes('cow') || n.includes('sheep');
+      if ((isAnimal && animalCheck) || (!isAnimal && !animalCheck)) {
+        if (count === itemIdx) {
+          all.splice(i, 1);
+          break;
+        }
+        count++;
+      }
+    }
   }
+  renderColumnHistoryModalList();
+  recalculateAll();
+  await syncCurrentVaultToCloud();
 }
 
 export async function addCustomHistoryItem() {
@@ -438,28 +499,39 @@ export async function addCustomHistoryItem() {
   const cost = parseFloat(document.getElementById('addHistCost').value) || 0;
   const type = state.activeColumnType;
   const currentWeekId = getMondayBasedWeekId();
-
   const boostCount = getActiveBoostCount();
-
-  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-  if (!state.globalData.cloudHistory.weeks[currentWeekId]) {
-    state.globalData.cloudHistory.weeks[currentWeekId] = { weekId: currentWeekId, bounties: [], chores: [] };
-  }
-  const targetArray = type === 'chore' ? 'chores' : 'bounties';
   const baseTickets = Math.max(0, inputTickets - boostCount);
   
   const lvlMatch = name.match(/(?:lvl|level|#|\()\s*(\d+)/i);
   const customLevel = lvlMatch ? lvlMatch[1] : null;
 
-  state.globalData.cloudHistory.weeks[currentWeekId][targetArray].push({ 
-    name, 
-    level: customLevel, 
-    cost, 
-    baseTickets: baseTickets,
-    tickets: baseTickets, 
-    completed: true, 
-    checked: true 
-  });
+  if (type === 'chore') {
+    if (!state.globalData.chores) state.globalData.chores = [];
+    state.globalData.chores.push({
+      npc: 'Manual',
+      task: name,
+      name,
+      baseTickets,
+      tickets: baseTickets,
+      itemsCost: cost,
+      cost,
+      completed: true,
+      checked: true
+    });
+  } else {
+    if (!state.globalData.bounties) state.globalData.bounties = [];
+    state.globalData.bounties.push({
+      id: 'custom_' + Date.now(),
+      name,
+      level: customLevel,
+      baseTickets,
+      tickets: baseTickets,
+      itemsCost: cost,
+      cost,
+      completed: true,
+      checked: true
+    });
+  }
 
   renderColumnHistoryModalList();
   recalculateAll();
