@@ -1,5 +1,4 @@
 import { hashPassword } from '../utils/auth-crypto.js';
-import { getMondayBasedWeekId } from '../utils/dates.js';
 import { 
   CHAPTER_NPC_TICKETS, 
   extractPricesRecursive, 
@@ -15,6 +14,36 @@ const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
 });
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Safe UTC Monday-based week ID helper with bulletproof validation
+function getMondayBasedWeekId(d = new Date()) {
+  let date;
+  try {
+    if (!d) {
+      date = new Date();
+    } else if (typeof d === 'string') {
+      date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
+    } else if (typeof d === 'number') {
+      date = new Date(d);
+    } else if (d instanceof Date) {
+      date = new Date(d.getTime());
+    } else {
+      date = new Date();
+    }
+  } catch (e) {
+    date = new Date();
+  }
+
+  if (isNaN(date.getTime())) {
+    date = new Date();
+  }
+
+  const day = date.getUTCDay();
+  const utcDate = date.getUTCDate();
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  date.setUTCDate(utcDate + diffToMonday);
+  return date.toISOString().split('T')[0];
+}
 
 async function fetchFarmWithRetry(farmId, apiKey) {
   const retryDelays = [5000, 8000, 10000];
@@ -591,13 +620,13 @@ export async function onRequest(context) {
       Object.values(existingData.weeks).forEach(wk => {
         (wk.bounties || []).forEach(b => {
           if (b.completed || b.checked) {
-            totalTix += (b.baseTickets || b.tickets || 0);
+            totalTix += (b.tickets || b.baseTickets || 0);
             totalCost += (b.cost || 0);
           }
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (c.baseTickets || c.tickets || 0);
+            totalTix += (c.tickets || c.baseTickets || 0);
             totalCost += (c.cost || 0);
           }
         });
