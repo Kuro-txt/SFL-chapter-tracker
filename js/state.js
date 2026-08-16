@@ -1,15 +1,24 @@
 export const state = {
   globalData: null,
-  currentVaultData: null,
   currentUser: null,
-  activeColumnType: 'delivery',
-  isFetchCooldown: false
+  activeColumnType: null,
+  currentVaultData: null
 };
 
-export function formatSFL(val) {
-  const num = parseFloat(val);
-  if (isNaN(num)) return "0.00";
-  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const SFL_FLOWER_ITEMS = new Set([
+  'red pansy', 'yellow pansy', 'purple pansy', 'white pansy', 'blue pansy',
+  'sunpetal bloom', 'prism petal', 'celestial frostbloom',
+  'red cosmos', 'yellow cosmos', 'purple cosmos', 'white cosmos', 'blue cosmos',
+  'red balloon flower', 'yellow balloon flower', 'purple balloon flower', 'white balloon flower', 'blue balloon flower',
+  'red carnation', 'yellow carnation', 'purple carnation', 'white carnation', 'blue carnation',
+  'red lotus', 'yellow lotus', 'purple lotus', 'white lotus', 'blue lotus',
+  'red daffodil', 'yellow daffodil', 'purple daffodil', 'white daffodil', 'blue daffodil',
+  'primula', 'edelweiss', 'gladiolus', 'lavender', 'clover', 'marigold'
+]);
+
+export function formatSFL(num) {
+  if (num === null || num === undefined || isNaN(num)) return "0.00";
+  return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function setElemText(id, text) {
@@ -29,78 +38,74 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-export function getMondayBasedWeekId(dateObj = new Date()) {
-  const d = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+export function getMondayBasedWeekId(d = new Date()) {
+  const date = new Date(d.getTime());
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day + 3);
+  const firstThursday = date.getTime();
+  date.setMonth(0, 1);
+  if (date.getDay() !== 4) {
+    date.setMonth(0, 1 + ((4 - date.getDay()) + 7) % 7);
+  }
+  const weekNum = 1 + Math.ceil((firstThursday - date.getTime()) / 604800000);
+  return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
-export function getTodayDateString() {
-  return new Date().toISOString().split('T')[0];
+export function isAnimalBounty(item) {
+  if (!item) return false;
+  if (item.category === 'animal' || item.type === 'animal') return true;
+  if (item.level !== undefined && item.level !== null) return true;
+  if (item.tier !== undefined && item.tier !== null) return true;
+
+  const rawName = typeof item === 'string' ? item : (item.name || '');
+  const animalKeywords = ['cow', 'sheep', 'chicken', 'bull', 'pig', 'duck', 'goat', 'animal'];
+  const lowerName = rawName.toLowerCase();
+  
+  if (animalKeywords.some(kw => lowerName.includes(kw))) return true;
+  if (/(?:lvl|level|#|\()\s*(\d+)/i.test(rawName)) return true;
+
+  return false;
 }
 
 export function isLoginClaimedToday() {
-  const lastDate = localStorage.getItem('sfl_daily_login_last_date');
-  return lastDate === getTodayDateString();
-}
-
-// Robust Animal Bounty Identifier (checks level, tier, animal field, and all animal names)
-export function isAnimalBounty(item) {
-  if (!item) return false;
-  if (item.level !== undefined && item.level !== null && item.level !== '') return true;
-  if (item.tier !== undefined && item.tier !== null && item.tier !== '') return true;
-  if (item.category === 'animal' || item.type === 'animal') return true;
-  if (item.animal) return true;
-  const n = (typeof item === 'string' ? item : (item.name || item.task || item.title || item.deal || '')).toLowerCase();
-  return /chicken|cow|sheep|pig|goat|hen|bull|ox|duck|animal|lvl|level/.test(n);
+  const todayUtc = new Date().toISOString().split('T')[0];
+  const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
+  return lastClaimed === todayUtc;
 }
 
 export function checkAndAutoClaimDailyLogin() {
-  const todayStr = getTodayDateString();
+  const todayUtc = new Date().toISOString().split('T')[0];
   const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
-  let currentCount = parseInt(localStorage.getItem('sfl_daily_login_count')) || 0;
+  let count = parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10);
 
-  if (lastClaimed !== todayStr) {
-    currentCount += 1;
-    localStorage.setItem('sfl_daily_login_count', currentCount);
-    localStorage.setItem('sfl_daily_login_last_date', todayStr);
+  const loginInput = document.getElementById('dailyLoginCount');
+  const loginCheck = document.getElementById('dailyLoginCheck');
+
+  if (lastClaimed !== todayUtc) {
+    count += 1;
+    localStorage.setItem('sfl_daily_login_count', count);
+    localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+
+    if (loginInput) loginInput.value = count;
+    if (loginCheck) loginCheck.checked = true;
+  } else {
+    if (loginInput) loginInput.value = count;
+    if (loginCheck) loginCheck.checked = true;
   }
-
-  const countInput = document.getElementById('dailyLoginCount');
-  if (countInput) countInput.value = currentCount;
-
-  const checkInput = document.getElementById('dailyLoginCheck');
-  if (checkInput) checkInput.checked = true;
-}
-
-export function initDailyLoginUI() {
-  checkAndAutoClaimDailyLogin();
 }
 
 export function handleDailyLoginToggle() {
-  const checkInput = document.getElementById('dailyLoginCheck');
-  const countInput = document.getElementById('dailyLoginCount');
-  if (!checkInput || !countInput) return;
+  const loginCheck = document.getElementById('dailyLoginCheck');
+  const loginInput = document.getElementById('dailyLoginCount');
+  const todayUtc = new Date().toISOString().split('T')[0];
+  let count = parseInt(loginInput?.value || '0', 10);
 
-  let currentCount = parseInt(countInput.value) || 0;
-  const todayStr = getTodayDateString();
-
-  if (checkInput.checked) {
-    if (localStorage.getItem('sfl_daily_login_last_date') !== todayStr) {
-      currentCount += 1;
-      countInput.value = currentCount;
-      localStorage.setItem('sfl_daily_login_count', currentCount);
-      localStorage.setItem('sfl_daily_login_last_date', todayStr);
-    }
+  if (loginCheck?.checked) {
+    localStorage.setItem('sfl_daily_login_last_date', todayUtc);
   } else {
-    if (localStorage.getItem('sfl_daily_login_last_date') === todayStr) {
-      currentCount = Math.max(0, currentCount - 1);
-      countInput.value = currentCount;
-      localStorage.setItem('sfl_daily_login_count', currentCount);
-      localStorage.removeItem('sfl_daily_login_last_date');
-    }
+    count = Math.max(0, count - 1);
+    localStorage.setItem('sfl_daily_login_count', count);
+    localStorage.removeItem('sfl_daily_login_last_date');
+    if (loginInput) loginInput.value = count;
   }
 }
