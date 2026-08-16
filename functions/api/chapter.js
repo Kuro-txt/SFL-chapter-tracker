@@ -14,168 +14,354 @@ const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
   headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
 });
 
+// Helper: Sleep / delay
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper: Fetch SFL API with 3-tier backoff (5s, 8s, 10s)
+async function fetchFarmWithRetry(farmId, apiKey) {
+  const retryDelays = [5000, 8000, 10000]; // 5s, 8s, 10s
+  const headers = {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SunflowerTracker/2.0',
+    'Referer': 'https://sunflower-land.com/',
+    'Origin': 'https://sunflower-land.com'
+  };
+  if (apiKey && apiKey.trim() !== '') {
+    headers['x-api-key'] = apiKey.trim();
+  }
+
+  let attempt = 0;
+  while (attempt <= retryDelays.length) {
+    try {
+      const res = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers });
+      if (res.ok) {
+        const payload = await res.json().catch(() => null);
+        if (payload && payload.farm) {
+          return payload.farm;
+        }
+      }
+      if (res.status === 401 || res.status === 404) {
+        console.error(`Farm ${farmId} fatal HTTP ${res.status}`);
+        return null;
+      }
+    } catch (err) {
+      console.warn(`Farm ${farmId} attempt ${attempt + 1} failed: ${err.message}`);
+    }
+
+    if (attempt < retryDelays.length) {
+      await sleep(retryDelays[attempt]);
+    }
+    attempt++;
+  }
+  return null;
+}
+
+// Background Worker: Runs after cron-job.org receives its 200 OK
+async function executeCronBackupTask(env) {
+  const backupTimestamp = new Date().toISOString();
+  const todayDate = backupTimestamp.split('T')[0];
+  const currentWeekMonday = getMondayBasedWeekId();
+  const defaultApiKey = env?.SFL_API_KEY || '';
+
+  // 1. Fetch Global Prices ONCE for all farms
+  let priceMap = {};
+  try {
+    const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (pricesRes.ok) {
+      const rawData = await pricesRes.json().catch(() => null);
+      if (rawData) priceMap = extractPricesRecursive(rawData);
+    }
+  } catch (e) {}
+
+  if (!env?.TRACKER_KV) return;
+
+  const list = await env.TRACKER_KV.list({ prefix: "user_" });
+  let processedCount = 0;
+
+  for (const keyObj of list.keys) {
+    if (!keyObj.name.endsWith("_vault")) continue;
+
+    let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
+    if (!vaultData) continue;
+
+    if (!vaultData.logs) vaultData.logs = [];
+    if (!vaultData.weeks) vaultData.weeks = {};
+
+    const targetFarmId = vaultData.farmId || '8472883706403914';
+    const farmApiKey = vaultData.apiKey || defaultApiKey;
+
+    // 2. Fetch Live Farm Data with 5s -> 8s -> 10s retry engine
+    const farm = await fetchFarmWithRetry(targetFarmId, farmApiKey);
+
+    if (farm) {
+      // Auto-increment Daily Login if fresh day
+      if (vaultData.lastDailyLoginDate !== todayDate) {
+        vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
+        vaultData.lastDailyLoginDate = todayDate;
+      }
+
+      const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
+      const baselineMilestones = vaultData.logs[0]?.milestones || vaultData.milestones || {};
+
+      // Check Active Double Delivery Event
+      const nowMs = Date.now();
+      const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
+      let isDoubleDeliveryActive = false;
+      if (Array.isArray(calendarEvents)) {
+        isDoubleDeliveryActive = calendarEvents.some(evt => {
+          const title = (evt.name || evt.title || evt.type || '').toLowerCase();
+          const matches = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
+          const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
+          const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
+          return matches && started && notEnded;
+        });
+      }
+
+      // Parse Deliveries
+      const deliveryList = [];
+      const npcOrderCounts = {};
+      (farm.delivery?.orders || []).forEach(order => {
+        const npcClean = (order.from || '').toLowerCase().trim();
+        let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
+        if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
+          totalTickets = CHAPTER_NPC_TICKETS[npcClean];
+        }
+
+        if (totalTickets > 0) {
+          let itemsCost = 0;
+          const itemDetails = [];
+          Object.entries(order.items || {}).forEach(([itemName, qty]) => {
+            const unitPrice = getItemUnitPrice(itemName, priceMap);
+            const lineCost = unitPrice * qty;
+            itemsCost += lineCost;
+            itemDetails.push({ 
+              name: itemName, 
+              qty, 
+              unitPrice, 
+              lineCost, 
+              isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] 
+            });
+          });
+
+          const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+          if (isCompleted) {
+            npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
+          }
+
+          deliveryList.push({
+            name: order.from,
+            from: order.from,
+            itemsCost,
+            cost: itemsCost,
+            baseTickets: totalTickets,
+            tickets: totalTickets,
+            completed: isCompleted,
+            checked: isCompleted,
+            completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
+            itemDetails,
+            isStacked: false
+          });
+        }
+      });
+
+      // Milestone Delta Detection for Stacked Orders
+      Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
+        const npcClean = npc.toLowerCase().trim();
+        const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : (baselineMilestones[npc] || 0);
+        const completedToday = Math.max(0, liveCount - prevCount);
+        const inOrdersCompleted = npcOrderCounts[npcClean] || 0;
+
+        if (completedToday > inOrdersCompleted && prevCount > 0) {
+          const extraStacked = completedToday - inOrdersCompleted;
+          const npcTickets = CHAPTER_NPC_TICKETS[npcClean] || 2;
+          for (let i = 0; i < extraStacked; i++) {
+            deliveryList.push({
+              name: npcClean.charAt(0).toUpperCase() + npcClean.slice(1),
+              from: npcClean.charAt(0).toUpperCase() + npcClean.slice(1),
+              cost: 0,
+              itemsCost: 0,
+              baseTickets: npcTickets,
+              tickets: npcTickets,
+              completed: true,
+              checked: true,
+              completedAt: Date.now(),
+              itemDetails: [{ name: 'Stacked Previous Order', qty: 1, unitPrice: 0, lineCost: 0 }],
+              isStacked: true
+            });
+          }
+        }
+      });
+
+      // Parse Bounties
+      const bountiesList = [];
+      const seenBounties = new Set();
+      const rawBounties = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
+      rawBounties.forEach(b => {
+        let tix = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || b.tickets || 0;
+        if (tix <= 0) return;
+        const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+        if (seenBounties.has(key)) return;
+        seenBounties.add(key);
+
+        const bCost = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
+        const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed';
+        bountiesList.push({
+          id: b.id || key,
+          name: b.name,
+          level: b.level || null,
+          cost: bCost,
+          itemsCost: bCost,
+          baseTickets: tix,
+          tickets: tix,
+          completed: isCompleted,
+          checked: isCompleted,
+          completedAt: typeof b.completedAt === 'number' ? b.completedAt : null
+        });
+      });
+
+      // Parse Chores
+      const choresObj = farm.choreBoard?.chores || farm.chores || {};
+      const choresList = Object.entries(choresObj).map(([key, details]) => {
+        let tix = extractRewardTickets(details.reward) || details.tickets || details.baseTickets || 1;
+        const prog = details.initialProgress ?? details.progress ?? 0;
+        const req = details.requirement ?? details.target ?? details.total ?? 0;
+        const isDone = typeof details.completedAt === 'number' || details.completed === true || (req > 0 && prog >= req);
+        const taskLabel = details.name || details.description || key;
+        return {
+          npc: details.npc || details.from || 'NPC',
+          task: taskLabel,
+          name: taskLabel,
+          baseTickets: tix,
+          tickets: tix,
+          cost: 0,
+          itemsCost: 0,
+          completed: isDone,
+          checked: isDone,
+          completedAt: typeof details.completedAt === 'number' ? details.completedAt : null
+        };
+      });
+
+      // Update weekly storage
+      vaultData.weeks[currentWeekMonday] = {
+        weekId: currentWeekMonday,
+        bounties: bountiesList,
+        chores: choresList
+      };
+
+      // Daily Delivery Calculation (Double delivery on 1st completed order)
+      let dailyTix = 0;
+      let dailyCost = 0;
+      let doubleApplied = false;
+
+      const formattedDeliveries = deliveryList.map(d => {
+        let yld = d.baseTickets;
+        if (d.checked || d.completed) {
+          if (isDoubleDeliveryActive && !doubleApplied) {
+            yld = yld * 2;
+            doubleApplied = true;
+          }
+          dailyTix += yld;
+          dailyCost += d.cost;
+        }
+        return { ...d, tickets: yld };
+      });
+
+      const existingIndex = vaultData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+      const logEntry = {
+        date: todayDate,
+        weekId: currentWeekMonday,
+        timestamp: backupTimestamp,
+        ticketsSaved: dailyTix,
+        costSaved: dailyCost,
+        autoBackup: true,
+        deliveriesDone: formattedDeliveries,
+        milestones: liveMilestones
+      };
+
+      if (existingIndex !== -1) {
+        vaultData.logs[existingIndex] = logEntry;
+      } else {
+        vaultData.logs.unshift(logEntry);
+      }
+
+      vaultData.deliveries = formattedDeliveries;
+      vaultData.bounties = bountiesList;
+      vaultData.chores = choresList;
+      vaultData.milestones = liveMilestones;
+
+      // Calculate Cumulative Totals
+      let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
+      let totalCost = vaultData.trackCost || 0;
+
+      vaultData.logs.forEach(l => {
+        (l.deliveriesDone || []).forEach(d => {
+          if (d.checked || d.completed) {
+            totalTix += (d.tickets || d.baseTickets || 0);
+            totalCost += (d.cost || 0);
+          }
+        });
+      });
+
+      Object.values(vaultData.weeks).forEach(wk => {
+        (wk.bounties || []).forEach(b => {
+          if (b.completed || b.checked) {
+            totalTix += (b.tickets || b.baseTickets || 0);
+            totalCost += (b.cost || 0);
+          }
+        });
+        (wk.chores || []).forEach(c => {
+          if (c.completed || c.checked) {
+            totalTix += (c.tickets || c.baseTickets || 0);
+            totalCost += (c.cost || 0);
+          }
+        });
+      });
+
+      vaultData.cumulativeTickets = totalTix;
+      vaultData.cumulativeCost = totalCost;
+
+      await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
+      processedCount++;
+
+      // Small 1s breather between farms to be gentle with rate limits
+      await sleep(1000);
+    }
+  }
+
+  await env.TRACKER_KV.put(`system_last_cron_backup`, JSON.stringify({ 
+    timestamp: backupTimestamp, 
+    vaultsProcessed: processedCount 
+  }));
+}
+
 export async function onRequest(context) {
-  const { request, env } = context;
+  const { request, env, waitUntil } = context;
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // 1. Cron Backup Handler (23:00 UTC)
+  // 1. Cron Backup Trigger Handler (cron-job.org / Webhooks)
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
-    if (secretKey !== expectedKey) return jsonRes({ error: 'Unauthorized cron key.' }, 401);
-
-    let backedUpCount = 0;
-    const backupTimestamp = new Date().toISOString();
-    const todayDate = backupTimestamp.split('T')[0];
-    const currentWeekId = getMondayBasedWeekId();
-
-    let priceMap = {};
-    try {
-      const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (pricesRes.ok) {
-        const rawData = await pricesRes.json();
-        if (rawData) priceMap = extractPricesRecursive(rawData);
-      }
-    } catch (e) {}
-
-    if (env && env.TRACKER_KV) {
-      const list = await env.TRACKER_KV.list({ prefix: "user_" });
-      for (const keyObj of list.keys) {
-        if (keyObj.name.endsWith("_vault")) {
-          let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
-          if (vaultData) {
-            if (!vaultData.logs) vaultData.logs = [];
-            if (!vaultData.weeks) vaultData.weeks = {};
-
-            if (vaultData.lastDailyLoginDate !== todayDate) {
-              vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
-              vaultData.lastDailyLoginDate = todayDate;
-            }
-
-            if (vaultData.bounties || vaultData.chores) {
-              const currentWeekBounties = (vaultData.bounties || [])
-                .filter(b => (b.baseTickets || b.tickets || 0) > 0)
-                .map(b => {
-                  let bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
-                  if (!bCost && b.name) bCost = getItemUnitPrice(b.name, priceMap);
-                  const isCompleted = b.checked !== undefined ? b.checked : Boolean(b.completed);
-                  return {
-                    id: b.id || null,
-                    level: b.level || null,
-                    name: b.name || 'Bounty',
-                    cost: bCost,
-                    baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
-                    tickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
-                    completed: isCompleted,
-                    completedAt: b.completedAt || null,
-                    checked: isCompleted,
-                    checkedToday: b.checkedToday || false
-                  };
-                });
-
-              const currentWeekChores = (vaultData.chores || []).map(c => {
-                const isCompleted = c.checked !== undefined ? c.checked : Boolean(c.completed);
-                const taskName = c.task || c.name || 'Chore';
-                return {
-                  name: taskName,
-                  task: taskName,
-                  npc: c.npc || 'NPC',
-                  baseTickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
-                  tickets: c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1),
-                  cost: c.cost !== undefined ? c.cost : (c.itemsCost || 0),
-                  completed: isCompleted,
-                  completedAt: c.completedAt || null,
-                  checked: isCompleted,
-                  checkedToday: c.checkedToday || false
-                };
-              });
-
-              vaultData.weeks[currentWeekId] = { weekId: currentWeekId, bounties: currentWeekBounties, chores: currentWeekChores };
-            }
-
-            let dailyDeliveryTickets = 0;
-            let dailyDeliveryCost = 0;
-
-            const formattedDeliveries = (vaultData.deliveries || []).map(d => {
-              const dCost = d.cost !== undefined ? d.cost : (d.itemsCost || 0);
-              const dTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-              const isDone = d.checked !== undefined ? d.checked : Boolean(d.completed);
-              if (isDone) {
-                dailyDeliveryTickets += dTix;
-                dailyDeliveryCost += dCost;
-              }
-              return { 
-                name: d.name || d.from || 'NPC', 
-                cost: dCost, 
-                baseTickets: dTix,
-                tickets: dTix, 
-                completed: isDone, 
-                completedAt: d.completedAt || (isDone ? Date.now() : null),
-                items: d.items || d.itemDetails || [], 
-                itemDetails: d.itemDetails || d.items || [], 
-                checked: isDone,
-                isStacked: d.isStacked || false
-              };
-            });
-
-            const existingTodayLogIndex = vaultData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
-            if (existingTodayLogIndex !== -1) {
-              vaultData.logs[existingTodayLogIndex].ticketsSaved = dailyDeliveryTickets;
-              vaultData.logs[existingTodayLogIndex].costSaved = dailyDeliveryCost;
-              vaultData.logs[existingTodayLogIndex].timestamp = backupTimestamp;
-              vaultData.logs[existingTodayLogIndex].deliveriesDone = formattedDeliveries;
-              vaultData.logs[existingTodayLogIndex].milestones = vaultData.milestones || {};
-            } else {
-              vaultData.logs.unshift({
-                date: todayDate,
-                weekId: currentWeekId,
-                timestamp: backupTimestamp,
-                ticketsSaved: dailyDeliveryTickets,
-                costSaved: dailyDeliveryCost,
-                autoBackup: true,
-                deliveriesDone: formattedDeliveries,
-                milestones: vaultData.milestones || {}
-              });
-            }
-
-            let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
-            let totalCost = vaultData.trackCost || 0;
-
-            vaultData.logs.forEach(l => {
-              totalTix += (l.ticketsSaved || 0);
-              totalCost += (l.costSaved || 0);
-            });
-
-            Object.values(vaultData.weeks).forEach(wk => {
-              (wk.bounties || []).forEach(b => {
-                if (b.completed || b.checked) {
-                  totalTix += (b.baseTickets || b.tickets || 0);
-                  totalCost += (b.cost || 0);
-                }
-              });
-              (wk.chores || []).forEach(c => {
-                if (c.completed || c.checked) {
-                  totalTix += (c.baseTickets || c.tickets || 0);
-                  totalCost += (c.cost || 0);
-                }
-              });
-            });
-
-            vaultData.cumulativeTickets = totalTix;
-            vaultData.cumulativeCost = totalCost;
-
-            await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
-            backedUpCount++;
-          }
-        }
-      }
-      await env.TRACKER_KV.put(`system_last_cron_backup`, JSON.stringify({ timestamp: backupTimestamp, vaultsProcessed: backedUpCount }));
+    if (secretKey !== expectedKey) {
+      return jsonRes({ error: 'Unauthorized cron key.' }, 401);
     }
 
-    return jsonRes({ success: true, message: `Active KV Backup executed successfully at ${backupTimestamp}. Synced ${backedUpCount} vaults.` });
+    // Schedule the background crawler with 5s -> 8s -> 10s retry policy
+    if (waitUntil) {
+      waitUntil(executeCronBackupTask(env));
+    } else {
+      context.waitUntil(executeCronBackupTask(env));
+    }
+
+    // Respond immediately to cron-job.org in < 100ms so it never times out
+    return jsonRes({
+      success: true,
+      status: "BACKGROUND_CRAWLER_STARTED",
+      message: "Cron backup initiated in background. Processing all farms with retry engine."
+    });
   }
 
   // 2. Fetch Vault
@@ -217,6 +403,7 @@ export async function onRequest(context) {
       const passwordHash = await hashPassword(password);
       await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
       await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ 
+        farmId,
         logs: [], 
         cumulativeTickets: 0, 
         cumulativeCost: 0, 
@@ -292,9 +479,10 @@ export async function onRequest(context) {
       };
 
       const todayDate = new Date().toISOString().split('T')[0];
-      const currentWeekId = getMondayBasedWeekId();
+      const currentWeekMonday = getMondayBasedWeekId();
       if (!existingData.weeks) existingData.weeks = {};
 
+      if (body.farmId) existingData.farmId = body.farmId;
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
       
@@ -318,7 +506,7 @@ export async function onRequest(context) {
           return {
             id: b.id || null,
             level: b.level || null,
-            weekId: currentWeekId, 
+            weekId: currentWeekMonday, 
             name: b.name, 
             cost: b.itemsCost || b.cost || 0,
             baseTickets: b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0),
@@ -334,7 +522,7 @@ export async function onRequest(context) {
         const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
         const taskName = c.task || c.name || 'Chore';
         return {
-          weekId: currentWeekId, 
+          weekId: currentWeekMonday, 
           name: taskName, 
           task: taskName, 
           npc: c.npc || 'NPC',
@@ -349,10 +537,10 @@ export async function onRequest(context) {
       });
 
       if (incomingBounties.length > 0 || incomingChores.length > 0) {
-        existingData.weeks[currentWeekId] = { 
-          weekId: currentWeekId, 
-          bounties: incomingBounties.length > 0 ? incomingBounties : (existingData.weeks[currentWeekId]?.bounties || []), 
-          chores: incomingChores.length > 0 ? incomingChores : (existingData.weeks[currentWeekId]?.chores || []) 
+        existingData.weeks[currentWeekMonday] = { 
+          weekId: currentWeekMonday, 
+          bounties: incomingBounties.length > 0 ? incomingBounties : (existingData.weeks[currentWeekMonday]?.bounties || []), 
+          chores: incomingChores.length > 0 ? incomingChores : (existingData.weeks[currentWeekMonday]?.chores || []) 
         };
       }
 
@@ -382,7 +570,7 @@ export async function onRequest(context) {
         if (existingTodayLogIndex !== -1) {
           existingData.logs[existingTodayLogIndex] = { 
             date: todayDate, 
-            weekId: currentWeekId, 
+            weekId: currentWeekMonday, 
             timestamp: new Date().toISOString(), 
             ticketsSaved: dailyTickets, 
             costSaved: dailyCost, 
@@ -392,7 +580,7 @@ export async function onRequest(context) {
         } else {
           existingData.logs.unshift({ 
             date: todayDate, 
-            weekId: currentWeekId, 
+            weekId: currentWeekMonday, 
             timestamp: new Date().toISOString(), 
             ticketsSaved: dailyTickets, 
             costSaved: dailyCost, 
@@ -482,8 +670,8 @@ export async function onRequest(context) {
       isDoubleDeliveryActive = calendarEvents.some(evt => {
         const title = (evt.name || evt.title || evt.type || '').toLowerCase();
         const matchesName = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
-        const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : (typeof evt.from === 'number' ? evt.from <= nowMs : true);
-        const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : (typeof evt.to === 'number' ? evt.to >= nowMs : true);
+        const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
+        const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
         return matchesName && started && notEnded;
       });
     }
