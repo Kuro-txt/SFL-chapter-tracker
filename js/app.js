@@ -19,6 +19,7 @@ import {
 import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
+// Expose handlers to window
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
@@ -47,6 +48,12 @@ window.saveAndRecalculate = () => {
   recalculateAll();
 };
 
+window.saveCoinRatioAndRecalculate = () => {
+  const val = parseFloat(document.getElementById('coinRatioInput')?.value) || 1000;
+  localStorage.setItem('sfl_coin_ratio', val);
+  recalculateAll();
+};
+
 window.saveTrackAndRecalculate = () => {
   localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput').value);
   localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput').value);
@@ -71,8 +78,9 @@ window.saveLoginCountAndRecalculate = () => {
 };
 
 const FARMER_TIPS = [
-  '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? Open <em>📦 NPC Deliveries > EDIT</em> to manually tick the extra order!',
-  '⚡ <strong>DOUBLE DELIVERIES:</strong> During 2x delivery events, open <em>📦 NPC Deliveries > EDIT</em> to manually increase the ticket amount!',
+  '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? The tracker automatically detects milestone increases!',
+  '⚡ <strong>DOUBLE DELIVERIES:</strong> When 2x Delivery is active on the calendar, your first delivery of the day automatically yields 2x Total Tickets!',
+  '🪙 <strong>COIN RATIO:</strong> Adjust the Coins / SFL ratio input (default 1000) to see exact coin valuations for your flowers and crops!',
   '🛤️ <strong>MANUAL ADJUSTMENT:</strong> Have missed tickets, special events, or price mismatches? Add them to the <em>🛤️ TRACK</em> input anytime!',
   '☁️ <strong>SAVE PROGRESS:</strong> Always click <em>"SAVE IN CLOUD"</em> before closing your tab to write your daily snapshot into your vault.'
 ];
@@ -118,6 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+  const savedCoinRatio = localStorage.getItem('sfl_coin_ratio');
+  if (savedCoinRatio) document.getElementById('coinRatioInput').value = savedCoinRatio;
 
   const savedTrackTix = localStorage.getItem('sfl_track_tix');
   if (savedTrackTix !== null) document.getElementById('trackTicketsInput').value = savedTrackTix;
