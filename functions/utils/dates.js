@@ -1,9 +1,16 @@
-export function getMondayBasedWeekId(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  d.setUTCDate(diff);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+export function getMondayBasedWeekId(d = new Date()) {
+  let date;
+  if (typeof d === 'string') {
+    date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
+  } else if (typeof d === 'number') {
+    date = new Date(d);
+  } else {
+    date = new Date(d.getTime());
+  }
+
+  const day = date.getUTCDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+  const utcDate = date.getUTCDate();
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  date.setUTCDate(utcDate + diffToMonday);
+  return date.toISOString().split('T')[0];
 }
