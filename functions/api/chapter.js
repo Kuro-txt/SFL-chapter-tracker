@@ -597,7 +597,7 @@ export async function onRequest(context) {
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (b.baseTickets || b.tickets || 0);
+            totalTix += (c.baseTickets || c.tickets || 0);
             totalCost += (c.cost || 0);
           }
         });
