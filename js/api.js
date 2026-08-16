@@ -1,103 +1,147 @@
-import { state, formatSFL } from './state.js';
+import { state } from './state.js';
 import { recalculateAll } from './render.js';
-import { syncCurrentVaultToCloud } from './modals.js';
 
-let isFetchCooldownActive = false;
+let fetchCooldownTimer = null;
 
 export async function loadTrackerData() {
-  if (isFetchCooldownActive) {
+  const farmIdInput = document.getElementById('farmId');
+  const apiKeyInput = document.getElementById('apiKey');
+  const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
+  const priceBadge = document.getElementById('priceBadge');
+
+  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  const apiKey = apiKeyInput?.value.trim() || '';
+  const currentUsername = state.currentUser || '';
+
+  // Local storage cache for convenience
+  localStorage.setItem('sfl_farmId', farmId);
+
+  // Anti-Spam Rate Limit Cooldown (10s)
+  if (fetchCooldownTimer) {
+    alert('⏳ Please wait for the cooldown before fetching again.');
     return;
   }
 
-  const farmId = document.getElementById('farmId')?.value.trim();
-  const apiKey = document.getElementById('apiKey')?.value.trim();
-  const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
-
-  if (!farmId) return alert('Enter a Farm ID.');
-
-  localStorage.setItem('sfl_farmId', farmId);
-  if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
-
-  const priceBadge = document.getElementById('priceBadge');
-  if (priceBadge) {
-    priceBadge.style.display = 'inline-block';
-    priceBadge.textContent = 'FETCHING...';
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    let secondsLeft = 10;
+    fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+    fetchCooldownTimer = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft > 0) {
+        fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+      } else {
+        clearInterval(fetchCooldownTimer);
+        fetchCooldownTimer = null;
+        fetchBtn.disabled = false;
+        fetchBtn.textContent = '🌾 FETCH DATA';
+      }
+    }, 1000);
   }
 
-  // Start 10s Countdown Timer on Button
-  startFetchCooldown(fetchBtn);
+  if (priceBadge) {
+    priceBadge.style.display = 'inline-block';
+    priceBadge.textContent = 'FETCHING SFL DATA...';
+    priceBadge.style.background = '#FFF9C4';
+    priceBadge.style.borderColor = '#FBC02D';
+    priceBadge.style.color = '#F57F17';
+  }
 
   try {
-    const userParam = state.currentUser ? `&username=${encodeURIComponent(state.currentUser)}` : '';
-    const res = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}&apiKey=${encodeURIComponent(apiKey)}${userParam}`);
+    const queryParams = new URLSearchParams({
+      farmId,
+      username: currentUsername
+    });
+    if (apiKey) queryParams.set('apiKey', apiKey);
+
+    const res = await fetch(`/api/chapter?${queryParams.toString()}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Server error (${res.status})`);
+    }
+
     const data = await res.json();
+    state.globalData = data;
 
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch tracker data.');
+    // If backend auto-saved, sync cloud history immediately
+    if (data.vaultData) {
+      state.currentVaultData = data.vaultData;
+      state.globalData.cloudHistory = data.vaultData;
+    }
 
-    const currentHistory = state.globalData?.cloudHistory || state.currentVaultData || { logs: [], weeks: {} };
-    
-    state.globalData = {
-      ...data,
-      cloudHistory: currentHistory
-    };
-
-    if (data.isVipActive) {
+    if (data.isVipActive !== undefined) {
       const vipToggle = document.getElementById('vipToggle');
       if (vipToggle) {
-        vipToggle.checked = true;
-        localStorage.setItem('sfl_vip', 'true');
+        vipToggle.checked = Boolean(data.isVipActive);
+        localStorage.setItem('sfl_vip', vipToggle.checked);
       }
     }
 
     if (priceBadge) {
-      priceBadge.textContent = `PRICES LOADED (${data.pricesLoadedCount || 0})`;
+      priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED & SAVED`;
+      priceBadge.style.background = '#E8F5E9';
+      priceBadge.style.borderColor = '#4CAF50';
+      priceBadge.style.color = '#2E7D32';
     }
 
     recalculateAll();
-    await syncCurrentVaultToCloud();
   } catch (err) {
-    alert(`Tracker Fetch Error: ${err.message}`);
-    if (priceBadge) priceBadge.textContent = 'FETCH FAILED';
+    if (priceBadge) {
+      priceBadge.textContent = `❌ ${err.message}`;
+      priceBadge.style.background = '#FFEBEE';
+      priceBadge.style.borderColor = '#E53935';
+      priceBadge.style.color = '#B71C1C';
+    }
+    alert(`Failed to fetch farm data: ${err.message}`);
   }
 }
 
-function startFetchCooldown(btn) {
-  if (!btn) return;
-  isFetchCooldownActive = true;
-  btn.disabled = true;
-  btn.style.opacity = '0.6';
-  btn.style.cursor = 'not-allowed';
+export async function saveProgressToCloudKV(silent = false) {
+  if (!state.currentUser) {
+    if (!silent) alert('Please login to save your progress in your Cloud Vault.');
+    return;
+  }
 
-  let remaining = 10;
-  btn.textContent = `⏳ WAIT ${remaining}s`;
+  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
 
-  const interval = setInterval(() => {
-    remaining -= 1;
-    if (remaining > 0) {
-      btn.textContent = `⏳ WAIT ${remaining}s`;
-    } else {
-      clearInterval(interval);
-      isFetchCooldownActive = false;
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-      btn.textContent = '🌾 FETCH DATA';
-    }
-  }, 1000);
-}
+  const payload = {
+    username: state.currentUser,
+    farmId,
+    trackTickets,
+    trackCost,
+    dailyLoginTickets,
+    lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0],
+    deliveries: state.globalData?.deliveries || [],
+    bounties: state.globalData?.bounties || [],
+    chores: state.globalData?.chores || [],
+    milestones: state.globalData?.milestones || {}
+  };
 
-export async function saveProgressToCloudKV() {
-  if (!state.currentUser) return alert('Please login first to save progress in your cloud vault.');
   try {
-    await syncCurrentVaultToCloud();
+    const res = await fetch('/api/chapter?action=saveVault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-    // Read current calculated totals from DOM/State to show exact saved numbers
-    const totalTixText = document.getElementById('statTotalTickets')?.textContent || '0 Tickets';
-    const totalCostText = document.getElementById('statTotalCost')?.textContent || '0.00 SFL';
-    const todayTixText = document.getElementById('statEarnedTickets')?.textContent || '0 Tickets';
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed to save.');
 
-    alert(`☁️ CLOUD VAULT SYNCED!\n\n🏆 Total Saved: ${totalTixText} (${totalCostText})\n✨ Done Today: ${todayTixText}\n\nYour snapshot is permanently locked in Cloudflare KV.`);
+    state.currentVaultData = data.vaultData;
+    if (state.globalData) {
+      state.globalData.cloudHistory = data.vaultData;
+    }
+
+    recalculateAll();
+
+    if (!silent) {
+      const totalTix = data.vaultData?.cumulativeTickets || 0;
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}\n• Auto-backup schedule active.`);
+    }
   } catch (err) {
-    alert(`Cloud Save Failed: ${err.message}`);
+    if (!silent) alert(`Cloud Save Error: ${err.message}`);
   }
 }
