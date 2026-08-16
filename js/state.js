@@ -38,17 +38,13 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
+// Consistent Monday-start week key (YYYY-MM-DD of Monday)
 export function getMondayBasedWeekId(d = new Date()) {
-  const date = new Date(d.getTime());
-  const day = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - day + 3);
-  const firstThursday = date.getTime();
-  date.setMonth(0, 1);
-  if (date.getDay() !== 4) {
-    date.setMonth(0, 1 + ((4 - date.getDay()) + 7) % 7);
-  }
-  const weekNum = 1 + Math.ceil((firstThursday - date.getTime()) / 604800000);
-  return `${date.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  const date = new Date(d);
+  const day = date.getDay(); // 0 is Sunday
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const monday = new Date(date.setDate(diff));
+  return monday.toISOString().split('T')[0];
 }
 
 export function isAnimalBounty(item) {
