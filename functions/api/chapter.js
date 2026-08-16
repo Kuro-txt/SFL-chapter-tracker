@@ -116,7 +116,8 @@ export async function onRequest(context) {
                 completedAt: d.completedAt || (isDone ? Date.now() : null),
                 items: d.items || d.itemDetails || [], 
                 itemDetails: d.itemDetails || d.items || [], 
-                checked: isDone 
+                checked: isDone,
+                isStacked: d.isStacked || false
               };
             });
 
@@ -126,6 +127,7 @@ export async function onRequest(context) {
               vaultData.logs[existingTodayLogIndex].costSaved = dailyDeliveryCost;
               vaultData.logs[existingTodayLogIndex].timestamp = backupTimestamp;
               vaultData.logs[existingTodayLogIndex].deliveriesDone = formattedDeliveries;
+              vaultData.logs[existingTodayLogIndex].milestones = vaultData.milestones || {};
             } else {
               vaultData.logs.unshift({
                 date: todayDate,
@@ -134,7 +136,8 @@ export async function onRequest(context) {
                 ticketsSaved: dailyDeliveryTickets,
                 costSaved: dailyDeliveryCost,
                 autoBackup: true,
-                deliveriesDone: formattedDeliveries
+                deliveriesDone: formattedDeliveries,
+                milestones: vaultData.milestones || {}
               });
             }
 
@@ -156,6 +159,7 @@ export async function onRequest(context) {
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   totalTix += (c.baseTickets || c.tickets || 0);
+                  totalCost += (c.cost || 0);
                 }
               });
             });
@@ -189,7 +193,8 @@ export async function onRequest(context) {
         lastDailyLoginDate: null,
         deliveries: [], 
         bounties: [], 
-        chores: [] 
+        chores: [],
+        milestones: {}
       };
       return jsonRes({ success: true, vaultData });
     }
@@ -222,7 +227,8 @@ export async function onRequest(context) {
         lastDailyLoginDate: null,
         deliveries: [], 
         bounties: [], 
-        chores: [] 
+        chores: [],
+        milestones: {}
       }));
 
       return jsonRes({ success: true, username });
@@ -255,7 +261,8 @@ export async function onRequest(context) {
         trackTickets: 0, 
         trackCost: 0,
         dailyLoginTickets: 0,
-        lastDailyLoginDate: null
+        lastDailyLoginDate: null,
+        milestones: {}
       };
       return jsonRes({ success: true, username, vaultData });
     } catch (err) {
@@ -280,7 +287,8 @@ export async function onRequest(context) {
         trackTickets: 0, 
         trackCost: 0,
         dailyLoginTickets: 0,
-        lastDailyLoginDate: null
+        lastDailyLoginDate: null,
+        milestones: {}
       };
 
       const todayDate = new Date().toISOString().split('T')[0];
@@ -291,12 +299,16 @@ export async function onRequest(context) {
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
       
       if (body.dailyLoginTickets !== undefined) {
-        existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets) || 0;
+        existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
       }
-      if (body.lastDailyLoginDate !== undefined) {
+      if (body.lastDailyLoginDate) {
         existingData.lastDailyLoginDate = body.lastDailyLoginDate;
-      } else if (existingData.lastDailyLoginDate !== todayDate) {
+      } else {
         existingData.lastDailyLoginDate = todayDate;
+      }
+
+      if (body.milestones) {
+        existingData.milestones = body.milestones;
       }
 
       const incomingBounties = (body.bounties || [])
@@ -358,7 +370,8 @@ export async function onRequest(context) {
             completedAt: d.completedAt || (isDone ? Date.now() : null),
             items: d.itemDetails || d.items || [], 
             itemDetails: d.itemDetails || d.items || [], 
-            checked: isDone
+            checked: isDone,
+            isStacked: d.isStacked || false
           };
         });
 
@@ -373,7 +386,8 @@ export async function onRequest(context) {
             timestamp: new Date().toISOString(), 
             ticketsSaved: dailyTickets, 
             costSaved: dailyCost, 
-            deliveriesDone: allDeliveries 
+            deliveriesDone: allDeliveries,
+            milestones: body.milestones || existingData.milestones || {}
           };
         } else {
           existingData.logs.unshift({ 
@@ -382,7 +396,8 @@ export async function onRequest(context) {
             timestamp: new Date().toISOString(), 
             ticketsSaved: dailyTickets, 
             costSaved: dailyCost, 
-            deliveriesDone: allDeliveries 
+            deliveriesDone: allDeliveries,
+            milestones: body.milestones || existingData.milestones || {}
           });
         }
       }
@@ -408,6 +423,7 @@ export async function onRequest(context) {
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
             totalTix += (c.baseTickets || c.tickets || 0);
+            totalCost += (c.cost || 0);
           }
         });
       });
@@ -455,9 +471,23 @@ export async function onRequest(context) {
     }
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
+    const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
+
+    // Get previous milestones from user's most recent saved log for comparison
+    let baselineMilestones = {};
+    const usernameParam = (url.searchParams.get('username') || '').toLowerCase().trim();
+    if (env?.TRACKER_KV && usernameParam) {
+      const vault = await env.TRACKER_KV.get(`user_${usernameParam}_vault`, 'json');
+      if (vault?.logs?.length > 0) {
+        // Look for the last non-today log or today's baseline
+        baselineMilestones = vault.logs[0]?.milestones || vault.milestones || {};
+      }
+    }
 
     // Clean Deliveries Parser
     const deliveryList = [];
+    const npcOrderCounts = {};
+
     (farm.delivery?.orders || []).forEach(order => {
       const npcNameClean = (order.from || '').toLowerCase().trim();
       let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
@@ -483,6 +513,10 @@ export async function onRequest(context) {
         });
 
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+        if (isCompleted) {
+          npcOrderCounts[npcNameClean] = (npcOrderCounts[npcNameClean] || 0) + 1;
+        }
+
         deliveryList.push({ 
           id: order.id, 
           from: order.from, 
@@ -493,8 +527,39 @@ export async function onRequest(context) {
           isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, 
           completed: isCompleted,
           checked: isCompleted,
-          completedAt: (typeof order.completedAt === 'number') ? order.completedAt : (isCompleted ? Date.now() : null)
+          completedAt: (typeof order.completedAt === 'number') ? order.completedAt : (isCompleted ? Date.now() : null),
+          isStacked: false
         });
+      }
+    });
+
+    // Automated Stacked Delivery Detection: Compare Delta vs. live completed orders
+    Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
+      const npcClean = npc.toLowerCase().trim();
+      const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : baselineMilestones[npc] || 0;
+      const completedTodayInMilestones = Math.max(0, liveCount - prevCount);
+      const inOrdersCompleted = npcOrderCounts[npcClean] || 0;
+
+      // If milestone delta > orders in array, inject the missing stacked deliveries
+      if (completedTodayInMilestones > inOrdersCompleted && prevCount > 0) {
+        const extraStacked = completedTodayInMilestones - inOrdersCompleted;
+        const npcTickets = CHAPTER_NPC_TICKETS[npcClean] || 2;
+
+        for (let i = 0; i < extraStacked; i++) {
+          deliveryList.push({
+            id: `stacked_${npcClean}_${Date.now()}_${i}`,
+            from: npcClean.charAt(0).toUpperCase() + npcClean.slice(1),
+            items: {},
+            itemsCost: 0,
+            itemDetails: [{ name: 'Stacked Previous Order', qty: 1, unitPrice: 0, lineCost: 0 }],
+            baseTickets: npcTickets,
+            isChapterNpc: CHAPTER_NPC_TICKETS[npcClean] !== undefined,
+            completed: true,
+            checked: true,
+            completedAt: Date.now(),
+            isStacked: true
+          });
+        }
       }
     });
 
@@ -582,6 +647,7 @@ export async function onRequest(context) {
     return jsonRes({
       farmId, 
       isVipActive,
+      milestones: liveMilestones,
       pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: deliveryList, 
       bounties: activeBounties, 
