@@ -19,7 +19,6 @@ import {
 import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
-// Explicitly expose handlers to window for inline HTML events
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
@@ -71,7 +70,6 @@ window.saveLoginCountAndRecalculate = () => {
   recalculateAll();
 };
 
-// 4 Focused Gameplay Tips Rotation
 const FARMER_TIPS = [
   '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? Open <em>📦 NPC Deliveries > EDIT</em> to manually tick the extra order!',
   '⚡ <strong>DOUBLE DELIVERIES:</strong> During 2x delivery events, open <em>📦 NPC Deliveries > EDIT</em> to manually increase the ticket amount!',
@@ -98,7 +96,6 @@ function startTipRotation() {
 
   tipIntervalTimer = setInterval(cycleTip, 7000);
 
-  // Pause on hover or touch
   tipBannerEl.addEventListener('mouseenter', () => {
     if (tipIntervalTimer) clearInterval(tipIntervalTimer);
   });
@@ -137,4 +134,5 @@ document.addEventListener('DOMContentLoaded', () => {
   checkAndAutoClaimDailyLogin();
   checkSavedAuth();
   startTipRotation();
+  recalculateAll();
 });
