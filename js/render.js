@@ -24,7 +24,6 @@ export function recalculateAll() {
 
   const now = new Date();
   const todayUtcStr = now.toISOString().split('T')[0];
-  const localTodayStr = now.toLocaleDateString('en-CA');
   const currentWeekMonday = getMondayBasedWeekId(now);
 
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
@@ -37,6 +36,17 @@ export function recalculateAll() {
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
   const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
   const todayLoginTickets = isDoneLoginToday ? 1 : 0;
+
+  // Weekly ticket accumulator map (strictly grouped by Monday UTC dates)
+  const weeklyTicketStats = {};
+  const addWeeklyStat = (mondayKey, tix, cost) => {
+    if (!mondayKey) mondayKey = currentWeekMonday;
+    if (!weeklyTicketStats[mondayKey]) {
+      weeklyTicketStats[mondayKey] = { tickets: 0, cost: 0 };
+    }
+    weeklyTicketStats[mondayKey].tickets += tix;
+    weeklyTicketStats[mondayKey].cost += cost;
+  };
 
   // Category counters
   let totalDelivTix = 0;
@@ -57,17 +67,6 @@ export function recalculateAll() {
   let todayChoreTix = 0;
   let todayCostAll = 0;
 
-  // Weekly ticket accumulator mapped by Monday date
-  const weeklyTicketStats = {};
-  const addWeeklyStat = (mondayKey, tix, cost) => {
-    if (!mondayKey) mondayKey = currentWeekMonday;
-    if (!weeklyTicketStats[mondayKey]) {
-      weeklyTicketStats[mondayKey] = { tickets: 0, cost: 0 };
-    }
-    weeklyTicketStats[mondayKey].tickets += tix;
-    weeklyTicketStats[mondayKey].cost += cost;
-  };
-
   const isTicked = (item) => {
     if (!item) return false;
     if (item.checked !== undefined) return Boolean(item.checked);
@@ -83,9 +82,7 @@ export function recalculateAll() {
       if (!isNaN(ts) && ts > 0) {
         const ms = ts < 1e11 ? ts * 1000 : ts;
         const itemDate = new Date(ms);
-        const iso = itemDate.toISOString().split('T')[0];
-        const loc = itemDate.toLocaleDateString('en-CA');
-        return (iso === todayUtcStr || loc === localTodayStr);
+        return itemDate.toISOString().split('T')[0] === todayUtcStr;
       }
     }
     return false;
@@ -98,11 +95,10 @@ export function recalculateAll() {
     if (!rawDate || seenDates.has(rawDate)) return;
     seenDates.add(rawDate);
 
-    const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
+    const isTodayLog = (rawDate === todayUtcStr);
     if (isTodayLog) return;
 
-    const logDateObj = new Date(rawDate + 'T00:00:00Z');
-    const logMonday = getMondayBasedWeekId(isNaN(logDateObj.getTime()) ? now : logDateObj);
+    const logMonday = getMondayBasedWeekId(rawDate);
     const isThisWeek = logMonday === currentWeekMonday;
 
     (log.deliveriesDone || []).forEach(item => {
@@ -216,11 +212,7 @@ export function recalculateAll() {
 
   // 5. Process PAST Weeks from Cloud KV
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    let pastMonday = wkId;
-    if (!pastMonday.includes('-') || pastMonday.includes('W')) {
-      pastMonday = currentWeekMonday;
-    }
-
+    let pastMonday = getMondayBasedWeekId(wkId);
     if (pastMonday === currentWeekMonday) return;
 
     (wk.bounties || []).forEach(b => {
@@ -264,7 +256,7 @@ export function recalculateAll() {
     });
   });
 
-  // Include Track & Login in current week progression
+  // Include Track & Login into current week progression
   addWeeklyStat(currentWeekMonday, trackTickets + totalLoginTickets, trackCost);
 
   // Totals
@@ -346,7 +338,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const displayItems = [];
   for (let i = 1; i <= maxWeeksToDisplay; i++) {
     const mondayKey = distinctMondays[i - 1];
-    const isCurrent = mondayKey === currentMondayKey || (!mondayKey && i === distinctMondays.length);
+    const isCurrent = (mondayKey === currentMondayKey) || (!mondayKey && i === distinctMondays.length);
     const data = mondayKey ? weeklyStats[mondayKey] : null;
 
     displayItems.push({
@@ -360,7 +352,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   }
 
   if (badgeEl) {
-    badgeEl.textContent = `WEEK 1 OF ${maxWeeksToDisplay} WEEKS`;
+    const currentWeekIndex = distinctMondays.indexOf(currentMondayKey) + 1;
+    badgeEl.textContent = `WEEK ${currentWeekIndex || 1} OF ${maxWeeksToDisplay} WEEKS (UTC)`;
   }
 
   // SVG Dimensions
@@ -394,7 +387,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   let targetLineSvg = '';
   if (targetPacePerWeek > 0) {
     const targetY = topPadding + plotHeight - (targetPacePerWeek / yMax) * plotHeight;
-    targetLineSvg = `
+    targetLineSvg += `
       <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="#9E9E9E" stroke-dasharray="5,5" stroke-width="2" />
       <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="10" font-weight="900" fill="#757575">Pace: ${targetPacePerWeek}</text>
     `;
@@ -421,7 +414,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     barsSvg += `
       <g class="chart-bar-group" style="cursor: pointer;">
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
-          <title>${item.label} (${item.mondayKey})\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.00 SFL'}</title>
+          <title>${item.label} (Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.00 SFL'}</title>
         </rect>
         <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${strokeColor}" text-anchor="middle">${tixLabel}</text>
         <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="#5C4033" text-anchor="middle">${item.label}</text>
