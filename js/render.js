@@ -5,6 +5,13 @@ export function recalculateAll() {
 
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
+  const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+
+  // Toggle Double Delivery Banner UI
+  const dblBanner = document.getElementById('doubleDeliveryBanner');
+  if (dblBanner) {
+    dblBanner.style.display = isDoubleDeliveryActive ? 'flex' : 'none';
+  }
 
   const now = new Date();
   const todayUtcStr = now.toISOString().split('T')[0];
@@ -93,18 +100,29 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process Today's Live Deliveries
+  // 2. Process Today's Live Deliveries (Double Delivery applied to ONLY the 1st completed order of today)
+  let doubleDeliveryAppliedToday = false;
+
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      const finalTix = d.baseTickets + deliveryAddon;
+      let calculatedYield = d.baseTickets + deliveryAddon;
+
+      if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday) {
+        calculatedYield = calculatedYield * 2;
+        doubleDeliveryAppliedToday = true;
+        d.hasDoubleBonus = true;
+      } else {
+        d.hasDoubleBonus = false;
+      }
+
       const dCost = d.itemsCost || 0;
 
-      todayDelivTix += finalTix;
+      todayDelivTix += calculatedYield;
       todayCostAll += dCost;
 
-      totalDelivTix += finalTix;
-      weekDelivTix += finalTix;
+      totalDelivTix += calculatedYield;
+      weekDelivTix += calculatedYield;
       totalSflCostAll += dCost;
       weekCostAll += dCost;
     }
@@ -120,7 +138,7 @@ export function recalculateAll() {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       if (baseTix <= 0) return;
 
-      const finalTix = baseTix + boostCount; // Bounties get boost only
+      const finalTix = baseTix + boostCount;
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
 
@@ -146,7 +164,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process CURRENT Week Chores (Chores now receive VIP + Boost)
+  // 4. Process CURRENT Week Chores (VIP + Boosts)
   const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -212,12 +230,12 @@ export function recalculateAll() {
     });
   });
 
-  // Calculate Cumulative Totals
+  // Totals
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix + todayLoginTickets;
 
-  // 6. Update Overview Card Counts
+  // 6. Overview Cards
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
@@ -226,7 +244,7 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
 
-  // 7. Update Stats Grid & Tooltips
+  // 7. Stats
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
@@ -240,7 +258,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Tooltips Breakdown
+  // Tooltips
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
