@@ -321,9 +321,7 @@ async function executeCronBackupTask(env) {
       vaultData.cumulativeTickets = totalTix;
       vaultData.cumulativeCost = totalCost;
 
-      // Ensure no API keys are saved
       delete vaultData.apiKey;
-
       await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
       processedCount++;
 
@@ -390,7 +388,7 @@ export async function onRequest(context) {
     return jsonRes({ vaultData: null });
   }
 
-  // 3. User Registration (Stores farmId, NEVER apiKey)
+  // 3. User Registration
   if (request.method === 'POST' && action === 'register') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -695,6 +693,23 @@ export async function onRequest(context) {
 
     if (env?.TRACKER_KV && usernameParam) {
       currentVault = await env.TRACKER_KV.get(`user_${usernameParam}_vault`, 'json');
+      if (!currentVault) {
+        currentVault = {
+          farmId,
+          logs: [],
+          cumulativeTickets: 0,
+          cumulativeCost: 0,
+          weeks: {},
+          trackTickets: 0,
+          trackCost: 0,
+          dailyLoginTickets: 0,
+          lastDailyLoginDate: null,
+          deliveries: [],
+          bounties: [],
+          chores: [],
+          milestones: {}
+        };
+      }
       if (currentVault?.logs?.length > 0) {
         baselineMilestones = currentVault.logs[0]?.milestones || currentVault.milestones || {};
       }
@@ -705,11 +720,11 @@ export async function onRequest(context) {
     const npcOrderCounts = {};
 
     (farm.delivery?.orders || []).forEach(order => {
-      const npcNameClean = (order.from || '').toLowerCase().trim();
+      const npcClean = (order.from || '').toLowerCase().trim();
       let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
       
-      if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcNameClean] !== undefined) {
-        totalTickets = CHAPTER_NPC_TICKETS[npcNameClean];
+      if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
+        totalTickets = CHAPTER_NPC_TICKETS[npcClean];
       }
 
       if (totalTickets > 0) {
@@ -730,7 +745,7 @@ export async function onRequest(context) {
 
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
         if (isCompleted) {
-          npcOrderCounts[npcNameClean] = (npcOrderCounts[npcClean] || 0) + 1;
+          npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
         }
 
         deliveryList.push({ 
@@ -740,7 +755,7 @@ export async function onRequest(context) {
           itemsCost, 
           itemDetails, 
           baseTickets: totalTickets, 
-          isChapterNpc: CHAPTER_NPC_TICKETS[npcNameClean] !== undefined, 
+          isChapterNpc: CHAPTER_NPC_TICKETS[npcClean] !== undefined, 
           completed: isCompleted,
           checked: isCompleted,
           completedAt: (typeof order.completedAt === 'number') ? order.completedAt : (isCompleted ? Date.now() : null),
