@@ -14,40 +14,40 @@
       background-position: 0 0, 15px 15px;
       color: #3e2723;
       font-family: 'Courier New', Courier, monospace, sans-serif;
-      padding: clamp(10px, 2.5vw, 20px);
+      padding: clamp(14px, 3vw, 28px);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      font-size: 14px;
+      font-size: 15px;
       -webkit-text-size-adjust: 100%;
     }
     .wrapper { 
-      max-width: 1100px; 
+      max-width: 1240px; 
       width: 100%; 
       display: flex; 
       flex-direction: column; 
-      gap: 16px; 
+      gap: 20px; 
     }
     
     header {
       background: linear-gradient(to bottom, #8B5A2B, #5C4033);
       border: 4px solid #3E2723;
-      border-radius: 12px;
+      border-radius: 14px;
       text-align: center;
-      padding: 16px;
+      padding: 20px 16px;
       box-shadow: 0 8px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
     }
     h1 { 
-      font-size: clamp(20px, 4vw, 26px); 
+      font-size: clamp(22px, 3.2vw, 30px); 
       font-weight: 900; 
       color: #FFF8DC; 
       text-shadow: 2px 2px #271813; 
-      margin-bottom: 4px; 
-      letter-spacing: 1px; 
+      margin-bottom: 6px; 
+      letter-spacing: 1.5px; 
     }
     p { 
-      font-size: clamp(12px, 2.5vw, 13px); 
+      font-size: clamp(13px, 2vw, 15px); 
       color: #EEDC82; 
       font-weight: bold; 
       text-shadow: 1px 1px #271813; 
@@ -57,23 +57,24 @@
     .tip-banner {
       background: #FFF8DC;
       border: 2px dashed #D2691E;
-      border-radius: 8px;
-      padding: 10px 14px;
+      border-radius: 10px;
+      padding: 12px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      min-height: 42px;
-      font-size: clamp(11px, 2.2vw, 12px);
+      min-height: 46px;
+      font-size: 13px;
       font-weight: 900;
       color: #8B4513;
       cursor: pointer;
       user-select: none;
-      gap: 8px;
+      gap: 10px;
+      box-shadow: 0 3px 0px #5C4033;
     }
     #rotatingTipText {
       transition: opacity 0.3s ease;
       opacity: 1;
-      line-height: 1.4;
+      line-height: 1.45;
     }
     #rotatingTipText.fade-out {
       opacity: 0;
@@ -83,42 +84,42 @@
     .event-banner {
       background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
       border: 2px solid #FF9800;
-      border-radius: 8px;
-      padding: 10px 14px;
+      border-radius: 10px;
+      padding: 12px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 2px 6px rgba(255, 152, 0, 0.2);
-      font-size: clamp(11px, 2.2vw, 12px);
-      gap: 8px;
+      box-shadow: 0 4px 8px rgba(255, 152, 0, 0.25);
+      font-size: 13px;
+      gap: 10px;
     }
 
     .panel {
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 6px 0px #5C4033;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 7px 0px #5C4033;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 18px;
     }
     .controls-row { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 12px; 
+      gap: 14px; 
       align-items: center; 
       justify-content: space-between; 
     }
     .input-group { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 8px; 
+      gap: 10px; 
       align-items: center; 
     }
     
     label { 
-      font-size: clamp(11px, 2.2vw, 12px); 
+      font-size: 13px; 
       font-weight: 900; 
       color: #5C4033; 
     }
@@ -126,8 +127,8 @@
       background-color: #FFF8DC;
       border: 2px solid #8B5A2B;
       color: #3E2723;
-      padding: 7px 10px;
-      font-size: clamp(11px, 2.2vw, 12px);
+      padding: 9px 12px;
+      font-size: 13px;
       font-weight: bold;
       border-radius: 8px;
       outline: none;
@@ -141,13 +142,13 @@
     .checkbox-label {
       background-color: #FFFACD;
       border: 2px solid #D2691E;
-      padding: 6px 10px;
+      padding: 8px 12px;
       border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: clamp(11px, 2.2vw, 12px);
+      gap: 7px;
+      font-size: 13px;
       color: #8B4513;
       font-weight: 900;
     }
@@ -155,9 +156,9 @@
     .btn {
       font-family: inherit;
       font-weight: 900;
-      font-size: clamp(11px, 2.2vw, 12px);
+      font-size: 13px;
       text-transform: uppercase;
-      padding: 9px 14px;
+      padding: 10px 18px;
       border-radius: 8px;
       border: 2px solid #3E2723;
       cursor: pointer;
@@ -166,7 +167,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 7px;
       touch-action: manipulation;
     }
     .btn:hover { filter: brightness(1.06); }
@@ -183,22 +184,22 @@
     .btn-indigo { background-color: #6D4C41; color: #FFF8DC; border-color: #3E2723; box-shadow: 0 4px 0px #2E1B17; }
     .btn-guide { background-color: #2980B9; color: #FFF8DC; border-color: #1B4F72; box-shadow: 0 4px 0px #154360; text-shadow: 1px 1px 0px #0E2F44; }
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
-    .btn-sm { padding: 5px 10px; font-size: 11px; box-shadow: 0 3px 0px #2E1B17; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; box-shadow: 0 3px 0px #2E1B17; }
 
     .overview-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
     }
     .overview-card {
       background: #FFFDF7;
       border: 3px solid #8B5A2B;
-      border-radius: 12px;
-      padding: 14px 16px;
+      border-radius: 14px;
+      padding: 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 5px 0px #5C4033;
+      gap: 14px;
+      box-shadow: 0 6px 0px #5C4033;
       transition: transform 0.15s ease;
     }
     .overview-card:hover {
@@ -209,66 +210,66 @@
       justify-content: space-between;
       align-items: center;
       font-weight: 900;
-      font-size: clamp(12px, 2.3vw, 13px);
+      font-size: 14px;
       color: #4E342E;
       border-bottom: 2px dashed #D7CCC8;
-      padding-bottom: 8px;
+      padding-bottom: 10px;
     }
     .overview-count {
       background: #EFEBE9;
       color: #4E342E;
-      padding: 3px 9px;
+      padding: 4px 10px;
       border: 2px solid #A1887F;
       border-radius: 6px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 900;
     }
     .overview-actions {
       display: flex;
-      gap: 8px;
+      gap: 10px;
     }
 
     .stats-grid { 
       display: grid; 
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); 
-      gap: 16px; 
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); 
+      gap: 18px; 
     }
     
     .stat-box {
       position: relative;
       background-color: #FFF8DC;
       border: 3px solid #8B5A2B;
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: 15px 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      box-shadow: 0 4px 0px #5C4033;
+      gap: 8px;
+      box-shadow: 0 5px 0px #5C4033;
       cursor: help;
       transition: transform 0.1s ease, box-shadow 0.1s ease;
     }
     .stat-box:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 0px #5C4033;
+      box-shadow: 0 7px 0px #5C4033;
     }
     .stat-title { 
-      font-size: clamp(10px, 2vw, 11px); 
+      font-size: 12px; 
       font-weight: 900; 
       color: #8B5A2B; 
       text-transform: uppercase; 
     }
     .stat-val { 
-      font-size: clamp(20px, 4.5vw, 24px); 
+      font-size: clamp(23px, 2.5vw, 27px); 
       font-weight: 900; 
       color: #D2691E; 
     }
     .stat-footer { 
       border-top: 2px dashed #D2B48C; 
-      padding-top: 6px; 
+      padding-top: 8px; 
       display: flex; 
       flex-direction: column; 
-      gap: 4px; 
-      font-size: clamp(10px, 2vw, 11px); 
+      gap: 5px; 
+      font-size: 12px; 
       font-weight: bold; 
       color: #5C4033; 
     }
@@ -276,23 +277,23 @@
     .stat-box .tooltip {
       visibility: hidden;
       opacity: 0;
-      width: clamp(230px, 80vw, 280px);
+      width: 290px;
       background-color: #3E2723;
       color: #FFF8DC;
       text-align: left;
       border: 2px solid #D2691E;
       border-radius: 8px;
-      padding: 8px 12px;
+      padding: 10px 14px;
       position: absolute;
       z-index: 20;
       bottom: 105%;
       left: 50%;
       transform: translateX(-50%);
       transition: opacity 0.2s ease, visibility 0.2s ease;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 900;
-      line-height: 1.5;
-      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+      line-height: 1.55;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.35);
       pointer-events: none;
     }
     .stat-box .tooltip::after {
@@ -311,8 +312,8 @@
     }
 
     .badge {
-      padding: 2px 8px;
-      font-size: 10px;
+      padding: 3px 9px;
+      font-size: 11px;
       font-weight: 900;
       border-radius: 6px;
       text-transform: uppercase;
@@ -329,65 +330,66 @@
       z-index: 100;
       justify-content: center;
       align-items: center;
-      padding: 16px;
+      padding: 20px;
     }
     .modal.show { display: flex; }
     .modal-content {
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
       width: 100%;
-      max-width: 620px;
+      max-width: 680px;
       max-height: 85vh;
-      border-radius: 12px;
+      border-radius: 14px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 10px 0px #5C4033;
     }
     .modal-header { 
-      padding: 16px; 
+      padding: 16px 20px; 
       border-bottom: 3px solid #8B5A2B; 
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
       background: #8B5A2B; 
       color: #FFF8DC; 
-      border-top-left-radius: 8px; 
-      border-top-right-radius: 8px; 
+      border-top-left-radius: 10px; 
+      border-top-right-radius: 10px; 
     }
     .modal-body { 
-      padding: 16px; 
+      padding: 18px 20px; 
       overflow-y: auto; 
       display: flex; 
       flex-direction: column; 
-      gap: 12px; 
+      gap: 14px; 
     }
 
     .guide-card {
       background: #FFF8DC;
       border: 2px solid #8B5A2B;
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: 10px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      font-size: 12px;
+      gap: 7px;
+      font-size: 13px;
     }
     .guide-card-title {
       font-weight: 900;
       color: #8B4513;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       border-bottom: 1px dashed #D2B48C;
-      padding-bottom: 4px;
+      padding-bottom: 6px;
+      font-size: 14px;
     }
     .guide-card-text {
       color: #5C4033;
-      line-height: 1.4;
+      line-height: 1.5;
       font-weight: bold;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 650px) {
       .controls-row { flex-direction: column; align-items: stretch; }
       .input-group { width: 100%; justify-content: space-between; }
     }
@@ -404,30 +406,30 @@
     <!-- Interactive Rotating Tip Banner -->
     <div class="tip-banner" id="tipBanner">
       <span id="rotatingTipText">📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? The tracker automatically detects milestone increases!</span>
-      <span style="font-size: 10px; opacity: 0.6;">(Hover to Pause)</span>
+      <span style="font-size: 11px; opacity: 0.7;">(Hover to Pause)</span>
     </div>
 
     <!-- ⚡ Dynamic Double Delivery Event Banner -->
     <div id="doubleDeliveryBanner" class="event-banner" style="display: none;">
-      <div style="display: flex; align-items: center; gap: 8px; color: #E65100; font-weight: 900;">
-        <span style="font-size: 16px;">⚡</span>
+      <div style="display: flex; align-items: center; gap: 10px; color: #E65100; font-weight: 900;">
+        <span style="font-size: 18px;">⚡</span>
         <span>DOUBLE DELIVERY EVENT ACTIVE! First completed delivery of today receives 2x Total Tickets [(Base + VIP + Boosts) × 2]</span>
       </div>
-      <span style="background: #E65100; color: #FFF; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px;">2X ACTIVE</span>
+      <span style="background: #E65100; color: #FFF; font-size: 11px; font-weight: 900; padding: 3px 8px; border-radius: 6px;">2X ACTIVE</span>
     </div>
 
-    <div class="panel" style="padding: 10px 16px; background: #FFFACD;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
-          <span style="font-size: 11px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
-          <input type="text" id="authUsername" placeholder="Username" style="width: 110px;" autocomplete="username" />
-          <input type="password" id="authPassword" placeholder="Password" style="width: 110px;" autocomplete="current-password" />
+    <div class="panel" style="padding: 12px 20px; background: #FFFACD;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
+          <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
+          <input type="text" id="authUsername" placeholder="Username" style="width: 125px;" autocomplete="username" />
+          <input type="password" id="authPassword" placeholder="Password" style="width: 125px;" autocomplete="current-password" />
           <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
           <button type="button" onclick="userRegister()" class="btn btn-sm btn-wood">REGISTER</button>
         </form>
 
-        <div id="authLoggedIn" style="display: none; align-items: center; gap: 12px;">
-          <span style="font-size: 12px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
+        <div id="authLoggedIn" style="display: none; align-items: center; gap: 14px;">
+          <span style="font-size: 13px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
           <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; box-shadow:0 3px 0px #78281F;">LOGOUT</button>
         </div>
       </div>
@@ -435,41 +437,41 @@
 
     <div class="panel">
       <div class="controls-row">
-        <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+        <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
           <label for="farmId">FARM ID:</label>
-          <input type="text" id="farmId" value="8472883706403914" style="width: 135px;" />
+          <input type="text" id="farmId" value="8472883706403914" style="width: 155px;" />
           
           <label for="apiKey">API KEY:</label>
-          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 110px;" />
+          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 130px;" />
 
           <label class="checkbox-label">
-            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 14px; height: 14px;" />
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 16px; height: 16px;" />
             👑 VIP (+2)
           </label>
-          <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
+          <span id="priceBadge" style="display:none; font-size:11px; padding:5px 9px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
-        <div class="input-group" style="background:#FFFACD; padding:6px 10px; border:2px solid #D2691E; border-radius:8px;">
+        <div class="input-group" style="background:#FFFACD; padding:8px 12px; border:2px solid #D2691E; border-radius:8px;">
           <label style="color:#8B4513;">+1 BOOSTS:</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #1</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #2</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E;" /> #3</label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #3</label>
           
-          <div style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
-            <label class="checkbox-label" style="padding: 3px 6px; font-size: 11px;" title="Auto-increments +1 ticket every calendar day">
-              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 14px; height: 14px;" />
+          <div style="border-left: 2px dashed #D2B48C; padding-left: 10px; margin-left: 6px; display: flex; align-items: center; gap: 8px;">
+            <label class="checkbox-label" style="padding: 4px 8px; font-size: 12px;" title="Auto-increments +1 ticket every calendar day">
+              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 15px; height: 15px;" />
               🎁 LOGIN
             </label>
-            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 48px; padding: 3px 4px; font-size: 11px; text-align: center;" title="Total Daily Login Tickets Collected" />
+            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 55px; padding: 4px 6px; font-size: 12px; text-align: center;" title="Total Daily Login Tickets Collected" />
           </div>
         </div>
 
-        <div class="input-group" style="background:#E8F5E9; padding:6px 10px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:6px;">
-          <span style="color:#1B5E20; font-weight:900; font-size:11px;">🛤️ TRACK:</span>
-          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">Tix:</label>
-          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 55px; padding: 3px 5px; font-size: 11px;" title="Total Track / Adjustment Tickets" />
-          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">SFL:</label>
-          <input type="number" step="0.01" id="trackCostInput" value="0" placeholder="0.00" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 3px 5px; font-size: 11px;" title="Total Track / Adjustment SFL Cost" />
+        <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:8px;">
+          <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
+          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
+          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 4px 6px; font-size: 12px;" title="Total Track / Adjustment Tickets" />
+          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
+          <input type="number" step="0.01" id="trackCostInput" value="0" placeholder="0.00" onchange="saveTrackAndRecalculate()" style="width: 75px; padding: 4px 6px; font-size: 12px;" title="Total Track / Adjustment SFL Cost" />
         </div>
 
         <div class="input-group">
@@ -537,11 +539,11 @@
 
       <div class="stat-box" style="border-color: #8E44AD; cursor: default;">
         <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER END GOAL TARGET</div>
-        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 75px; padding: 3px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
-          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Tix in</span>
-          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 50px; padding: 3px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
-          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Weeks</span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 85px; padding: 4px 6px; font-size: 14px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
+          <span style="font-size: 12px; font-weight: 900; color: #8E44AD;">Tix in</span>
+          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 60px; padding: 4px 6px; font-size: 14px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
+          <span style="font-size: 12px; font-weight: 900; color: #8E44AD;">Weeks</span>
         </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Remaining Needed:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
@@ -601,8 +603,8 @@
   <div id="guideModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📖 CHAPTER TRACKER GUIDE</h3>
-        <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <h3 style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📖 CHAPTER TRACKER GUIDE</h3>
+        <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
         <div class="guide-card" style="background:#E8F5E9; border-color:#2E7D32;">
@@ -654,16 +656,16 @@
   <div id="categorySummaryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="categorySummaryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📋 SUMMARY OVERVIEW</h3>
-        <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <h3 id="categorySummaryTitle" style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📋 SUMMARY OVERVIEW</h3>
+        <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
-          <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
+        <div style="background:#FFFACD; padding:12px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="categorySummaryTotals" style="font-size:13px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
-        <div id="categorySummaryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">Loading summary...</p>
+        <div id="categorySummaryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+          <p style="font-size: 13px; color: #8C7853; font-weight: bold;">Loading summary...</p>
         </div>
       </div>
     </div>
@@ -672,11 +674,11 @@
   <div id="historyModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 SAVED CLOUD LOGS & HISTORY</h3>
-        <button onclick="toggleHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <h3 style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📜 SAVED CLOUD LOGS & HISTORY</h3>
+        <button onclick="toggleHistoryModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div id="modalLogList" class="modal-body">
-        <p style="color:#8C7853; font-size:12px; font-weight:bold;">No logs loaded yet. Login and save first.</p>
+        <p style="color:#8C7853; font-size:13px; font-weight:bold;">No logs loaded yet. Login and save first.</p>
       </div>
     </div>
   </div>
@@ -684,24 +686,24 @@
   <div id="columnHistoryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
-        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 10px;">✕ CLOSE</button>
+        <h3 id="columnHistoryTitle" style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
+        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
-          <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
+        <div style="background:#FFFACD; padding:12px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="columnHistoryStats" style="font-size:13px; font-weight:900; color:#2E7D32;">0 Tickets | 0.00 SFL</span>
         </div>
 
-        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 8px;">
-          <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px;">
+        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 10px; align-items: center; background: #E8F5E9; padding: 12px; border: 2px solid #2E7D32; border-radius: 8px;">
+          <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 8px 12px; font-size: 12px; flex: 1; min-width: 150px;">
             <option value="">👤 ALL NPCS</option>
           </select>
-          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter by date (YYYY-MM-DD) or search..." style="flex: 2; min-width: 170px; padding: 6px 10px; font-size: 11px;" />
+          <input type="text" id="editSearchFilter" oninput="renderColumnHistoryModalList()" placeholder="Filter by date (YYYY-MM-DD) or search..." style="flex: 2; min-width: 180px; padding: 8px 12px; font-size: 12px;" />
         </div>
 
-        <div id="columnHistoryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+        <div id="columnHistoryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+          <p style="font-size: 13px; color: #8C7853; font-weight: bold;">No history found.</p>
         </div>
       </div>
     </div>
