@@ -16,7 +16,6 @@ const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Secure Backoff Fetcher: 5s -> 8s -> 10s retries using server environment API key
 async function fetchFarmWithRetry(farmId, apiKey) {
   const retryDelays = [5000, 8000, 10000];
   const headers = {
@@ -40,12 +39,9 @@ async function fetchFarmWithRetry(farmId, apiKey) {
         }
       }
       if (res.status === 401 || res.status === 404) {
-        console.error(`Farm ${farmId} returned fatal status ${res.status}`);
         return null;
       }
-    } catch (err) {
-      console.warn(`Farm ${farmId} attempt ${attempt + 1} failed: ${err.message}`);
-    }
+    } catch (err) {}
 
     if (attempt < retryDelays.length) {
       await sleep(retryDelays[attempt]);
@@ -55,14 +51,12 @@ async function fetchFarmWithRetry(farmId, apiKey) {
   return null;
 }
 
-// Background Cron Execution Engine
 async function executeCronBackupTask(env) {
   const backupTimestamp = new Date().toISOString();
   const todayDate = backupTimestamp.split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId();
   const serverApiKey = env?.SFL_API_KEY || '';
 
-  // 1. Fetch Global Prices ONCE
   let priceMap = {};
   try {
     const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -87,12 +81,8 @@ async function executeCronBackupTask(env) {
     if (!vaultData.weeks) vaultData.weeks = {};
 
     const targetFarmId = vaultData.farmId;
-    if (!targetFarmId) {
-      console.warn(`Skipping vault ${keyObj.name}: No farmId linked.`);
-      continue;
-    }
+    if (!targetFarmId) continue;
 
-    // 2. Fetch Live Farm using Server Environment Key
     const farm = await fetchFarmWithRetry(targetFarmId, serverApiKey);
 
     if (farm) {
@@ -104,7 +94,6 @@ async function executeCronBackupTask(env) {
       const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
       const baselineMilestones = vaultData.logs[0]?.milestones || vaultData.milestones || {};
 
-      // Check Active Double Delivery Event
       const nowMs = Date.now();
       const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
       let isDoubleDeliveryActive = false;
@@ -118,7 +107,6 @@ async function executeCronBackupTask(env) {
         });
       }
 
-      // Parse Deliveries
       const deliveryList = [];
       const npcOrderCounts = {};
       (farm.delivery?.orders || []).forEach(order => {
@@ -165,7 +153,6 @@ async function executeCronBackupTask(env) {
         }
       });
 
-      // Milestone Delta Detection for Stacked Orders
       Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
         const npcClean = npc.toLowerCase().trim();
         const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : (baselineMilestones[npc] || 0);
@@ -193,7 +180,6 @@ async function executeCronBackupTask(env) {
         }
       });
 
-      // Parse Bounties
       const bountiesList = [];
       const seenBounties = new Set();
       const rawBounties = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
@@ -220,7 +206,6 @@ async function executeCronBackupTask(env) {
         });
       });
 
-      // Parse Chores
       const choresObj = farm.choreBoard?.chores || farm.chores || {};
       const choresList = Object.entries(choresObj).map(([key, details]) => {
         let tix = extractRewardTickets(details.reward) || details.tickets || details.baseTickets || 1;
@@ -242,14 +227,12 @@ async function executeCronBackupTask(env) {
         };
       });
 
-      // Update Weekly Storage
       vaultData.weeks[currentWeekMonday] = {
         weekId: currentWeekMonday,
         bounties: bountiesList,
         chores: choresList
       };
 
-      // Calculate Daily Deliveries (Double Delivery on 1st completed order)
       let dailyTix = 0;
       let dailyCost = 0;
       let doubleApplied = false;
@@ -290,7 +273,6 @@ async function executeCronBackupTask(env) {
       vaultData.chores = choresList;
       vaultData.milestones = liveMilestones;
 
-      // Cumulative Totals
       let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
       let totalCost = vaultData.trackCost || 0;
 
@@ -342,7 +324,6 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // 1. Cron Backup Trigger Handler
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -363,7 +344,6 @@ export async function onRequest(context) {
     });
   }
 
-  // 2. Fetch Vault
   if (action === 'getVault') {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env?.TRACKER_KV && username) {
@@ -388,7 +368,6 @@ export async function onRequest(context) {
     return jsonRes({ vaultData: null });
   }
 
-  // 3. User Registration
   if (request.method === 'POST' && action === 'register') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -426,7 +405,6 @@ export async function onRequest(context) {
     }
   }
 
-  // 4. User Login
   if (request.method === 'POST' && action === 'login') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -467,7 +445,6 @@ export async function onRequest(context) {
     }
   }
 
-  // 5. Save Vault Progress
   if (request.method === 'POST' && action === 'saveVault') {
     try {
       const body = await request.json().catch(() => ({}));
@@ -620,7 +597,7 @@ export async function onRequest(context) {
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (c.baseTickets || c.tickets || 0);
+            totalTix += (b.baseTickets || b.tickets || 0);
             totalCost += (c.cost || 0);
           }
         });
@@ -640,7 +617,6 @@ export async function onRequest(context) {
     }
   }
 
-  // 6. Live SFL API Fetch Handler + AUTO-SAVE TO CLOUD
   try {
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
@@ -672,7 +648,6 @@ export async function onRequest(context) {
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
     const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
 
-    // Check for Active Calendar Events (Double Delivery Event)
     const nowMs = Date.now();
     const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
     let isDoubleDeliveryActive = false;
@@ -715,7 +690,6 @@ export async function onRequest(context) {
       }
     }
 
-    // Deliveries Parser
     const deliveryList = [];
     const npcOrderCounts = {};
 
@@ -764,7 +738,6 @@ export async function onRequest(context) {
       }
     });
 
-    // Milestone Delta Stack Detection
     Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
       const npcClean = npc.toLowerCase().trim();
       const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : baselineMilestones[npc] || 0;
@@ -793,7 +766,6 @@ export async function onRequest(context) {
       }
     });
 
-    // Bounties Parser
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -849,7 +821,6 @@ export async function onRequest(context) {
       });
     });
 
-    // Chores Parser
     const choreObj = farm.choreBoard?.chores || farm.chores || {};
     const choresList = Object.entries(choreObj).map(([key, details]) => {
       let baseTicketCount = extractRewardTickets(details.reward);
@@ -874,7 +845,6 @@ export async function onRequest(context) {
       };
     });
 
-    // AUTO-SAVE DIRECTLY TO CLOUD KV IF USER IS LOGGED IN
     if (env?.TRACKER_KV && usernameParam && currentVault) {
       const todayDate = new Date().toISOString().split('T')[0];
       const currentWeekMonday = getMondayBasedWeekId();
