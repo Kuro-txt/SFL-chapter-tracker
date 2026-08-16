@@ -38,6 +38,9 @@ export function recalculateAll() {
   const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
   const todayLoginTickets = isDoneLoginToday ? 1 : 0;
 
+  // Weekly ticket accumulator map for the progression chart
+  const weeklyTicketStats = {};
+
   // Category counters
   let totalDelivTix = 0;
   let totalBountyTix = 0;
@@ -80,6 +83,15 @@ export function recalculateAll() {
     return false;
   };
 
+  const addWeeklyStat = (wkId, tix, cost) => {
+    if (!wkId) wkId = currentWeekId;
+    if (!weeklyTicketStats[wkId]) {
+      weeklyTicketStats[wkId] = { tickets: 0, cost: 0 };
+    }
+    weeklyTicketStats[wkId].tickets += tix;
+    weeklyTicketStats[wkId].cost += cost;
+  };
+
   // 1. Process Past Daily Deliveries from saved logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
@@ -90,7 +102,8 @@ export function recalculateAll() {
     const isTodayLog = (rawDate === todayUtcStr || rawDate === localTodayStr);
     if (isTodayLog) return;
 
-    const isThisWeek = log.weekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
+    const logWeekId = log.weekId || getMondayBasedWeekId(new Date(rawDate));
+    const isThisWeek = logWeekId === currentWeekId || rawDate.slice(0, 4) === now.getFullYear().toString();
 
     (log.deliveriesDone || []).forEach(item => {
       if (isTicked(item)) {
@@ -100,6 +113,7 @@ export function recalculateAll() {
 
         totalDelivTix += finalTix;
         totalSflCostAll += itemCost;
+        addWeeklyStat(logWeekId, finalTix, itemCost);
 
         if (isThisWeek) {
           weekDelivTix += finalTix;
@@ -134,6 +148,8 @@ export function recalculateAll() {
       weekDelivTix += calculatedYield;
       totalSflCostAll += dCost;
       weekCostAll += dCost;
+
+      addWeeklyStat(currentWeekId, calculatedYield, dCost);
     }
   });
 
@@ -161,6 +177,7 @@ export function recalculateAll() {
 
       totalSflCostAll += bCost;
       weekCostAll += bCost;
+      addWeeklyStat(currentWeekId, finalTix, bCost);
 
       if (isWeeklyItemDoneToday(b)) {
         if (isAnimal) {
@@ -188,6 +205,7 @@ export function recalculateAll() {
       weekChoreTix += finalTix;
       totalSflCostAll += cCost;
       weekCostAll += cCost;
+      addWeeklyStat(currentWeekId, finalTix, cCost);
 
       if (isWeeklyItemDoneToday(c)) {
         todayChoreTix += finalTix;
@@ -220,6 +238,7 @@ export function recalculateAll() {
         }
 
         totalSflCostAll += bCost;
+        addWeeklyStat(wkId, finalTix, bCost);
       }
     });
 
@@ -235,9 +254,13 @@ export function recalculateAll() {
 
         totalChoreTix += finalTix;
         totalSflCostAll += cCost;
+        addWeeklyStat(wkId, finalTix, cCost);
       }
     });
   });
+
+  // Include Track & Login in current week progression
+  addWeeklyStat(currentWeekId, trackTickets + totalLoginTickets, trackCost);
 
   // Totals
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
@@ -296,4 +319,113 @@ export function recalculateAll() {
 
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
+
+  // 8. Render Weekly Progression Chart
+  renderWeeklyChart(weeklyTicketStats, currentWeekId, targetPerWeek, targetWeeks);
+}
+
+function renderWeeklyChart(weeklyStats, currentWeekId, targetPacePerWeek, totalPlannedWeeks) {
+  const chartContainer = document.getElementById('weeklyChartContainer');
+  const badgeEl = document.getElementById('chartSummaryBadge');
+  if (!chartContainer) return;
+
+  const sortedWeekKeys = Object.keys(weeklyStats).sort();
+  const maxWeeksToDisplay = Math.max(totalPlannedWeeks || 12, sortedWeekKeys.length, 12);
+
+  // Normalize sequential week display (Week 1 .. Week N)
+  const displayItems = [];
+  for (let i = 1; i <= maxWeeksToDisplay; i++) {
+    const matchedKey = sortedWeekKeys[i - 1];
+    const data = matchedKey ? weeklyStats[matchedKey] : null;
+    const isCurrent = matchedKey === currentWeekId || (!matchedKey && i === sortedWeekKeys.length + 1);
+
+    displayItems.push({
+      label: `Week ${i}`,
+      weekId: matchedKey || `Upcoming`,
+      tickets: data ? data.tickets : 0,
+      cost: data ? data.cost : 0,
+      isCurrent,
+      hasData: Boolean(data)
+    });
+  }
+
+  const recordedCount = sortedWeekKeys.length;
+  if (badgeEl) {
+    badgeEl.textContent = `${recordedCount} OF ${maxWeeksToDisplay} WEEKS RECORDED`;
+  }
+
+  // SVG Dimension Calculations
+  const barWidth = 48;
+  const barGap = 24;
+  const leftPadding = 50;
+  const rightPadding = 40;
+  const topPadding = 40;
+  const bottomPadding = 50;
+
+  const chartHeight = 260;
+  const plotHeight = chartHeight - topPadding - bottomPadding;
+  const chartWidth = leftPadding + (displayItems.length * (barWidth + barGap)) + rightPadding;
+
+  const maxRecordedTickets = Math.max(...displayItems.map(d => d.tickets), targetPacePerWeek, 50);
+  const yMax = Math.ceil((maxRecordedTickets * 1.25) / 20) * 20;
+
+  // Grid lines
+  const gridCount = 4;
+  let gridLinesSvg = '';
+  for (let i = 0; i <= gridCount; i++) {
+    const val = Math.round((yMax / gridCount) * i);
+    const yPos = topPadding + plotHeight - (val / yMax) * plotHeight;
+    gridLinesSvg += `
+      <line x1="${leftPadding}" y1="${yPos}" x2="${chartWidth - rightPadding}" y2="${yPos}" stroke="#E0D5C1" stroke-dasharray="3,3" stroke-width="1.5" />
+      <text x="${leftPadding - 8}" y="${yPos + 4}" font-size="11" font-weight="bold" fill="#8C7853" text-anchor="end">${val}</text>
+    `;
+  }
+
+  // Target Pace Line
+  let targetLineSvg = '';
+  if (targetPacePerWeek > 0) {
+    const targetY = topPadding + plotHeight - (targetPacePerWeek / yMax) * plotHeight;
+    targetLineSvg = `
+      <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="#9E9E9E" stroke-dasharray="5,5" stroke-width="2" />
+      <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="10" font-weight="900" fill="#757575">Pace: ${targetPacePerWeek}</text>
+    `;
+  }
+
+  // Bars rendering
+  let barsSvg = '';
+  displayItems.forEach((item, idx) => {
+    const xPos = leftPadding + (idx * (barWidth + barGap)) + (barGap / 2);
+    const barHeight = Math.max(3, (item.tickets / yMax) * plotHeight);
+    const yPos = topPadding + plotHeight - barHeight;
+
+    let barFill = item.hasData ? '#4CAF50' : '#EFEBE9';
+    let strokeColor = item.hasData ? '#2E7D32' : '#BCAAA4';
+
+    if (item.isCurrent) {
+      barFill = '#D2691E';
+      strokeColor = '#8B4513';
+    }
+
+    const tixLabel = item.tickets > 0 ? `${item.tickets}` : '0';
+    const costText = item.cost > 0 ? `${formatSFL(item.cost)} SFL` : '';
+
+    barsSvg += `
+      <g class="chart-bar-group" style="cursor: pointer;">
+        <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
+          <title>${item.label} (${item.weekId})\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.00 SFL'}</title>
+        </rect>
+        <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${strokeColor}" text-anchor="middle">${tixLabel}</text>
+        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="#5C4033" text-anchor="middle">${item.label}</text>
+        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 34}" font-size="9" font-weight="bold" fill="#8C7853" text-anchor="middle">${costText}</text>` : ''}
+      </g>
+    `;
+  });
+
+  chartContainer.innerHTML = `
+    <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="min-width: 100%; width: ${chartWidth}px; height: ${chartHeight}px; display: block; font-family: inherit;">
+      ${gridLinesSvg}
+      ${targetLineSvg}
+      ${barsSvg}
+    </svg>
+  `;
 }
