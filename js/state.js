@@ -73,7 +73,7 @@ export function isLoginClaimedToday() {
   return lastClaimed === todayUtc;
 }
 
-export function checkAndAutoClaimDailyLogin() {
+export async function checkAndAutoClaimDailyLogin() {
   const todayUtc = new Date().toISOString().split('T')[0];
   const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
   let count = parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10);
@@ -88,13 +88,21 @@ export function checkAndAutoClaimDailyLogin() {
 
     if (loginInput) loginInput.value = count;
     if (loginCheck) loginCheck.checked = true;
+
+    // Dynamically import sync to prevent circular dependency
+    try {
+      const { syncCurrentVaultToCloud } = await import('./modals.js');
+      const { recalculateAll } = await import('./render.js');
+      recalculateAll();
+      await syncCurrentVaultToCloud();
+    } catch (e) {}
   } else {
     if (loginInput) loginInput.value = count;
     if (loginCheck) loginCheck.checked = true;
   }
 }
 
-export function handleDailyLoginToggle() {
+export async function handleDailyLoginToggle() {
   const loginCheck = document.getElementById('dailyLoginCheck');
   const loginInput = document.getElementById('dailyLoginCount');
   const todayUtc = new Date().toISOString().split('T')[0];
@@ -108,4 +116,9 @@ export function handleDailyLoginToggle() {
     localStorage.removeItem('sfl_daily_login_last_date');
     if (loginInput) loginInput.value = count;
   }
+
+  try {
+    const { syncCurrentVaultToCloud } = await import('./modals.js');
+    await syncCurrentVaultToCloud();
+  } catch (e) {}
 }
