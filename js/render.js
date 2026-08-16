@@ -1,4 +1,4 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isLoginClaimedToday, isAnimalBounty } from './state.js';
+import { state, formatSFL, formatCoins, getCoinRatio, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isLoginClaimedToday, isAnimalBounty } from './state.js';
 
 export function recalculateAll() {
   if (!state.globalData) return;
@@ -6,6 +6,7 @@ export function recalculateAll() {
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+  const coinRatio = getCoinRatio();
 
   // Toggle Double Delivery Banner UI
   const dblBanner = document.getElementById('doubleDeliveryBanner');
@@ -244,33 +245,35 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
 
-  // 7. Stats
+  // 7. Stats & Coin Equivalencies
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
-  setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
-  setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
+  setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL (${formatCoins(totalSflCostAll, coinRatio)} 🪙)`);
+  const totalRatioVal = totalTicketsAll > 0 ? (totalSflCostAll / totalTicketsAll) : 0;
+  setElemText('statTotalRatio', `${formatSFL(totalRatioVal)} SFL (${formatCoins(totalRatioVal, coinRatio)} 🪙/Tix)`);
 
   setElemText('statWeekTickets', `${weekTicketsAll} Tickets`);
-  setElemText('statWeekCost', `${formatSFL(weekCostAll)} SFL`);
-  setElemText('statWeekRatio', `${weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.00"} SFL / Ticket`);
+  setElemText('statWeekCost', `${formatSFL(weekCostAll)} SFL (${formatCoins(weekCostAll, coinRatio)} 🪙)`);
+  const weekRatioVal = weekTicketsAll > 0 ? (weekCostAll / weekTicketsAll) : 0;
+  setElemText('statWeekRatio', `${formatSFL(weekRatioVal)} SFL (${formatCoins(weekRatioVal, coinRatio)} 🪙/Tix)`);
 
   setElemText('statEarnedTickets', `${todayTicketsAll} Tickets`);
-  setElemText('statEarnedCost', `${formatSFL(todayCostAll)} SFL`);
+  setElemText('statEarnedCost', `${formatSFL(todayCostAll)} SFL (${formatCoins(todayCostAll, coinRatio)} 🪙)`);
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
-  setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
+  setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL (${formatCoins(todayRatioVal, coinRatio)} 🪙/Tix)`);
 
-  // Tooltips
+  // Tooltips Breakdown
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
-  setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
+  setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL / ${formatCoins(trackCost, coinRatio)} 🪙)`);
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
   setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix} Tix`);
   setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
-  setElemText('tipWeekTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
+  setElemText('tipWeekTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL / ${formatCoins(trackCost, coinRatio)} 🪙)`);
   setElemText('tipWeekLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);

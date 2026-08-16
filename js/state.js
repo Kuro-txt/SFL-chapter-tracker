@@ -21,6 +21,19 @@ export function formatSFL(num) {
   return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+export function getCoinRatio() {
+  const inputVal = parseFloat(document.getElementById('coinRatioInput')?.value);
+  if (!isNaN(inputVal) && inputVal > 0) return inputVal;
+  const saved = parseFloat(localStorage.getItem('sfl_coin_ratio'));
+  return (!isNaN(saved) && saved > 0) ? saved : 1000;
+}
+
+export function formatCoins(sflAmount, customRatio) {
+  const ratio = customRatio !== undefined ? customRatio : getCoinRatio();
+  const coins = (parseFloat(sflAmount) || 0) * ratio;
+  return Math.round(coins).toLocaleString('en-US');
+}
+
 export function setElemText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -89,7 +102,6 @@ export async function checkAndAutoClaimDailyLogin() {
     if (loginInput) loginInput.value = count;
     if (loginCheck) loginCheck.checked = true;
 
-    // Dynamically import sync to prevent circular dependency
     try {
       const { syncCurrentVaultToCloud } = await import('./modals.js');
       const { recalculateAll } = await import('./render.js');
