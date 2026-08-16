@@ -5,3 +5,5 @@ pages_build_output_dir = "."
 [[kv_namespaces]]
 binding = "TRACKER_KV"
 id = "e905012c5fc143a98ec1f2eb30af343a"
+[observability]
+enabled = true
