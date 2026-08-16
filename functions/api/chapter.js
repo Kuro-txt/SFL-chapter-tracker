@@ -16,25 +16,30 @@ const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Safe UTC Monday-based week ID helper with bulletproof validation
-function getMondayBasedWeekId(d = new Date()) {
+function getMondayBasedWeekId(d) {
   let date;
   try {
-    if (!d) {
+    if (!d || d === 0 || d === '0') {
       date = new Date();
-    } else if (typeof d === 'string') {
-      date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
     } else if (typeof d === 'number') {
-      date = new Date(d);
+      date = new Date(d < 1e11 ? d * 1000 : d);
+    } else if (typeof d === 'string') {
+      if (/^\d+$/.test(d)) {
+        const num = parseInt(d, 10);
+        date = new Date(num < 1e11 ? num * 1000 : num);
+      } else {
+        date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
+      }
     } else if (d instanceof Date) {
       date = new Date(d.getTime());
     } else {
       date = new Date();
     }
-  } catch (e) {
+  } catch (err) {
     date = new Date();
   }
 
-  if (isNaN(date.getTime())) {
+  if (!date || isNaN(date.getTime())) {
     date = new Date();
   }
 
@@ -120,7 +125,16 @@ async function executeCronBackupTask(env) {
         vaultData.lastDailyLoginDate = todayDate;
       }
 
-      const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
+      // Filter raw milestones to ONLY include valid Chapter NPCs, stripping out fishing/achievement titles
+      const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
+      const liveMilestones = {};
+      Object.entries(rawMilestones).forEach(([npc, count]) => {
+        const cleanName = npc.toLowerCase().trim();
+        if (CHAPTER_NPC_TICKETS[cleanName] !== undefined) {
+          liveMilestones[cleanName] = count;
+        }
+      });
+
       const baselineMilestones = vaultData.logs[0]?.milestones || vaultData.milestones || {};
 
       const nowMs = Date.now();
@@ -182,9 +196,8 @@ async function executeCronBackupTask(env) {
         }
       });
 
-      Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
-        const npcClean = npc.toLowerCase().trim();
-        const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : (baselineMilestones[npc] || 0);
+      Object.entries(liveMilestones).forEach(([npcClean, liveCount]) => {
+        const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : 0;
         const completedToday = Math.max(0, liveCount - prevCount);
         const inOrdersCompleted = npcOrderCounts[npcClean] || 0;
 
@@ -323,7 +336,7 @@ async function executeCronBackupTask(env) {
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (c.tickets || c.baseTickets || 0);
+            totalTix += (b.baseTickets || b.tickets || 0);
             totalCost += (c.cost || 0);
           }
         });
@@ -512,7 +525,13 @@ export async function onRequest(context) {
       }
 
       if (body.milestones) {
-        existingData.milestones = body.milestones;
+        const cleanedMilestones = {};
+        Object.entries(body.milestones).forEach(([k, v]) => {
+          if (CHAPTER_NPC_TICKETS[k.toLowerCase().trim()] !== undefined) {
+            cleanedMilestones[k.toLowerCase().trim()] = v;
+          }
+        });
+        existingData.milestones = cleanedMilestones;
       }
 
       const incomingBounties = (body.bounties || [])
@@ -591,7 +610,7 @@ export async function onRequest(context) {
             ticketsSaved: dailyTickets, 
             costSaved: dailyCost, 
             deliveriesDone: allDeliveries,
-            milestones: body.milestones || existingData.milestones || {}
+            milestones: existingData.milestones || {}
           };
         } else {
           existingData.logs.unshift({ 
@@ -601,7 +620,7 @@ export async function onRequest(context) {
             ticketsSaved: dailyTickets, 
             costSaved: dailyCost, 
             deliveriesDone: allDeliveries,
-            milestones: body.milestones || existingData.milestones || {}
+            milestones: existingData.milestones || {}
           });
         }
       }
@@ -626,7 +645,7 @@ export async function onRequest(context) {
         });
         (wk.chores || []).forEach(c => {
           if (c.completed || c.checked) {
-            totalTix += (c.tickets || c.baseTickets || 0);
+            totalTix += (b.tickets || b.baseTickets || 0);
             totalCost += (c.cost || 0);
           }
         });
@@ -675,7 +694,16 @@ export async function onRequest(context) {
     }
 
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
-    const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
+    
+    // Filter raw milestones to ONLY include valid Chapter NPCs
+    const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
+    const liveMilestones = {};
+    Object.entries(rawMilestones).forEach(([npc, count]) => {
+      const cleanName = npc.toLowerCase().trim();
+      if (CHAPTER_NPC_TICKETS[cleanName] !== undefined) {
+        liveMilestones[cleanName] = count;
+      }
+    });
 
     const nowMs = Date.now();
     const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
@@ -767,9 +795,8 @@ export async function onRequest(context) {
       }
     });
 
-    Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
-      const npcClean = npc.toLowerCase().trim();
-      const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : baselineMilestones[npc] || 0;
+    Object.entries(liveMilestones).forEach(([npcClean, liveCount]) => {
+      const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : 0;
       const completedTodayInMilestones = Math.max(0, liveCount - prevCount);
       const inOrdersCompleted = npcOrderCounts[npcClean] || 0;
 
