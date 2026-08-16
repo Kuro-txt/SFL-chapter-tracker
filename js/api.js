@@ -1,26 +1,15 @@
-import { state, formatSFL, getActiveVipBonus, getActiveBoostCount } from './state.js';
+import { state, setElemText } from './state.js';
 import { recalculateAll } from './render.js';
-
-export async function retryOperation(fn, retries = 3, delay = 8000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      if (i === retries - 1) throw err;
-      console.warn(`Attempt ${i + 1} failed. Retrying in ${delay / 1000} seconds...`, err);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-}
+import { syncCurrentVaultToCloud } from './modals.js';
 
 export async function loadTrackerData() {
-  if (state.isFetchCooldown) return;
+  const farmId = document.getElementById('farmId')?.value.trim();
+  const apiKey = document.getElementById('apiKey')?.value.trim();
 
-  const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
-  const apiKey = document.getElementById('apiKey').value.trim();
-  
+  if (!farmId) return alert('Enter a Farm ID.');
+
   localStorage.setItem('sfl_farmId', farmId);
-  localStorage.setItem('sfl_apiKey', apiKey);
+  if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
 
   const priceBadge = document.getElementById('priceBadge');
   if (priceBadge) {
@@ -28,124 +17,46 @@ export async function loadTrackerData() {
     priceBadge.textContent = 'FETCHING...';
   }
 
-  state.isFetchCooldown = true;
-  const fetchButtons = document.querySelectorAll('button[onclick="loadTrackerData()"]');
-  fetchButtons.forEach(btn => {
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
-    btn.style.cursor = 'not-allowed';
-  });
-
-  let timeLeft = 10;
-  const cooldownTimer = setInterval(() => {
-    if (timeLeft > 0) {
-      fetchButtons.forEach(btn => { btn.textContent = 'WAIT ' + timeLeft + 's'; });
-      timeLeft--;
-    } else {
-      clearInterval(cooldownTimer);
-      state.isFetchCooldown = false;
-      fetchButtons.forEach(btn => {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-        btn.textContent = '🌾 FETCH DATA';
-      });
-    }
-  }, 1000);
-
   try {
-    let queryUrl = '/api/chapter?farmId=' + encodeURIComponent(farmId);
-    if (apiKey) queryUrl += '&apiKey=' + encodeURIComponent(apiKey);
+    const userParam = state.currentUser ? `&username=${encodeURIComponent(state.currentUser)}` : '';
+    const res = await fetch(`/api/chapter?farmId=${encodeURIComponent(farmId)}&apiKey=${encodeURIComponent(apiKey)}${userParam}`);
+    const data = await res.json();
 
-    const data = await retryOperation(async () => {
-      const response = await fetch(queryUrl);
-      const json = await response.json();
-      if (json.error) throw new Error(json.error);
-      return json;
-    }, 3, 8000);
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch tracker data.');
 
-    state.globalData = data;
-    state.globalData.cloudHistory = state.currentVaultData;
+    const currentHistory = state.globalData?.cloudHistory || state.currentVaultData || { logs: [], weeks: {} };
+    
+    state.globalData = {
+      ...data,
+      cloudHistory: currentHistory
+    };
+
+    if (data.isVipActive) {
+      const vipToggle = document.getElementById('vipToggle');
+      if (vipToggle) {
+        vipToggle.checked = true;
+        localStorage.setItem('sfl_vip', 'true');
+      }
+    }
 
     if (priceBadge) {
-      priceBadge.textContent = data.pricesLoadedCount > 0 ? `${data.pricesLoadedCount} PRICES LOADED` : 'PRICE API OFFLINE';
+      priceBadge.textContent = `PRICES LOADED (${data.pricesLoadedCount || 0})`;
     }
 
-    if (localStorage.getItem('sfl_vip') === null) {
-      document.getElementById('vipToggle').checked = data.isVipActive;
-      localStorage.setItem('sfl_vip', data.isVipActive);
-    }
-
-    // Refresh UI with newly loaded data
     recalculateAll();
-
-    // AUTO-SAVE TO CLOUD KV (Silent background sync if user is logged in)
-    if (state.currentUser) {
-      await saveProgressToCloudKV(true);
-    }
+    await syncCurrentVaultToCloud();
   } catch (err) {
-    alert('Error fetching data after 3 attempts: ' + err.message);
+    alert(`Tracker Fetch Error: ${err.message}`);
+    if (priceBadge) priceBadge.textContent = 'FETCH FAILED';
   }
 }
 
-export async function saveProgressToCloudKV(isSilent = false) {
-  if (!state.currentUser) {
-    if (!isSilent) alert('⚠️ Please LOGIN to your secure vault before saving to Cloud!');
-    return;
-  }
-  if (!state.globalData) {
-    if (!isSilent) alert('Please click "FETCH DATA" first before saving!');
-    return;
-  }
-
-  let dailyDelivTickets = 0;
-  let dailyDelivCost = 0;
-  const vipBonus = getActiveVipBonus();
-  const boostCount = getActiveBoostCount();
-
-  (state.globalData.deliveries || []).forEach(d => {
-    if (d.completed) {
-      const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      dailyDelivTickets += (d.baseTickets + deliveryAddon);
-      dailyDelivCost += (d.itemsCost || 0);
-    }
-  });
-
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
-  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
-
+export async function saveProgressToCloudKV() {
+  if (!state.currentUser) return alert('Please login first to save progress in your cloud vault.');
   try {
-    const response = await fetch('/api/chapter?action=saveVault', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: state.currentUser,
-        dailyDeliveryTicketsSaved: dailyDelivTickets,
-        dailyDeliveryCostSaved: dailyDelivCost,
-        trackTickets: trackTickets,
-        trackCost: trackCost,
-        deliveries: state.globalData.deliveries,
-        bounties: state.globalData.bounties,
-        chores: state.globalData.chores
-      })
-    });
-
-    const resData = await response.json();
-    if (resData.error) throw new Error(resData.error);
-
-    state.currentVaultData = resData.vaultData;
-    state.globalData.cloudHistory = state.currentVaultData;
-
-    if (!isSilent) {
-      alert(`☁️ SAVED IN CLOUD!\nDaily Deliveries: +${dailyDelivTickets} Tickets, ${formatSFL(dailyDelivCost)} SFL\nTrack Progress: ${trackTickets} Tickets (${formatSFL(trackCost)} SFL)\nWeekly Bounties & Chores Synced!`);
-    }
-
-    recalculateAll();
+    await syncCurrentVaultToCloud();
+    alert('Progress saved to your Cloud Vault!');
   } catch (err) {
-    if (!isSilent) {
-      alert('Cloud Save Failed: ' + err.message);
-    } else {
-      console.error('Background auto-save failed:', err);
-    }
+    alert(`Cloud Save Failed: ${err.message}`);
   }
 }
