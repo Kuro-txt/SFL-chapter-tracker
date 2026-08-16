@@ -14,12 +14,11 @@ const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
   headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
 });
 
-// Helper: Sleep / delay
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper: Fetch SFL API with 3-tier backoff (5s, 8s, 10s)
+// Secure Backoff Fetcher: 5s -> 8s -> 10s retries using server environment API key
 async function fetchFarmWithRetry(farmId, apiKey) {
-  const retryDelays = [5000, 8000, 10000]; // 5s, 8s, 10s
+  const retryDelays = [5000, 8000, 10000];
   const headers = {
     'Accept': 'application/json, text/plain, */*',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SunflowerTracker/2.0',
@@ -41,7 +40,7 @@ async function fetchFarmWithRetry(farmId, apiKey) {
         }
       }
       if (res.status === 401 || res.status === 404) {
-        console.error(`Farm ${farmId} fatal HTTP ${res.status}`);
+        console.error(`Farm ${farmId} returned fatal status ${res.status}`);
         return null;
       }
     } catch (err) {
@@ -56,14 +55,14 @@ async function fetchFarmWithRetry(farmId, apiKey) {
   return null;
 }
 
-// Background Worker: Runs after cron-job.org receives its 200 OK
+// Background Cron Execution Engine
 async function executeCronBackupTask(env) {
   const backupTimestamp = new Date().toISOString();
   const todayDate = backupTimestamp.split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId();
-  const defaultApiKey = env?.SFL_API_KEY || '';
+  const serverApiKey = env?.SFL_API_KEY || '';
 
-  // 1. Fetch Global Prices ONCE for all farms
+  // 1. Fetch Global Prices ONCE
   let priceMap = {};
   try {
     const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -87,14 +86,16 @@ async function executeCronBackupTask(env) {
     if (!vaultData.logs) vaultData.logs = [];
     if (!vaultData.weeks) vaultData.weeks = {};
 
-    const targetFarmId = vaultData.farmId || '8472883706403914';
-    const farmApiKey = vaultData.apiKey || defaultApiKey;
+    const targetFarmId = vaultData.farmId;
+    if (!targetFarmId) {
+      console.warn(`Skipping vault ${keyObj.name}: No farmId linked.`);
+      continue;
+    }
 
-    // 2. Fetch Live Farm Data with 5s -> 8s -> 10s retry engine
-    const farm = await fetchFarmWithRetry(targetFarmId, farmApiKey);
+    // 2. Fetch Live Farm using Server Environment Key
+    const farm = await fetchFarmWithRetry(targetFarmId, serverApiKey);
 
     if (farm) {
-      // Auto-increment Daily Login if fresh day
       if (vaultData.lastDailyLoginDate !== todayDate) {
         vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
         vaultData.lastDailyLoginDate = todayDate;
@@ -241,14 +242,14 @@ async function executeCronBackupTask(env) {
         };
       });
 
-      // Update weekly storage
+      // Update Weekly Storage
       vaultData.weeks[currentWeekMonday] = {
         weekId: currentWeekMonday,
         bounties: bountiesList,
         chores: choresList
       };
 
-      // Daily Delivery Calculation (Double delivery on 1st completed order)
+      // Calculate Daily Deliveries (Double Delivery on 1st completed order)
       let dailyTix = 0;
       let dailyCost = 0;
       let doubleApplied = false;
@@ -289,7 +290,7 @@ async function executeCronBackupTask(env) {
       vaultData.chores = choresList;
       vaultData.milestones = liveMilestones;
 
-      // Calculate Cumulative Totals
+      // Cumulative Totals
       let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
       let totalCost = vaultData.trackCost || 0;
 
@@ -320,10 +321,12 @@ async function executeCronBackupTask(env) {
       vaultData.cumulativeTickets = totalTix;
       vaultData.cumulativeCost = totalCost;
 
+      // Ensure no API keys are saved
+      delete vaultData.apiKey;
+
       await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
       processedCount++;
 
-      // Small 1s breather between farms to be gentle with rate limits
       await sleep(1000);
     }
   }
@@ -341,7 +344,7 @@ export async function onRequest(context) {
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
   const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
 
-  // 1. Cron Backup Trigger Handler (cron-job.org / Webhooks)
+  // 1. Cron Backup Trigger Handler
   if (action === 'cronBackup') {
     const secretKey = url.searchParams.get('key');
     const expectedKey = env?.CRON_SECRET || 'kuro123';
@@ -349,14 +352,12 @@ export async function onRequest(context) {
       return jsonRes({ error: 'Unauthorized cron key.' }, 401);
     }
 
-    // Schedule the background crawler with 5s -> 8s -> 10s retry policy
     if (waitUntil) {
       waitUntil(executeCronBackupTask(env));
     } else {
       context.waitUntil(executeCronBackupTask(env));
     }
 
-    // Respond immediately to cron-job.org in < 100ms so it never times out
     return jsonRes({
       success: true,
       status: "BACKGROUND_CRAWLER_STARTED",
@@ -369,6 +370,7 @@ export async function onRequest(context) {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env?.TRACKER_KV && username) {
       let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
+        farmId,
         logs: [], 
         cumulativeTickets: 0, 
         cumulativeCost: 0, 
@@ -382,17 +384,19 @@ export async function onRequest(context) {
         chores: [],
         milestones: {}
       };
+      delete vaultData.apiKey;
       return jsonRes({ success: true, vaultData });
     }
     return jsonRes({ vaultData: null });
   }
 
-  // 3. User Registration
+  // 3. User Registration (Stores farmId, NEVER apiKey)
   if (request.method === 'POST' && action === 'register') {
     try {
       const body = await request.json().catch(() => ({}));
       const username = (body.username || '').toLowerCase().trim();
       const password = body.password || '';
+      const userFarmId = body.farmId || farmId;
 
       if (!username || !password) return jsonRes({ error: 'Username and password required.' }, 400);
       if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
@@ -403,7 +407,7 @@ export async function onRequest(context) {
       const passwordHash = await hashPassword(password);
       await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
       await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ 
-        farmId,
+        farmId: userFarmId,
         logs: [], 
         cumulativeTickets: 0, 
         cumulativeCost: 0, 
@@ -418,7 +422,7 @@ export async function onRequest(context) {
         milestones: {}
       }));
 
-      return jsonRes({ success: true, username });
+      return jsonRes({ success: true, username, farmId: userFarmId });
     } catch (err) {
       return jsonRes({ error: err.message }, 500);
     }
@@ -430,6 +434,7 @@ export async function onRequest(context) {
       const body = await request.json().catch(() => ({}));
       const username = (body.username || '').toLowerCase().trim();
       const password = body.password || '';
+      const userFarmId = body.farmId;
 
       if (!username || !password) return jsonRes({ error: 'Username and password required.' }, 400);
       if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
@@ -451,6 +456,13 @@ export async function onRequest(context) {
         lastDailyLoginDate: null,
         milestones: {}
       };
+
+      if (userFarmId && !vaultData.farmId) {
+        vaultData.farmId = userFarmId;
+        await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify(vaultData));
+      }
+
+      delete vaultData.apiKey;
       return jsonRes({ success: true, username, vaultData });
     } catch (err) {
       return jsonRes({ error: err.message }, 500);
@@ -622,6 +634,7 @@ export async function onRequest(context) {
       existingData.bounties = incomingBounties.length > 0 ? incomingBounties : (existingData.bounties || []);
       existingData.chores = incomingChores.length > 0 ? incomingChores : (existingData.chores || []);
 
+      delete existingData.apiKey;
       await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
       return jsonRes({ success: true, vaultData: existingData });
     } catch (err) {
@@ -629,7 +642,7 @@ export async function onRequest(context) {
     }
   }
 
-  // 6. Live SFL API Fetch Handler
+  // 6. Live SFL API Fetch Handler + AUTO-SAVE TO CLOUD
   try {
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
@@ -678,10 +691,12 @@ export async function onRequest(context) {
 
     let baselineMilestones = {};
     const usernameParam = (url.searchParams.get('username') || '').toLowerCase().trim();
+    let currentVault = null;
+
     if (env?.TRACKER_KV && usernameParam) {
-      const vault = await env.TRACKER_KV.get(`user_${usernameParam}_vault`, 'json');
-      if (vault?.logs?.length > 0) {
-        baselineMilestones = vault.logs[0]?.milestones || vault.milestones || {};
+      currentVault = await env.TRACKER_KV.get(`user_${usernameParam}_vault`, 'json');
+      if (currentVault?.logs?.length > 0) {
+        baselineMilestones = currentVault.logs[0]?.milestones || currentVault.milestones || {};
       }
     }
 
@@ -715,7 +730,7 @@ export async function onRequest(context) {
 
         const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
         if (isCompleted) {
-          npcOrderCounts[npcNameClean] = (npcOrderCounts[npcNameClean] || 0) + 1;
+          npcOrderCounts[npcNameClean] = (npcOrderCounts[npcClean] || 0) + 1;
         }
 
         deliveryList.push({ 
@@ -844,6 +859,55 @@ export async function onRequest(context) {
       };
     });
 
+    // AUTO-SAVE DIRECTLY TO CLOUD KV IF USER IS LOGGED IN
+    if (env?.TRACKER_KV && usernameParam && currentVault) {
+      const todayDate = new Date().toISOString().split('T')[0];
+      const currentWeekMonday = getMondayBasedWeekId();
+
+      currentVault.farmId = farmId;
+      currentVault.deliveries = deliveryList;
+      currentVault.bounties = activeBounties;
+      currentVault.chores = choresList;
+      currentVault.milestones = liveMilestones;
+
+      if (!currentVault.weeks) currentVault.weeks = {};
+      currentVault.weeks[currentWeekMonday] = {
+        weekId: currentWeekMonday,
+        bounties: activeBounties,
+        chores: choresList
+      };
+
+      let dailyTix = 0;
+      let dailyCost = 0;
+      deliveryList.forEach(d => {
+        if (d.checked || d.completed) {
+          dailyTix += d.baseTickets;
+          dailyCost += d.itemsCost;
+        }
+      });
+
+      if (!currentVault.logs) currentVault.logs = [];
+      const existingLogIdx = currentVault.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+      const logEntry = {
+        date: todayDate,
+        weekId: currentWeekMonday,
+        timestamp: new Date().toISOString(),
+        ticketsSaved: dailyTix,
+        costSaved: dailyCost,
+        deliveriesDone: deliveryList,
+        milestones: liveMilestones
+      };
+
+      if (existingLogIdx !== -1) {
+        currentVault.logs[existingLogIdx] = logEntry;
+      } else {
+        currentVault.logs.unshift(logEntry);
+      }
+
+      delete currentVault.apiKey;
+      await env.TRACKER_KV.put(`user_${usernameParam}_vault`, JSON.stringify(currentVault));
+    }
+
     return jsonRes({
       farmId, 
       isVipActive,
@@ -852,7 +916,8 @@ export async function onRequest(context) {
       pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: deliveryList, 
       bounties: activeBounties, 
-      chores: choresList
+      chores: choresList,
+      vaultData: currentVault
     });
   } catch (err) {
     return jsonRes({ error: err.message }, 500);
