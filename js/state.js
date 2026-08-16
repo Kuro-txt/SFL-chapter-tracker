@@ -38,13 +38,23 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-// Consistent Monday-start week key (YYYY-MM-DD of Monday)
+// 100% Strict UTC Monday-based Week Calculator (Monday 00:00:00 UTC to Sunday 23:59:59 UTC)
 export function getMondayBasedWeekId(d = new Date()) {
-  const date = new Date(d);
-  const day = date.getDay(); // 0 is Sunday
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-  const monday = new Date(date.setDate(diff));
-  return monday.toISOString().split('T')[0];
+  let date;
+  if (typeof d === 'string') {
+    date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
+  } else if (typeof d === 'number') {
+    date = new Date(d);
+  } else {
+    date = new Date(d.getTime());
+  }
+
+  const day = date.getUTCDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+  const utcDate = date.getUTCDate();
+  // If Sunday (0), Monday was 6 days ago. Otherwise, diff = 1 - day.
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+  date.setUTCDate(utcDate + diffToMonday);
+  return date.toISOString().split('T')[0];
 }
 
 export function isAnimalBounty(item) {
