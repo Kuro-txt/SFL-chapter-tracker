@@ -473,18 +473,31 @@ export async function onRequest(context) {
     const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
     const liveMilestones = farm.delivery?.milestones || farm.milestones || {};
 
-    // Get previous milestones from user's most recent saved log for comparison
+    // Check for Active Calendar Events (Double Delivery Event)
+    const nowMs = Date.now();
+    const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
+    let isDoubleDeliveryActive = false;
+
+    if (Array.isArray(calendarEvents)) {
+      isDoubleDeliveryActive = calendarEvents.some(evt => {
+        const title = (evt.name || evt.title || evt.type || '').toLowerCase();
+        const matchesName = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
+        const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : (typeof evt.from === 'number' ? evt.from <= nowMs : true);
+        const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : (typeof evt.to === 'number' ? evt.to >= nowMs : true);
+        return matchesName && started && notEnded;
+      });
+    }
+
     let baselineMilestones = {};
     const usernameParam = (url.searchParams.get('username') || '').toLowerCase().trim();
     if (env?.TRACKER_KV && usernameParam) {
       const vault = await env.TRACKER_KV.get(`user_${usernameParam}_vault`, 'json');
       if (vault?.logs?.length > 0) {
-        // Look for the last non-today log or today's baseline
         baselineMilestones = vault.logs[0]?.milestones || vault.milestones || {};
       }
     }
 
-    // Clean Deliveries Parser
+    // Deliveries Parser
     const deliveryList = [];
     const npcOrderCounts = {};
 
@@ -533,14 +546,13 @@ export async function onRequest(context) {
       }
     });
 
-    // Automated Stacked Delivery Detection: Compare Delta vs. live completed orders
+    // Milestone Delta Stack Detection
     Object.entries(liveMilestones).forEach(([npc, liveCount]) => {
       const npcClean = npc.toLowerCase().trim();
       const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : baselineMilestones[npc] || 0;
       const completedTodayInMilestones = Math.max(0, liveCount - prevCount);
       const inOrdersCompleted = npcOrderCounts[npcClean] || 0;
 
-      // If milestone delta > orders in array, inject the missing stacked deliveries
       if (completedTodayInMilestones > inOrdersCompleted && prevCount > 0) {
         const extraStacked = completedTodayInMilestones - inOrdersCompleted;
         const npcTickets = CHAPTER_NPC_TICKETS[npcClean] || 2;
@@ -563,7 +575,7 @@ export async function onRequest(context) {
       }
     });
 
-    // Clean Bounties Parser
+    // Bounties Parser
     const activeBounties = [];
     const seenBountyKeys = new Set();
     const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -619,7 +631,7 @@ export async function onRequest(context) {
       });
     });
 
-    // Clean Chores Parser
+    // Chores Parser
     const choreObj = farm.choreBoard?.chores || farm.chores || {};
     const choresList = Object.entries(choreObj).map(([key, details]) => {
       let baseTicketCount = extractRewardTickets(details.reward);
@@ -647,6 +659,7 @@ export async function onRequest(context) {
     return jsonRes({
       farmId, 
       isVipActive,
+      isDoubleDeliveryActive,
       milestones: liveMilestones,
       pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: deliveryList, 
