@@ -13,10 +13,8 @@ export async function loadTrackerData() {
   const apiKey = apiKeyInput?.value.trim() || '';
   const currentUsername = state.currentUser || '';
 
-  // Local storage cache for convenience
   localStorage.setItem('sfl_farmId', farmId);
 
-  // Anti-Spam Rate Limit Cooldown (10s)
   if (fetchCooldownTimer) {
     alert('⏳ Please wait for the cooldown before fetching again.');
     return;
@@ -63,7 +61,6 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // If backend auto-saved, sync cloud history immediately
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
       state.globalData.cloudHistory = data.vaultData;
