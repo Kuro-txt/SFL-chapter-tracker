@@ -38,22 +38,6 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-export function getCoinRatio() {
-  const val = parseFloat(document.getElementById('coinRatioInput')?.value);
-  if (!isNaN(val) && val > 0) return val;
-  const saved = parseFloat(localStorage.getItem('sfl_coin_ratio'));
-  return (!isNaN(saved) && saved > 0) ? saved : 1000;
-}
-
-export function sflToCoins(sflAmount) {
-  return (parseFloat(sflAmount) || 0) * getCoinRatio();
-}
-
-export function coinsToSfl(coinAmount) {
-  const ratio = getCoinRatio();
-  return ratio > 0 ? (parseFloat(coinAmount) || 0) / ratio : 0;
-}
-
 export function getMondayBasedWeekId(d = new Date()) {
   const date = new Date(d.getTime());
   const day = (date.getDay() + 6) % 7;

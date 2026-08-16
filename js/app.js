@@ -54,12 +54,6 @@ window.saveTrackAndRecalculate = () => {
   recalculateAll();
 };
 
-window.saveCoinRatioAndRecalculate = () => {
-  const ratio = parseFloat(document.getElementById('coinRatioInput').value) || 1000;
-  localStorage.setItem('sfl_coin_ratio', ratio);
-  recalculateAll();
-};
-
 window.saveGoalAndRecalculate = () => {
   localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput').value);
   localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput').value);
@@ -132,11 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const savedTrackCost = localStorage.getItem('sfl_track_cost');
   if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
-
-  const savedCoinRatio = localStorage.getItem('sfl_coin_ratio');
-  if (savedCoinRatio !== null && document.getElementById('coinRatioInput')) {
-    document.getElementById('coinRatioInput').value = savedCoinRatio;
-  }
 
   const savedGoal = localStorage.getItem('sfl_target_goal');
   if (savedGoal) document.getElementById('targetGoalInput').value = savedGoal;
