@@ -7,6 +7,7 @@ export async function syncCurrentVaultToCloud() {
     const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
     const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
     const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
+    const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
 
     const response = await fetch('/api/chapter?action=saveVault', {
       method: 'POST',
@@ -16,6 +17,8 @@ export async function syncCurrentVaultToCloud() {
         trackTickets,
         trackCost,
         dailyLoginTickets,
+        lastDailyLoginDate,
+        milestones: state.globalData.milestones || {},
         logs: state.globalData.cloudHistory.logs || [],
         bounties: state.globalData.bounties || [],
         chores: state.globalData.chores || [],
@@ -103,10 +106,11 @@ export function openCategorySummaryModal(cat) {
         catTickets += finalTickets;
         catCost += (d.itemsCost || 0);
       }
+      const isStackedBadge = d.isStacked ? '<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>' : '';
       const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>
+          <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}</span>
           <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
         </div>
         <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
@@ -269,7 +273,8 @@ export function renderColumnHistoryModalList() {
           displayTickets: finalTix,
           baseTickets: baseTix,
           checked: isChecked,
-          status: isChecked ? '✨ Done' : '⏳ Active'
+          status: isChecked ? '✨ Done' : '⏳ Active',
+          isStacked: item.isStacked || false
         });
       });
     });
@@ -350,6 +355,10 @@ export function renderColumnHistoryModalList() {
         ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
         : '';
 
+      const stackedTag = r.isStacked
+        ? `<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>`
+        : '';
+
       const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
       const itemsRow = (type === 'delivery' && r.requestedItems) 
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
@@ -360,7 +369,7 @@ export function renderColumnHistoryModalList() {
           <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
           <div>
             <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
-            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}
+            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${stackedTag}
             ${itemsRow}
           </div>
         </label>
