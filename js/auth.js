@@ -1,145 +1,130 @@
-import { state, setElemText } from './state.js';
+import { state, setElemText, checkAndAutoClaimDailyLogin } from './state.js';
 import { recalculateAll } from './render.js';
-
-export function updateAuthUI() {
-  const loggedOutEl = document.getElementById('authLoggedOut');
-  const loggedInEl = document.getElementById('authLoggedIn');
-  const displayUserEl = document.getElementById('displayUsername');
-
-  if (state.currentUser) {
-    if (loggedOutEl) loggedOutEl.style.display = 'none';
-    if (loggedInEl) loggedInEl.style.display = 'flex';
-    if (displayUserEl) displayUserEl.textContent = state.currentUser;
-  } else {
-    if (loggedOutEl) loggedOutEl.style.display = 'flex';
-    if (loggedInEl) loggedInEl.style.display = 'none';
-    if (displayUserEl) displayUserEl.textContent = '';
-  }
-}
-
-export async function checkSavedAuth() {
-  const savedUser = localStorage.getItem('sfl_vault_user');
-  if (savedUser) {
-    state.currentUser = savedUser;
-    updateAuthUI();
-
-    try {
-      const res = await fetch(`/api/chapter?action=getVault&username=${encodeURIComponent(savedUser)}`);
-      const data = await res.json();
-      if (data.vaultData) {
-        state.currentVaultData = data.vaultData;
-        if (state.globalData) {
-          state.globalData.cloudHistory = state.currentVaultData;
-        }
-        
-        // Restore saved track inputs from cloud if present
-        if (data.vaultData.trackTickets !== undefined && document.getElementById('trackTicketsInput')) {
-          document.getElementById('trackTicketsInput').value = data.vaultData.trackTickets;
-        }
-        if (data.vaultData.trackCost !== undefined && document.getElementById('trackCostInput')) {
-          document.getElementById('trackCostInput').value = data.vaultData.trackCost;
-        }
-        if (data.vaultData.dailyLoginTickets !== undefined && document.getElementById('dailyLoginCount')) {
-          document.getElementById('dailyLoginCount').value = data.vaultData.dailyLoginTickets;
-        }
-        
-        recalculateAll();
-      }
-    } catch (e) {
-      console.warn('Auto-login vault fetch error:', e);
-    }
-  } else {
-    updateAuthUI();
-  }
-}
+import { syncCurrentVaultToCloud } from './modals.js';
 
 export async function userRegister() {
-  const username = (document.getElementById('authUsername')?.value || '').toLowerCase().trim();
-  const password = document.getElementById('authPassword')?.value || '';
-
-  if (!username || !password) {
-    alert('Please enter both a username and password.');
-    return;
-  }
+  const u = document.getElementById('authUsername')?.value.trim();
+  const p = document.getElementById('authPassword')?.value;
+  if (!u || !p) return alert('Enter username & password.');
 
   try {
     const res = await fetch('/api/chapter?action=register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username: u, password: p })
     });
     const data = await res.json();
-
-    if (data.error) {
-      alert(`Registration failed: ${data.error}`);
-      return;
-    }
-
-    alert(`🎉 Account created for ${data.username}! You are now logged in.`);
-    state.currentUser = data.username;
-    localStorage.setItem('sfl_vault_user', data.username);
-    updateAuthUI();
-    await checkSavedAuth();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    
+    alert('Account created! Logging in...');
+    await userLogin(u, p);
   } catch (err) {
-    alert(`Registration error: ${err.message}`);
+    alert(err.message);
   }
 }
 
-export async function userLogin() {
-  const username = (document.getElementById('authUsername')?.value || '').toLowerCase().trim();
-  const password = document.getElementById('authPassword')?.value || '';
-
-  if (!username || !password) {
-    alert('Please enter both a username and password.');
-    return;
-  }
+export async function userLogin(customU, customP) {
+  const u = customU || document.getElementById('authUsername')?.value.trim();
+  const p = customP || document.getElementById('authPassword')?.value;
+  if (!u || !p) return alert('Enter username & password.');
 
   try {
     const res = await fetch('/api/chapter?action=login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username: u, password: p })
     });
     const data = await res.json();
-
-    if (data.error) {
-      alert(`Login failed: ${data.error}`);
-      return;
-    }
+    if (!res.ok) throw new Error(data.error || 'Login failed');
 
     state.currentUser = data.username;
-    state.currentVaultData = data.vaultData;
-    if (state.globalData) {
-      state.globalData.cloudHistory = state.currentVaultData;
-    }
-    
-    localStorage.setItem('sfl_vault_user', data.username);
-    updateAuthUI();
+    localStorage.setItem('sfl_logged_user', data.username);
+    localStorage.setItem('sfl_auth_p', p);
+
+    updateAuthUI(true);
 
     if (data.vaultData) {
-      if (data.vaultData.trackTickets !== undefined && document.getElementById('trackTicketsInput')) {
-        document.getElementById('trackTicketsInput').value = data.vaultData.trackTickets;
-      }
-      if (data.vaultData.trackCost !== undefined && document.getElementById('trackCostInput')) {
-        document.getElementById('trackCostInput').value = data.vaultData.trackCost;
-      }
-      if (data.vaultData.dailyLoginTickets !== undefined && document.getElementById('dailyLoginCount')) {
-        document.getElementById('dailyLoginCount').value = data.vaultData.dailyLoginTickets;
-      }
+      applyVaultToClient(data.vaultData);
     }
-
-    recalculateAll();
-    alert(`✅ Welcome back, ${data.username}! Vault loaded.`);
   } catch (err) {
-    alert(`Login error: ${err.message}`);
+    alert(err.message);
   }
 }
 
 export function userLogout() {
   state.currentUser = null;
   state.currentVaultData = null;
-  localStorage.removeItem('sfl_vault_user');
-  updateAuthUI();
+  localStorage.removeItem('sfl_logged_user');
+  localStorage.removeItem('sfl_auth_p');
+  updateAuthUI(false);
+  location.reload();
+}
+
+export function updateAuthUI(isLoggedIn) {
+  const loggedOutBox = document.getElementById('authLoggedOut');
+  const loggedInBox = document.getElementById('authLoggedIn');
+  if (isLoggedIn) {
+    if (loggedOutBox) loggedOutBox.style.display = 'none';
+    if (loggedInBox) loggedInBox.style.display = 'flex';
+    setElemText('displayUsername', state.currentUser);
+  } else {
+    if (loggedOutBox) loggedOutBox.style.display = 'flex';
+    if (loggedInBox) loggedInBox.style.display = 'none';
+  }
+}
+
+export function applyVaultToClient(vaultData) {
+  state.currentVaultData = vaultData;
+  if (!state.globalData) state.globalData = {};
+  state.globalData.cloudHistory = vaultData;
+
+  if (vaultData.trackTickets !== undefined) {
+    const trackInput = document.getElementById('trackTicketsInput');
+    if (trackInput) trackInput.value = vaultData.trackTickets;
+    localStorage.setItem('sfl_track_tix', vaultData.trackTickets);
+  }
+  if (vaultData.trackCost !== undefined) {
+    const costInput = document.getElementById('trackCostInput');
+    if (costInput) costInput.value = vaultData.trackCost;
+    localStorage.setItem('sfl_track_cost', vaultData.trackCost);
+  }
+
+  // Handle Daily Login Cloud Sync
+  const todayUtc = new Date().toISOString().split('T')[0];
+  let cloudLoginTickets = parseInt(vaultData.dailyLoginTickets || 0, 10);
+  const cloudLastDate = vaultData.lastDailyLoginDate;
+
+  if (cloudLastDate !== todayUtc) {
+    cloudLoginTickets += 1;
+    vaultData.dailyLoginTickets = cloudLoginTickets;
+    vaultData.lastDailyLoginDate = todayUtc;
+    localStorage.setItem('sfl_daily_login_count', cloudLoginTickets);
+    localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+
+    const loginInput = document.getElementById('dailyLoginCount');
+    const loginCheck = document.getElementById('dailyLoginCheck');
+    if (loginInput) loginInput.value = cloudLoginTickets;
+    if (loginCheck) loginCheck.checked = true;
+
+    syncCurrentVaultToCloud();
+  } else {
+    localStorage.setItem('sfl_daily_login_count', cloudLoginTickets);
+    localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+    const loginInput = document.getElementById('dailyLoginCount');
+    const loginCheck = document.getElementById('dailyLoginCheck');
+    if (loginInput) loginInput.value = cloudLoginTickets;
+    if (loginCheck) loginCheck.checked = true;
+  }
+
   recalculateAll();
-  alert('Logged out from Vault.');
+}
+
+export async function checkSavedAuth() {
+  const u = localStorage.getItem('sfl_logged_user');
+  const p = localStorage.getItem('sfl_auth_p');
+  if (u && p) {
+    await userLogin(u, p);
+  } else {
+    checkAndAutoClaimDailyLogin();
+  }
 }
