@@ -38,22 +38,39 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-// 100% Strict UTC Monday-based Week Calculator (Monday 00:00:00 UTC to Sunday 23:59:59 UTC)
-export function getMondayBasedWeekId(d = new Date()) {
+// 100% Bulletproof UTC Monday-based Week Calculator
+export function getMondayBasedWeekId(d) {
   let date;
-  if (typeof d === 'string') {
-    date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
-  } else if (typeof d === 'number') {
-    date = new Date(d);
-  } else {
-    date = new Date(d.getTime());
+  try {
+    if (!d || d === 0 || d === '0') {
+      date = new Date();
+    } else if (typeof d === 'number') {
+      date = new Date(d < 1e11 ? d * 1000 : d);
+    } else if (typeof d === 'string') {
+      if (/^\d+$/.test(d)) {
+        const num = parseInt(d, 10);
+        date = new Date(num < 1e11 ? num * 1000 : num);
+      } else {
+        date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
+      }
+    } else if (d instanceof Date) {
+      date = new Date(d.getTime());
+    } else {
+      date = new Date();
+    }
+  } catch (err) {
+    date = new Date();
   }
 
-  const day = date.getUTCDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+  if (!date || isNaN(date.getTime())) {
+    date = new Date();
+  }
+
+  const day = date.getUTCDay(); // 0 = Sunday, 1 = Monday ... 6 = Saturday
   const utcDate = date.getUTCDate();
-  // If Sunday (0), Monday was 6 days ago. Otherwise, diff = 1 - day.
   const diffToMonday = (day === 0 ? -6 : 1 - day);
   date.setUTCDate(utcDate + diffToMonday);
+  
   return date.toISOString().split('T')[0];
 }
 
