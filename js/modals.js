@@ -82,6 +82,7 @@ export function openCategorySummaryModal(cat) {
 
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
+  const currentWeekMonday = getMondayBasedWeekId();
 
   if (!state.globalData) {
     alert('Please click "FETCH DATA" first!');
@@ -125,26 +126,12 @@ export function openCategorySummaryModal(cat) {
     const isAnimal = cat === 'animalBounty';
     titleEl.textContent = isAnimal ? '🐄 ANIMAL BOUNTIES OVERVIEW' : '📜 BOUNTIES OVERVIEW';
     
-    // Collect from current state and all past weeks in cloudHistory
-    const allBountiesMap = new Map();
-    (state.globalData.bounties || []).forEach(b => {
-      const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-      allBountiesMap.set(key, b);
-    });
-    const weeks = state.globalData.cloudHistory?.weeks || {};
-    Object.values(weeks).forEach(wk => {
-      (wk.bounties || []).forEach(b => {
-        const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-        if (!allBountiesMap.has(key)) allBountiesMap.set(key, b);
-      });
+    // Strict filtering: Only current week's live bounties
+    const currentBounties = (state.globalData.bounties || []).filter(b => {
+      return isAnimalBounty(b) === isAnimal;
     });
 
-    const filteredBounties = Array.from(allBountiesMap.values()).filter(b => {
-      const checkAnimal = isAnimalBounty(b);
-      return isAnimal ? checkAnimal : !checkAnimal;
-    });
-
-    const sortedBounties = [...filteredBounties].sort((a, b) => {
+    const sortedBounties = [...currentBounties].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
       const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
       return aDone === bDone ? 0 : aDone ? 1 : -1;
@@ -170,20 +157,10 @@ export function openCategorySummaryModal(cat) {
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
 
-    const allChoresMap = new Map();
-    (state.globalData.chores || []).forEach(c => {
-      const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-      allChoresMap.set(key, c);
-    });
-    const weeks = state.globalData.cloudHistory?.weeks || {};
-    Object.values(weeks).forEach(wk => {
-      (wk.chores || []).forEach(c => {
-        const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-        if (!allChoresMap.has(key)) allChoresMap.set(key, c);
-      });
-    });
+    // Strict filtering: Only current week's live chores
+    const currentChores = state.globalData.chores || [];
 
-    const sortedChores = [...allChoresMap.values()].sort((a, b) => {
+    const sortedChores = [...currentChores].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
       const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
       return aDone === bDone ? 0 : aDone ? 1 : -1;
@@ -324,7 +301,6 @@ export function renderColumnHistoryModalList() {
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
 
-    // Gather from both current state and all cloudHistory weeks
     const allItemsMap = new Map();
     
     if (isChore) {
@@ -429,7 +405,7 @@ export function renderColumnHistoryModalList() {
           <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
-      </div>`;
+      `;
     }).join('');
   }
 
