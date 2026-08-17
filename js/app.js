@@ -1,8 +1,6 @@
 import { loadTrackerData, saveProgressToCloudKV } from './api.js';
 import { userRegister, userLogin, userLogout, checkSavedAuth } from './auth.js';
 import { 
-  openColumnModal,
-  closeModal,
   toggleGuideModal, 
   openCategorySummaryModal, 
   closeCategorySummaryModal, 
@@ -16,21 +14,17 @@ import {
   updateHistoryItemCost, 
   deleteWeeklyItem, 
   deleteMasterLog, 
-  toggleHistoryModal,
-  submitNewManualItem
+  toggleHistoryModal 
 } from './modals.js';
-import { recalculateAll, renderDashboardCards } from './render.js';
+import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
-// Expose handlers once to window
+// Expose handlers to window for inline HTML events
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
 window.userLogin = userLogin;
 window.userLogout = userLogout;
-
-window.openColumnModal = openColumnModal;
-window.closeModal = closeModal;
 window.toggleGuideModal = toggleGuideModal;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
@@ -45,43 +39,39 @@ window.updateHistoryItemCost = updateHistoryItemCost;
 window.deleteWeeklyItem = deleteWeeklyItem;
 window.deleteMasterLog = deleteMasterLog;
 window.toggleHistoryModal = toggleHistoryModal;
-window.submitNewManualItem = submitNewManualItem;
 
 window.saveAndRecalculate = () => {
-  localStorage.setItem('sfl_vip', document.getElementById('vipToggle')?.checked || false);
-  localStorage.setItem('sfl_boost1', document.getElementById('boost1')?.checked || false);
-  localStorage.setItem('sfl_boost2', document.getElementById('boost2')?.checked || false);
-  localStorage.setItem('sfl_boost3', document.getElementById('boost3')?.checked || false);
+  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
+  localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
+  localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
+  localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
   recalculateAll();
-  renderDashboardCards();
 };
 
 window.saveTrackAndRecalculate = () => {
-  localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput')?.value || '0');
-  localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput')?.value || '0');
+  localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput').value);
+  localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput').value);
   recalculateAll();
-  renderDashboardCards();
 };
 
 window.saveGoalAndRecalculate = () => {
-  localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput')?.value || '1000');
-  localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput')?.value || '12');
+  localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput').value);
+  localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput').value);
   recalculateAll();
 };
 
 window.toggleDailyLogin = () => {
   handleDailyLoginToggle();
   recalculateAll();
-  renderDashboardCards();
 };
 
 window.saveLoginCountAndRecalculate = () => {
-  const count = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
+  const count = parseInt(document.getElementById('dailyLoginCount').value) || 0;
   localStorage.setItem('sfl_daily_login_count', count);
   recalculateAll();
-  renderDashboardCards();
 };
 
+// Focused Gameplay Tips Rotation
 const FARMER_TIPS = [
   '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? The tracker automatically detects milestone increases!',
   '⚡ <strong>DOUBLE DELIVERIES:</strong> 2x event automatically doubles total tickets on your 1st completed order of the day!',
@@ -119,33 +109,32 @@ function startTipRotation() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const savedFarmId = localStorage.getItem('sfl_farmId');
-  if (savedFarmId && document.getElementById('farmId')) document.getElementById('farmId').value = savedFarmId;
+  if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
 
   const savedApiKey = localStorage.getItem('sfl_apiKey');
-  if (savedApiKey && document.getElementById('apiKey')) document.getElementById('apiKey').value = savedApiKey;
+  if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
 
-  if (localStorage.getItem('sfl_vip') !== null && document.getElementById('vipToggle')) {
+  if (localStorage.getItem('sfl_vip') !== null) {
     document.getElementById('vipToggle').checked = localStorage.getItem('sfl_vip') === 'true';
   }
-  if (document.getElementById('boost1')) document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
-  if (document.getElementById('boost2')) document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
-  if (document.getElementById('boost3')) document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+  document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
+  document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
+  document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
 
   const savedTrackTix = localStorage.getItem('sfl_track_tix');
-  if (savedTrackTix !== null && document.getElementById('trackTicketsInput')) document.getElementById('trackTicketsInput').value = savedTrackTix;
+  if (savedTrackTix !== null) document.getElementById('trackTicketsInput').value = savedTrackTix;
 
   const savedTrackCost = localStorage.getItem('sfl_track_cost');
-  if (savedTrackCost !== null && document.getElementById('trackCostInput')) document.getElementById('trackCostInput').value = savedTrackCost;
+  if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
 
   const savedGoal = localStorage.getItem('sfl_target_goal');
-  if (savedGoal && document.getElementById('targetGoalInput')) document.getElementById('targetGoalInput').value = savedGoal;
+  if (savedGoal) document.getElementById('targetGoalInput').value = savedGoal;
 
   const savedWeeks = localStorage.getItem('sfl_target_weeks');
-  if (savedWeeks && document.getElementById('targetWeeksInput')) document.getElementById('targetWeeksInput').value = savedWeeks;
+  if (savedWeeks) document.getElementById('targetWeeksInput').value = savedWeeks;
 
   checkAndAutoClaimDailyLogin();
   checkSavedAuth();
   startTipRotation();
   recalculateAll();
-  renderDashboardCards();
 });
