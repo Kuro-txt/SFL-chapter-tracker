@@ -250,6 +250,18 @@ export function renderColumnHistoryModalList() {
 
   let records = [];
 
+  // Render Add Form HTML Header
+  let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
+    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task (e.g. Goblin: Water)' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
+      <input type="text" id="addModalWeekOrDate" placeholder="Date or Week (e.g. w1 or 2026-08-17)" style="flex:1.5; padding:4px; font-size:11px;" />
+      <input type="number" step="0.01" id="addModalCost" placeholder="Cost SFL" style="width:70px; padding:4px; font-size:11px;" />
+      <input type="number" id="addModalTickets" placeholder="Tickets" style="width:60px; padding:4px; font-size:11px;" />
+      <button onclick="addNewItemFromModal()" class="btn btn-sm btn-wood" style="background:#2E7D32; border-color:#1B5E20; color:#fff; padding:4px 10px; font-weight:bold;">Add</button>
+    </div>
+  </div>`;
+
   if (type === 'delivery') {
     const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
     const seenDates = new Set();
@@ -357,9 +369,9 @@ export function renderColumnHistoryModalList() {
   let totalTickedCost = 0;
 
   if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No records found.</p>';
+    bodyEl.innerHTML = addFormHtml + '<p style="font-size: 12px; color: #8C7853; font-weight: bold; margin-top:10px;">No records found.</p>';
   } else {
-    bodyEl.innerHTML = records.map(r => {
+    bodyEl.innerHTML = addFormHtml + records.map(r => {
       if (r.checked) {
         totalTickedTickets += r.displayTickets;
         totalTickedCost += r.cost;
@@ -386,7 +398,7 @@ export function renderColumnHistoryModalList() {
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
         : '';
 
-      return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
+      return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; padding-right:8px;">
           <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
           <div>
@@ -407,6 +419,104 @@ export function renderColumnHistoryModalList() {
   }
 
   setElemText('columnHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
+}
+
+export async function addNewItemFromModal() {
+  const type = state.activeColumnType;
+  const nameInput = document.getElementById('addModalName')?.value.trim() || 'Custom Item';
+  const weekOrDateInput = document.getElementById('addModalWeekOrDate')?.value.trim() || '';
+  const costInput = parseFloat(document.getElementById('addModalCost')?.value) || 0;
+  const ticketsInput = parseInt(document.getElementById('addModalTickets')?.value) || 2;
+
+  if (!state.globalData) return;
+
+  // Resolve Week / Date
+  let targetWeekId = getMondayBasedWeekId();
+  if (weekOrDateInput.toLowerCase().startsWith('w')) {
+    const weekNum = parseInt(weekOrDateInput.substring(1), 10);
+    if (!isNaN(weekNum) && weekNum > 0) {
+      // Base Week 1 start (e.g. 2026-08-17) + (weekNum - 1) weeks
+      const baseMonday = new Date('2026-08-17');
+      baseMonday.setDate(baseMonday.getDate() + ((weekNum - 1) * 7));
+      targetWeekId = getMondayBasedWeekId(baseMonday);
+    }
+  } else if (weekOrDateInput.includes('-')) {
+    targetWeekId = getMondayBasedWeekId(weekOrDateInput);
+  }
+
+  if (type === 'delivery') {
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
+
+    const deliveryDate = weekOrDateInput.includes('-') ? weekOrDateInput : new Date().toISOString().split('T')[0];
+    let logEntry = state.globalData.cloudHistory.logs.find(l => (l.date || '').split('T')[0] === deliveryDate);
+    if (!logEntry) {
+      logEntry = { date: deliveryDate, deliveriesDone: [] };
+      state.globalData.cloudHistory.logs.push(logEntry);
+    }
+
+    logEntry.deliveriesDone.push({
+      from: nameInput,
+      name: nameInput,
+      baseTickets: ticketsInput,
+      tickets: ticketsInput,
+      cost: costInput,
+      itemsCost: costInput,
+      checked: true,
+      completed: true,
+      completedAt: Date.now()
+    });
+  } else {
+    const isChore = type === 'chore';
+    const isAnimal = type === 'animalBounty';
+
+    const newItem = isChore ? {
+      npc: nameInput.includes(':') ? nameInput.split(':')[0].trim() : 'Custom',
+      task: nameInput.includes(':') ? nameInput.split(':')[1].trim() : nameInput,
+      baseTickets: ticketsInput,
+      tickets: ticketsInput,
+      cost: costInput,
+      itemsCost: costInput,
+      checked: true,
+      completed: true,
+      completedAt: Date.now()
+    } : {
+      name: nameInput,
+      baseTickets: ticketsInput,
+      tickets: ticketsInput,
+      cost: costInput,
+      itemsCost: costInput,
+      level: isAnimal ? 1 : undefined,
+      checked: true,
+      completed: true,
+      completedAt: Date.now()
+    };
+
+    if (targetWeekId === getMondayBasedWeekId()) {
+      if (isChore) {
+        if (!state.globalData.chores) state.globalData.chores = [];
+        state.globalData.chores.push(newItem);
+      } else {
+        if (!state.globalData.bounties) state.globalData.bounties = [];
+        state.globalData.bounties.push(newItem);
+      }
+    } else {
+      if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+      if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+      if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
+        state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
+      }
+      if (isChore) {
+        state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
+      } else {
+        state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
+      }
+    }
+  }
+
+  renderColumnHistoryModalList();
+  recalculateAll();
+  await syncCurrentVaultToCloud();
 }
 
 export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
