@@ -5,18 +5,16 @@ import {
   getActiveBoostCount, 
   getActiveVipBonus, 
   getMondayBasedWeekId, 
-  isLoginClaimedToday, 
   isAnimalBounty 
 } from './state.js';
 
 export function recalculateAll() {
   if (!state.globalData) return;
 
-  const vipBonus = getActiveVipBonus(); // +2 if VIP toggle is checked
-  const boostCount = getActiveBoostCount(); // +1 per active boost toggle (#1-#3)
+  const vipBonus = getActiveVipBonus();
+  const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
 
-  // Toggle Double Delivery Banner UI
   const dblBanner = document.getElementById('doubleDeliveryBanner');
   if (dblBanner) {
     dblBanner.style.display = isDoubleDeliveryActive ? 'flex' : 'none';
@@ -29,7 +27,6 @@ export function recalculateAll() {
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Normalize weeks to prevent duplicate counting
   const weeks = {};
   Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
     const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
@@ -58,12 +55,10 @@ export function recalculateAll() {
     }
   });
 
-  // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
 
-  // Weekly ticket accumulator map
   const weeklyStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
     if (!mondayKey) mondayKey = currentWeekMonday;
@@ -75,7 +70,6 @@ export function recalculateAll() {
     weeklyStats[normMonday].cost += cost;
   };
 
-  // Category counters
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalAnimalBountyTix = 0;
@@ -103,7 +97,6 @@ export function recalculateAll() {
   const isWeeklyItemDoneToday = (item) => {
     if (!isTicked(item)) return false;
     if (item.checkedToday === true) return true;
-    
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -117,7 +110,6 @@ export function recalculateAll() {
 
   const globallyProcessedItems = new Set();
 
-  // Yield calculator: Deliveries & Chores get VIP (+2) + Boosts; Bounties get Boosts only.
   const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false) => {
     const rawBase = Number(baseTickets) || 0;
     if (rawBase <= 0) return 0;
@@ -125,7 +117,6 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 1. Process Past Daily Deliveries from saved logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
@@ -159,7 +150,6 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process Today's Live Deliveries
   let doubleDeliveryAppliedToday = false;
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
@@ -193,7 +183,6 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process CURRENT Week Bounties (Bounties get Boosts only, NO VIP)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -201,7 +190,7 @@ export function recalculateAll() {
       globallyProcessedItems.add(key);
 
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const finalTix = calculateItemYield(baseTix, false, false); // false = NO VIP
+      const finalTix = calculateItemYield(baseTix, false, false);
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -220,17 +209,13 @@ export function recalculateAll() {
       addWeeklyStat(currentWeekMonday, finalTix, bCost);
 
       if (isWeeklyItemDoneToday(b)) {
-        if (isAnimal) {
-          todayAnimalBountyTix += finalTix;
-        } else {
-          todayBountyTix += finalTix;
-        }
+        if (isAnimal) todayAnimalBountyTix += finalTix;
+        else todayBountyTix += finalTix;
         todayCostAll += bCost;
       }
     }
   });
 
-  // 4. Process CURRENT Week Chores (Chores get VIP +2 AND Boosts)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -238,7 +223,7 @@ export function recalculateAll() {
       globallyProcessedItems.add(key);
 
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const finalTix = calculateItemYield(baseTix, true, false); // true = WITH VIP
+      const finalTix = calculateItemYield(baseTix, true, false);
       if (finalTix <= 0) return;
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -256,7 +241,6 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process Past Weeks from Cloud
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
@@ -310,12 +294,10 @@ export function recalculateAll() {
     });
   });
 
-  // Totals calculations
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
-  // 6. Overview Cards Count
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
@@ -324,7 +306,6 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
 
-  // 7. Stats Display
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
@@ -338,7 +319,6 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Tooltips
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
@@ -356,7 +336,6 @@ export function recalculateAll() {
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
-  // Goal Calculator
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
@@ -365,7 +344,6 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  // 8. Render Weekly Progression Chart
   const targetWeeksInput = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, targetWeeksInput);
 }
@@ -382,8 +360,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   }
 
   const maxWeeksToDisplay = Math.max(totalPlannedWeeks || 12, distinctMondays.length, 12);
-
   const displayItems = [];
+
   for (let i = 1; i <= maxWeeksToDisplay; i++) {
     const mondayKey = distinctMondays[i - 1];
     const isCurrent = (mondayKey === currentMondayKey) || (!mondayKey && i === distinctMondays.length);
@@ -401,7 +379,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
 
   if (badgeEl) {
     const currentWeekIndex = distinctMondays.indexOf(currentMondayKey) + 1;
-    badgeEl.textContent = `WEEK ${currentWeekIndex || 1} OF ${maxWeeksToDisplay} WEEKS (UTC)`;
+    badgeEl.textContent = `WEEK ${currentWeekIndex || 2} OF ${maxWeeksToDisplay} WEEKS (UTC)`;
   }
 
   const barWidth = 52;
