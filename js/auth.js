@@ -26,6 +26,7 @@ export async function userRegister() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Registration failed.');
 
+    localStorage.setItem('sfl_farmId', farmId);
     alert(`Account "${username}" registered and linked to Farm #${farmId}! Logging you in...`);
     await userLogin();
   } catch (err) {
@@ -40,7 +41,7 @@ export async function userLogin() {
 
   const username = usernameInput?.value.trim().toLowerCase();
   const password = passwordInput?.value.trim();
-  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  const farmId = farmIdInput?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
 
   if (!username || !password) {
     alert('Please enter your username and password.');
@@ -62,10 +63,9 @@ export async function userLogin() {
 
     localStorage.setItem('sfl_auth_user', data.username);
 
-    if (data.vaultData?.farmId && farmIdInput) {
-      farmIdInput.value = data.vaultData.farmId;
-      localStorage.setItem('sfl_farmId', data.vaultData.farmId);
-    }
+    const activeFarmId = data.vaultData?.farmId || farmId;
+    if (farmIdInput) farmIdInput.value = activeFarmId;
+    localStorage.setItem('sfl_farmId', activeFarmId);
 
     updateAuthUI(true, data.username);
 
