@@ -119,12 +119,16 @@ export async function saveProgressToCloudKV(silent = false) {
   (state.globalData?.deliveries || []).forEach(d => {
     if (d.checked || d.completed) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      let yieldAmt = base + vipBonus + boostCount;
-      if (isDoubleDeliveryActive && !doubleDeliveryApplied && !d.isManual) {
-        yieldAmt *= 2;
-        doubleDeliveryApplied = true;
+      if (d.isManual) {
+        calculatedTotalTickets += base;
+      } else {
+        let yieldAmt = base + vipBonus + boostCount;
+        if (isDoubleDeliveryActive && !doubleDeliveryApplied) {
+          yieldAmt *= 2;
+          doubleDeliveryApplied = true;
+        }
+        calculatedTotalTickets += yieldAmt;
       }
-      calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += (d.itemsCost || d.cost || 0);
     }
   });
@@ -132,7 +136,7 @@ export async function saveProgressToCloudKV(silent = false) {
   (state.globalData?.bounties || []).forEach(b => {
     if (b.checked || b.completed) {
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      calculatedTotalTickets += (base + boostCount); // Bounties get Boosts only
+      calculatedTotalTickets += b.isManual ? base : (base + boostCount);
       calculatedTotalCost += (b.itemsCost || b.cost || 0);
     }
   });
@@ -140,7 +144,7 @@ export async function saveProgressToCloudKV(silent = false) {
   (state.globalData?.chores || []).forEach(c => {
     if (c.checked || c.completed) {
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      calculatedTotalTickets += (base + vipBonus + boostCount); // Chores get VIP + Boosts
+      calculatedTotalTickets += c.isManual ? base : (base + vipBonus + boostCount);
       calculatedTotalCost += (c.itemsCost || c.cost || 0);
     }
   });
