@@ -17,7 +17,6 @@ export function openColumnModal(type) {
     if (titleEl) titleEl.textContent = '📦 Edit Daily Deliveries';
     const items = state.globalData?.deliveries || [];
 
-    // Add Delivery Button Header
     const addBtnRow = document.createElement('div');
     addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
     addBtnRow.innerHTML = `
@@ -50,7 +49,6 @@ export function openColumnModal(type) {
     const isAnimalFilter = (type === 'animalBounties');
     if (titleEl) titleEl.textContent = isAnimalFilter ? '🐄 Edit Animal Bounties' : '📜 Edit Item Bounties';
 
-    // Add Bounty Button Header
     const addBtnRow = document.createElement('div');
     addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
     addBtnRow.innerHTML = `
@@ -84,7 +82,6 @@ export function openColumnModal(type) {
   } else if (type === 'chores') {
     if (titleEl) titleEl.textContent = '🧹 Edit Weekly Chores';
 
-    // Add Chore Button Header
     const addBtnRow = document.createElement('div');
     addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
     addBtnRow.innerHTML = `
@@ -127,7 +124,42 @@ export function closeModal() {
   state.activeColumnType = null;
 }
 
-// 2. Category Summary Modal
+// 2. Column History Modal
+export function openColumnHistoryModal(type) {
+  const modal = document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
+  const title = document.getElementById('columnHistoryTitle') || document.getElementById('historyModalTitle');
+  const body = document.getElementById('columnHistoryBody') || document.getElementById('historyModalBody');
+  if (!modal) return;
+
+  if (title) title.textContent = `📜 ${type ? type.toUpperCase() : ''} HISTORY`;
+  if (body) {
+    const rawLogs = state.globalData?.cloudHistory?.logs || [];
+    if (rawLogs.length === 0) {
+      body.innerHTML = '<p style="color:#8C7853; text-align:center; padding:15px;">No historical logs found.</p>';
+    } else {
+      let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+      rawLogs.forEach(log => {
+        html += `
+          <div style="background:#FAF8F5; border:1px solid #E0D5C1; padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between;">
+            <span style="font-weight:bold; color:#5C4033;">${log.date}</span>
+            <span style="color:#E65100; font-weight:bold;">${log.ticketsSaved || 0} Tickets</span>
+            <span style="color:#8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      body.innerHTML = html;
+    }
+  }
+  modal.style.display = 'flex';
+}
+
+export function closeColumnHistoryModal() {
+  const modal = document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// 3. Category Summary Modal
 export function openCategorySummaryModal(category) {
   const modal = document.getElementById('categorySummaryModal');
   const title = document.getElementById('categorySummaryTitle');
@@ -135,7 +167,7 @@ export function openCategorySummaryModal(category) {
   if (!modal || !body) return;
 
   if (title) title.textContent = `📋 ${category.toUpperCase()} SUMMARY`;
-  body.innerHTML = `<p style="color:#5C4033; padding:10px;">Viewing detailed progress for ${category}.</p>`;
+  body.innerHTML = `<p style="color:#5C4033; padding:10px;">Viewing detailed summary for ${category}.</p>`;
   modal.style.display = 'flex';
 }
 
@@ -144,12 +176,12 @@ export function closeCategorySummaryModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// 3. Cloud Vault Sync Helper
+// 4. Cloud Vault Sync Helper
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
 }
 
-// 4. Window Event Handlers for inline buttons and toggles
+// 5. Global Window Event Handlers
 window.toggleModalItem = function(type, index, isChecked) {
   if (!state.globalData) return;
   const list = state.globalData[type];
