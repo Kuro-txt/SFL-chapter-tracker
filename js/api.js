@@ -1,27 +1,26 @@
 import { state } from './state.js';
-import { recalculateAll, renderDashboardCards } from './render.js';
+import { recalculateAll } from './render.js';
 
 let fetchCooldownTimer = null;
 
-export async function loadTrackerData(isAutomated = false) {
+export async function loadTrackerData() {
   const farmIdInput = document.getElementById('farmId');
   const apiKeyInput = document.getElementById('apiKey');
-  const fetchBtn = document.querySelector('button[onclick*="loadTrackerData"]');
+  const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
   const priceBadge = document.getElementById('priceBadge');
 
-  const farmId = farmIdInput?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
-  const apiKey = apiKeyInput?.value.trim() || localStorage.getItem('sfl_apiKey') || '';
-  const currentUsername = state.currentUser || localStorage.getItem('sfl_logged_user') || '';
+  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  const apiKey = apiKeyInput?.value.trim() || '';
+  const currentUsername = state.currentUser || '';
 
-  if (farmIdInput) farmIdInput.value = farmId;
   localStorage.setItem('sfl_farmId', farmId);
 
-  if (fetchCooldownTimer && !isAutomated) {
+  if (fetchCooldownTimer) {
     alert('⏳ Please wait for the cooldown before fetching again.');
     return;
   }
 
-  if (fetchBtn && !isAutomated) {
+  if (fetchBtn) {
     fetchBtn.disabled = true;
     let secondsLeft = 10;
     fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
@@ -47,7 +46,10 @@ export async function loadTrackerData(isAutomated = false) {
   }
 
   try {
-    const queryParams = new URLSearchParams({ farmId, username: currentUsername });
+    const queryParams = new URLSearchParams({
+      farmId,
+      username: currentUsername
+    });
     if (apiKey) queryParams.set('apiKey', apiKey);
 
     const res = await fetch(`/api/chapter?${queryParams.toString()}`);
@@ -59,31 +61,9 @@ export async function loadTrackerData(isAutomated = false) {
     const data = await res.json();
     state.globalData = data;
 
-    // Load Vault Data directly
-    const vault = data.vaultData || data.cloudHistory || state.currentVaultData;
-    if (vault) {
-      state.currentVaultData = vault;
-      state.globalData.cloudHistory = vault;
-
-      if (!Array.isArray(state.globalData.deliveries) || state.globalData.deliveries.length === 0) {
-        state.globalData.deliveries = vault.deliveries || (vault.logs && vault.logs[0]?.deliveriesDone) || [];
-      }
-      if (!Array.isArray(state.globalData.bounties) || state.globalData.bounties.length === 0) {
-        state.globalData.bounties = vault.bounties || [];
-      }
-      if (!Array.isArray(state.globalData.chores) || state.globalData.chores.length === 0) {
-        state.globalData.chores = vault.chores || [];
-      }
-
-      if (vault.trackTickets !== undefined && document.getElementById('trackTicketsInput')) {
-        document.getElementById('trackTicketsInput').value = vault.trackTickets;
-      }
-      if (vault.trackCost !== undefined && document.getElementById('trackCostInput')) {
-        document.getElementById('trackCostInput').value = vault.trackCost;
-      }
-      if (vault.dailyLoginTickets !== undefined && document.getElementById('dailyLoginCount')) {
-        document.getElementById('dailyLoginCount').value = vault.dailyLoginTickets;
-      }
+    if (data.vaultData) {
+      state.currentVaultData = data.vaultData;
+      state.globalData.cloudHistory = data.vaultData;
     }
 
     if (data.isVipActive !== undefined) {
@@ -102,7 +82,6 @@ export async function loadTrackerData(isAutomated = false) {
     }
 
     recalculateAll();
-    renderDashboardCards();
   } catch (err) {
     if (priceBadge) {
       priceBadge.textContent = `❌ ${err.message}`;
@@ -110,24 +89,23 @@ export async function loadTrackerData(isAutomated = false) {
       priceBadge.style.borderColor = '#E53935';
       priceBadge.style.color = '#B71C1C';
     }
-    if (!isAutomated) alert(`Failed to fetch farm data: ${err.message}`);
+    alert(`Failed to fetch farm data: ${err.message}`);
   }
 }
 
 export async function saveProgressToCloudKV(silent = false) {
-  const username = state.currentUser || localStorage.getItem('sfl_logged_user');
-  if (!username) {
+  if (!state.currentUser) {
     if (!silent) alert('Please login to save your progress in your Cloud Vault.');
     return;
   }
 
-  const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
+  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
-  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
+  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
 
   const payload = {
-    username,
+    username: state.currentUser,
     farmId,
     trackTickets,
     trackCost,
@@ -155,11 +133,10 @@ export async function saveProgressToCloudKV(silent = false) {
     }
 
     recalculateAll();
-    renderDashboardCards();
 
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || 0;
-      alert(`☁️ SAVED IN CLOUD!\n• User: ${username}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}`);
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}\n• Auto-backup schedule active.`);
     }
   } catch (err) {
     if (!silent) alert(`Cloud Save Error: ${err.message}`);
