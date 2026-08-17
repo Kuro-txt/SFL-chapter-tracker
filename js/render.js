@@ -118,40 +118,7 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  const seenDates = new Set();
-  rawLogs.forEach(log => {
-    const rawDate = (log.date || '').split('T')[0];
-    if (!rawDate || seenDates.has(rawDate)) return;
-    seenDates.add(rawDate);
-
-    if (rawDate === todayUtcStr) return;
-
-    const logMonday = getMondayBasedWeekId(rawDate);
-    const isThisWeek = (logMonday === currentWeekMonday);
-
-    (log.deliveriesDone || []).forEach(item => {
-      if (isTicked(item)) {
-        const uniqueKey = `deliv_${item.id || (item.name || item.from) + '_' + item.completedAt}`;
-        if (globallyProcessedItems.has(uniqueKey)) return;
-        globallyProcessedItems.add(uniqueKey);
-
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        const isManual = Boolean(item.isManual);
-        const finalTix = calculateItemYield(baseTix, true, true, Boolean(item.hasDoubleBonus), isManual);
-        const itemCost = item.cost || item.itemsCost || 0;
-
-        totalDelivTix += finalTix;
-        totalSflCostAll += itemCost;
-        addWeeklyStat(logMonday, finalTix, itemCost);
-
-        if (isThisWeek) {
-          weekDelivTix += finalTix;
-          weekCostAll += itemCost;
-        }
-      }
-    });
-  });
-
+  // Process live deliveries (respecting assigned weekId if manual)
   let doubleDeliveryAppliedToday = false;
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
@@ -172,20 +139,29 @@ export function recalculateAll() {
 
         const calculatedYield = calculateItemYield(baseTix, true, true, applyDouble, isManual);
         const dCost = d.itemsCost || d.cost || 0;
+        const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
 
-        todayDelivTix += calculatedYield;
-        todayCostAll += dCost;
+        const isThisWeek = (itemWeekMonday === currentWeekMonday);
+        const isToday = (d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayUtcStr);
+
+        if (isToday) {
+          todayDelivTix += calculatedYield;
+          todayCostAll += dCost;
+        }
 
         totalDelivTix += calculatedYield;
-        weekDelivTix += calculatedYield;
         totalSflCostAll += dCost;
-        weekCostAll += dCost;
+        addWeeklyStat(itemWeekMonday, calculatedYield, dCost);
 
-        addWeeklyStat(currentWeekMonday, calculatedYield, dCost);
+        if (isThisWeek) {
+          weekDelivTix += calculatedYield;
+          weekCostAll += dCost;
+        }
       }
     }
   });
 
+  // Process bounties
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -199,18 +175,20 @@ export function recalculateAll() {
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
+      const itemWeekMonday = getMondayBasedWeekId(b.weekId || currentWeekMonday);
+      const isThisWeek = (itemWeekMonday === currentWeekMonday);
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
-        weekAnimalBountyTix += finalTix;
+        if (isThisWeek) weekAnimalBountyTix += finalTix;
       } else {
         totalBountyTix += finalTix;
-        weekBountyTix += finalTix;
+        if (isThisWeek) weekBountyTix += finalTix;
       }
 
       totalSflCostAll += bCost;
-      weekCostAll += bCost;
-      addWeeklyStat(currentWeekMonday, finalTix, bCost);
+      if (isThisWeek) weekCostAll += bCost;
+      addWeeklyStat(itemWeekMonday, finalTix, bCost);
 
       if (isWeeklyItemDoneToday(b)) {
         if (isAnimal) todayAnimalBountyTix += finalTix;
@@ -220,6 +198,7 @@ export function recalculateAll() {
     }
   });
 
+  // Process chores
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -232,12 +211,15 @@ export function recalculateAll() {
       if (finalTix <= 0) return;
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
+      const itemWeekMonday = getMondayBasedWeekId(c.weekId || currentWeekMonday);
+      const isThisWeek = (itemWeekMonday === currentWeekMonday);
 
       totalChoreTix += finalTix;
-      weekChoreTix += finalTix;
+      if (isThisWeek) weekChoreTix += finalTix;
+
       totalSflCostAll += cCost;
-      weekCostAll += cCost;
-      addWeeklyStat(currentWeekMonday, finalTix, cCost);
+      if (isThisWeek) weekCostAll += cCost;
+      addWeeklyStat(itemWeekMonday, finalTix, cCost);
 
       if (isWeeklyItemDoneToday(c)) {
         todayChoreTix += finalTix;
@@ -246,6 +228,7 @@ export function recalculateAll() {
     }
   });
 
+  // Process stored weekly items
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
@@ -360,7 +343,6 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const badgeEl = document.getElementById('chartSummaryBadge');
   if (!chartContainer) return;
 
-  // Week 1 anchored to 2026-08-10, Week 2 to 2026-08-17, etc.
   const weekMondays = [];
   const baseEpoch = new Date('2026-08-10T00:00:00.000Z');
   for (let w = 0; w < (totalPlannedWeeks || 12); w++) {
@@ -369,7 +351,6 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     weekMondays.push(d.toISOString().split('T')[0]);
   }
 
-  // Ensure current week is included if present in stats
   Object.keys(weeklyStats).forEach(mk => {
     if (!weekMondays.includes(mk)) {
       weekMondays.push(mk);
