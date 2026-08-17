@@ -83,11 +83,13 @@ export function renderColumnHistoryModalList() {
 
   let weekOptionsHtml = '';
   for (let w = 1; w <= 12; w++) {
-    weekOptionsHtml += `<option value="w${w}">Week ${w}</option>`;
+    // Default selected week to w2
+    const selectedAttr = (w === 2) ? 'selected' : '';
+    weekOptionsHtml += `<option value="w${w}" ${selectedAttr}>Week ${w}</option>`;
   }
 
   let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
-    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
+    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'} (EXACT TICKETS)</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
       <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task (e.g. Goblin: Water)' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
       <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
@@ -298,11 +300,12 @@ export async function addNewItemFromModal() {
       isManual: true
     };
 
+    // Week 1 base Monday: 2026-08-10. Week 2 base Monday: 2026-08-17.
     let targetWeekId = getMondayBasedWeekId();
     const weekNum = parseInt(weekSelectVal.substring(1), 10);
     if (!isNaN(weekNum) && weekNum > 0) {
-      const baseMonday = new Date('2026-08-10T00:00:00.000Z');
-      baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
+      const baseMonday = new Date('2026-08-17T00:00:00.000Z');
+      baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 2) * 7));
       targetWeekId = getMondayBasedWeekId(baseMonday);
     }
 
