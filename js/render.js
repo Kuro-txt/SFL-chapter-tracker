@@ -19,7 +19,6 @@ export function recalculateAll() {
     document.getElementById('doubleDeliveryBanner').style.display = isDoubleDeliveryActive ? 'flex' : 'none';
   }
 
-  // Strict UTC Week 2 Start boundary: 2026-08-17 00:00:00 UTC
   const week2MondayStr = '2026-08-17';
   const week2StartMs = new Date('2026-08-17T00:00:00.000Z').getTime();
 
@@ -31,12 +30,10 @@ export function recalculateAll() {
   const rawLogs = vault.logs || [];
   const rawWeeks = vault.weeks || {};
 
-  // Track & Login inputs strictly for TOTAL counter
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (vault.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (vault.trackCost || 0);
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (vault.dailyLoginTickets || 0);
 
-  // Weekly ticket accumulator map (strictly grouped by Monday UTC dates)
   const weeklyTicketStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
     if (!mondayKey) mondayKey = currentWeekMonday;
@@ -83,7 +80,6 @@ export function recalculateAll() {
   const seenDeliveryKeys = new Set();
   let doubleDeliveryAppliedToday = false;
 
-  // Process Live Deliveries on screen
   (state.globalData.deliveries || []).forEach(d => {
     const key = d.id ? String(d.id) : `${(d.name || d.from || '').toLowerCase()}_${d.completedAt || 0}`;
     seenDeliveryKeys.add(key);
@@ -93,7 +89,6 @@ export function recalculateAll() {
       let calculatedYield = d.baseTickets + deliveryAddon;
 
       const itemMs = getItemTimestamp(d);
-      // Strictly assign to Week 1 if completed prior to Week 2 rollover
       const deliveryMonday = (itemMs && itemMs < week2StartMs) ? '2026-08-10' : getMondayBasedWeekId(todayUtcStr);
       const isCurrentWeek = (deliveryMonday === currentWeekMonday);
 
@@ -126,7 +121,6 @@ export function recalculateAll() {
     }
   });
 
-  // Process Deliveries in Past Logs
   rawLogs.forEach(log => {
     const logDate = (log.date || '').split('T')[0];
     const logMs = new Date(`${logDate}T00:00:00.000Z`).getTime();
@@ -178,7 +172,6 @@ export function recalculateAll() {
       const isAnimal = isAnimalBounty(b);
       const itemMs = getItemTimestamp(b);
 
-      // If completed before Week 2 start or assigned to Week 1, lock to Week 1
       const bountyMonday = (itemMs && itemMs < week2StartMs) || (b.weekId && b.weekId !== week2MondayStr) ? '2026-08-10' : currentWeekMonday;
       const isCurrentWeek = (bountyMonday === currentWeekMonday);
 
@@ -204,7 +197,6 @@ export function recalculateAll() {
     }
   });
 
-  // Historical Vault Bounties
   Object.entries(rawWeeks).forEach(([wkKey, wkObj]) => {
     const isWk1 = (wkKey === '2026-W32' || wkKey === '2026-08-10');
     const wkMonday = isWk1 ? '2026-08-10' : getMondayBasedWeekId(wkKey);
@@ -270,7 +262,6 @@ export function recalculateAll() {
     }
   });
 
-  // Historical Vault Chores
   Object.entries(rawWeeks).forEach(([wkKey, wkObj]) => {
     const isWk1 = (wkKey === '2026-W32' || wkKey === '2026-08-10');
     const wkMonday = isWk1 ? '2026-08-10' : getMondayBasedWeekId(wkKey);
@@ -296,12 +287,10 @@ export function recalculateAll() {
     });
   });
 
-  // Totals: Track & Daily Login tickets are ONLY in Total Counter
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
-  // Overview Cards
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
@@ -310,7 +299,6 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
 
-  // Stats Counters
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
@@ -324,7 +312,6 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Tooltips
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
@@ -342,7 +329,6 @@ export function recalculateAll() {
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
-  // Goal Calculator
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
@@ -351,7 +337,6 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  // Render Weekly Progression Chart
   renderWeeklyChart(weeklyTicketStats, currentWeekMonday, targetPerWeek, targetWeeks);
 }
 
