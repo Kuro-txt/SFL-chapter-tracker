@@ -147,7 +147,6 @@ export default async function handler(req, res) {
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
 
-        // Construct / Update Daily Snapshot Log
         if (!existingData.logs) existingData.logs = [];
         if (body.logs && Array.isArray(body.logs) && body.logs.length > 0) {
           existingData.logs = body.logs;
@@ -228,26 +227,36 @@ export default async function handler(req, res) {
           const currentWeekMonday = getMondayBasedWeekId();
 
           currentVault.farmId = farmId;
-          currentVault.deliveries = parsed.deliveryList;
-          currentVault.bounties = parsed.activeBounties;
-          currentVault.chores = parsed.choresList;
+
+          // Preserve any manually added items
+          const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
+          currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
+
+          const existingManualBounties = (currentVault.bounties || []).filter(b => b.isManual);
+          currentVault.bounties = [...parsed.activeBounties, ...existingManualBounties];
+
+          const existingManualChores = (currentVault.chores || []).filter(c => c.isManual);
+          currentVault.chores = [...parsed.choresList, ...existingManualChores];
+
           currentVault.milestones = parsed.liveMilestones;
 
           if (!currentVault.weeks) currentVault.weeks = {};
           if (!currentVault.weeks[currentWeekMonday]) {
             currentVault.weeks[currentWeekMonday] = {
               weekId: currentWeekMonday,
-              bounties: parsed.activeBounties,
-              chores: parsed.choresList
+              bounties: currentVault.bounties,
+              chores: currentVault.chores
             };
           } else {
-            currentVault.weeks[currentWeekMonday].chores = parsed.choresList;
-            currentVault.weeks[currentWeekMonday].bounties = parsed.activeBounties;
+            const savedWeekManualChores = (currentVault.weeks[currentWeekMonday].chores || []).filter(c => c.isManual);
+            const savedWeekManualBounties = (currentVault.weeks[currentWeekMonday].bounties || []).filter(b => b.isManual);
+            currentVault.weeks[currentWeekMonday].chores = [...parsed.choresList, ...savedWeekManualChores];
+            currentVault.weeks[currentWeekMonday].bounties = [...parsed.activeBounties, ...savedWeekManualBounties];
           }
 
           let dailyTix = 0;
           let dailyCost = 0;
-          parsed.deliveryList.forEach(d => {
+          currentVault.deliveries.forEach(d => {
             if (d.checked || d.completed) {
               dailyTix += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
               dailyCost += (d.itemsCost || d.cost || 0);
@@ -262,7 +271,7 @@ export default async function handler(req, res) {
             timestamp: new Date().toISOString(),
             ticketsSaved: dailyTix,
             costSaved: dailyCost,
-            deliveriesDone: parsed.deliveryList,
+            deliveriesDone: currentVault.deliveries,
             milestones: parsed.liveMilestones
           };
 
@@ -285,9 +294,9 @@ export default async function handler(req, res) {
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       milestones: parsed.liveMilestones,
       pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: parsed.deliveryList,
-      bounties: parsed.activeBounties,
-      chores: parsed.choresList,
+      deliveries: currentVault ? currentVault.deliveries : parsed.deliveryList,
+      bounties: currentVault ? currentVault.bounties : parsed.activeBounties,
+      chores: currentVault ? currentVault.chores : parsed.choresList,
       vaultData: currentVault
     });
   } catch (err) {
