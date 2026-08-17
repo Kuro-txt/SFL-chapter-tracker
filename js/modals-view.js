@@ -135,49 +135,69 @@ export function closeCategorySummaryModal() {
   document.getElementById('categorySummaryModal').classList.remove('show');
 }
 
+export function renderHistoryModalList() {
+  const container = document.getElementById('modalLogList');
+  if (!container) return;
+
+  const logs = state.globalData?.cloudHistory?.logs || [];
+  if (logs.length === 0) {
+    container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
+    return;
+  }
+
+  container.innerHTML = logs.map((log, idx) => {
+    const completedItems = (log.deliveriesDone || []).filter(d => d.yield > 0 || d.checked || d.completed);
+    const delivHtml = completedItems.length > 0 ? 
+      `<div style="color:#5C4033; font-size:11px;"><strong>📦 Completed:</strong> ${completedItems.map(d => `${d.name || d.from} (+${d.yield || d.tickets || d.baseTickets || 0} Tix, ${formatSFL(d.cost || d.itemsCost)} SFL)`).join(', ')}</div>` : '';
+
+    const logTickets = log.ticketsSaved || 0;
+    const logCost = log.costSaved || 0;
+    const logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
+
+    return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">
+        <span style="color:#8B4513;">Log #${logs.length - idx} (${log.date || 'Snapshot'} - ${log.weekId || 'Week'})</span>
+        <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:3px 10px; cursor:pointer;">🗑️ DELETE</button>
+      </div>
+      <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
+        <span>Daily Yield: +${logTickets} Tickets | Cost: ${formatSFL(logCost)} SFL</span>
+        <span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">${logRatio} SFL / Ticket</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:3px;">${delivHtml}</div>
+    </div>`;
+  }).join('');
+}
+
 export async function deleteMasterLog(logIdx) {
-  if (!state.globalData?.cloudHistory?.logs) return;
-  if (confirm('🗑️ Delete this snapshot log?')) {
-    state.globalData.cloudHistory.logs.splice(logIdx, 1);
-    await syncCurrentVaultToCloud();
-    toggleHistoryModal();
-    toggleHistoryModal();
+  const logs = state.globalData?.cloudHistory?.logs;
+  if (!logs || !logs[logIdx]) return;
+
+  const targetLog = logs[logIdx];
+  const label = targetLog.date || `Log #${logs.length - logIdx}`;
+  
+  if (confirm(`🗑️ Permanently delete snapshot for ${label}?`)) {
+    // Remove log entry from memory
+    logs.splice(logIdx, 1);
+
+    if (state.currentVaultData) {
+      state.currentVaultData.logs = logs;
+    }
+
+    // Immediately update modal view & calculate stats
+    renderHistoryModalList();
     recalculateAll();
+
+    // Commit change directly to cloud database
+    await syncCurrentVaultToCloud();
   }
 }
 
 export function toggleHistoryModal() {
   const modal = document.getElementById('historyModal');
+  if (!modal) return;
+
   modal.classList.toggle('show');
-
-  if (modal.classList.contains('show') && state.globalData?.cloudHistory) {
-    const logs = state.globalData.cloudHistory.logs || [];
-    const container = document.getElementById('modalLogList');
-
-    if (logs.length === 0) {
-      container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
-    } else {
-      container.innerHTML = logs.map((log, idx) => {
-        const completedItems = (log.deliveriesDone || []).filter(d => d.yield > 0 || d.checked || d.completed);
-        const delivHtml = completedItems.length > 0 ? 
-          `<div style="color:#5C4033; font-size:11px;"><strong>📦 Completed:</strong> ${completedItems.map(d => `${d.name || d.from} (+${d.yield || d.tickets || d.baseTickets || 0} Tix, ${formatSFL(d.cost || d.itemsCost)} SFL)`).join(', ')}</div>` : '';
-
-        const logTickets = log.ticketsSaved || 0;
-        const logCost = log.costSaved || 0;
-        const logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
-
-        return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">
-            <span style="color:#8B4513;">Log #${logs.length - idx} (${log.date || 'Snapshot'} - ${log.weekId || 'Week'})</span>
-            <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>
-          </div>
-          <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
-            <span>Daily Yield: +${logTickets} Tickets | Cost: ${formatSFL(logCost)} SFL</span>
-            <span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">${logRatio} SFL / Ticket</span>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">${delivHtml}</div>
-        </div>`;
-      }).join('');
-    }
+  if (modal.classList.contains('show')) {
+    renderHistoryModalList();
   }
 }
