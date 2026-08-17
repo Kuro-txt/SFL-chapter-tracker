@@ -166,26 +166,39 @@ export async function syncCurrentVaultToCloud() {
     const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
     const farmId = document.getElementById('farmId')?.value.trim() || state.globalData.cloudHistory?.farmId || '8472883706403914';
 
+    const vipBonus = getActiveVipBonus();
+    const boostCount = getActiveBoostCount();
+    const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
+
     let totalTix = trackTickets + dailyLoginTickets;
     let totalCost = trackCost;
+    let doubleDeliveryApplied = false;
 
     (state.globalData?.deliveries || []).forEach(d => {
       if (d.checked || d.completed) {
-        totalTix += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
+        const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+        let yieldAmt = base + vipBonus + boostCount;
+        if (isDoubleDeliveryActive && !doubleDeliveryApplied && !d.isManual) {
+          yieldAmt *= 2;
+          doubleDeliveryApplied = true;
+        }
+        totalTix += yieldAmt;
         totalCost += (d.itemsCost || d.cost || 0);
       }
     });
 
     (state.globalData?.bounties || []).forEach(b => {
       if (b.checked || b.completed) {
-        totalTix += (b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0));
+        const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+        totalTix += (base + boostCount);
         totalCost += (b.itemsCost || b.cost || 0);
       }
     });
 
     (state.globalData?.chores || []).forEach(c => {
       if (c.checked || c.completed) {
-        totalTix += (c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 0));
+        const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+        totalTix += (base + vipBonus + boostCount);
         totalCost += (c.itemsCost || c.cost || 0);
       }
     });
