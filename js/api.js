@@ -69,7 +69,14 @@ export async function loadTrackerData() {
 
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      state.globalData.cloudHistory = data.vaultData;
+      // Explicitly initialize cloudHistory and assign logs from vault data
+      state.globalData.cloudHistory = {
+        logs: data.vaultData.logs || [],
+        weeks: data.vaultData.weeks || {},
+        trackTickets: data.vaultData.trackTickets || 0,
+        trackCost: data.vaultData.trackCost || 0,
+        dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
+      };
     } else if (!state.globalData.cloudHistory) {
       state.globalData.cloudHistory = { logs: [], weeks: {} };
     }
@@ -178,7 +185,6 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // Ensure cloudHistory and logs array exist
   if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
   const logs = [...(state.globalData.cloudHistory.logs || [])];
   
@@ -230,7 +236,10 @@ export async function saveProgressToCloudKV(silent = false) {
 
     state.currentVaultData = data.vaultData;
     if (state.globalData) {
-      state.globalData.cloudHistory = data.vaultData;
+      state.globalData.cloudHistory = {
+        logs: data.vaultData.logs || [],
+        weeks: data.vaultData.weeks || {}
+      };
     }
 
     recalculateAll();
