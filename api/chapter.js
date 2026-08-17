@@ -113,7 +113,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Dedicated Delete Log Endpoint (Adds to Blacklist)
+    // 4. Dedicated Delete Log Endpoint
     if (req.method === 'POST' && action === 'deleteLog') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -183,7 +183,6 @@ export default async function handler(req, res) {
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
 
-        // Filter incoming logs against deletedDates blacklist
         const deletedDates = existingData.deletedDates || [];
         if (body.logs && Array.isArray(body.logs)) {
           existingData.logs = body.logs.filter(l => {
@@ -241,7 +240,7 @@ export default async function handler(req, res) {
 
           currentVault.farmId = farmId;
 
-          // Preserve manual items
+          // Merge live deliveries with saved manual deliveries
           const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
           currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
 
@@ -269,7 +268,6 @@ export default async function handler(req, res) {
 
           if (!currentVault.logs) currentVault.logs = [];
 
-          // Ensure deleted dates blacklist is strictly applied to logs
           const deletedDates = currentVault.deletedDates || [];
           currentVault.logs = currentVault.logs.filter(l => {
             const d = (l.date || '').split('T')[0];
