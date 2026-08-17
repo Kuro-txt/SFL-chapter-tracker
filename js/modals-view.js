@@ -139,9 +139,15 @@ export function renderHistoryModalList() {
   const container = document.getElementById('modalLogList');
   if (!container) return;
 
-  const logs = state.globalData?.cloudHistory?.logs || [];
+  // Check all possible places where logs might be stored
+  const logs = 
+    (state.globalData?.cloudHistory?.logs && state.globalData.cloudHistory.logs.length > 0 ? state.globalData.cloudHistory.logs : null) ||
+    (state.globalData?.vaultData?.logs && state.globalData.vaultData.logs.length > 0 ? state.globalData.vaultData.logs : null) ||
+    (state.currentVaultData?.logs && state.currentVaultData.logs.length > 0 ? state.currentVaultData.logs : []) ||
+    [];
+
   if (logs.length === 0) {
-    container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
+    container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet. Click "SAVE IN CLOUD" to create a snapshot log.</p>';
     return;
   }
 
@@ -169,8 +175,13 @@ export function renderHistoryModalList() {
 }
 
 export async function deleteMasterLog(logIdx) {
-  const logs = state.globalData?.cloudHistory?.logs;
-  if (!logs || !logs[logIdx]) return;
+  const logs = 
+    state.globalData?.cloudHistory?.logs || 
+    state.globalData?.vaultData?.logs || 
+    state.currentVaultData?.logs || 
+    [];
+
+  if (!logs[logIdx]) return;
 
   const targetLog = logs[logIdx];
   const label = targetLog.date || `Log #${logs.length - logIdx}`;
@@ -192,6 +203,7 @@ export async function deleteMasterLog(logIdx) {
       state.currentVaultData = data.vaultData;
       if (state.globalData) {
         state.globalData.cloudHistory = data.vaultData;
+        state.globalData.vaultData = data.vaultData;
       }
 
       renderHistoryModalList();
