@@ -1,5 +1,6 @@
 import { SFL_RECIPES } from '../recipes.js';
 
+// The ONLY Chapter NPCs that reward Shiny Feathers & their exact base ticket yields
 export const CHAPTER_NPC_TICKETS = {
   "pumpkin pete": 1,
   "pumpkin' pete": 1,
@@ -19,14 +20,17 @@ export const CHAPTER_NPC_TICKETS = {
   "tywin": 10
 };
 
+// Strict helper to inspect all nested structures for Shiny Feathers
 export function extractRewardTickets(rewardObj) {
   if (!rewardObj || typeof rewardObj !== 'object') return 0;
+  
   let count = 0;
 
   function scan(obj) {
     if (!obj || typeof obj !== 'object') return;
     for (const [key, val] of Object.entries(obj)) {
       const cleanKey = key.toLowerCase().trim();
+
       if (
         cleanKey === 'shiny feather' ||
         cleanKey === 'shiny_feather' ||
@@ -41,6 +45,7 @@ export function extractRewardTickets(rewardObj) {
           count += parseInt(val, 10);
         }
       }
+
       if (val && typeof val === 'object' && !Array.isArray(val) && cleanKey !== 'coins' && cleanKey !== 'sfl') {
         scan(val);
       }
@@ -57,9 +62,11 @@ export function extractPricesRecursive(obj, map = {}) {
     obj.forEach(item => extractPricesRecursive(item, map));
     return map;
   }
+
   for (const [key, val] of Object.entries(obj)) {
     const cleanKey = key.toLowerCase().trim();
     const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
+
     if (typeof val === 'number') {
       map[cleanKey] = val;
       map[strippedKey] = val;
@@ -131,7 +138,7 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
   return 0;
 }
 
-// Week 1 anchored to August 10, 2026. Week 2 anchored to August 17, 2026.
+// Week 2 anchor: August 17, 2026 onwards
 export function getMondayBasedWeekId(d) {
   let date;
   try {
@@ -167,11 +174,13 @@ export function getMondayBasedWeekId(d) {
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
+  // 1. Deliveries: ONLY the 11 Chapter NPCs that reward Shiny Feathers
   const deliveryList = [];
   const validTicketNpcs = new Set();
 
   (farm.delivery?.orders || []).forEach(order => {
     const npcClean = (order.from || '').toLowerCase().trim();
+
     if (CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
       validTicketNpcs.add(npcClean);
 
@@ -210,6 +219,7 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
+  // Milestones: ONLY for the valid Chapter NPCs
   const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
   const liveMilestones = {};
   Object.entries(rawMilestones).forEach(([npc, count]) => {
@@ -219,6 +229,7 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
+  // Calendar Events (2x Double Delivery)
   const nowMs = Date.now();
   const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
   let isDoubleDeliveryActive = false;
@@ -232,6 +243,7 @@ export function parseFarmData(farm, priceMap) {
     });
   }
 
+  // 2. Bounties (Shiny Feathers only)
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -264,13 +276,16 @@ export function parseFarmData(farm, priceMap) {
 
     items.forEach(b => {
       if (!b || typeof b !== 'object') return;
+
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
       let featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items);
+      
       if (featherCount === 0 && b.level !== undefined) {
         featherCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
       }
+
       if (featherCount <= 0) return;
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
@@ -281,9 +296,13 @@ export function parseFarmData(farm, priceMap) {
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
 
       let completionTime = null;
-      if (typeof b.completedAt === 'number') completionTime = b.completedAt;
-      else if (typeof b.claimedAt === 'number') completionTime = b.claimedAt;
-      else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) completionTime = completedMap[String(b.id)];
+      if (typeof b.completedAt === 'number') {
+        completionTime = b.completedAt;
+      } else if (typeof b.claimedAt === 'number') {
+        completionTime = b.claimedAt;
+      } else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) {
+        completionTime = completedMap[String(b.id)];
+      }
 
       activeBounties.push({
         id: b.id || uniqueKey,
@@ -301,6 +320,7 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
+  // 3. Chores (Shiny Feathers only)
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
 
