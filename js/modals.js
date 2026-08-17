@@ -131,7 +131,28 @@ export function openModal(type) {
 }
 
 // ==========================================
-// 2. History & Master Log Modals
+// 2. Guide / Info Modal
+// ==========================================
+export function toggleGuideModal(show) {
+  const modal = document.getElementById('guideModal');
+  if (!modal) return;
+  if (show === undefined) {
+    modal.style.display = (modal.style.display === 'flex' || modal.style.display === 'block') ? 'none' : 'flex';
+  } else {
+    modal.style.display = show ? 'flex' : 'none';
+  }
+}
+
+export function openGuideModal() {
+  toggleGuideModal(true);
+}
+
+export function closeGuideModal() {
+  toggleGuideModal(false);
+}
+
+// ==========================================
+// 3. History & Master Log Modals
 // ==========================================
 export function renderColumnHistoryModalList(type = 'deliveries') {
   const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
@@ -202,7 +223,7 @@ export function closeMasterHistoryModal() {
 }
 
 // ==========================================
-// 3. Toggle & Check Handlers for Logs & Weekly Items
+// 4. Toggle & Check Handlers for Logs & Weekly Items
 // ==========================================
 export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
@@ -236,7 +257,7 @@ export function toggleWeeklyItem(weekId, category, index, isChecked) {
 }
 
 // ==========================================
-// 4. Deletion Handlers for Logs & Weekly Items
+// 5. Deletion Handlers for Logs & Weekly Items
 // ==========================================
 export function deleteWeeklyItem(weekId, category, index) {
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
@@ -270,7 +291,7 @@ export function deleteLogItem(logIndex) {
 }
 
 // ==========================================
-// 5. Category Summary Modal
+// 6. Category Summary Modal
 // ==========================================
 export function openCategorySummaryModal(category) {
   const modal = document.getElementById('categorySummaryModal');
@@ -289,7 +310,7 @@ export function closeCategorySummaryModal() {
 }
 
 // ==========================================
-// 6. Cloud Sync & Manual Item Additions
+// 7. Cloud Sync & Manual Item Additions
 // ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
@@ -373,8 +394,12 @@ export function addNewManualItem(type, isAnimal = false) {
 }
 
 // ==========================================
-// 7. Global Window Bindings
+// 8. Global Window Bindings
 // ==========================================
+window.toggleGuideModal = toggleGuideModal;
+window.openGuideModal = openGuideModal;
+window.closeGuideModal = closeGuideModal;
+
 window.toggleDeliveryLogCheck = toggleDeliveryLogCheck;
 window.toggleLogItemCheck = toggleLogItemCheck;
 window.toggleWeeklyItem = toggleWeeklyItem;
