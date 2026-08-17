@@ -193,14 +193,20 @@ export default async function handler(req, res) {
 
           currentVault.farmId = farmId;
 
-          // Archive previously completed deliveries into archiveDeliveries before refreshing daily list
+          // Archive completed deliveries securely without overwriting same-NPC orders
           if (!currentVault.archiveDeliveries) currentVault.archiveDeliveries = [];
           if (currentVault.deliveries) {
             currentVault.deliveries.forEach(d => {
               const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
               if (isTicked) {
-                const existsInArchive = currentVault.archiveDeliveries.some(ar => ar.id === d.id && ar.completedDate === d.completedDate);
-                if (!existsInArchive) currentVault.archiveDeliveries.push(d);
+                const uniqueKey = `${d.id || d.from || d.name}_${d.completedAt || d.completedDate || Date.now()}`;
+                const exists = currentVault.archiveDeliveries.some(ar => {
+                  const arKey = `${ar.id || ar.from || ar.name}_${ar.completedAt || ar.completedDate || ''}`;
+                  return arKey === uniqueKey;
+                });
+                if (!exists) {
+                  currentVault.archiveDeliveries.push({ ...d, archiveKey: uniqueKey });
+                }
               }
             });
           }
