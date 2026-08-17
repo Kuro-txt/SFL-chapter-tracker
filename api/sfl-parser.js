@@ -1,43 +1,67 @@
 import { SFL_RECIPES } from '../recipes.js';
 
+// Complete Chapter NPC Base Tickets Table
 export const CHAPTER_NPC_TICKETS = {
-  'pumpkin pete': 2,
-  "pumpkin' pete": 2,
-  'blacksmith': 2,
-  'betty': 2,
-  'grimtooth': 2,
-  'corny': 2,
-  'tango': 2,
-  'miranda': 2,
-  'raven': 2,
-  'finn': 2,
-  'findlay': 2,
-  'finley': 2,
-  'tyreless timmy': 2,
-  'greg': 2,
-  'cornwell': 2,
-  'buttercup': 2,
-  'bert': 2,
-  'timmy': 2,
-  'misty': 2,
-  'phobos': 2,
-  'jester': 2,
-  'craig': 2,
-  'peggy': 2,
-  'flint': 2
+  "pumpkin pete": 1,
+  "pumpkin' pete": 1,
+  "pete": 1,
+  "bert": 2,
+  "finley": 2,
+  "findlay": 2,
+  "miranda": 2,
+  "raven": 4,
+  "jester": 4,
+  "finn": 5,
+  "timmy": 5,
+  "tyreless timmy": 5,
+  "pharaoh": 6,
+  "cornwell": 3,
+  "corny": 3,
+  "tywin": 10,
+  "blacksmith": 2,
+  "betty": 2,
+  "grimtooth": 2,
+  "tango": 2,
+  "greg": 2,
+  "buttercup": 2,
+  "misty": 2,
+  "phobos": 2,
+  "craig": 2,
+  "peggy": 2,
+  "flint": 2
 };
 
 export function extractRewardTickets(rewardObj) {
   if (!rewardObj) return 0;
   if (typeof rewardObj === 'number') return rewardObj;
-  if (rewardObj.tickets !== undefined) return Number(rewardObj.tickets) || 0;
-  if (rewardObj['Seasonal Ticket'] !== undefined) return Number(rewardObj['Seasonal Ticket']) || 0;
-  if (rewardObj['Chapter Ticket'] !== undefined) return Number(rewardObj['Chapter Ticket']) || 0;
-  if (rewardObj.items) {
-    if (rewardObj.items['Seasonal Ticket']) return Number(rewardObj.items['Seasonal Ticket']) || 0;
-    if (rewardObj.items['Chapter Ticket']) return Number(rewardObj.items['Chapter Ticket']) || 0;
+  
+  let count = 0;
+  const items = rewardObj.items || rewardObj;
+  
+  if (typeof items === 'object') {
+    for (const [key, qty] of Object.entries(items)) {
+      const lower = key.toLowerCase();
+      if (
+        lower.includes('ticket') || 
+        lower.includes('feather') || 
+        lower.includes('scale') || 
+        lower.includes('scroll') ||
+        lower.includes('token') ||
+        lower.includes('chapter') ||
+        lower.includes('seasonal')
+      ) {
+        count += (typeof qty === 'number' ? qty : parseInt(qty, 10) || 0);
+      }
+    }
   }
-  return 0;
+
+  if (count === 0) {
+    if (typeof rewardObj.tickets === 'number') count = rewardObj.tickets;
+    else if (typeof rewardObj.rewardTickets === 'number') count = rewardObj.rewardTickets;
+    else if (typeof rewardObj.baseTickets === 'number') count = rewardObj.baseTickets;
+  }
+
+  return count;
 }
 
 export function extractPricesRecursive(obj, map = {}) {
@@ -181,52 +205,53 @@ export function parseFarmData(farm, priceMap) {
     });
   }
 
-  // Deliveries
+  // 1. Deliveries (Checks specific NPC base tickets)
   const deliveryList = [];
   const npcOrderCounts = {};
   (farm.delivery?.orders || []).forEach(order => {
     const npcClean = (order.from || '').toLowerCase().trim();
     let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
 
+    // If order reward is not specified, use NPC base tickets
     if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
       totalTickets = CHAPTER_NPC_TICKETS[npcClean];
+    } else if (totalTickets === 0) {
+      totalTickets = 2; // Default delivery tickets
     }
 
-    if (totalTickets > 0) {
-      let itemsCost = 0;
-      const itemDetails = [];
-      Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-        const unitPrice = getItemUnitPrice(itemName, priceMap);
-        const lineCost = unitPrice * qty;
-        itemsCost += lineCost;
-        itemDetails.push({ name: itemName, qty, unitPrice, lineCost });
-      });
+    let itemsCost = 0;
+    const itemDetails = [];
+    Object.entries(order.items || {}).forEach(([itemName, qty]) => {
+      const unitPrice = getItemUnitPrice(itemName, priceMap);
+      const lineCost = unitPrice * qty;
+      itemsCost += lineCost;
+      itemDetails.push({ name: itemName, qty, unitPrice, lineCost });
+    });
 
-      const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-      if (isCompleted) {
-        npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
-      }
-
-      deliveryList.push({
-        id: order.id,
-        from: order.from,
-        name: order.from,
-        items: order.items || {},
-        itemsCost,
-        cost: itemsCost,
-        itemDetails,
-        baseTickets: totalTickets,
-        tickets: totalTickets,
-        isChapterNpc: CHAPTER_NPC_TICKETS[npcClean] !== undefined,
-        completed: isCompleted,
-        checked: isCompleted,
-        completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
-        isStacked: false
-      });
+    const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+    if (isCompleted) {
+      npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
     }
+
+    deliveryList.push({
+      id: order.id,
+      from: order.from,
+      name: order.from,
+      items: order.items || {},
+      itemsCost,
+      cost: itemsCost,
+      itemDetails,
+      baseTickets: totalTickets,
+      tickets: totalTickets,
+      isChapterNpc: CHAPTER_NPC_TICKETS[npcClean] !== undefined,
+      completed: isCompleted,
+      checked: isCompleted,
+      completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
+      isStacked: false
+    });
   });
 
-  // Bounties
+  // 2. Bounties (Extracts exact reward tickets per bounty)
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -263,13 +288,16 @@ export function parseFarmData(farm, priceMap) {
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
-      let baseTicketCount = 0;
-      if (b.reward) baseTicketCount = extractRewardTickets(b.reward);
-      if (baseTicketCount === 0 && b.items) baseTicketCount = extractRewardTickets(b.items);
-      if (baseTicketCount === 0 && typeof b.tickets === 'number') baseTicketCount = b.tickets;
-      if (baseTicketCount === 0 && typeof b.coins === 'number' && b.coins > 0) baseTicketCount = 2;
-      if (baseTicketCount === 0 && b.level !== undefined) baseTicketCount = 5;
-      if (baseTicketCount === 0) baseTicketCount = 2;
+      let baseTicketCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || (typeof b.tickets === 'number' ? b.tickets : 0);
+
+      // Fallbacks based on bounty level/type if reward object didn't have ticket item
+      if (baseTicketCount === 0) {
+        if (b.level !== undefined) {
+          baseTicketCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
+        } else {
+          baseTicketCount = 2;
+        }
+      }
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
       if (seenBountyKeys.has(uniqueKey)) return;
@@ -303,11 +331,10 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // Chores
+  // 3. Chores (Extracts exact reward tickets per chore)
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = Object.entries(choreObj).map(([key, details]) => {
-    let baseTicketCount = extractRewardTickets(details.reward);
-    if (baseTicketCount === 0) baseTicketCount = details.tickets || details.baseTickets || 1;
+    let baseTicketCount = extractRewardTickets(details.reward) || (typeof details.tickets === 'number' ? details.tickets : 0) || details.baseTickets || 1;
     const currentProgress = details.initialProgress ?? details.progress ?? 0;
     const requirement = details.requirement ?? details.target ?? details.total ?? 0;
     const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
