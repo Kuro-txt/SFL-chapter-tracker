@@ -2,29 +2,33 @@ import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, 
 import { recalculateAll } from './render.js';
 
 export async function syncCurrentVaultToCloud() {
-  if (!state.currentUser || !state.globalData?.cloudHistory) return;
+  if (!state.currentUser || !state.globalData) return;
   try {
-    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
-    const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
-    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
+    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
+    const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
+    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
     const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
+
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+
+    const payload = {
+      username: state.currentUser,
+      trackTickets,
+      trackCost,
+      dailyLoginTickets,
+      lastDailyLoginDate,
+      milestones: state.globalData.milestones || {},
+      logs: state.globalData.cloudHistory.logs || [],
+      weeks: state.globalData.cloudHistory.weeks || {},
+      bounties: state.globalData.bounties || [],
+      chores: state.globalData.chores || [],
+      deliveries: state.globalData.deliveries || []
+    };
 
     const response = await fetch('/api/chapter?action=saveVault', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: state.currentUser,
-        trackTickets,
-        trackCost,
-        dailyLoginTickets,
-        lastDailyLoginDate,
-        milestones: state.globalData.milestones || {},
-        logs: state.globalData.cloudHistory.logs || [],
-        weeks: state.globalData.cloudHistory.weeks || {},
-        bounties: state.globalData.bounties || [],
-        chores: state.globalData.chores || [],
-        deliveries: state.globalData.deliveries || []
-      })
+      body: JSON.stringify(payload)
     });
     const resData = await response.json();
     if (resData.vaultData) {
@@ -80,7 +84,6 @@ export function openCategorySummaryModal(cat) {
   const totalsEl = document.getElementById('categorySummaryTotals');
   const bodyEl = document.getElementById('categorySummaryBody');
 
-  const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
 
   if (!state.globalData) {
@@ -101,23 +104,22 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedDeliv.map(d => {
       const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
-      const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      const finalTickets = d.baseTickets !== undefined ? d.baseTickets : (d.tickets + deliveryAddon);
+      const finalTickets = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0);
       if (isTicked) {
         catTickets += finalTickets;
-        catCost += (d.itemsCost || 0);
+        catCost += (d.itemsCost || d.cost || 0);
       }
       const isStackedBadge = d.isStacked ? '<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>' : '';
       const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}</span>
+          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}</span>
           <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
         </div>
         <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
         <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
           <span>Yield: ${finalTickets} Tickets</span>
-          <span>${formatSFL(d.itemsCost)} SFL (${formatSFL(finalTickets > 0 ? d.itemsCost / finalTickets : 0)} SFL/Ticket)</span>
+          <span>${formatSFL(d.itemsCost || d.cost)} SFL</span>
         </div>
       </div>`;
     }).join('');
@@ -137,7 +139,7 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedBounties.map(b => {
       const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      const finalTickets = b.baseTickets !== undefined ? b.baseTickets : (b.tickets + boostCount);
+      const finalTickets = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (b.itemsCost || b.cost || 0);
@@ -145,7 +147,7 @@ export function openCategorySummaryModal(cat) {
       const lvl = resolveAnimalLevel(b);
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
         <div>
-          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${b.name.toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
+          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
           <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost || b.cost || 0)} SFL</span>
         </div>
         <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
@@ -174,7 +176,6 @@ export function openCategorySummaryModal(cat) {
         <div>
           <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong><br/>
           <span style="color:#5C4033; font-weight:bold;">${c.task || c.name}</span><br/>
-          ${c.requirement > 0 ? '<span style="color:#8C7853;">Progress: ' + c.progress + ' / ' + c.requirement + '</span><br/>' : ''}
           <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets | ${formatSFL(c.itemsCost || c.cost || 0)} SFL</span>
         </div>
         <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
