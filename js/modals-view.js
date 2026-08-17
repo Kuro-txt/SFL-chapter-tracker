@@ -139,14 +139,13 @@ export function renderHistoryModalList() {
   const container = document.getElementById('modalLogList');
   if (!container) return;
 
-  // Comprehensive check across all possible state and vault properties
   const logs = 
-    (state.globalData?.cloudHistory?.logs && state.globalData.cloudHistory.logs.length > 0 ? state.globalData.cloudHistory.logs : null) ||
-    (state.globalData?.vaultData?.logs && state.globalData.vaultData.logs.length > 0 ? state.globalData.vaultData.logs : null) ||
-    (state.currentVaultData?.logs && state.currentVaultData.logs.length > 0 ? state.currentVaultData.logs : []) ||
+    (state.globalData?.cloudHistory?.logs) || 
+    (state.globalData?.vaultData?.logs) || 
+    (state.currentVaultData?.logs) || 
     [];
 
-  if (logs.length === 0) {
+  if (!Array.isArray(logs) || logs.length === 0) {
     container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet. Click "SAVE IN CLOUD" to create a snapshot log.</p>';
     return;
   }
