@@ -2,7 +2,9 @@ import { state, formatSFL, getMondayBasedWeekId, isAnimalBounty } from './state.
 import { recalculateAll } from './render.js';
 import { saveProgressToCloudKV } from './api.js';
 
-// 1. Column Edit Modal (Deliveries, Bounties, Animal Bounties, Chores)
+// ==========================================
+// 1. Column Edit Modals (Deliveries, Bounties, Chores)
+// ==========================================
 export function openColumnModal(type) {
   state.activeColumnType = type;
   const modal = document.getElementById('detailsModal');
@@ -124,7 +126,13 @@ export function closeModal() {
   state.activeColumnType = null;
 }
 
-// 2. History & Master Log Modals
+export function openModal(type) {
+  openColumnModal(type);
+}
+
+// ==========================================
+// 2. History, Logs & Weekly Modals
+// ==========================================
 export function openColumnHistoryModal(type) {
   openMasterHistoryModal(type);
 }
@@ -186,7 +194,20 @@ export function closeMasterHistoryModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// 3. Log Item Deletion Handlers
+// ==========================================
+// 3. Deletion Functions for Logs & Weekly Items
+// ==========================================
+export function deleteWeeklyItem(weekId, category, index) {
+  const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
+  if (!weeks || !weeks[weekId] || !weeks[weekId][category]) return;
+
+  if (confirm(`Remove this ${category} item from ${weekId}?`)) {
+    weeks[weekId][category].splice(index, 1);
+    recalculateAll();
+    saveProgressToCloudKV(true);
+  }
+}
+
 export function deleteMasterLog(logIndex) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
   if (!logs || logIndex < 0 || logIndex >= logs.length) return;
@@ -207,7 +228,9 @@ export function deleteLogItem(logIndex) {
   deleteMasterLog(logIndex);
 }
 
+// ==========================================
 // 4. Category Summary Modal
+// ==========================================
 export function openCategorySummaryModal(category) {
   const modal = document.getElementById('categorySummaryModal');
   const title = document.getElementById('categorySummaryTitle');
@@ -224,42 +247,14 @@ export function closeCategorySummaryModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// 5. Cloud Vault Sync Helper
+// ==========================================
+// 5. Cloud Sync & Manual Item Additions
+// ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
 }
 
-// 6. Global Window Handlers
-window.deleteMasterLog = deleteMasterLog;
-window.deleteDeliveryLogItem = deleteDeliveryLogItem;
-window.deleteLogItem = deleteLogItem;
-
-window.toggleModalItem = function(type, index, isChecked) {
-  if (!state.globalData) return;
-  const list = state.globalData[type];
-  if (!list || !list[index]) return;
-
-  list[index].checked = isChecked;
-  list[index].completed = isChecked;
-  list[index].completedAt = isChecked ? Date.now() : null;
-  list[index].checkedToday = isChecked;
-
-  recalculateAll();
-  saveProgressToCloudKV(true);
-};
-
-window.removeModalItem = function(type, index) {
-  if (!state.globalData) return;
-  const list = state.globalData[type];
-  if (!list || index < 0 || index >= list.length) return;
-
-  list.splice(index, 1);
-  recalculateAll();
-  openColumnModal(state.activeColumnType);
-  saveProgressToCloudKV(true);
-};
-
-window.addNewManualItem = function(type, isAnimal = false) {
+export function addNewManualItem(type, isAnimal = false) {
   if (!state.globalData) state.globalData = {};
   if (!state.globalData[type]) state.globalData[type] = [];
 
@@ -331,6 +326,40 @@ window.addNewManualItem = function(type, isAnimal = false) {
     });
   }
 
+  recalculateAll();
+  openColumnModal(state.activeColumnType);
+  saveProgressToCloudKV(true);
+}
+
+// ==========================================
+// 6. Global Window Handlers
+// ==========================================
+window.deleteWeeklyItem = deleteWeeklyItem;
+window.deleteMasterLog = deleteMasterLog;
+window.deleteDeliveryLogItem = deleteDeliveryLogItem;
+window.deleteLogItem = deleteLogItem;
+window.addNewManualItem = addNewManualItem;
+
+window.toggleModalItem = function(type, index, isChecked) {
+  if (!state.globalData) return;
+  const list = state.globalData[type];
+  if (!list || !list[index]) return;
+
+  list[index].checked = isChecked;
+  list[index].completed = isChecked;
+  list[index].completedAt = isChecked ? Date.now() : null;
+  list[index].checkedToday = isChecked;
+
+  recalculateAll();
+  saveProgressToCloudKV(true);
+};
+
+window.removeModalItem = function(type, index) {
+  if (!state.globalData) return;
+  const list = state.globalData[type];
+  if (!list || index < 0 || index >= list.length) return;
+
+  list.splice(index, 1);
   recalculateAll();
   openColumnModal(state.activeColumnType);
   saveProgressToCloudKV(true);
