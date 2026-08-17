@@ -1,19 +1,21 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isAnimalBounty } from './state.js';
+import { state, formatSFL, setElemText, getMondayBasedWeekId, isAnimalBounty } from './state.js';
 import { recalculateAll } from './render.js';
 
 export async function syncCurrentVaultToCloud() {
   if (!state.currentUser || !state.globalData) return;
   try {
-    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
+    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
     const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
-    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
+    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
     const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
+    const farmId = document.getElementById('farmId')?.value.trim() || state.globalData.cloudHistory?.farmId || '8472883706403914';
 
     if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
     if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
 
     const payload = {
       username: state.currentUser,
+      farmId,
       trackTickets,
       trackCost,
       dailyLoginTickets,
@@ -266,17 +268,19 @@ export function renderColumnHistoryModalList() {
 
   if (type === 'delivery') {
     const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-    const seenDates = new Set();
-    
+    const searchFilter = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
+    const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
+
     rawLogs.forEach((log, logIdx) => {
       const cleanDate = (log.date || 'Past Run').split('T')[0];
-      if (seenDates.has(cleanDate)) return;
-      seenDates.add(cleanDate);
+      if (searchFilter && !cleanDate.includes(searchFilter)) return;
 
       (log.deliveriesDone || []).forEach((item, itemIdx) => {
+        const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
+        if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
+
         const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
-        const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
         const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
         records.push({
@@ -285,7 +289,7 @@ export function renderColumnHistoryModalList() {
           date: cleanDate,
           name: itemName,
           requestedItems: requestedStr,
-          cost: item.cost || 0,
+          cost: item.cost || item.itemsCost || 0,
           displayTickets: finalTix,
           checked: isChecked,
           status: isChecked ? '✨ Done' : '⏳ Active',
@@ -298,43 +302,42 @@ export function renderColumnHistoryModalList() {
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
 
+    // Collect distinct items without duplicating current week live items with stored week items
     const allItemsMap = new Map();
-    
-    if (isChore) {
-      (state.globalData?.chores || []).forEach((c, idx) => {
-        allItemsMap.set(`current_${idx}`, { item: c, weekId: currentWeekId });
-      });
-      const weeks = state.globalData?.cloudHistory?.weeks || {};
-      Object.entries(weeks).forEach(([wkId, wk]) => {
-        (wk.chores || []).forEach((c, idx) => {
-          allItemsMap.set(`week_${wkId}_${idx}`, { item: c, weekId: wkId });
-        });
-      });
-    } else {
-      (state.globalData?.bounties || []).forEach((b, idx) => {
-        if (isAnimalBounty(b) === isAnimal) {
-          allItemsMap.set(`current_${idx}`, { item: b, weekId: currentWeekId });
-        }
-      });
-      const weeks = state.globalData?.cloudHistory?.weeks || {};
-      Object.entries(weeks).forEach(([wkId, wk]) => {
-        (wk.bounties || []).forEach((b, idx) => {
-          if (isAnimalBounty(b) === isAnimal) {
-            allItemsMap.set(`week_${wkId}_${idx}`, { item: b, weekId: wkId });
-          }
-        });
-      });
-    }
 
-    Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId }], itemIdx) => {
+    const weeks = state.globalData?.cloudHistory?.weeks || {};
+    Object.entries(weeks).forEach(([wkId, wk]) => {
+      const targetArr = isChore ? (wk.chores || []) : (wk.bounties || []);
+      targetArr.forEach((item, idx) => {
+        if (!isChore && isAnimalBounty(item) !== isAnimal) return;
+        const dedupeKey = isChore 
+          ? `${wkId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
+          : `${wkId}_${item.id || (item.name || '').toLowerCase()}_${item.level || 0}`;
+        allItemsMap.set(dedupeKey, { item, weekId: wkId, idx, source: 'week' });
+      });
+    });
+
+    // Add current live items if not already in map
+    const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
+    liveArr.forEach((item, idx) => {
+      if (!isChore && isAnimalBounty(item) !== isAnimal) return;
+      const dedupeKey = isChore 
+        ? `${currentWeekId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
+        : `${currentWeekId}_${item.id || (item.name || '').toLowerCase()}_${item.level || 0}`;
+      if (!allItemsMap.has(dedupeKey)) {
+        allItemsMap.set(dedupeKey, { item, weekId: currentWeekId, idx, source: 'current' });
+      }
+    });
+
+    Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId, idx, source }]) => {
       const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
       records.push({
         weekId: weekId,
-        itemIdx: itemIdx,
-        mapKey: mapKey,
+        itemIdx: idx,
+        mapKey: `${source}_${weekId}_${idx}`,
         name: isChore ? (item.task || item.name || 'Chore') : (item.name || 'Bounty'),
         npc: item.npc || null,
         level: lvl,
@@ -365,11 +368,11 @@ export function renderColumnHistoryModalList() {
       const labelId = type === 'delivery' ? `${r.date}` : `${r.weekId}`;
       const changeHandler = type === 'delivery'
         ? `toggleDeliveryLogCheck(${r.logIdx}, ${r.itemIdx})`
-        : `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey || r.itemIdx}')`;
+        : `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey}')`;
       
       const deleteHandler = type === 'delivery'
         ? `deleteDeliveryLogItem(${r.logIdx}, ${r.itemIdx})`
-        : `deleteWeeklyItem('${r.weekId}', '${r.mapKey || r.itemIdx}')`;
+        : `deleteWeeklyItem('${r.weekId}', '${r.mapKey}')`;
 
       const animalLevelTag = (type === 'animalBounty' && r.level) 
         ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
@@ -412,15 +415,15 @@ export async function addNewItemFromModal() {
   const nameInput = document.getElementById('addModalName')?.value.trim() || 'Custom Item';
   const weekSelectVal = document.getElementById('addModalWeekSelect')?.value || 'w1';
   const costInput = parseFloat(document.getElementById('addModalCost')?.value) || 0;
-  const ticketsInput = parseInt(document.getElementById('addModalTickets')?.value) || 2;
+  const ticketsInput = parseInt(document.getElementById('addModalTickets')?.value, 10) || 2;
 
   if (!state.globalData) return;
 
   let targetWeekId = getMondayBasedWeekId();
   const weekNum = parseInt(weekSelectVal.substring(1), 10);
   if (!isNaN(weekNum) && weekNum > 0) {
-    const baseMonday = new Date('2026-08-17');
-    baseMonday.setDate(baseMonday.getDate() + ((weekNum - 1) * 7));
+    const baseMonday = new Date('2026-08-10T00:00:00.000Z');
+    baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
     targetWeekId = getMondayBasedWeekId(baseMonday);
   }
 
@@ -477,20 +480,18 @@ export async function addNewItemFromModal() {
       completedAt: Date.now()
     };
 
-    if (targetWeekId === getMondayBasedWeekId()) {
-      if (isChore) {
+    if (isChore) {
+      state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
+      if (targetWeekId === getMondayBasedWeekId()) {
         if (!state.globalData.chores) state.globalData.chores = [];
         state.globalData.chores.push(newItem);
-      } else {
+      }
+    } else {
+      state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
+      if (targetWeekId === getMondayBasedWeekId()) {
         if (!state.globalData.bounties) state.globalData.bounties = [];
         state.globalData.bounties.push(newItem);
       }
-    }
-
-    if (isChore) {
-      state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
-    } else {
-      state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
     }
   }
 
@@ -522,64 +523,31 @@ export async function deleteDeliveryLogItem(logIdx, itemIdx) {
   }
 }
 
-export async function toggleWeeklyItemCheck(weekId, mapKeyOrIdx) {
+export async function toggleWeeklyItemCheck(weekId, mapKey) {
   const type = state.activeColumnType;
-  let targetItem = null;
+  const isChore = type === 'chore';
+  const isAnimal = type === 'animalBounty';
 
-  if (typeof mapKeyOrIdx === 'string' && mapKeyOrIdx.includes('_')) {
-    const [source, wkOrIdx, idx] = mapKeyOrIdx.split('_');
-    if (source === 'current') {
-      const numericIdx = parseInt(idx, 10);
-      if (type === 'chore') {
-        targetItem = state.globalData?.chores?.[numericIdx];
-      } else {
-        const isAnimal = type === 'animalBounty';
-        const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-        targetItem = bounties?.[numericIdx];
-      }
-    } else if (source === 'week') {
-      const wkKey = wkOrIdx;
-      const numericIdx = parseInt(idx, 10);
-      const wkObj = state.globalData?.cloudHistory?.weeks?.[wkKey];
-      if (wkObj) {
-        if (type === 'chore') {
-          targetItem = wkObj.chores?.[numericIdx];
-        } else {
-          const isAnimal = type === 'animalBounty';
-          const bounties = (wkObj.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-          targetItem = bounties?.[numericIdx];
-        }
-      }
+  const parts = mapKey.split('_');
+  const source = parts[0];
+  const wkId = parts[1];
+  const idx = parseInt(parts[2], 10);
+
+  let targetItem = null;
+  if (source === 'week') {
+    const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+    if (wk) {
+      targetItem = isChore ? wk.chores?.[idx] : wk.bounties?.[idx];
     }
-  } else {
-    const itemIdx = parseInt(mapKeyOrIdx, 10);
-    if (type === 'chore') {
-      targetItem = state.globalData?.chores?.[itemIdx];
-    } else {
-      const isAnimal = type === 'animalBounty';
-      const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-      targetItem = bounties?.[itemIdx];
-    }
+  } else if (source === 'current') {
+    targetItem = isChore ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
   }
 
   if (targetItem) {
     const newStatus = !(targetItem.checked !== undefined ? targetItem.checked : Boolean(targetItem.completed));
     targetItem.checked = newStatus;
     targetItem.completed = newStatus;
-    
-    if (newStatus) {
-      targetItem.completedAt = targetItem.completedAt || Date.now();
-      targetItem.checkedToday = true;
-    } else {
-      targetItem.completedAt = null;
-      targetItem.checkedToday = false;
-    }
-
-    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-    if (!state.globalData.cloudHistory.weeks[weekId]) {
-      state.globalData.cloudHistory.weeks[weekId] = { weekId, bounties: state.globalData.bounties || [], chores: state.globalData.chores || [] };
-    }
+    targetItem.completedAt = newStatus ? (targetItem.completedAt || Date.now()) : null;
 
     renderColumnHistoryModalList();
     recalculateAll();
@@ -600,50 +568,18 @@ export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
       logs[logIdx].deliveriesDone[itemIdx].tickets = inputVal;
     }
   } else {
-    if (typeof mapKeyOrIdx === 'string' && mapKeyOrIdx.includes('_')) {
-      const [source, wkOrIdx, idx] = mapKeyOrIdx.split('_');
-      const numericIdx = parseInt(idx, 10);
-      if (source === 'current') {
-        if (type === 'chore' && state.globalData?.chores?.[numericIdx]) {
-          state.globalData.chores[numericIdx].baseTickets = inputVal;
-          state.globalData.chores[numericIdx].tickets = inputVal;
-        } else {
-          const isAnimal = type === 'animalBounty';
-          const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-          if (bounties[numericIdx]) {
-            bounties[numericIdx].baseTickets = inputVal;
-            bounties[numericIdx].tickets = inputVal;
-          }
-        }
-      } else if (source === 'week') {
-        const wkObj = state.globalData?.cloudHistory?.weeks?.[wkOrIdx];
-        if (wkObj) {
-          if (type === 'chore' && wkObj.chores?.[numericIdx]) {
-            wkObj.chores[numericIdx].baseTickets = inputVal;
-            wkObj.chores[numericIdx].tickets = inputVal;
-          } else {
-            const isAnimal = type === 'animalBounty';
-            const bounties = (wkObj.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-            if (bounties[numericIdx]) {
-              bounties[numericIdx].baseTickets = inputVal;
-              bounties[numericIdx].tickets = inputVal;
-            }
-          }
-        }
-      }
-    } else {
-      const itemIdx = parseInt(mapKeyOrIdx, 10);
-      if (type === 'chore' && state.globalData?.chores?.[itemIdx]) {
-        state.globalData.chores[itemIdx].baseTickets = inputVal;
-        state.globalData.chores[itemIdx].tickets = inputVal;
-      } else {
-        const isAnimal = type === 'animalBounty';
-        const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-        if (bounties[itemIdx]) {
-          bounties[itemIdx].baseTickets = inputVal;
-          bounties[itemIdx].tickets = inputVal;
-        }
-      }
+    const parts = mapKeyOrIdx.split('_');
+    const source = parts[0];
+    const wkId = parts[1];
+    const idx = parseInt(parts[2], 10);
+
+    if (source === 'week') {
+      const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+      const target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+      if (target) { target.baseTickets = inputVal; target.tickets = inputVal; }
+    } else if (source === 'current') {
+      const target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+      if (target) { target.baseTickets = inputVal; target.tickets = inputVal; }
     }
   }
 
@@ -665,50 +601,18 @@ export async function updateHistoryItemCost(idKey, mapKeyOrIdx, val) {
       logs[logIdx].deliveriesDone[itemIdx].itemsCost = costVal;
     }
   } else {
-    const isChore = type === 'chore';
-    const isAnimal = type === 'animalBounty';
+    const parts = mapKeyOrIdx.split('_');
+    const source = parts[0];
+    const wkId = parts[1];
+    const idx = parseInt(parts[2], 10);
 
-    if (typeof mapKeyOrIdx === 'string' && mapKeyOrIdx.includes('_')) {
-      const [source, wkOrIdx, idx] = mapKeyOrIdx.split('_');
-      const numericIdx = parseInt(idx, 10);
-      if (source === 'current') {
-        if (isChore && state.globalData?.chores?.[numericIdx]) {
-          state.globalData.chores[numericIdx].cost = costVal;
-          state.globalData.chores[numericIdx].itemsCost = costVal;
-        } else if (!isChore) {
-          const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-          if (bounties[numericIdx]) {
-            bounties[numericIdx].cost = costVal;
-            bounties[numericIdx].itemsCost = costVal;
-          }
-        }
-      } else if (source === 'week') {
-        const wkObj = state.globalData?.cloudHistory?.weeks?.[wkOrIdx];
-        if (wkObj) {
-          if (isChore && wkObj.chores?.[numericIdx]) {
-            wkObj.chores[numericIdx].cost = costVal;
-            wkObj.chores[numericIdx].itemsCost = costVal;
-          } else if (!isChore) {
-            const bounties = (wkObj.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-            if (bounties[numericIdx]) {
-              bounties[numericIdx].cost = costVal;
-              bounties[numericIdx].itemsCost = costVal;
-            }
-          }
-        }
-      }
-    } else {
-      const itemIdx = parseInt(mapKeyOrIdx, 10);
-      if (isChore && state.globalData?.chores?.[itemIdx]) {
-        state.globalData.chores[itemIdx].cost = costVal;
-        state.globalData.chores[itemIdx].itemsCost = costVal;
-      } else if (!isChore) {
-        const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-        if (bounties[itemIdx]) {
-          bounties[itemIdx].cost = costVal;
-          bounties[itemIdx].itemsCost = costVal;
-        }
-      }
+    if (source === 'week') {
+      const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+      const target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+      if (target) { target.cost = costVal; target.itemsCost = costVal; }
+    } else if (source === 'current') {
+      const target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+      if (target) { target.cost = costVal; target.itemsCost = costVal; }
     }
   }
 
@@ -717,50 +621,24 @@ export async function updateHistoryItemCost(idKey, mapKeyOrIdx, val) {
   await syncCurrentVaultToCloud();
 }
 
-export async function deleteWeeklyItem(weekId, mapKeyOrIdx) {
+export async function deleteWeeklyItem(weekId, mapKey) {
   const type = state.activeColumnType;
   const isChore = type === 'chore';
-  const isAnimal = type === 'animalBounty';
 
-  if (typeof mapKeyOrIdx === 'string' && mapKeyOrIdx.includes('_')) {
-    const [source, wkOrIdx, idx] = mapKeyOrIdx.split('_');
-    const numericIdx = parseInt(idx, 10);
-    if (source === 'current') {
-      if (isChore) {
-        state.globalData?.chores?.splice(numericIdx, 1);
-      } else {
-        const all = state.globalData?.bounties || [];
-        let count = 0;
-        for (let i = 0; i < all.length; i++) {
-          if (isAnimalBounty(all[i]) === isAnimal) {
-            if (count === numericIdx) {
-              all.splice(i, 1);
-              break;
-            }
-            count++;
-          }
-        }
-      }
-    } else if (source === 'week') {
-      const wkObj = state.globalData?.cloudHistory?.weeks?.[wkOrIdx];
-      if (wkObj) {
-        if (isChore) {
-          wkObj.chores?.splice(numericIdx, 1);
-        } else {
-          const all = wkObj.bounties || [];
-          let count = 0;
-          for (let i = 0; i < all.length; i++) {
-            if (isAnimalBounty(all[i]) === isAnimal) {
-              if (count === numericIdx) {
-                all.splice(i, 1);
-                break;
-              }
-              count++;
-            }
-          }
-        }
-      }
+  const parts = mapKey.split('_');
+  const source = parts[0];
+  const wkId = parts[1];
+  const idx = parseInt(parts[2], 10);
+
+  if (source === 'week') {
+    const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+    if (wk) {
+      if (isChore) wk.chores?.splice(idx, 1);
+      else wk.bounties?.splice(idx, 1);
     }
+  } else if (source === 'current') {
+    if (isChore) state.globalData?.chores?.splice(idx, 1);
+    else state.globalData?.bounties?.splice(idx, 1);
   }
 
   renderColumnHistoryModalList();
@@ -792,15 +670,15 @@ export function toggleHistoryModal() {
     } else {
       container.innerHTML = logs.map((log, idx) => {
         const delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
-          `<div style="color:#5C4033; font-size:11px;"><strong>📦 Daily Deliveries:</strong> ${log.deliveriesDone.map(d => typeof d === 'string' ? d : `${d.name} (${formatSFL(d.cost)} SFL)`).join(', ')}</div>` : '';
+          `<div style="color:#5C4033; font-size:11px;"><strong>📦 Daily Deliveries:</strong> ${log.deliveriesDone.map(d => typeof d === 'string' ? d : `${d.name || d.from} (${formatSFL(d.cost || d.itemsCost)} SFL)`).join(', ')}</div>` : '';
 
         const logTickets = log.ticketsSaved || 0;
         const logCost = log.costSaved || 0;
         const logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
 
-        return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">
+        return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
           <div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">
-            <span style="color:#8B4513;">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
+            <span style="color:#8B4513;">Log #${logs.length - idx} (${log.date || 'Snapshot'} - ${log.weekId || 'Week'})</span>
             <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>
           </div>
           <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
