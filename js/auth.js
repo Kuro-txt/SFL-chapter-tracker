@@ -2,26 +2,25 @@ import { state } from './state.js';
 import { recalculateAll, renderDashboardCards } from './render.js';
 import { loadTrackerData } from './api.js';
 
-let isAuthPromptOpen = false;
+let lastAuthActionTime = 0;
 
-export async function userRegister() {
-  if (isAuthPromptOpen) return;
-  isAuthPromptOpen = true;
+export async function userRegister(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+  const now = Date.now();
+  if (now - lastAuthActionTime < 1500) return;
+  lastAuthActionTime = now;
+
+  const username = prompt('Choose a Username:')?.trim().toLowerCase();
+  if (!username) return;
+  const password = prompt('Choose a Password:');
+  if (!password) return;
+
+  const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
 
   try {
-    const username = prompt('Choose a Username:')?.trim().toLowerCase();
-    if (!username) {
-      isAuthPromptOpen = false;
-      return;
-    }
-    const password = prompt('Choose a Password:');
-    if (!password) {
-      isAuthPromptOpen = false;
-      return;
-    }
-
-    const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
-
     const res = await fetch('/api/chapter?action=register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -38,29 +37,26 @@ export async function userRegister() {
     await loadTrackerData();
   } catch (err) {
     alert(`Register Error: ${err.message}`);
-  } finally {
-    isAuthPromptOpen = false;
   }
 }
 
-export async function userLogin() {
-  if (isAuthPromptOpen) return;
-  isAuthPromptOpen = true;
+export async function userLogin(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
+  const now = Date.now();
+  if (now - lastAuthActionTime < 1500) return;
+  lastAuthActionTime = now;
+
+  const username = prompt('Enter your Username:')?.trim().toLowerCase();
+  if (!username) return;
+  const password = prompt('Enter your Password:');
+  if (!password) return;
+
+  const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
 
   try {
-    const username = prompt('Enter your Username:')?.trim().toLowerCase();
-    if (!username) {
-      isAuthPromptOpen = false;
-      return;
-    }
-    const password = prompt('Enter your Password:');
-    if (!password) {
-      isAuthPromptOpen = false;
-      return;
-    }
-
-    const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
-
     const res = await fetch('/api/chapter?action=login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -75,7 +71,8 @@ export async function userLogin() {
     
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      if (state.globalData) state.globalData.cloudHistory = data.vaultData;
+      if (!state.globalData) state.globalData = {};
+      state.globalData.cloudHistory = data.vaultData;
     }
 
     updateAuthUI();
@@ -83,12 +80,14 @@ export async function userLogin() {
     await loadTrackerData();
   } catch (err) {
     alert(`Login Error: ${err.message}`);
-  } finally {
-    isAuthPromptOpen = false;
   }
 }
 
-export function userLogout() {
+export function userLogout(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }
   state.currentUser = null;
   state.currentVaultData = null;
   localStorage.removeItem('sfl_logged_user');
@@ -110,7 +109,6 @@ export function checkSavedAuth() {
 
 export function updateAuthUI() {
   const userStatus = document.getElementById('userStatusBadge');
-  
   if (userStatus) {
     if (state.currentUser) {
       userStatus.textContent = `👤 ${state.currentUser.toUpperCase()}`;
