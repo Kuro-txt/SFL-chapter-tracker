@@ -1,36 +1,6 @@
 import { SFL_RECIPES } from '../recipes.js';
 
-// Exact Chapter NPCs that reward Shiny Feathers / Chapter Tickets
-export const CHAPTER_NPC_TICKETS = {
-  "pumpkin pete": 1,
-  "pumpkin' pete": 1,
-  "pete": 1,
-  "bert": 2,
-  "finley": 2,
-  "findlay": 2,
-  "miranda": 2,
-  "raven": 4,
-  "jester": 4,
-  "finn": 5,
-  "timmy": 5,
-  "tyreless timmy": 5,
-  "pharaoh": 6,
-  "cornwell": 3,
-  "corny": 3,
-  "tywin": 10,
-  "blacksmith": 2,
-  "betty": 2,
-  "grimtooth": 2,
-  "tango": 2,
-  "greg": 2,
-  "buttercup": 2,
-  "misty": 2,
-  "phobos": 2,
-  "craig": 2,
-  "peggy": 2,
-  "flint": 2
-};
-
+// Helper to strictly extract Shiny Feather or Seasonal/Chapter Ticket count from reward objects
 export function extractRewardTickets(rewardObj) {
   if (!rewardObj) return 0;
   if (typeof rewardObj === 'number') return rewardObj;
@@ -38,29 +8,29 @@ export function extractRewardTickets(rewardObj) {
   let count = 0;
   const items = rewardObj.items || rewardObj;
   
-  if (typeof items === 'object') {
+  if (typeof items === 'object' && !Array.isArray(items)) {
     for (const [key, qty] of Object.entries(items)) {
-      const lower = key.toLowerCase();
-      // Explicitly check for Shiny Feather and Seasonal/Chapter Tickets
+      const lower = key.toLowerCase().trim();
+      // Match exact chapter currency names
       if (
+        lower === 'shiny feather' ||
         lower.includes('shiny feather') ||
+        lower === 'chapter ticket' ||
+        lower === 'seasonal ticket' ||
+        lower.includes('ticket') ||
         lower.includes('feather') ||
-        lower.includes('ticket') || 
-        lower.includes('scale') || 
-        lower.includes('scroll') ||
-        lower.includes('token') ||
-        lower.includes('chapter') ||
-        lower.includes('seasonal')
+        lower.includes('scroll')
       ) {
         count += (typeof qty === 'number' ? qty : parseInt(qty, 10) || 0);
       }
     }
   }
 
+  // Check top-level numeric fields if explicitly labeled as tickets
   if (count === 0) {
-    if (typeof rewardObj.tickets === 'number') count = rewardObj.tickets;
+    if (typeof rewardObj['Shiny Feather'] === 'number') count = rewardObj['Shiny Feather'];
+    else if (typeof rewardObj.tickets === 'number') count = rewardObj.tickets;
     else if (typeof rewardObj.rewardTickets === 'number') count = rewardObj.rewardTickets;
-    else if (typeof rewardObj.baseTickets === 'number') count = rewardObj.baseTickets;
   }
 
   return count;
@@ -183,16 +153,6 @@ export function getMondayBasedWeekId(d) {
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-  // Milestones: Filter ONLY for Chapter NPCs
-  const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
-  const liveMilestones = {};
-  Object.entries(rawMilestones).forEach(([npc, count]) => {
-    const cleanName = npc.toLowerCase().trim();
-    if (CHAPTER_NPC_TICKETS[cleanName] !== undefined) {
-      liveMilestones[cleanName] = count;
-    }
-  });
-
   // Calendar events
   const nowMs = Date.now();
   const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
@@ -207,20 +167,19 @@ export function parseFarmData(farm, priceMap) {
     });
   }
 
-  // 1. Deliveries: Filter strictly for ticket-rewarding NPCs
+  // 1. Deliveries: STRICT LIVE REWARD CHECK ONLY
   const deliveryList = [];
-  const npcOrderCounts = {};
+  const validTicketNpcs = new Set();
+
   (farm.delivery?.orders || []).forEach(order => {
-    const npcClean = (order.from || '').toLowerCase().trim();
-    const isChapterNpc = CHAPTER_NPC_TICKETS[npcClean] !== undefined;
+    // Extract actual tickets/feathers from the live reward object
+    const totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
 
-    let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
-    if (totalTickets === 0 && isChapterNpc) {
-      totalTickets = CHAPTER_NPC_TICKETS[npcClean];
-    }
+    // STRICT CHECK: Drop any NPC whose order does not give tickets/feathers
+    if (totalTickets > 0) {
+      const npcClean = (order.from || '').toLowerCase().trim();
+      validTicketNpcs.add(npcClean);
 
-    // STRICT FILTER: Only include if it explicitly awards Shiny Feathers/Tickets or is a confirmed Chapter NPC
-    if (totalTickets > 0 && isChapterNpc) {
       let itemsCost = 0;
       const itemDetails = [];
       Object.entries(order.items || {}).forEach(([itemName, qty]) => {
@@ -231,9 +190,6 @@ export function parseFarmData(farm, priceMap) {
       });
 
       const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-      if (isCompleted) {
-        npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
-      }
 
       deliveryList.push({
         id: order.id,
@@ -254,7 +210,17 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // 2. Bounties (Only include if rewarding Shiny Feathers / Chapter Tickets)
+  // Milestones: Filter ONLY for NPCs that currently reward tickets/feathers
+  const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
+  const liveMilestones = {};
+  Object.entries(rawMilestones).forEach(([npc, count]) => {
+    const cleanName = npc.toLowerCase().trim();
+    if (validTicketNpcs.has(cleanName)) {
+      liveMilestones[cleanName] = count;
+    }
+  });
+
+  // 2. Bounties: Strictly require feathers / tickets in reward
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -291,12 +257,9 @@ export function parseFarmData(farm, priceMap) {
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
-      let baseTicketCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || (typeof b.tickets === 'number' ? b.tickets : 0);
+      const baseTicketCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || (typeof b.tickets === 'number' ? b.tickets : 0);
 
-      if (baseTicketCount === 0 && b.level !== undefined) {
-        baseTicketCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
-      }
-
+      // STRICT: Skip any bounty that does not reward Shiny Feathers / Tickets
       if (baseTicketCount <= 0) return;
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
@@ -331,13 +294,14 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 3. Chores (Only include if rewarding Shiny Feathers / Chapter Tickets)
+  // 3. Chores: Strictly require feathers / tickets in reward
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
-  
+
   Object.entries(choreObj).forEach(([key, details]) => {
-    let baseTicketCount = extractRewardTickets(details.reward) || (typeof details.tickets === 'number' ? details.tickets : 0) || details.baseTickets || 0;
-    
+    const baseTicketCount = extractRewardTickets(details.reward) || (typeof details.tickets === 'number' ? details.tickets : 0) || details.baseTickets || 0;
+
+    // STRICT: Skip any chore that does not give Shiny Feathers / Tickets
     if (baseTicketCount > 0) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
