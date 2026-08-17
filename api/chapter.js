@@ -112,7 +112,32 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Save Vault Endpoint
+    // 4. Dedicated Delete Log Endpoint (Prevents Re-creation)
+    if (req.method === 'POST' && action === 'deleteLog') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const username = (body.username || '').toLowerCase().trim();
+      const logIdx = parseInt(body.logIdx, 10);
+
+      if (!username || isNaN(logIdx)) return res.status(400).json({ error: 'Username and valid logIdx required.' });
+
+      const client = await pool.connect();
+      try {
+        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
+        if (queryRes.rows.length === 0) return res.status(404).json({ error: 'Vault not found.' });
+
+        let vaultData = queryRes.rows[0].vault_data || {};
+        if (vaultData.logs && Array.isArray(vaultData.logs)) {
+          vaultData.logs.splice(logIdx, 1);
+        }
+
+        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), username]);
+        return res.status(200).json({ success: true, vaultData });
+      } finally {
+        client.release();
+      }
+    }
+
+    // 5. Save Vault Endpoint
     if (req.method === 'POST' && action === 'saveVault') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -133,9 +158,6 @@ export default async function handler(req, res) {
           milestones: {}
         };
 
-        const todayDate = new Date().toISOString().split('T')[0];
-        const currentWeekMonday = getMondayBasedWeekId();
-
         if (body.farmId) existingData.farmId = body.farmId;
         if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets, 10) || 0;
         if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
@@ -150,11 +172,9 @@ export default async function handler(req, res) {
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
 
-        // Persist Logs Array
-        if (body.logs && Array.isArray(body.logs) && body.logs.length > 0) {
+        // Persist Logs Array directly without forced re-insertion
+        if (body.logs && Array.isArray(body.logs)) {
           existingData.logs = body.logs;
-        } else if (!existingData.logs) {
-          existingData.logs = [];
         }
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), username]);
@@ -164,7 +184,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 5. Default GET: Live Sunflower Land API Data Fetch
+    // 6. Default GET: Live Sunflower Land API Data Fetch
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -202,12 +222,11 @@ export default async function handler(req, res) {
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [usernameParam]);
         if (queryRes.rows.length > 0) {
           currentVault = queryRes.rows[0].vault_data || {};
-          const todayDate = new Date().toISOString().split('T')[0];
           const currentWeekMonday = getMondayBasedWeekId();
 
           currentVault.farmId = farmId;
 
-          // Preserve manual additions
+          // Preserve manual items
           const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
           currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
 
@@ -235,6 +254,7 @@ export default async function handler(req, res) {
 
           if (!currentVault.logs) currentVault.logs = [];
 
+          // NOTE: We do NOT auto-create a daily log on GET requests, preserving your manual deletions!
           await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(currentVault), usernameParam]);
         }
       } finally {
