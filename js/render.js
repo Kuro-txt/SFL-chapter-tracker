@@ -118,7 +118,42 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // Process live deliveries (respecting assigned weekId if manual)
+  // Process historical log entries
+  const seenDates = new Set();
+  rawLogs.forEach(log => {
+    const rawDate = (log.date || '').split('T')[0];
+    if (!rawDate || seenDates.has(rawDate)) return;
+    seenDates.add(rawDate);
+
+    if (rawDate === todayUtcStr) return;
+
+    const logMonday = getMondayBasedWeekId(log.weekId || rawDate);
+    const isThisWeek = (logMonday === currentWeekMonday);
+
+    (log.deliveriesDone || []).forEach(item => {
+      if (isTicked(item)) {
+        const uniqueKey = `deliv_${item.id || (item.name || item.from) + '_' + item.completedAt}`;
+        if (globallyProcessedItems.has(uniqueKey)) return;
+        globallyProcessedItems.add(uniqueKey);
+
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        const isManual = Boolean(item.isManual);
+        const finalTix = calculateItemYield(baseTix, true, true, Boolean(item.hasDoubleBonus), isManual);
+        const itemCost = item.cost || item.itemsCost || 0;
+
+        totalDelivTix += finalTix;
+        totalSflCostAll += itemCost;
+        addWeeklyStat(logMonday, finalTix, itemCost);
+
+        if (isThisWeek) {
+          weekDelivTix += finalTix;
+          weekCostAll += itemCost;
+        }
+      }
+    });
+  });
+
+  // Process live deliveries (respecting assigned weekId)
   let doubleDeliveryAppliedToday = false;
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
