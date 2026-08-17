@@ -94,17 +94,17 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  const isWeeklyItemDoneToday = (item) => {
+  const isDoneToday = (item) => {
     if (!isTicked(item)) return false;
-    if (item.checkedToday === true) return true;
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
         const ms = ts < 1e11 ? ts * 1000 : ts;
-        const itemDate = new Date(ms);
-        return itemDate.toISOString().split('T')[0] === todayUtcStr;
+        return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
       }
     }
+    // If it's a manual item added for Week 1, strictly prevent it from counting as "Done Today"
+    if (item.weekId && item.weekId !== currentWeekMonday) return false;
     return false;
   };
 
@@ -117,41 +117,6 @@ export function recalculateAll() {
     const withBonuses = rawBase + (isVipEligible ? vipBonus : 0) + boostCount;
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
-
-  // Process historical log entries
-  const seenDates = new Set();
-  rawLogs.forEach(log => {
-    const rawDate = (log.date || '').split('T')[0];
-    if (!rawDate || seenDates.has(rawDate)) return;
-    seenDates.add(rawDate);
-
-    if (rawDate === todayUtcStr) return;
-
-    const logMonday = getMondayBasedWeekId(log.weekId || rawDate);
-    const isThisWeek = (logMonday === currentWeekMonday);
-
-    (log.deliveriesDone || []).forEach(item => {
-      if (isTicked(item)) {
-        const uniqueKey = `deliv_${item.id || (item.name || item.from) + '_' + item.completedAt}`;
-        if (globallyProcessedItems.has(uniqueKey)) return;
-        globallyProcessedItems.add(uniqueKey);
-
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        const isManual = Boolean(item.isManual);
-        const finalTix = calculateItemYield(baseTix, true, true, Boolean(item.hasDoubleBonus), isManual);
-        const itemCost = item.cost || item.itemsCost || 0;
-
-        totalDelivTix += finalTix;
-        totalSflCostAll += itemCost;
-        addWeeklyStat(logMonday, finalTix, itemCost);
-
-        if (isThisWeek) {
-          weekDelivTix += finalTix;
-          weekCostAll += itemCost;
-        }
-      }
-    });
-  });
 
   // Process live deliveries (respecting assigned weekId)
   let doubleDeliveryAppliedToday = false;
@@ -177,7 +142,7 @@ export function recalculateAll() {
         const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
 
         const isThisWeek = (itemWeekMonday === currentWeekMonday);
-        const isToday = (d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayUtcStr);
+        const isToday = isDoneToday(d);
 
         if (isToday) {
           todayDelivTix += calculatedYield;
@@ -225,7 +190,7 @@ export function recalculateAll() {
       if (isThisWeek) weekCostAll += bCost;
       addWeeklyStat(itemWeekMonday, finalTix, bCost);
 
-      if (isWeeklyItemDoneToday(b)) {
+      if (isDoneToday(b)) {
         if (isAnimal) todayAnimalBountyTix += finalTix;
         else todayBountyTix += finalTix;
         todayCostAll += bCost;
@@ -256,7 +221,7 @@ export function recalculateAll() {
       if (isThisWeek) weekCostAll += cCost;
       addWeeklyStat(itemWeekMonday, finalTix, cCost);
 
-      if (isWeeklyItemDoneToday(c)) {
+      if (isDoneToday(c)) {
         todayChoreTix += finalTix;
         todayCostAll += cCost;
       }
@@ -293,6 +258,12 @@ export function recalculateAll() {
         totalSflCostAll += bCost;
         if (isCurrentWeek) weekCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
+
+        if (isDoneToday(b)) {
+          if (isAnimal) todayAnimalBountyTix += finalTix;
+          else todayBountyTix += finalTix;
+          todayCostAll += bCost;
+        }
       }
     });
 
@@ -315,6 +286,11 @@ export function recalculateAll() {
         totalSflCostAll += cCost;
         if (isCurrentWeek) weekCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
+
+        if (isDoneToday(c)) {
+          todayChoreTix += finalTix;
+          todayCostAll += cCost;
+        }
       }
     });
   });
