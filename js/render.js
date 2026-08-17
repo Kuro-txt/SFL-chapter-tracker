@@ -38,15 +38,15 @@ export function recalculateAll() {
   const todayLoginTickets = isDoneLoginToday ? 1 : 0;
 
   // Weekly ticket accumulator map (strictly grouped by Monday UTC dates)
-  const weeklyTicketStats = {};
+  const weeklyStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
     if (!mondayKey) mondayKey = currentWeekMonday;
     const normMonday = getMondayBasedWeekId(mondayKey);
-    if (!weeklyTicketStats[normMonday]) {
-      weeklyTicketStats[normMonday] = { tickets: 0, cost: 0 };
+    if (!weeklyStats[normMonday]) {
+      weeklyStats[normMonday] = { tickets: 0, cost: 0 };
     }
-    weeklyTicketStats[normMonday].tickets += tix;
-    weeklyTicketStats[normMonday].cost += cost;
+    weeklyStats[normMonday].tickets += tix;
+    weeklyStats[normMonday].cost += cost;
   };
 
   // Category counters
@@ -318,8 +318,8 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  // 8. Render Weekly Progression Chart with Week 1 starting at Week 32
-  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, totalWeeks);
+  // 8. Render Weekly Progression Chart
+  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, targetWeeks);
 }
 
 function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, totalPlannedWeeks) {
@@ -337,7 +337,6 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
 
   const displayItems = [];
   for (let i = 1; i <= maxWeeksToDisplay; i++) {
-    // Map chronological weeks starting from August 2026 (Week 32) as Week 1
     const mondayKey = distinctMondays[i - 1];
     const isCurrent = (mondayKey === currentMondayKey) || (!mondayKey && i === distinctMondays.length);
     const data = mondayKey ? weeklyStats[mondayKey] : null;
