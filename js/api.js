@@ -9,10 +9,11 @@ export async function loadTrackerData() {
   const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
   const priceBadge = document.getElementById('priceBadge');
 
-  const farmId = farmIdInput?.value.trim() || '8472883706403914';
-  const apiKey = apiKeyInput?.value.trim() || '';
-  const currentUsername = state.currentUser || '';
+  const farmId = farmIdInput?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
+  const apiKey = apiKeyInput?.value.trim() || localStorage.getItem('sfl_apiKey') || '';
+  const currentUsername = state.currentUser || localStorage.getItem('sfl_logged_user') || '';
 
+  if (farmIdInput) farmIdInput.value = farmId;
   localStorage.setItem('sfl_farmId', farmId);
 
   if (fetchCooldownTimer) {
@@ -61,11 +62,11 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
+    // Load Vault Data and hydrate active boards if API returned empty arrays
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
       state.globalData.cloudHistory = data.vaultData;
-      
-      // If live deliveries are empty from API, restore active board from vault data
+
       if ((!state.globalData.deliveries || state.globalData.deliveries.length === 0) && data.vaultData.deliveries) {
         state.globalData.deliveries = data.vaultData.deliveries;
       }
@@ -74,6 +75,17 @@ export async function loadTrackerData() {
       }
       if ((!state.globalData.chores || state.globalData.chores.length === 0) && data.vaultData.chores) {
         state.globalData.chores = data.vaultData.chores;
+      }
+
+      // Sync stored track & login inputs into the DOM
+      if (data.vaultData.trackTickets !== undefined && document.getElementById('trackTicketsInput')) {
+        document.getElementById('trackTicketsInput').value = data.vaultData.trackTickets;
+      }
+      if (data.vaultData.trackCost !== undefined && document.getElementById('trackCostInput')) {
+        document.getElementById('trackCostInput').value = data.vaultData.trackCost;
+      }
+      if (data.vaultData.dailyLoginTickets !== undefined && document.getElementById('dailyLoginCount')) {
+        document.getElementById('dailyLoginCount').value = data.vaultData.dailyLoginTickets;
       }
     }
 
@@ -106,7 +118,8 @@ export async function loadTrackerData() {
 }
 
 export async function saveProgressToCloudKV(silent = false) {
-  if (!state.currentUser) {
+  const username = state.currentUser || localStorage.getItem('sfl_logged_user');
+  if (!username) {
     if (!silent) alert('Please login to save your progress in your Cloud Vault.');
     return;
   }
@@ -117,7 +130,7 @@ export async function saveProgressToCloudKV(silent = false) {
   const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
 
   const payload = {
-    username: state.currentUser,
+    username,
     farmId,
     trackTickets,
     trackCost,
@@ -149,7 +162,7 @@ export async function saveProgressToCloudKV(silent = false) {
 
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || 0;
-      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}\n• Auto-backup schedule active.`);
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${username}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}`);
     }
   } catch (err) {
     if (!silent) alert(`Cloud Save Error: ${err.message}`);
