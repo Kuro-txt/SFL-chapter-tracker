@@ -226,7 +226,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Adds to Total Count and properly groups into weekly chart stats)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Adds to Total Count and properly groups into weekly chart stats without leaking past weeks into current week's counter)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
