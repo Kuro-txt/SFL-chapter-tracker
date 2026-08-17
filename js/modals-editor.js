@@ -14,7 +14,7 @@ import { recalculateAll } from './render.js';
 function computeYield(base, isVipEligible = true, isManual = false) {
   const raw = Number(base) || 0;
   if (raw <= 0) return 0;
-  if (isManual) return raw; // Manual items do NOT receive VIP or item boosts
+  if (isManual) return raw;
   const vip = isVipEligible ? getActiveVipBonus() : 0;
   const boost = getActiveBoostCount();
   return raw + vip + boost;
@@ -53,13 +53,6 @@ export function openColumnHistoryModal(type) {
     if (filterContainer) filterContainer.style.display = 'flex';
     if (npcDropdown) {
       const npcSet = new Set();
-      const rawLogs = (state.globalData?.cloudHistory?.logs) || [];
-      rawLogs.forEach(log => {
-        (log.deliveriesDone || []).forEach(d => {
-          const name = typeof d === 'string' ? d : (d.name || d.from);
-          if (name) npcSet.add(name.trim());
-        });
-      });
       (state.globalData?.deliveries || []).forEach(d => {
         const name = d.from || d.name;
         if (name) npcSet.add(name.trim());
@@ -107,44 +100,38 @@ export function renderColumnHistoryModalList() {
   </div>`;
 
   if (type === 'delivery') {
-    const rawLogs = state.globalData?.cloudHistory?.logs || [];
+    const rawDeliveries = state.globalData?.deliveries || [];
     const searchFilter = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
 
-    rawLogs.forEach((log, logIdx) => {
-      const cleanDate = (log.date || 'Past Run').split('T')[0];
-      if (searchFilter && !cleanDate.includes(searchFilter)) return;
+    rawDeliveries.forEach((item, itemIdx) => {
+      const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
+      if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
 
-      (log.deliveriesDone || []).forEach((item, itemIdx) => {
-        const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-        if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
+      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+      const isManual = Boolean(item.isManual);
+      let finalTix = computeYield(baseTix, true, isManual);
+      if (item.hasDoubleBonus && !isManual) finalTix *= 2;
 
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        const isManual = Boolean(item.isManual);
-        let finalTix = computeYield(baseTix, true, isManual);
-        if (item.hasDoubleBonus && !isManual) finalTix *= 2;
+      const requestedStr = formatRequestedItems(item.itemDetails || item.items);
+      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
-        const requestedStr = formatRequestedItems(item.itemDetails || item.items);
-        const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-
-        records.push({
-          logIdx,
-          itemIdx,
-          date: cleanDate,
-          name: itemName,
-          requestedItems: requestedStr,
-          cost: item.cost || item.itemsCost || 0,
-          baseTickets: baseTix,
-          displayTickets: finalTix,
-          checked: isChecked,
-          status: isChecked ? '✨ Done' : '⏳ Active',
-          isStacked: item.isStacked || false,
-          isManual
-        });
+      records.push({
+        logIdx: 0,
+        itemIdx,
+        date: 'Current',
+        name: itemName,
+        requestedItems: requestedStr,
+        cost: item.cost || item.itemsCost || 0,
+        baseTickets: baseTix,
+        displayTickets: finalTix,
+        checked: isChecked,
+        status: isChecked ? '✨ Done' : '⏳ Active',
+        isStacked: item.isStacked || false,
+        isManual
       });
     });
   } else {
-    const currentWeekId = getMondayBasedWeekId();
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
 
@@ -163,6 +150,7 @@ export function renderColumnHistoryModalList() {
     });
 
     const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
+    const currentWeekId = getMondayBasedWeekId();
     liveArr.forEach((item, idx) => {
       if (!isChore && isAnimalBounty(item) !== isAnimal) return;
       const dedupeKey = isChore 
@@ -269,29 +257,7 @@ export async function addNewItemFromModal() {
 
   if (!state.globalData) return;
 
-  let targetWeekId = getMondayBasedWeekId();
-  const weekNum = parseInt(weekSelectVal.substring(1), 10);
-  if (!isNaN(weekNum) && weekNum > 0) {
-    const baseMonday = new Date('2026-08-10T00:00:00.000Z');
-    baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
-    targetWeekId = getMondayBasedWeekId(baseMonday);
-  }
-
-  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-  if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
-    state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
-  }
-
   if (type === 'delivery') {
-    if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
-    const deliveryDate = targetWeekId;
-    let logEntry = state.globalData.cloudHistory.logs.find(l => (l.date || '').split('T')[0] === deliveryDate);
-    if (!logEntry) {
-      logEntry = { date: deliveryDate, deliveriesDone: [] };
-      state.globalData.cloudHistory.logs.push(logEntry);
-    }
-
     const newDeliv = {
       from: nameInput,
       name: nameInput,
@@ -305,7 +271,6 @@ export async function addNewItemFromModal() {
       isManual: true
     };
 
-    logEntry.deliveriesDone.push(newDeliv);
     if (!state.globalData.deliveries) state.globalData.deliveries = [];
     state.globalData.deliveries.push(newDeliv);
   } else {
@@ -336,6 +301,20 @@ export async function addNewItemFromModal() {
       isManual: true
     };
 
+    let targetWeekId = getMondayBasedWeekId();
+    const weekNum = parseInt(weekSelectVal.substring(1), 10);
+    if (!isNaN(weekNum) && weekNum > 0) {
+      const baseMonday = new Date('2026-08-10T00:00:00.000Z');
+      baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
+      targetWeekId = getMondayBasedWeekId(baseMonday);
+    }
+
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+    if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
+      state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
+    }
+
     if (isChore) {
       state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
       if (targetWeekId === getMondayBasedWeekId()) {
@@ -357,9 +336,9 @@ export async function addNewItemFromModal() {
 }
 
 export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
-  const logs = state.globalData?.cloudHistory?.logs;
-  if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-    const item = logs[logIdx].deliveriesDone[itemIdx];
+  const deliveries = state.globalData?.deliveries;
+  if (deliveries?.[itemIdx]) {
+    const item = deliveries[itemIdx];
     const newStatus = !(item.checked !== undefined ? item.checked : Boolean(item.completed));
     item.checked = newStatus;
     item.completed = newStatus;
@@ -370,9 +349,9 @@ export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
 }
 
 export async function deleteDeliveryLogItem(logIdx, itemIdx) {
-  const logs = state.globalData?.cloudHistory?.logs;
-  if (logs?.[logIdx]?.deliveriesDone) {
-    logs[logIdx].deliveriesDone.splice(itemIdx, 1);
+  const deliveries = state.globalData?.deliveries;
+  if (deliveries) {
+    deliveries.splice(itemIdx, 1);
     renderColumnHistoryModalList();
     recalculateAll();
     await syncCurrentVaultToCloud();
@@ -412,12 +391,11 @@ export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
   const inputVal = parseInt(val, 10) || 0;
 
   if (type === 'delivery') {
-    const logs = state.globalData?.cloudHistory?.logs;
-    const logIdx = parseInt(idKey, 10);
+    const deliveries = state.globalData?.deliveries;
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-      logs[logIdx].deliveriesDone[itemIdx].baseTickets = inputVal;
-      logs[logIdx].deliveriesDone[itemIdx].tickets = inputVal;
+    if (deliveries?.[itemIdx]) {
+      deliveries[itemIdx].baseTickets = inputVal;
+      deliveries[itemIdx].tickets = inputVal;
     }
   } else {
     const parts = mapKeyOrIdx.split('_');
@@ -445,12 +423,11 @@ export async function updateHistoryItemCost(idKey, mapKeyOrIdx, val) {
   const costVal = parseFloat(val) || 0;
 
   if (type === 'delivery') {
-    const logs = state.globalData?.cloudHistory?.logs;
-    const logIdx = parseInt(idKey, 10);
+    const deliveries = state.globalData?.deliveries;
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-      logs[logIdx].deliveriesDone[itemIdx].cost = costVal;
-      logs[logIdx].deliveriesDone[itemIdx].itemsCost = costVal;
+    if (deliveries?.[itemIdx]) {
+      deliveries[itemIdx].cost = costVal;
+      deliveries[itemIdx].itemsCost = costVal;
     }
   } else {
     const parts = mapKeyOrIdx.split('_');
