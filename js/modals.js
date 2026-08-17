@@ -15,11 +15,9 @@ export function openColumnModal(type) {
   container.innerHTML = '';
   const currentWeekMonday = getMondayBasedWeekId();
 
-  // --- Quick Add Header Bar ---
   const addCard = document.createElement('div');
   addCard.style.cssText = 'background: #FAF8F5; border: 1.5px dashed #D2691E; border-radius: 8px; padding: 10px; margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;';
 
-  // --- Render Sections Based on Type ---
   if (type === 'deliveries') {
     if (titleEl) titleEl.textContent = '📦 Edit Daily Deliveries';
 
@@ -217,7 +215,7 @@ export function closeCategorySummaryModal() {
 }
 
 // ==========================================
-// 4. History & Master Log Modals
+// 4. Column History & Master History Modals
 // ==========================================
 export function renderColumnHistoryModalList(type = 'deliveries') {
   const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
@@ -441,7 +439,7 @@ export function submitNewManualItem(type, isAnimal = false) {
   saveProgressToCloudKV(true);
 }
 
-// Window Event Listeners for Inline HTML
+// Global Window Listeners
 window.submitNewManualItem = submitNewManualItem;
 
 window.toggleModalItem = function(type, index, isChecked) {
