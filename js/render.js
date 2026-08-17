@@ -23,13 +23,12 @@ export function recalculateAll() {
 
   const now = new Date();
   const todayUtcStr = now.toISOString().split('T')[0];
-  const currentWeekMonday = getMondayBasedWeekId(now);
-  const currentWeekMondayMs = new Date(`${currentWeekMonday}T00:00:00.000Z`).getTime();
+  const currentWeekMonday = getMondayBasedWeekId(todayUtcStr);
 
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Normalize and merge all historical weeks by Monday UTC key (e.g. "2026-W32" -> "2026-08-10")
+  // 1. Normalize and deduplicate historical week buckets (maps "2026-W32" -> "2026-08-10")
   const mergedWeeks = {};
   Object.entries(rawWeeks).forEach(([wkId, wkObj]) => {
     const normKey = getMondayBasedWeekId(wkId);
@@ -62,7 +61,7 @@ export function recalculateAll() {
   let totalBountyTix = 0;
   let totalAnimalBountyTix = 0;
   let totalChoreTix = 0;
-  let totalSflCostAll = trackCost;
+  let totalSflCostAll = trackCost; // Track cost only in total
 
   let weekDelivTix = 0;
   let weekBountyTix = 0;
@@ -99,13 +98,14 @@ export function recalculateAll() {
     return false;
   };
 
-  // 1. Process Past Daily Deliveries from saved logs
+  // 2. Process Saved Logs (Past days deliveries)
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
     if (!rawDate || seenDates.has(rawDate)) return;
     seenDates.add(rawDate);
 
+    // If this log is for today UTC, let live deliveries handle it
     const isTodayLog = (rawDate === todayUtcStr);
     if (isTodayLog) return;
 
@@ -130,7 +130,7 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process Today's Live Deliveries
+  // 3. Process Live Deliveries (Today's deliveries)
   const liveDeliveryMonday = getMondayBasedWeekId(todayUtcStr);
   const isLiveDeliveryInCurrentWeek = (liveDeliveryMonday === currentWeekMonday);
   let doubleDeliveryAppliedToday = false;
@@ -165,9 +165,8 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process Live Bounties (Assign to Week 1 if completed prior to current week)
+  // 4. Process Current Week Board Bounties
   const processedBountyKeys = new Set();
-
   (state.globalData.bounties || []).forEach(b => {
     const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
     processedBountyKeys.add(key);
@@ -179,27 +178,18 @@ export function recalculateAll() {
       const finalTix = baseTix + boostCount;
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
-      const itemMs = getItemTimestamp(b);
-
-      // Determine which week this completion belongs to
-      let bountyMonday = currentWeekMonday;
-      if (itemMs && itemMs < currentWeekMondayMs) {
-        bountyMonday = getMondayBasedWeekId(itemMs);
-      }
-
-      const isCurrentWeekItem = (bountyMonday === currentWeekMonday);
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
-        if (isCurrentWeekItem) weekAnimalBountyTix += finalTix;
+        weekAnimalBountyTix += finalTix;
       } else {
         totalBountyTix += finalTix;
-        if (isCurrentWeekItem) weekBountyTix += finalTix;
+        weekBountyTix += finalTix;
       }
 
       totalSflCostAll += bCost;
-      if (isCurrentWeekItem) weekCostAll += bCost;
-      addWeeklyStat(bountyMonday, finalTix, bCost);
+      weekCostAll += bCost;
+      addWeeklyStat(currentWeekMonday, finalTix, bCost);
 
       if (isWeeklyItemDoneToday(b)) {
         if (isAnimal) {
@@ -212,9 +202,8 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process Live Chores (Assign to Week 1 if completed prior to current week)
+  // 5. Process Current Week Board Chores
   const processedChoreKeys = new Set();
-
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
     processedChoreKeys.add(key);
@@ -223,21 +212,13 @@ export function recalculateAll() {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
-      const itemMs = getItemTimestamp(c);
-
-      let choreMonday = currentWeekMonday;
-      if (itemMs && itemMs < currentWeekMondayMs) {
-        choreMonday = getMondayBasedWeekId(itemMs);
-      }
-
-      const isCurrentWeekItem = (choreMonday === currentWeekMonday);
 
       totalChoreTix += finalTix;
-      if (isCurrentWeekItem) weekChoreTix += finalTix;
+      weekChoreTix += finalTix;
 
       totalSflCostAll += cCost;
-      if (isCurrentWeekItem) weekCostAll += cCost;
-      addWeeklyStat(choreMonday, finalTix, cCost);
+      weekCostAll += cCost;
+      addWeeklyStat(currentWeekMonday, finalTix, cCost);
 
       if (isWeeklyItemDoneToday(c)) {
         todayChoreTix += finalTix;
@@ -246,9 +227,9 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST Weeks Bounties & Chores from Normalized Merged Weeks
+  // 6. Process Past Weeks Bounties & Chores from Vault Storage
   Object.entries(mergedWeeks).forEach(([pastMonday, wk]) => {
-    if (pastMonday === currentWeekMonday) return;
+    if (pastMonday === currentWeekMonday) return; // Skip active week
 
     (wk.bounties || []).forEach(b => {
       const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -289,51 +270,6 @@ export function recalculateAll() {
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
     });
-  });
-
-  // Check older log backups if bountiesDone/choresDone exist without a week record
-  rawLogs.forEach(log => {
-    const logMonday = getMondayBasedWeekId(log.date || log.weekId);
-    if (logMonday === currentWeekMonday || mergedWeeks[logMonday]) return;
-
-    if (Array.isArray(log.bountiesDone)) {
-      log.bountiesDone.forEach(b => {
-        const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-        if (processedBountyKeys.has(key)) return;
-
-        if (isTicked(b)) {
-          processedBountyKeys.add(key);
-          const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-          if (baseTix <= 0) return;
-          const finalTix = baseTix + boostCount;
-          const bCost = b.cost || b.itemsCost || 0;
-          if (isAnimalBounty(b)) {
-            totalAnimalBountyTix += finalTix;
-          } else {
-            totalBountyTix += finalTix;
-          }
-          totalSflCostAll += bCost;
-          addWeeklyStat(logMonday, finalTix, bCost);
-        }
-      });
-    }
-
-    if (Array.isArray(log.choresDone)) {
-      log.choresDone.forEach(c => {
-        const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-        if (processedChoreKeys.has(key)) return;
-
-        if (isTicked(c)) {
-          processedChoreKeys.add(key);
-          const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-          const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
-          const cCost = c.cost || c.itemsCost || 0;
-          totalChoreTix += finalTix;
-          totalSflCostAll += cCost;
-          addWeeklyStat(logMonday, finalTix, cCost);
-        }
-      });
-    }
   });
 
   // Totals: Track & Daily Login tickets are ONLY in Total Counter
@@ -400,18 +336,19 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const badgeEl = document.getElementById('chartSummaryBadge');
   if (!chartContainer) return;
 
-  // Ensure unique sorted list of Mondays
-  const distinctMondays = Array.from(new Set(Object.keys(weeklyStats))).sort();
-  if (!distinctMondays.includes(currentMondayKey)) {
-    distinctMondays.push(currentMondayKey);
-    distinctMondays.sort();
+  // Filter and deduplicate all recorded Monday keys
+  const recordedMondays = Array.from(new Set(Object.keys(weeklyStats).map(k => getMondayBasedWeekId(k)))).sort();
+  
+  if (!recordedMondays.includes(currentMondayKey)) {
+    recordedMondays.push(currentMondayKey);
+    recordedMondays.sort();
   }
 
-  const maxWeeksToDisplay = Math.max(totalPlannedWeeks || 12, distinctMondays.length, 12);
+  const maxWeeksToDisplay = Math.max(totalPlannedWeeks || 12, recordedMondays.length, 12);
 
   const displayItems = [];
   for (let i = 1; i <= maxWeeksToDisplay; i++) {
-    const mondayKey = distinctMondays[i - 1];
+    const mondayKey = recordedMondays[i - 1];
     const isCurrent = (mondayKey === currentMondayKey);
     const data = mondayKey ? weeklyStats[mondayKey] : null;
 
@@ -426,7 +363,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   }
 
   if (badgeEl) {
-    const currentWeekIndex = distinctMondays.indexOf(currentMondayKey) + 1;
+    const currentWeekIndex = recordedMondays.indexOf(currentMondayKey) + 1;
     badgeEl.textContent = `WEEK ${currentWeekIndex || 2} OF ${maxWeeksToDisplay} WEEKS (UTC)`;
   }
 
