@@ -67,18 +67,47 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
+    const todayDate = new Date().toISOString().split('T')[0];
+    const currentWeekMonday = getMondayBasedWeekId();
+
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      // Explicitly initialize cloudHistory and assign logs from vault data
+      
+      // Ensure logs array exists and has at least a default entry if empty
+      let vaultLogs = data.vaultData.logs || [];
+      if (vaultLogs.length === 0) {
+        vaultLogs = [{
+          date: todayDate,
+          weekId: currentWeekMonday,
+          timestamp: new Date().toISOString(),
+          ticketsSaved: 0,
+          costSaved: 0,
+          deliveriesDone: [],
+          milestones: data.vaultData.milestones || {}
+        }];
+        data.vaultData.logs = vaultLogs;
+      }
+
       state.globalData.cloudHistory = {
-        logs: data.vaultData.logs || [],
+        logs: vaultLogs,
         weeks: data.vaultData.weeks || {},
         trackTickets: data.vaultData.trackTickets || 0,
         trackCost: data.vaultData.trackCost || 0,
         dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
       };
-    } else if (!state.globalData.cloudHistory) {
-      state.globalData.cloudHistory = { logs: [], weeks: {} };
+    } else {
+      state.globalData.cloudHistory = {
+        logs: [{
+          date: todayDate,
+          weekId: currentWeekMonday,
+          timestamp: new Date().toISOString(),
+          ticketsSaved: 0,
+          costSaved: 0,
+          deliveriesDone: [],
+          milestones: {}
+        }],
+        weeks: {}
+      };
     }
 
     if (data.isVipActive !== undefined) {
