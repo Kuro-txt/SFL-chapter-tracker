@@ -1,6 +1,8 @@
 import { loadTrackerData, saveProgressToCloudKV } from './api.js';
 import { userRegister, userLogin, userLogout, checkSavedAuth } from './auth.js';
 import { 
+  openColumnModal,
+  closeModal,
   toggleGuideModal, 
   openCategorySummaryModal, 
   closeCategorySummaryModal, 
@@ -14,17 +16,21 @@ import {
   updateHistoryItemCost, 
   deleteWeeklyItem, 
   deleteMasterLog, 
-  toggleHistoryModal 
+  toggleHistoryModal,
+  submitNewManualItem
 } from './modals.js';
 import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
-// Expose handlers to window for inline HTML events
+// Expose all handlers to window for inline HTML onclick events
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
 window.userLogin = userLogin;
 window.userLogout = userLogout;
+
+window.openColumnModal = openColumnModal;
+window.closeModal = closeModal;
 window.toggleGuideModal = toggleGuideModal;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
@@ -39,24 +45,25 @@ window.updateHistoryItemCost = updateHistoryItemCost;
 window.deleteWeeklyItem = deleteWeeklyItem;
 window.deleteMasterLog = deleteMasterLog;
 window.toggleHistoryModal = toggleHistoryModal;
+window.submitNewManualItem = submitNewManualItem;
 
 window.saveAndRecalculate = () => {
-  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
-  localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
-  localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
-  localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
+  localStorage.setItem('sfl_vip', document.getElementById('vipToggle')?.checked || false);
+  localStorage.setItem('sfl_boost1', document.getElementById('boost1')?.checked || false);
+  localStorage.setItem('sfl_boost2', document.getElementById('boost2')?.checked || false);
+  localStorage.setItem('sfl_boost3', document.getElementById('boost3')?.checked || false);
   recalculateAll();
 };
 
 window.saveTrackAndRecalculate = () => {
-  localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput').value);
-  localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput').value);
+  localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput')?.value || '0');
+  localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput')?.value || '0');
   recalculateAll();
 };
 
 window.saveGoalAndRecalculate = () => {
-  localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput').value);
-  localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput').value);
+  localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput')?.value || '1000');
+  localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput')?.value || '12');
   recalculateAll();
 };
 
@@ -66,7 +73,7 @@ window.toggleDailyLogin = () => {
 };
 
 window.saveLoginCountAndRecalculate = () => {
-  const count = parseInt(document.getElementById('dailyLoginCount').value) || 0;
+  const count = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
   localStorage.setItem('sfl_daily_login_count', count);
   recalculateAll();
 };
@@ -109,29 +116,29 @@ function startTipRotation() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const savedFarmId = localStorage.getItem('sfl_farmId');
-  if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
+  if (savedFarmId && document.getElementById('farmId')) document.getElementById('farmId').value = savedFarmId;
 
   const savedApiKey = localStorage.getItem('sfl_apiKey');
-  if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
+  if (savedApiKey && document.getElementById('apiKey')) document.getElementById('apiKey').value = savedApiKey;
 
-  if (localStorage.getItem('sfl_vip') !== null) {
+  if (localStorage.getItem('sfl_vip') !== null && document.getElementById('vipToggle')) {
     document.getElementById('vipToggle').checked = localStorage.getItem('sfl_vip') === 'true';
   }
-  document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
-  document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
-  document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+  if (document.getElementById('boost1')) document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
+  if (document.getElementById('boost2')) document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
+  if (document.getElementById('boost3')) document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
 
   const savedTrackTix = localStorage.getItem('sfl_track_tix');
-  if (savedTrackTix !== null) document.getElementById('trackTicketsInput').value = savedTrackTix;
+  if (savedTrackTix !== null && document.getElementById('trackTicketsInput')) document.getElementById('trackTicketsInput').value = savedTrackTix;
 
   const savedTrackCost = localStorage.getItem('sfl_track_cost');
-  if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
+  if (savedTrackCost !== null && document.getElementById('trackCostInput')) document.getElementById('trackCostInput').value = savedTrackCost;
 
   const savedGoal = localStorage.getItem('sfl_target_goal');
-  if (savedGoal) document.getElementById('targetGoalInput').value = savedGoal;
+  if (savedGoal && document.getElementById('targetGoalInput')) document.getElementById('targetGoalInput').value = savedGoal;
 
   const savedWeeks = localStorage.getItem('sfl_target_weeks');
-  if (savedWeeks) document.getElementById('targetWeeksInput').value = savedWeeks;
+  if (savedWeeks && document.getElementById('targetWeeksInput')) document.getElementById('targetWeeksInput').value = savedWeeks;
 
   checkAndAutoClaimDailyLogin();
   checkSavedAuth();
