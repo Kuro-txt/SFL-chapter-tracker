@@ -9,9 +9,10 @@ import {
 } from './state.js';
 import { recalculateAll } from './render.js';
 
-function computeYield(base, isVipEligible = true) {
+function computeYield(base, isVipEligible = true, isManual = false) {
   const raw = Number(base) || 0;
   if (raw <= 0) return 0;
+  if (isManual) return raw;
   const vip = isVipEligible ? getActiveVipBonus() : 0;
   const boost = getActiveBoostCount();
   return raw + vip + boost;
@@ -47,8 +48,8 @@ export function openCategorySummaryModal(cat) {
     bodyEl.innerHTML = sortedDeliv.map(d => {
       const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      let finalTickets = computeYield(base, true);
-      if (d.hasDoubleBonus) finalTickets *= 2;
+      let finalTickets = computeYield(base, true, Boolean(d.isManual));
+      if (d.hasDoubleBonus && !d.isManual) finalTickets *= 2;
 
       if (isTicked) {
         catTickets += finalTickets;
@@ -82,7 +83,7 @@ export function openCategorySummaryModal(cat) {
     bodyEl.innerHTML = sortedBounties.map(b => {
       const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const finalTickets = computeYield(base, false); // Bounties: Boosts only
+      const finalTickets = computeYield(base, false, Boolean(b.isManual));
 
       if (isTicked) {
         catTickets += finalTickets;
@@ -109,7 +110,7 @@ export function openCategorySummaryModal(cat) {
     bodyEl.innerHTML = sortedChores.map(c => {
       const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const finalTickets = computeYield(base, true); // Chores: VIP + Boosts
+      const finalTickets = computeYield(base, true, Boolean(c.isManual));
 
       if (isTicked) {
         catTickets += finalTickets;
@@ -157,8 +158,9 @@ export function toggleHistoryModal() {
       container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
     } else {
       container.innerHTML = logs.map((log, idx) => {
-        const delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
-          `<div style="color:#5C4033; font-size:11px;"><strong>📦 Daily Deliveries:</strong> ${log.deliveriesDone.map(d => typeof d === 'string' ? d : `${d.name || d.from} (${formatSFL(d.cost || d.itemsCost)} SFL)`).join(', ')}</div>` : '';
+        const completedItems = (log.deliveriesDone || []).filter(d => d.yield > 0 || d.checked || d.completed);
+        const delivHtml = completedItems.length > 0 ? 
+          `<div style="color:#5C4033; font-size:11px;"><strong>📦 Completed:</strong> ${completedItems.map(d => `${d.name || d.from} (+${d.yield || d.tickets || d.baseTickets || 0} Tix, ${formatSFL(d.cost || d.itemsCost)} SFL)`).join(', ')}</div>` : '';
 
         const logTickets = log.ticketsSaved || 0;
         const logCost = log.costSaved || 0;
@@ -170,7 +172,7 @@ export function toggleHistoryModal() {
             <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>
           </div>
           <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
-            <span>Daily Yield: +${logTickets} | Cost: ${formatSFL(logCost)} SFL</span>
+            <span>Daily Yield: +${logTickets} Tickets | Cost: ${formatSFL(logCost)} SFL</span>
             <span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">${logRatio} SFL / Ticket</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:3px;">${delivHtml}</div>
