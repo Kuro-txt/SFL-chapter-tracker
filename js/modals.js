@@ -131,7 +131,7 @@ export function openModal(type) {
 }
 
 // ==========================================
-// 2. Guide / Info Modal
+// 2. Guide Modal
 // ==========================================
 export function toggleGuideModal(show) {
   const modal = document.getElementById('guideModal');
@@ -143,16 +143,27 @@ export function toggleGuideModal(show) {
   }
 }
 
-export function openGuideModal() {
-  toggleGuideModal(true);
+// ==========================================
+// 3. Category Summary Modal
+// ==========================================
+export function openCategorySummaryModal(category) {
+  const modal = document.getElementById('categorySummaryModal');
+  const title = document.getElementById('categorySummaryTitle');
+  const body = document.getElementById('categorySummaryBody');
+  if (!modal || !body) return;
+
+  if (title) title.textContent = `📋 ${category ? category.toUpperCase() : ''} SUMMARY`;
+  body.innerHTML = `<p style="color:#5C4033; padding:10px;">Viewing detailed progress for ${category}.</p>`;
+  modal.style.display = 'flex';
 }
 
-export function closeGuideModal() {
-  toggleGuideModal(false);
+export function closeCategorySummaryModal() {
+  const modal = document.getElementById('categorySummaryModal');
+  if (modal) modal.style.display = 'none';
 }
 
 // ==========================================
-// 3. History & Master Log Modals
+// 4. Column History & Master History Modals
 // ==========================================
 export function renderColumnHistoryModalList(type = 'deliveries') {
   const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
@@ -173,9 +184,7 @@ export function renderColumnHistoryModalList(type = 'deliveries') {
           <span style="margin-left:10px; color:#E65100; font-weight:bold;">${log.ticketsSaved || 0} Tickets</span>
           <span style="margin-left:8px; color:#8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
         </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
-        </div>
+        <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
       </div>
     `;
   });
@@ -184,32 +193,8 @@ export function renderColumnHistoryModalList(type = 'deliveries') {
 }
 
 export function openColumnHistoryModal(type) {
-  openMasterHistoryModal(type);
-}
-
-export function closeColumnHistoryModal() {
-  closeMasterHistoryModal();
-}
-
-export function openHistoryModal(type) {
-  openMasterHistoryModal(type);
-}
-
-export function closeHistoryModal() {
-  closeMasterHistoryModal();
-}
-
-export function openLogsModal() {
-  openMasterHistoryModal('deliveries');
-}
-
-export function closeLogsModal() {
-  closeMasterHistoryModal();
-}
-
-export function openMasterHistoryModal(type = 'deliveries') {
-  const modal = document.getElementById('masterHistoryModal') || document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
-  const title = document.getElementById('masterHistoryTitle') || document.getElementById('columnHistoryTitle') || document.getElementById('historyModalTitle');
+  const modal = document.getElementById('columnHistoryModal') || document.getElementById('masterHistoryModal') || document.getElementById('historyModal');
+  const title = document.getElementById('columnHistoryTitle') || document.getElementById('masterHistoryTitle') || document.getElementById('historyModalTitle');
   if (!modal) return;
 
   if (title) title.textContent = `📜 ${type ? type.toUpperCase() : 'DELIVERY'} HISTORY`;
@@ -217,13 +202,23 @@ export function openMasterHistoryModal(type = 'deliveries') {
   modal.style.display = 'flex';
 }
 
-export function closeMasterHistoryModal() {
-  const modal = document.getElementById('masterHistoryModal') || document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
+export function closeColumnHistoryModal() {
+  const modal = document.getElementById('columnHistoryModal') || document.getElementById('masterHistoryModal') || document.getElementById('historyModal');
   if (modal) modal.style.display = 'none';
 }
 
+export function toggleHistoryModal(show) {
+  const modal = document.getElementById('historyModal') || document.getElementById('columnHistoryModal') || document.getElementById('masterHistoryModal');
+  if (!modal) return;
+  if (show === undefined) {
+    modal.style.display = (modal.style.display === 'flex' || modal.style.display === 'block') ? 'none' : 'flex';
+  } else {
+    modal.style.display = show ? 'flex' : 'none';
+  }
+}
+
 // ==========================================
-// 4. Toggle & Check Handlers for Logs & Weekly Items
+// 5. Item Toggles & Inline Field Updates
 // ==========================================
 export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
@@ -238,11 +233,7 @@ export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
   }
 }
 
-export function toggleLogItemCheck(logIndex, itemIndex, isChecked) {
-  toggleDeliveryLogCheck(logIndex, itemIndex, isChecked);
-}
-
-export function toggleWeeklyItem(weekId, category, index, isChecked) {
+export function toggleWeeklyItemCheck(weekId, category, index, isChecked) {
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
   if (!weeks || !weeks[weekId] || !weeks[weekId][category]) return;
 
@@ -256,8 +247,34 @@ export function toggleWeeklyItem(weekId, category, index, isChecked) {
   }
 }
 
+export function updateHistoryItemTickets(logIndex, itemIndex, newTickets) {
+  const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
+  if (!logs || !logs[logIndex] || !logs[logIndex].deliveriesDone) return;
+
+  const item = logs[logIndex].deliveriesDone[itemIndex];
+  if (item) {
+    item.tickets = parseInt(newTickets, 10) || 0;
+    item.baseTickets = item.tickets;
+    recalculateAll();
+    saveProgressToCloudKV(true);
+  }
+}
+
+export function updateHistoryItemCost(logIndex, itemIndex, newCost) {
+  const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
+  if (!logs || !logs[logIndex] || !logs[logIndex].deliveriesDone) return;
+
+  const item = logs[logIndex].deliveriesDone[itemIndex];
+  if (item) {
+    item.cost = parseFloat(newCost) || 0;
+    item.itemsCost = item.cost;
+    recalculateAll();
+    saveProgressToCloudKV(true);
+  }
+}
+
 // ==========================================
-// 5. Deletion Handlers for Logs & Weekly Items
+// 6. Deletion Functions
 // ==========================================
 export function deleteWeeklyItem(weekId, category, index) {
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
@@ -286,31 +303,8 @@ export function deleteDeliveryLogItem(logIndex) {
   deleteMasterLog(logIndex);
 }
 
-export function deleteLogItem(logIndex) {
-  deleteMasterLog(logIndex);
-}
-
 // ==========================================
-// 6. Category Summary Modal
-// ==========================================
-export function openCategorySummaryModal(category) {
-  const modal = document.getElementById('categorySummaryModal');
-  const title = document.getElementById('categorySummaryTitle');
-  const body = document.getElementById('categorySummaryBody');
-  if (!modal || !body) return;
-
-  if (title) title.textContent = `📋 ${category.toUpperCase()} SUMMARY`;
-  body.innerHTML = `<p style="color:#5C4033; padding:10px;">Viewing detailed summary for ${category}.</p>`;
-  modal.style.display = 'flex';
-}
-
-export function closeCategorySummaryModal() {
-  const modal = document.getElementById('categorySummaryModal');
-  if (modal) modal.style.display = 'none';
-}
-
-// ==========================================
-// 7. Cloud Sync & Manual Item Additions
+// 7. Cloud Sync & Manual Additions
 // ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
@@ -393,22 +387,7 @@ export function addNewManualItem(type, isAnimal = false) {
   saveProgressToCloudKV(true);
 }
 
-// ==========================================
-// 8. Global Window Bindings
-// ==========================================
-window.toggleGuideModal = toggleGuideModal;
-window.openGuideModal = openGuideModal;
-window.closeGuideModal = closeGuideModal;
-
-window.toggleDeliveryLogCheck = toggleDeliveryLogCheck;
-window.toggleLogItemCheck = toggleLogItemCheck;
-window.toggleWeeklyItem = toggleWeeklyItem;
-
-window.renderColumnHistoryModalList = renderColumnHistoryModalList;
-window.deleteWeeklyItem = deleteWeeklyItem;
-window.deleteMasterLog = deleteMasterLog;
-window.deleteDeliveryLogItem = deleteDeliveryLogItem;
-window.deleteLogItem = deleteLogItem;
+// Window Event Listeners for Inline HTML
 window.addNewManualItem = addNewManualItem;
 
 window.toggleModalItem = function(type, index, isChecked) {
