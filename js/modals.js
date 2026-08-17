@@ -82,7 +82,6 @@ export function openCategorySummaryModal(cat) {
 
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
-  const currentWeekMonday = getMondayBasedWeekId();
 
   if (!state.globalData) {
     alert('Please click "FETCH DATA" first!');
@@ -126,7 +125,6 @@ export function openCategorySummaryModal(cat) {
     const isAnimal = cat === 'animalBounty';
     titleEl.textContent = isAnimal ? '🐄 ANIMAL BOUNTIES OVERVIEW' : '📜 BOUNTIES OVERVIEW';
     
-    // Strict filtering: Only current week's live bounties
     const currentBounties = (state.globalData.bounties || []).filter(b => {
       return isAnimalBounty(b) === isAnimal;
     });
@@ -157,7 +155,6 @@ export function openCategorySummaryModal(cat) {
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
 
-    // Strict filtering: Only current week's live chores
     const currentChores = state.globalData.chores || [];
 
     const sortedChores = [...currentChores].sort((a, b) => {
@@ -405,7 +402,7 @@ export function renderColumnHistoryModalList() {
           <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
-      `;
+      </div>`;
     }).join('');
   }
 
