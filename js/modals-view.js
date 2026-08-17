@@ -1,6 +1,21 @@
-import { state, formatSFL, resolveAnimalLevel, syncCurrentVaultToCloud } from './state.js';
-import { isAnimalBounty } from './state.js';
+import { 
+  state, 
+  formatSFL, 
+  resolveAnimalLevel, 
+  syncCurrentVaultToCloud, 
+  isAnimalBounty,
+  getActiveBoostCount,
+  getActiveVipBonus
+} from './state.js';
 import { recalculateAll } from './render.js';
+
+function computeYield(base, isVipEligible = true) {
+  const raw = Number(base) || 0;
+  if (raw <= 0) return 0;
+  const vip = isVipEligible ? getActiveVipBonus() : 0;
+  const boost = getActiveBoostCount();
+  return raw + vip + boost;
+}
 
 export function toggleGuideModal() {
   const modal = document.getElementById('guideModal');
@@ -31,7 +46,10 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedDeliv.map(d => {
       const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
-      const finalTickets = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0);
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      let finalTickets = computeYield(base, true);
+      if (d.hasDoubleBonus) finalTickets *= 2;
+
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (d.itemsCost || d.cost || 0);
@@ -63,7 +81,9 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedBounties.map(b => {
       const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      const finalTickets = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const finalTickets = computeYield(base, false); // Bounties: Boosts only
+
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (b.itemsCost || b.cost || 0);
@@ -88,7 +108,9 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedChores.map(c => {
       const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
-      const finalTickets = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 0);
+      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const finalTickets = computeYield(base, true); // Chores: VIP + Boosts
+
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (c.itemsCost || c.cost || 0);
