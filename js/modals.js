@@ -250,12 +250,20 @@ export function renderColumnHistoryModalList() {
 
   let records = [];
 
-  // Render Add Form HTML Header
+  // Generate Week Options for Dropdown (Week 1 to Week 12+)
+  let weekOptionsHtml = '';
+  for (let w = 1; w <= 12; w++) {
+    weekOptionsHtml += `<option value="w${w}">Week ${w}</option>`;
+  }
+
+  // Render Add Form HTML Header with Week Dropdown
   let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
     <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
       <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task (e.g. Goblin: Water)' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
-      <input type="text" id="addModalWeekOrDate" placeholder="Date or Week (e.g. w1 or 2026-08-17)" style="flex:1.5; padding:4px; font-size:11px;" />
+      <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
+        ${weekOptionsHtml}
+      </select>
       <input type="number" step="0.01" id="addModalCost" placeholder="Cost SFL" style="width:70px; padding:4px; font-size:11px;" />
       <input type="number" id="addModalTickets" placeholder="Tickets" style="width:60px; padding:4px; font-size:11px;" />
       <button onclick="addNewItemFromModal()" class="btn btn-sm btn-wood" style="background:#2E7D32; border-color:#1B5E20; color:#fff; padding:4px 10px; font-weight:bold;">Add</button>
@@ -414,7 +422,7 @@ export function renderColumnHistoryModalList() {
           <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
-      </div>`;
+      `;
     }).join('');
   }
 
@@ -424,31 +432,27 @@ export function renderColumnHistoryModalList() {
 export async function addNewItemFromModal() {
   const type = state.activeColumnType;
   const nameInput = document.getElementById('addModalName')?.value.trim() || 'Custom Item';
-  const weekOrDateInput = document.getElementById('addModalWeekOrDate')?.value.trim() || '';
+  const weekSelectVal = document.getElementById('addModalWeekSelect')?.value || 'w1';
   const costInput = parseFloat(document.getElementById('addModalCost')?.value) || 0;
   const ticketsInput = parseInt(document.getElementById('addModalTickets')?.value) || 2;
 
   if (!state.globalData) return;
 
-  // Resolve Week / Date
+  // Resolve Week ID from dropdown selection (e.g. 'w1', 'w2')
   let targetWeekId = getMondayBasedWeekId();
-  if (weekOrDateInput.toLowerCase().startsWith('w')) {
-    const weekNum = parseInt(weekOrDateInput.substring(1), 10);
-    if (!isNaN(weekNum) && weekNum > 0) {
-      // Base Week 1 start (e.g. 2026-08-17) + (weekNum - 1) weeks
-      const baseMonday = new Date('2026-08-17');
-      baseMonday.setDate(baseMonday.getDate() + ((weekNum - 1) * 7));
-      targetWeekId = getMondayBasedWeekId(baseMonday);
-    }
-  } else if (weekOrDateInput.includes('-')) {
-    targetWeekId = getMondayBasedWeekId(weekOrDateInput);
+  const weekNum = parseInt(weekSelectVal.substring(1), 10);
+  if (!isNaN(weekNum) && weekNum > 0) {
+    const baseMonday = new Date('2026-08-17'); // Week 1 start base
+    baseMonday.setDate(baseMonday.getDate() + ((weekNum - 1) * 7));
+    targetWeekId = getMondayBasedWeekId(baseMonday);
   }
 
   if (type === 'delivery') {
     if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
     if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
 
-    const deliveryDate = weekOrDateInput.includes('-') ? weekOrDateInput : new Date().toISOString().split('T')[0];
+    // Map delivery to the Monday of the selected week
+    const deliveryDate = targetWeekId;
     let logEntry = state.globalData.cloudHistory.logs.find(l => (l.date || '').split('T')[0] === deliveryDate);
     if (!logEntry) {
       logEntry = { date: deliveryDate, deliveriesDone: [] };
