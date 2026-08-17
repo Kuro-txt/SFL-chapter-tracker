@@ -255,6 +255,18 @@ export async function addNewItemFromModal() {
 
   if (!state.globalData) return;
 
+  // Calculate correct Monday date based on selected week (w1 = 2026-08-10, w2 = 2026-08-17, etc.)
+  const weekNum = parseInt(weekSelectVal.substring(1), 10) || 2;
+  const baseMonday = new Date('2026-08-10T00:00:00.000Z');
+  baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
+  const targetWeekId = getMondayBasedWeekId(baseMonday);
+
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+  if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
+    state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
+  }
+
   if (type === 'delivery') {
     const newDeliv = {
       from: nameInput,
@@ -266,7 +278,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: Date.now(),
-      isManual: true
+      isManual: true,
+      weekId: targetWeekId
     };
 
     if (!state.globalData.deliveries) state.globalData.deliveries = [];
@@ -298,21 +311,6 @@ export async function addNewItemFromModal() {
       completedAt: Date.now(),
       isManual: true
     };
-
-    // Week 1 base Monday: 2026-08-10. Week 2 base Monday: 2026-08-17.
-    let targetWeekId = '2026-08-10';
-    const weekNum = parseInt(weekSelectVal.substring(1), 10);
-    if (!isNaN(weekNum) && weekNum > 0) {
-      const baseMonday = new Date('2026-08-10T00:00:00.000Z');
-      baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
-      targetWeekId = getMondayBasedWeekId(baseMonday);
-    }
-
-    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-    if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
-      state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
-    }
 
     if (isChore) {
       state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
