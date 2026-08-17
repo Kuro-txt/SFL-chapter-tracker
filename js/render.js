@@ -35,9 +35,9 @@ export function recalculateAll() {
     }
     if (Array.isArray(wkVal.bounties)) {
       wkVal.bounties.forEach(b => {
-        const bKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+        const bKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}_${b.completedAt || ''}`;
         const exists = weeks[normalizedId].bounties.some(existing => {
-          const exKey = existing.id ? String(existing.id) : `${(existing.name || '').toLowerCase()}_${existing.level || 0}`;
+          const exKey = existing.id ? String(existing.id) : `${(existing.name || '').toLowerCase()}_${existing.level || 0}_${existing.completedAt || ''}`;
           return exKey === bKey;
         });
         if (!exists) weeks[normalizedId].bounties.push(b);
@@ -45,9 +45,9 @@ export function recalculateAll() {
     }
     if (Array.isArray(wkVal.chores)) {
       wkVal.chores.forEach(c => {
-        const cKey = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+        const cKey = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}_${c.completedAt || ''}`;
         const exists = weeks[normalizedId].chores.some(existing => {
-          const exKey = `${(existing.npc || '').toLowerCase()}_${(existing.task || existing.name || '').toLowerCase()}`;
+          const exKey = `${(existing.npc || '').toLowerCase()}_${(existing.task || existing.name || '').toLowerCase()}_${existing.completedAt || ''}`;
           return exKey === cKey;
         });
         if (!exists) weeks[normalizedId].chores.push(c);
@@ -94,7 +94,6 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // STRICT: Must have a completedAt timestamp matching today's UTC date, AND belong to the current week
   const isDoneToday = (item, itemWeekMonday) => {
     if (!isTicked(item)) return false;
     if (itemWeekMonday && itemWeekMonday !== currentWeekMonday) return false;
@@ -118,7 +117,7 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // Process live deliveries (respecting assigned weekId)
+  // 1. Live Deliveries
   let doubleDeliveryAppliedToday = false;
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
@@ -161,7 +160,39 @@ export function recalculateAll() {
     }
   });
 
-  // Process bounties
+  // 2. Archived & Manually Added Deliveries
+  (state.globalData.archiveDeliveries || []).forEach((d, idx) => {
+    if (isTicked(d)) {
+      const uniqueKey = `archive_${d.id || d.from || d.name}_${idx}`;
+      if (globallyProcessedItems.has(uniqueKey)) return;
+      globallyProcessedItems.add(uniqueKey);
+
+      const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const isManual = Boolean(d.isManual);
+      const calculatedYield = isManual ? baseTix : calculateItemYield(baseTix, true, false, false, false);
+      const dCost = d.itemsCost || d.cost || 0;
+      const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
+
+      const isThisWeek = (itemWeekMonday === currentWeekMonday);
+      const isToday = d.completedDate === todayUtcStr || isDoneToday(d, itemWeekMonday);
+
+      if (isToday) {
+        todayDelivTix += calculatedYield;
+        todayCostAll += dCost;
+      }
+
+      totalDelivTix += calculatedYield;
+      totalSflCostAll += dCost;
+      addWeeklyStat(itemWeekMonday, calculatedYield, dCost);
+
+      if (isThisWeek) {
+        weekDelivTix += calculatedYield;
+        weekCostAll += dCost;
+      }
+    }
+  });
+
+  // 3. Live Bounties
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -198,7 +229,7 @@ export function recalculateAll() {
     }
   });
 
-  // Process chores
+  // 4. Live Chores
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -228,14 +259,14 @@ export function recalculateAll() {
     }
   });
 
-  // Process stored weekly items
+  // 5. Stored Weekly Chores & Bounties (including past & manual entries)
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
 
-    (wk.bounties || []).forEach(b => {
+    (wk.bounties || []).forEach((b, idx) => {
       if (isTicked(b)) {
-        const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
+        const key = b.id ? `wk_bounty_${wkKey}_${b.id}` : `wk_bounty_${wkKey}_${idx}_${(b.name || '').toLowerCase()}`;
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
@@ -267,9 +298,9 @@ export function recalculateAll() {
       }
     });
 
-    (wk.chores || []).forEach(c => {
+    (wk.chores || []).forEach((c, idx) => {
       if (isTicked(c)) {
-        const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+        const key = `wk_chore_${wkKey}_${idx}_${(c.npc || '').toLowerCase()}`;
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
@@ -296,16 +327,16 @@ export function recalculateAll() {
   });
 
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
-  const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
+  const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix + trackTickets + totalLoginTickets;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
-  setElemText('deliveriesCount', `${state.globalData.deliveries?.length || 0} Orders`);
+  setElemText('deliveriesCount', `${(state.globalData.deliveries || []).length} Orders`);
   setElemText('bountiesCount', `${regularBounties.length} Items`);
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
-  setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
+  setElemText('choresCount', `${(state.globalData.chores || []).length} Tasks`);
 
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
