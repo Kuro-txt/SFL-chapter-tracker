@@ -1,596 +1,230 @@
-import { state, formatSFL, setElemText, getActiveBoostCount, getActiveVipBonus, getMondayBasedWeekId, isAnimalBounty } from './state.js';
+import { state, formatSFL, getMondayBasedWeekId, isAnimalBounty } from './state.js';
 import { recalculateAll } from './render.js';
+import { saveProgressToCloudKV } from './api.js';
 
-export async function syncCurrentVaultToCloud() {
-  if (!state.currentUser || !state.globalData?.cloudHistory) return;
-  try {
-    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
-    const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
-    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
-    const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
-
-    const response = await fetch('/api/chapter?action=saveVault', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: state.currentUser,
-        trackTickets,
-        trackCost,
-        dailyLoginTickets,
-        lastDailyLoginDate,
-        milestones: state.globalData.milestones || {},
-        logs: state.globalData.cloudHistory.logs || [],
-        bounties: state.globalData.bounties || [],
-        chores: state.globalData.chores || [],
-        deliveries: state.globalData.deliveries || []
-      })
-    });
-    const resData = await response.json();
-    if (resData.vaultData) {
-      state.currentVaultData = resData.vaultData;
-      state.globalData.cloudHistory = resData.vaultData;
-    }
-  } catch (err) {
-    console.error('Failed to auto-sync edit to Cloud KV:', err);
-  }
-}
-
-function formatRequestedItems(items) {
-  if (!items) return '';
-  if (Array.isArray(items)) {
-    if (items.length === 0) return '';
-    return items.map(it => typeof it === 'string' ? it : `${it.qty || 1}x ${it.name}`).join(', ');
-  }
-  if (typeof items === 'object') {
-    const entries = Object.entries(items);
-    if (entries.length === 0) return '';
-    return entries.map(([name, qty]) => `${qty}x ${name}`).join(', ');
-  }
-  return String(items);
-}
-
-function resolveAnimalLevel(item) {
-  if (item.level) return item.level;
-  if (item.tier) return item.tier;
-
-  const rawName = typeof item === 'string' ? item : (item.name || '');
-  const lvlMatch = rawName.match(/(?:lvl|level|#|\()\s*(\d+)/i);
-  if (lvlMatch) return lvlMatch[1];
-
-  if (state.globalData?.bounties) {
-    const liveMatch = state.globalData.bounties.find(b => 
-      (b.id && item.id && String(b.id) === String(item.id)) ||
-      (b.name && rawName && b.name.toLowerCase() === rawName.toLowerCase())
-    );
-    if (liveMatch?.level) return liveMatch.level;
-  }
-
-  return null;
-}
-
-export function toggleGuideModal() {
-  const modal = document.getElementById('guideModal');
-  if (modal) modal.classList.toggle('show');
-}
-
-export function openCategorySummaryModal(cat) {
-  const modal = document.getElementById('categorySummaryModal');
-  const titleEl = document.getElementById('categorySummaryTitle');
-  const totalsEl = document.getElementById('categorySummaryTotals');
-  const bodyEl = document.getElementById('categorySummaryBody');
-
-  const vipBonus = getActiveVipBonus();
-  const boostCount = getActiveBoostCount();
-
-  if (!state.globalData) {
-    alert('Please click "FETCH DATA" first!');
-    return;
-  }
-
-  let catTickets = 0;
-  let catCost = 0;
-
-  if (cat === 'delivery') {
-    titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
-    const sortedDeliv = [...state.globalData.deliveries].sort((a, b) => {
-      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
-      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      return aDone === bDone ? 0 : aDone ? 1 : -1;
-    });
-
-    bodyEl.innerHTML = sortedDeliv.map(d => {
-      const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
-      const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      const finalTickets = d.baseTickets + deliveryAddon;
-      if (isTicked) {
-        catTickets += finalTickets;
-        catCost += (d.itemsCost || 0);
-      }
-      const isStackedBadge = d.isStacked ? '<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>' : '';
-      const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-        <div style="display:flex; justify-content:space-between; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${d.from.toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}</span>
-          <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
-        </div>
-        <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
-        <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
-          <span>Yield: ${finalTickets} Tickets</span>
-          <span>${formatSFL(d.itemsCost)} SFL (${formatSFL(finalTickets > 0 ? d.itemsCost / finalTickets : 0)} SFL/Ticket)</span>
-        </div>
-      </div>`;
-    }).join('');
-  } else if (cat === 'bounty' || cat === 'animalBounty') {
-    const isAnimal = cat === 'animalBounty';
-    titleEl.textContent = isAnimal ? '🐄 ANIMAL BOUNTIES OVERVIEW' : '📜 BOUNTIES OVERVIEW';
-    
-    const filteredBounties = (state.globalData.bounties || []).filter(b => {
-      const checkAnimal = isAnimalBounty(b);
-      return isAnimal ? checkAnimal : !checkAnimal;
-    });
-
-    const sortedBounties = [...filteredBounties].sort((a, b) => {
-      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
-      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      return aDone === bDone ? 0 : aDone ? 1 : -1;
-    });
-
-    bodyEl.innerHTML = sortedBounties.map(b => {
-      const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      const finalTickets = b.baseTickets + boostCount;
-      if (isTicked) {
-        catTickets += finalTickets;
-        catCost += (b.itemsCost || 0);
-      }
-      const lvl = resolveAnimalLevel(b);
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-        <div>
-          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${b.name.toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
-          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost)} SFL</span>
-        </div>
-        <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
-      </div>`;
-    }).join('');
-
-  } else if (cat === 'chore') {
-    titleEl.textContent = '🧹 CHORES OVERVIEW';
-    const sortedChores = [...state.globalData.chores].sort((a, b) => {
-      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
-      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      return aDone === bDone ? 0 : aDone ? 1 : -1;
-    });
-
-    bodyEl.innerHTML = sortedChores.map(c => {
-      const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
-      const finalTickets = c.baseTickets > 0 ? (c.baseTickets + vipBonus + boostCount) : 0;
-      if (isTicked) {
-        catTickets += finalTickets;
-        catCost += (c.itemsCost || c.cost || 0);
-      }
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-        <div>
-          <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong><br/>
-          <span style="color:#5C4033; font-weight:bold;">${c.task || c.name}</span><br/>
-          ${c.requirement > 0 ? '<span style="color:#8C7853;">Progress: ' + c.progress + ' / ' + c.requirement + '</span><br/>' : ''}
-          <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets | ${formatSFL(c.itemsCost || c.cost || 0)} SFL</span>
-        </div>
-        <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
-      </div>`;
-    }).join('');
-  }
-
-  totalsEl.textContent = `${catTickets} Tickets | ${formatSFL(catCost)} SFL`;
-  modal.classList.add('show');
-}
-
-export function closeCategorySummaryModal() {
-  document.getElementById('categorySummaryModal').classList.remove('show');
-}
-
-export function openColumnHistoryModal(type) {
+export function openColumnModal(type) {
   state.activeColumnType = type;
-  let title = '📜 BOUNTIES EDIT / HISTORY';
-  if (type === 'delivery') title = '📦 NPC DELIVERIES EDIT / HISTORY';
-  if (type === 'animalBounty') title = '🐄 ANIMAL BOUNTIES EDIT / HISTORY';
-  if (type === 'chore') title = '🧹 CHORES EDIT / HISTORY';
-  
-  setElemText('columnHistoryTitle', title);
+  const modal = document.getElementById('detailsModal');
+  const titleEl = document.getElementById('modalTitle');
+  const container = document.getElementById('modalItemsContainer');
+  if (!modal || !container) return;
 
-  const filterContainer = document.getElementById('editFilterContainer');
-  const searchInput = document.getElementById('editSearchFilter');
-  const npcDropdown = document.getElementById('editNpcDropdown');
+  container.innerHTML = '';
+  const currentWeekMonday = getMondayBasedWeekId();
 
-  if (searchInput) searchInput.value = '';
+  if (type === 'deliveries') {
+    if (titleEl) titleEl.textContent = '📦 Edit Daily Deliveries';
+    const items = state.globalData?.deliveries || [];
 
-  if (type === 'delivery') {
-    if (filterContainer) filterContainer.style.display = 'flex';
+    // ➕ Add Delivery Button Header
+    const addBtnRow = document.createElement('div');
+    addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
+    addBtnRow.innerHTML = `
+      <button class="btn btn-sm" style="background:#4CAF50; color:#fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.addNewManualItem('deliveries')">
+        ➕ ADD CUSTOM DELIVERY
+      </button>
+    `;
+    container.appendChild(addBtnRow);
 
-    if (npcDropdown) {
-      const npcSet = new Set();
-      const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-      rawLogs.forEach(log => {
-        (log.deliveriesDone || []).forEach(d => {
-          const name = typeof d === 'string' ? d : (d.name || d.from);
-          if (name) npcSet.add(name.trim());
-        });
-      });
-      (state.globalData?.deliveries || []).forEach(d => {
-        const name = d.from || d.name;
-        if (name) npcSet.add(name.trim());
-      });
-
-      const sortedNpcs = Array.from(npcSet).sort((a, b) => a.localeCompare(b));
-      npcDropdown.innerHTML = '<option value="">👤 ALL NPCS</option>' + sortedNpcs.map(npc => 
-        `<option value="${npc.toLowerCase()}">${npc.toUpperCase()}</option>`
-      ).join('');
-      npcDropdown.value = '';
-    }
-  } else {
-    if (filterContainer) filterContainer.style.display = 'none';
-  }
-
-  renderColumnHistoryModalList();
-  document.getElementById('columnHistoryModal').classList.add('show');
-}
-
-export function closeColumnHistoryModal() {
-  document.getElementById('columnHistoryModal').classList.remove('show');
-}
-
-export function renderColumnHistoryModalList() {
-  const type = state.activeColumnType;
-  const bodyEl = document.getElementById('columnHistoryBody');
-  const boostCount = getActiveBoostCount();
-  const vipBonus = getActiveVipBonus();
-  const filterTerm = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
-  const selectedNpc = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
-
-  let records = [];
-
-  if (type === 'delivery') {
-    const rawLogs = (state.globalData && state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-    const seenDates = new Set();
-    
-    rawLogs.forEach((log, logIdx) => {
-      const cleanDate = (log.date || 'Past Run').split('T')[0];
-      if (seenDates.has(cleanDate)) return;
-      seenDates.add(cleanDate);
-
-      (log.deliveriesDone || []).forEach((item, itemIdx) => {
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
-        const requestedStr = formatRequestedItems(item.itemDetails || item.items);
-        const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-        const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-
-        records.push({
-          logIdx,
-          itemIdx,
-          date: cleanDate,
-          name: itemName,
-          requestedItems: requestedStr,
-          cost: item.cost || 0,
-          displayTickets: finalTix,
-          baseTickets: baseTix,
-          checked: isChecked,
-          status: isChecked ? '✨ Done' : '⏳ Active',
-          isStacked: item.isStacked || false
-        });
-      });
-    });
-
-    if (selectedNpc) {
-      records = records.filter(r => r.name.toLowerCase() === selectedNpc || r.name.toLowerCase().includes(selectedNpc));
-    }
-
-    if (filterTerm) {
-      records = records.filter(r => 
-        r.name.toLowerCase().includes(filterTerm) ||
-        r.date.toLowerCase().includes(filterTerm) ||
-        r.requestedItems.toLowerCase().includes(filterTerm)
-      );
-    }
-  } else {
-    const currentWeekId = getMondayBasedWeekId();
-    const isChore = type === 'chore';
-    const isAnimal = type === 'animalBounty';
-
-    let listSource = [];
-    if (isChore) {
-      listSource = state.globalData?.chores || [];
-    } else {
-      listSource = (state.globalData?.bounties || []).filter(b => {
-        const animalCheck = isAnimalBounty(b);
-        return isAnimal ? animalCheck : !animalCheck;
-      });
-    }
-
-    listSource.forEach((item, itemIdx) => {
-      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
-      const finalTix = baseTix > 0 ? (baseTix + (isChore ? vipBonus : 0) + boostCount) : 0;
-      const lvl = resolveAnimalLevel(item);
-      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-
-      records.push({
-        weekId: currentWeekId,
-        itemIdx,
-        name: isChore ? (item.task || item.name || 'Chore') : (item.name || 'Bounty'),
-        npc: item.npc || null,
-        level: lvl,
-        cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
-        displayTickets: finalTix,
-        baseTickets: baseTix,
-        checked: isChecked,
-        status: isChecked ? '✨ Done' : '⏳ Active'
-      });
-    });
-  }
-
-  records.sort((a, b) => {
-    if (a.checked === b.checked) return 0;
-    return a.checked ? 1 : -1;
-  });
-
-  let totalTickedTickets = 0;
-  let totalTickedCost = 0;
-
-  if (records.length === 0) {
-    bodyEl.innerHTML = '<p style="font-size: 12px; color: #8C7853; font-weight: bold;">No records found.</p>';
-  } else {
-    bodyEl.innerHTML = records.map(r => {
-      if (r.checked) {
-        totalTickedTickets += r.displayTickets;
-        totalTickedCost += r.cost;
-      }
-      const labelId = type === 'delivery' ? `${r.date}` : `${r.weekId}`;
-      const changeHandler = type === 'delivery'
-        ? `toggleDeliveryLogCheck(${r.logIdx}, ${r.itemIdx})`
-        : `toggleWeeklyItemCheck('${r.weekId}', ${r.itemIdx})`;
-      
-      const deleteHandler = type === 'delivery'
-        ? `deleteDeliveryLogItem(${r.logIdx}, ${r.itemIdx})`
-        : `deleteWeeklyItem('${r.weekId}', ${r.itemIdx})`;
-
-      const animalLevelTag = (type === 'animalBounty' && r.level) 
-        ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
-        : '';
-
-      const stackedTag = r.isStacked
-        ? `<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>`
-        : '';
-
-      const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
-      const itemsRow = (type === 'delivery' && r.requestedItems) 
-        ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
-        : '';
-
-      return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; padding-right:8px;">
-          <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
-          <div>
-            <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
-            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${stackedTag}
-            ${itemsRow}
-          </div>
-        </label>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span>SFL:</span>
-          <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:60px; padding:2px; font-size:10px;" />
-          <span>Tix:</span>
-          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', ${r.itemIdx}, this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
-          <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
+    items.forEach((item, idx) => {
+      const isDone = item.checked !== undefined ? item.checked : item.completed;
+      const row = document.createElement('div');
+      row.className = 'modal-item-row';
+      row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #E0D5C1; gap:10px;';
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('deliveries', ${idx}, this.checked)">
+          <span style="font-weight:bold; color:#5C4033;">${item.from || item.name}</span>
+          ${item.isStacked ? '<span style="font-size:10px; background:#FFE0B2; color:#E65100; padding:2px 6px; border-radius:4px;">STACKED</span>' : ''}
         </div>
-      </div>`;
-    }).join('');
-  }
-
-  setElemText('columnHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
-}
-
-export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
-  const logs = state.globalData?.cloudHistory?.logs;
-  if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-    const item = logs[logIdx].deliveriesDone[itemIdx];
-    const newStatus = !(item.checked !== undefined ? item.checked : Boolean(item.completed));
-    item.checked = newStatus;
-    item.completed = newStatus;
-    renderColumnHistoryModalList();
-    recalculateAll();
-    await syncCurrentVaultToCloud();
-  }
-}
-
-export async function deleteDeliveryLogItem(logIdx, itemIdx) {
-  const logs = state.globalData?.cloudHistory?.logs;
-  if (logs?.[logIdx]?.deliveriesDone) {
-    logs[logIdx].deliveriesDone.splice(itemIdx, 1);
-    renderColumnHistoryModalList();
-    recalculateAll();
-    await syncCurrentVaultToCloud();
-  }
-}
-
-export async function toggleWeeklyItemCheck(weekId, itemIdx) {
-  const type = state.activeColumnType;
-  let targetItem = null;
-
-  if (type === 'chore') {
-    targetItem = state.globalData?.chores?.[itemIdx];
-  } else {
-    const isAnimal = type === 'animalBounty';
-    const bounties = (state.globalData?.bounties || []).filter(b => {
-      const animalCheck = isAnimalBounty(b);
-      return isAnimal ? animalCheck : !animalCheck;
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:12px; color:#8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
+          <span style="font-weight:bold; color:#E65100;">${item.baseTickets || item.tickets || 2} Tix</span>
+          <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.removeModalItem('deliveries', ${idx})">✕</button>
+        </div>
+      `;
+      container.appendChild(row);
     });
-    targetItem = bounties?.[itemIdx];
-  }
+  } else if (type === 'bounties' || type === 'animalBounties') {
+    const isAnimalFilter = (type === 'animalBounties');
+    if (titleEl) titleEl.textContent = isAnimalFilter ? '🐄 Edit Animal Bounties' : '📜 Edit Item Bounties';
 
-  if (targetItem) {
-    const newStatus = !(targetItem.checked !== undefined ? targetItem.checked : Boolean(targetItem.completed));
-    targetItem.checked = newStatus;
-    targetItem.completed = newStatus;
-    
-    if (newStatus) {
-      targetItem.completedAt = targetItem.completedAt || Date.now();
-      targetItem.checkedToday = true;
-    } else {
-      targetItem.completedAt = null;
-      targetItem.checkedToday = false;
-    }
+    // ➕ Add Bounty Button Header
+    const addBtnRow = document.createElement('div');
+    addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
+    addBtnRow.innerHTML = `
+      <button class="btn btn-sm" style="background:#4CAF50; color:#fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.addNewManualItem('bounties', ${isAnimalFilter})">
+        ➕ ADD ${isAnimalFilter ? 'ANIMAL BOUNTY' : 'BOUNTY'}
+      </button>
+    `;
+    container.appendChild(addBtnRow);
 
-    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-    if (!state.globalData.cloudHistory.weeks[weekId]) {
-      state.globalData.cloudHistory.weeks[weekId] = { weekId, bounties: [], chores: [] };
-    }
-    state.globalData.cloudHistory.weeks[weekId].bounties = state.globalData.bounties || [];
-    state.globalData.cloudHistory.weeks[weekId].chores = state.globalData.chores || [];
+    const items = (state.globalData?.bounties || []).filter(b => isAnimalFilter ? isAnimalBounty(b) : !isAnimalBounty(b));
 
-    renderColumnHistoryModalList();
-    recalculateAll();
-    await syncCurrentVaultToCloud();
-  }
-}
-
-export async function updateHistoryItemTickets(idKey, itemIdx, val) {
-  const type = state.activeColumnType;
-  const boostCount = getActiveBoostCount();
-  const vipBonus = getActiveVipBonus();
-  const inputVal = parseInt(val) || 0;
-
-  if (type === 'delivery') {
-    const logs = state.globalData?.cloudHistory?.logs;
-    const logIdx = parseInt(idKey);
-    if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-      const base = Math.max(0, inputVal - (vipBonus + boostCount));
-      logs[logIdx].deliveriesDone[itemIdx].baseTickets = base;
-      logs[logIdx].deliveriesDone[itemIdx].tickets = base;
-    }
-  } else {
-    const isChore = type === 'chore';
-    const base = Math.max(0, inputVal - (isChore ? vipBonus : 0) - boostCount);
-    if (isChore) {
-      if (state.globalData?.chores?.[itemIdx]) {
-        state.globalData.chores[itemIdx].baseTickets = base;
-        state.globalData.chores[itemIdx].tickets = base;
-      }
-    } else {
-      const isAnimal = type === 'animalBounty';
-      const bounties = (state.globalData?.bounties || []).filter(b => {
-        const animalCheck = isAnimalBounty(b);
-        return isAnimal ? animalCheck : !animalCheck;
-      });
-      if (bounties?.[itemIdx]) {
-        bounties[itemIdx].baseTickets = base;
-        bounties[itemIdx].tickets = base;
-      }
-    }
-  }
-  renderColumnHistoryModalList();
-  recalculateAll();
-  await syncCurrentVaultToCloud();
-}
-
-export async function updateHistoryItemCost(idKey, itemIdx, val) {
-  const type = state.activeColumnType;
-  const costVal = parseFloat(val) || 0;
-
-  if (type === 'delivery') {
-    const logs = state.globalData?.cloudHistory?.logs;
-    const logIdx = parseInt(idKey);
-    if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-      logs[logIdx].deliveriesDone[itemIdx].cost = costVal;
-      logs[logIdx].deliveriesDone[itemIdx].itemsCost = costVal;
-    }
-  } else if (type === 'chore') {
-    if (state.globalData?.chores?.[itemIdx]) {
-      state.globalData.chores[itemIdx].cost = costVal;
-      state.globalData.chores[itemIdx].itemsCost = costVal;
-    }
-  } else {
-    const isAnimal = type === 'animalBounty';
-    const bounties = (state.globalData?.bounties || []).filter(b => {
-      const animalCheck = isAnimalBounty(b);
-      return isAnimal ? animalCheck : !animalCheck;
+    items.forEach((item) => {
+      const globalIdx = (state.globalData?.bounties || []).indexOf(item);
+      const isDone = item.checked !== undefined ? item.checked : item.completed;
+      const row = document.createElement('div');
+      row.className = 'modal-item-row';
+      row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #E0D5C1; gap:10px;';
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
+          <span style="font-weight:bold; color:#5C4033;">${item.name} ${item.level ? `(Lvl ${item.level})` : ''}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:12px; color:#8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
+          <span style="font-weight:bold; color:#E65100;">${item.baseTickets || item.tickets || 1} Tix</span>
+          <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
+        </div>
+      `;
+      container.appendChild(row);
     });
-    if (bounties?.[itemIdx]) {
-      bounties[itemIdx].cost = costVal;
-      bounties[itemIdx].itemsCost = costVal;
-    }
-  }
-  renderColumnHistoryModalList();
-  recalculateAll();
-  await syncCurrentVaultToCloud();
-}
+  } else if (type === 'chores') {
+    if (titleEl) titleEl.textContent = '🧹 Edit Weekly Chores';
 
-export async function deleteWeeklyItem(weekId, itemIdx) {
-  const type = state.activeColumnType;
-  if (type === 'chore') {
-    if (state.globalData?.chores) {
-      state.globalData.chores.splice(itemIdx, 1);
-    }
-  } else {
-    const isAnimal = type === 'animalBounty';
-    let count = 0;
-    const all = state.globalData?.bounties || [];
-    for (let i = 0; i < all.length; i++) {
-      const animalCheck = isAnimalBounty(all[i]);
-      if ((isAnimal && animalCheck) || (!isAnimal && !animalCheck)) {
-        if (count === itemIdx) {
-          all.splice(i, 1);
-          break;
-        }
-        count++;
-      }
-    }
-  }
-  renderColumnHistoryModalList();
-  recalculateAll();
-  await syncCurrentVaultToCloud();
-}
+    // ➕ Add Chore Button Header
+    const addBtnRow = document.createElement('div');
+    addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
+    addBtnRow.innerHTML = `
+      <button class="btn btn-sm" style="background:#4CAF50; color:#fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.addNewManualItem('chores')">
+        ➕ ADD CUSTOM CHORE
+      </button>
+    `;
+    container.appendChild(addBtnRow);
 
-export async function deleteMasterLog(logIdx) {
-  if (!state.globalData?.cloudHistory?.logs) return;
-  if (confirm('🗑️ Delete this snapshot log?')) {
-    state.globalData.cloudHistory.logs.splice(logIdx, 1);
-    await syncCurrentVaultToCloud();
-    toggleHistoryModal();
-    toggleHistoryModal();
-    recalculateAll();
-  }
-}
+    const items = state.globalData?.chores || [];
 
-export function toggleHistoryModal() {
-  const modal = document.getElementById('historyModal');
-  modal.classList.toggle('show');
-
-  if (modal.classList.contains('show') && state.globalData?.cloudHistory) {
-    const logs = state.globalData.cloudHistory.logs || [];
-    const container = document.getElementById('modalLogList');
-
-    if (logs.length === 0) {
-      container.innerHTML = '<p style="color:#8C7853; font-size:12px; font-weight:bold;">No saved vault logs found for this account yet.</p>';
-    } else {
-      container.innerHTML = logs.map((log, idx) => {
-        const delivHtml = (log.deliveriesDone && log.deliveriesDone.length > 0) ? 
-          `<div style="color:#5C4033; font-size:11px;"><strong>📦 Daily Deliveries:</strong> ${log.deliveriesDone.map(d => typeof d === 'string' ? d : `${d.name} (${formatSFL(d.cost)} SFL)`).join(', ')}</div>` : '';
-
-        const logTickets = log.ticketsSaved || 0;
-        const logCost = log.costSaved || 0;
-        const logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
-
-        return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">
-            <span style="color:#8B4513;">Log #${logs.length - idx} (${log.date || 'Snapshot'})</span>
-            <button onclick="deleteMasterLog(${idx})" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 8px;">🗑️ DELETE</button>
+    items.forEach((item, idx) => {
+      const isDone = item.checked !== undefined ? item.checked : item.completed;
+      const row = document.createElement('div');
+      row.className = 'modal-item-row';
+      row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #E0D5C1; gap:10px;';
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('chores', ${idx}, this.checked)">
+          <div>
+            <div style="font-weight:bold; color:#5C4033;">${item.task || item.name}</div>
+            <div style="font-size:11px; color:#8C7853;">NPC: ${item.npc || 'NPC'}</div>
           </div>
-          <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
-            <span>Daily Yield: +${logTickets} | Cost: ${formatSFL(logCost)} SFL</span>
-            <span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">${logRatio} SFL / Ticket</span>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:3px;">${delivHtml}</div>
-        </div>`;
-      }).join('');
-    }
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-weight:bold; color:#E65100;">${item.baseTickets || item.tickets || 1} Tix</span>
+          <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.removeModalItem('chores', ${idx})">✕</button>
+        </div>
+      `;
+      container.appendChild(row);
+    });
   }
+
+  modal.style.display = 'flex';
 }
+
+export function closeModal() {
+  const modal = document.getElementById('detailsModal');
+  if (modal) modal.style.display = 'none';
+  state.activeColumnType = null;
+}
+
+// Window actions for modal editing
+window.toggleModalItem = function(type, index, isChecked) {
+  if (!state.globalData) return;
+  const list = state.globalData[type];
+  if (!list || !list[index]) return;
+
+  list[index].checked = isChecked;
+  list[index].completed = isChecked;
+  list[index].completedAt = isChecked ? Date.now() : null;
+  list[index].checkedToday = isChecked;
+
+  recalculateAll();
+  saveProgressToCloudKV(true);
+};
+
+window.removeModalItem = function(type, index) {
+  if (!state.globalData) return;
+  const list = state.globalData[type];
+  if (!list || index < 0 || index >= list.length) return;
+
+  list.splice(index, 1);
+  recalculateAll();
+  openColumnModal(state.activeColumnType);
+  saveProgressToCloudKV(true);
+};
+
+window.addNewManualItem = function(type, isAnimal = false) {
+  if (!state.globalData) state.globalData = {};
+  if (!state.globalData[type]) state.globalData[type] = [];
+
+  const currentWeekMonday = getMondayBasedWeekId();
+
+  if (type === 'deliveries') {
+    const name = prompt('Enter NPC / Order Name:', 'Custom Delivery');
+    if (!name) return;
+    const tickets = parseInt(prompt('Enter Base Tickets:', '2'), 10) || 2;
+    const cost = parseFloat(prompt('Enter SFL Cost:', '0.00')) || 0;
+
+    state.globalData.deliveries.push({
+      id: `manual_deliv_${Date.now()}`,
+      from: name,
+      name: name,
+      baseTickets: tickets,
+      tickets: tickets,
+      cost: cost,
+      itemsCost: cost,
+      completed: true,
+      checked: true,
+      completedAt: Date.now(),
+      checkedToday: true,
+      isManual: true,
+      items: {},
+      itemDetails: []
+    });
+  } else if (type === 'bounties') {
+    const name = prompt(`Enter ${isAnimal ? 'Animal' : 'Item'} Name:`, isAnimal ? 'Chicken' : 'Red Cosmos');
+    if (!name) return;
+    const level = isAnimal ? (parseInt(prompt('Enter Level (or leave empty):', '5'), 10) || null) : null;
+    const tickets = parseInt(prompt('Enter Tickets:', '2'), 10) || 2;
+    const cost = parseFloat(prompt('Enter SFL Cost:', '0.00')) || 0;
+
+    state.globalData.bounties.push({
+      id: `manual_bounty_${Date.now()}`,
+      name: name,
+      level: level,
+      weekId: currentWeekMonday,
+      baseTickets: tickets,
+      tickets: tickets,
+      cost: cost,
+      itemsCost: cost,
+      completed: true,
+      checked: true,
+      completedAt: Date.now(),
+      checkedToday: true,
+      category: isAnimal ? 'animal' : 'crop'
+    });
+  } else if (type === 'chores') {
+    const task = prompt('Enter Chore Task Description:', 'Harvest Crops 100 times');
+    if (!task) return;
+    const npc = prompt('Enter NPC Name:', 'Chore NPC') || 'Chore NPC';
+    const tickets = parseInt(prompt('Enter Tickets:', '1'), 10) || 1;
+
+    state.globalData.chores.push({
+      name: task,
+      task: task,
+      npc: npc,
+      weekId: currentWeekMonday,
+      baseTickets: tickets,
+      tickets: tickets,
+      cost: 0,
+      itemsCost: 0,
+      completed: true,
+      checked: true,
+      completedAt: Date.now(),
+      checkedToday: true
+    });
+  }
+
+  recalculateAll();
+  openColumnModal(state.activeColumnType);
+  saveProgressToCloudKV(true);
+};
