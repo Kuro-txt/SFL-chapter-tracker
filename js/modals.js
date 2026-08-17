@@ -102,7 +102,7 @@ export function openCategorySummaryModal(cat) {
     bodyEl.innerHTML = sortedDeliv.map(d => {
       const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      const finalTickets = d.baseTickets + deliveryAddon;
+      const finalTickets = d.baseTickets !== undefined ? d.baseTickets : (d.tickets + deliveryAddon);
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (d.itemsCost || 0);
@@ -137,7 +137,7 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedBounties.map(b => {
       const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      const finalTickets = b.baseTickets + boostCount;
+      const finalTickets = b.baseTickets !== undefined ? b.baseTickets : (b.tickets + boostCount);
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (b.itemsCost || b.cost || 0);
@@ -165,7 +165,7 @@ export function openCategorySummaryModal(cat) {
 
     bodyEl.innerHTML = sortedChores.map(c => {
       const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
-      const finalTickets = c.baseTickets > 0 ? (c.baseTickets + vipBonus + boostCount) : 0;
+      const finalTickets = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 0);
       if (isTicked) {
         catTickets += finalTickets;
         catCost += (c.itemsCost || c.cost || 0);
@@ -243,20 +243,14 @@ export function closeColumnHistoryModal() {
 export function renderColumnHistoryModalList() {
   const type = state.activeColumnType;
   const bodyEl = document.getElementById('columnHistoryBody');
-  const boostCount = getActiveBoostCount();
-  const vipBonus = getActiveVipBonus();
-  const filterTerm = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
-  const selectedNpc = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
 
   let records = [];
 
-  // Generate Week Options for Dropdown (Week 1 to Week 12+)
   let weekOptionsHtml = '';
   for (let w = 1; w <= 12; w++) {
     weekOptionsHtml += `<option value="w${w}">Week ${w}</option>`;
   }
 
-  // Render Add Form HTML Header with Week Dropdown
   let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
     <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -280,8 +274,7 @@ export function renderColumnHistoryModalList() {
       seenDates.add(cleanDate);
 
       (log.deliveriesDone || []).forEach((item, itemIdx) => {
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+        const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
         const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
         const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
@@ -294,25 +287,12 @@ export function renderColumnHistoryModalList() {
           requestedItems: requestedStr,
           cost: item.cost || 0,
           displayTickets: finalTix,
-          baseTickets: baseTix,
           checked: isChecked,
           status: isChecked ? '✨ Done' : '⏳ Active',
           isStacked: item.isStacked || false
         });
       });
     });
-
-    if (selectedNpc) {
-      records = records.filter(r => r.name.toLowerCase() === selectedNpc || r.name.toLowerCase().includes(selectedNpc));
-    }
-
-    if (filterTerm) {
-      records = records.filter(r => 
-        r.name.toLowerCase().includes(filterTerm) ||
-        r.date.toLowerCase().includes(filterTerm) ||
-        r.requestedItems.toLowerCase().includes(filterTerm)
-      );
-    }
   } else {
     const currentWeekId = getMondayBasedWeekId();
     const isChore = type === 'chore';
@@ -347,8 +327,7 @@ export function renderColumnHistoryModalList() {
     }
 
     Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId }], itemIdx) => {
-      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
-      const finalTix = baseTix > 0 ? (baseTix + (isChore ? vipBonus : 0) + boostCount) : 0;
+      const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
@@ -361,7 +340,6 @@ export function renderColumnHistoryModalList() {
         level: lvl,
         cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
         displayTickets: finalTix,
-        baseTickets: baseTix,
         checked: isChecked,
         status: isChecked ? '✨ Done' : '⏳ Active'
       });
@@ -419,7 +397,7 @@ export function renderColumnHistoryModalList() {
           <span>SFL:</span>
           <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:60px; padding:2px; font-size:10px;" />
           <span>Tix:</span>
-          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
+          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Total" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
@@ -611,8 +589,6 @@ export async function toggleWeeklyItemCheck(weekId, mapKeyOrIdx) {
 
 export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
   const type = state.activeColumnType;
-  const boostCount = getActiveBoostCount();
-  const vipBonus = getActiveVipBonus();
   const inputVal = parseInt(val, 10) || 0;
 
   if (type === 'delivery') {
@@ -620,56 +596,52 @@ export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
     const logIdx = parseInt(idKey, 10);
     const itemIdx = parseInt(mapKeyOrIdx, 10);
     if (logs?.[logIdx]?.deliveriesDone?.[itemIdx]) {
-      const base = Math.max(0, inputVal - (vipBonus + boostCount));
-      logs[logIdx].deliveriesDone[itemIdx].baseTickets = base;
-      logs[logIdx].deliveriesDone[itemIdx].tickets = base;
+      logs[logIdx].deliveriesDone[itemIdx].baseTickets = inputVal;
+      logs[logIdx].deliveriesDone[itemIdx].tickets = inputVal;
     }
   } else {
-    const isChore = type === 'chore';
-    const base = Math.max(0, inputVal - (isChore ? vipBonus : 0) - boostCount);
-    
     if (typeof mapKeyOrIdx === 'string' && mapKeyOrIdx.includes('_')) {
       const [source, wkOrIdx, idx] = mapKeyOrIdx.split('_');
       const numericIdx = parseInt(idx, 10);
       if (source === 'current') {
-        if (isChore && state.globalData?.chores?.[numericIdx]) {
-          state.globalData.chores[numericIdx].baseTickets = base;
-          state.globalData.chores[numericIdx].tickets = base;
-        } else if (!isChore) {
+        if (type === 'chore' && state.globalData?.chores?.[numericIdx]) {
+          state.globalData.chores[numericIdx].baseTickets = inputVal;
+          state.globalData.chores[numericIdx].tickets = inputVal;
+        } else {
           const isAnimal = type === 'animalBounty';
           const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
           if (bounties[numericIdx]) {
-            bounties[numericIdx].baseTickets = base;
-            bounties[numericIdx].tickets = base;
+            bounties[numericIdx].baseTickets = inputVal;
+            bounties[numericIdx].tickets = inputVal;
           }
         }
       } else if (source === 'week') {
         const wkObj = state.globalData?.cloudHistory?.weeks?.[wkOrIdx];
         if (wkObj) {
-          if (isChore && wkObj.chores?.[numericIdx]) {
-            wkObj.chores[numericIdx].baseTickets = base;
-            wkObj.chores[numericIdx].tickets = base;
-          } else if (!isChore) {
+          if (type === 'chore' && wkObj.chores?.[numericIdx]) {
+            wkObj.chores[numericIdx].baseTickets = inputVal;
+            wkObj.chores[numericIdx].tickets = inputVal;
+          } else {
             const isAnimal = type === 'animalBounty';
             const bounties = (wkObj.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
             if (bounties[numericIdx]) {
-              bounties[numericIdx].baseTickets = base;
-              bounties[numericIdx].tickets = base;
+              bounties[numericIdx].baseTickets = inputVal;
+              bounties[numericIdx].tickets = inputVal;
             }
           }
         }
       }
     } else {
       const itemIdx = parseInt(mapKeyOrIdx, 10);
-      if (isChore && state.globalData?.chores?.[itemIdx]) {
-        state.globalData.chores[itemIdx].baseTickets = base;
-        state.globalData.chores[itemIdx].tickets = base;
-      } else if (!isChore) {
+      if (type === 'chore' && state.globalData?.chores?.[itemIdx]) {
+        state.globalData.chores[itemIdx].baseTickets = inputVal;
+        state.globalData.chores[itemIdx].tickets = inputVal;
+      } else {
         const isAnimal = type === 'animalBounty';
         const bounties = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
         if (bounties[itemIdx]) {
-          bounties[itemIdx].baseTickets = base;
-          bounties[itemIdx].tickets = base;
+          bounties[itemIdx].baseTickets = inputVal;
+          bounties[itemIdx].tickets = inputVal;
         }
       }
     }
