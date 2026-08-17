@@ -19,10 +19,10 @@ import {
   toggleHistoryModal,
   submitNewManualItem
 } from './modals.js';
-import { recalculateAll } from './render.js';
+import { recalculateAll, renderDashboardCards } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
-// Expose all handlers to window for inline HTML onclick events
+// Expose handlers to window for inline HTML events
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
@@ -53,12 +53,14 @@ window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_boost2', document.getElementById('boost2')?.checked || false);
   localStorage.setItem('sfl_boost3', document.getElementById('boost3')?.checked || false);
   recalculateAll();
+  renderDashboardCards();
 };
 
 window.saveTrackAndRecalculate = () => {
   localStorage.setItem('sfl_track_tix', document.getElementById('trackTicketsInput')?.value || '0');
   localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput')?.value || '0');
   recalculateAll();
+  renderDashboardCards();
 };
 
 window.saveGoalAndRecalculate = () => {
@@ -70,12 +72,14 @@ window.saveGoalAndRecalculate = () => {
 window.toggleDailyLogin = () => {
   handleDailyLoginToggle();
   recalculateAll();
+  renderDashboardCards();
 };
 
 window.saveLoginCountAndRecalculate = () => {
   const count = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
   localStorage.setItem('sfl_daily_login_count', count);
   recalculateAll();
+  renderDashboardCards();
 };
 
 // Focused Gameplay Tips Rotation
@@ -144,4 +148,5 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSavedAuth();
   startTipRotation();
   recalculateAll();
+  renderDashboardCards();
 });
