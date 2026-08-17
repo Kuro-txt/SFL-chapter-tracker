@@ -186,7 +186,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process CURRENT Week Chores
+  // 4. Process CURRENT Week Chores (Corrected Chore Calculation: Base + VIP + Boosts)
   const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -210,7 +210,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Fully aggregates into Total & Weekly stats)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly isolated by their respective week ID)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
