@@ -226,15 +226,10 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly mapped and deduplicated)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Adds to Total Count and properly groups into weekly chart stats)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
-
-    if (isCurrentWeek) {
-      // Current week items are already processed above from live state to avoid double-counting
-      return;
-    }
 
     (wk.bounties || []).forEach(b => {
       const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -251,11 +246,14 @@ export function recalculateAll() {
 
         if (isAnimal) {
           totalAnimalBountyTix += finalTix;
+          if (isCurrentWeek) weekAnimalBountyTix += finalTix;
         } else {
           totalBountyTix += finalTix;
+          if (isCurrentWeek) weekBountyTix += finalTix;
         }
 
         totalSflCostAll += bCost;
+        if (isCurrentWeek) weekCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
       }
     });
@@ -271,7 +269,10 @@ export function recalculateAll() {
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
+        if (isCurrentWeek) weekChoreTix += finalTix;
+
         totalSflCostAll += cCost;
+        if (isCurrentWeek) weekCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
     });
