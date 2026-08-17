@@ -29,6 +29,21 @@ export function recalculateAll() {
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
+  // Normalize weeks to prevent duplicate counting
+  const weeks = {};
+  Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
+    const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
+    if (!weeks[normalizedId]) {
+      weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
+    }
+    if (Array.isArray(wkVal.bounties)) {
+      weeks[normalizedId].bounties.push(...wkVal.bounties);
+    }
+    if (Array.isArray(wkVal.chores)) {
+      weeks[normalizedId].chores.push(...wkVal.chores);
+    }
+  });
+
   // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
@@ -81,6 +96,18 @@ export function recalculateAll() {
       }
     }
     return false;
+  };
+
+  const getCleanBountyKey = (b) => {
+    const name = (b.name || '').toLowerCase().trim();
+    const lvl = b.level || b.tier || 0;
+    return b.id ? `bounty_${b.id}` : `bounty_${name}_${lvl}`;
+  };
+
+  const getCleanChoreKey = (c) => {
+    const npc = (c.npc || '').toLowerCase().trim();
+    const task = (c.task || c.name || '').toLowerCase().trim();
+    return `chore_${npc}_${task}`;
   };
 
   // Global Set to track absolute unique item IDs across the entire vault to prevent double-counting
@@ -150,7 +177,7 @@ export function recalculateAll() {
   // 3. Process CURRENT Week Bounties (from live state)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
-      const key = `bounty_${b.id || (b.name || '').toLowerCase()}_${b.level || 0}`;
+      const key = getCleanBountyKey(b);
       if (globallyProcessedItems.has(key)) return;
       globallyProcessedItems.add(key);
 
@@ -184,7 +211,7 @@ export function recalculateAll() {
   // 4. Process CURRENT Week Chores (from live state)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
-      const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+      const key = getCleanChoreKey(c);
       if (globallyProcessedItems.has(key)) return;
       globallyProcessedItems.add(key);
 
@@ -204,13 +231,12 @@ export function recalculateAll() {
   });
 
   // 5. Process PAST Weeks from Cloud KV
-  Object.entries(rawWeeks).forEach(([wkKey, wk]) => {
+  Object.entries(weeks).forEach(([wkKey, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
-    if (pastMonday === currentWeekMonday) return; // Current week handled above
 
     (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
-        const key = `bounty_${b.id || (b.name || '').toLowerCase()}_${b.level || 0}`;
+        const key = getCleanBountyKey(b);
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
@@ -234,7 +260,7 @@ export function recalculateAll() {
 
     (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
-        const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+        const key = getCleanChoreKey(c);
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
