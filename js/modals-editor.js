@@ -81,6 +81,7 @@ export function renderColumnHistoryModalList() {
   const bodyEl = document.getElementById('columnHistoryBody');
   let records = [];
 
+  // Determine current active week number (Week 2 as default)
   let weekOptionsHtml = '';
   for (let w = 1; w <= 12; w++) {
     const selectedAttr = (w === 2) ? 'selected' : '';
@@ -120,7 +121,7 @@ export function renderColumnHistoryModalList() {
       records.push({
         logIdx: 0,
         itemIdx,
-        date: 'Current',
+        date: item.weekId ? `Week ( ${item.weekId} )` : 'Current',
         name: itemName,
         requestedItems: requestedStr,
         cost: item.cost || item.itemsCost || 0,
@@ -249,14 +250,14 @@ export function renderColumnHistoryModalList() {
 export async function addNewItemFromModal() {
   const type = state.activeColumnType;
   const nameInput = document.getElementById('addModalName')?.value.trim() || 'Custom Item';
-  const weekSelectVal = document.getElementById('addModalWeekSelect')?.value || 'w2';
+  const weekSelectVal = document.getElementById('addModalWeekSelect')?.value || 'w1';
   const costInput = parseFloat(document.getElementById('addModalCost')?.value) || 0;
   const ticketsInput = parseInt(document.getElementById('addModalTickets')?.value, 10) || 2;
 
   if (!state.globalData) return;
 
-  // Calculate correct Monday date based on selected week (w1 = 2026-08-10, w2 = 2026-08-17, etc.)
-  const weekNum = parseInt(weekSelectVal.substring(1), 10) || 2;
+  // Week 1 base Monday: 2026-08-10. Week 2 base Monday: 2026-08-17.
+  const weekNum = parseInt(weekSelectVal.replace('w', ''), 10) || 1;
   const baseMonday = new Date('2026-08-10T00:00:00.000Z');
   baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
   const targetWeekId = getMondayBasedWeekId(baseMonday);
@@ -298,7 +299,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: Date.now(),
-      isManual: true
+      isManual: true,
+      weekId: targetWeekId
     } : {
       name: nameInput,
       baseTickets: ticketsInput,
@@ -309,7 +311,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: Date.now(),
-      isManual: true
+      isManual: true,
+      weekId: targetWeekId
     };
 
     if (isChore) {
