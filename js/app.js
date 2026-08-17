@@ -7,6 +7,7 @@ import {
   openColumnHistoryModal, 
   closeColumnHistoryModal, 
   renderColumnHistoryModalList,
+  addNewItemFromModal,
   toggleDeliveryLogCheck, 
   deleteDeliveryLogItem, 
   toggleWeeklyItemCheck, 
@@ -31,6 +32,7 @@ window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.openColumnHistoryModal = openColumnHistoryModal;
 window.closeColumnHistoryModal = closeColumnHistoryModal;
 window.renderColumnHistoryModalList = renderColumnHistoryModalList;
+window.addNewItemFromModal = addNewItemFromModal;
 window.toggleDeliveryLogCheck = toggleDeliveryLogCheck;
 window.deleteDeliveryLogItem = deleteDeliveryLogItem;
 window.toggleWeeklyItemCheck = toggleWeeklyItemCheck;
