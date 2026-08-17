@@ -29,39 +29,6 @@ export function recalculateAll() {
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Cleanly normalize and deduplicate weeks to prevent overlapping week keys (e.g. w32 vs 2026-08-10)
-  const weeks = {};
-  Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
-    const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
-    if (!weeks[normalizedId]) {
-      weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
-    }
-    
-    // Deduplicate bounties within the week
-    if (Array.isArray(wkVal.bounties)) {
-      wkVal.bounties.forEach(b => {
-        const bKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-        const exists = weeks[normalizedId].bounties.some(existing => {
-          const exKey = existing.id ? String(existing.id) : `${(existing.name || '').toLowerCase()}_${existing.level || 0}`;
-          return exKey === bKey;
-        });
-        if (!exists) weeks[normalizedId].bounties.push(b);
-      });
-    }
-
-    // Deduplicate chores within the week
-    if (Array.isArray(wkVal.chores)) {
-      wkVal.chores.forEach(c => {
-        const cKey = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-        const exists = weeks[normalizedId].chores.some(existing => {
-          const exKey = `${(existing.npc || '').toLowerCase()}_${(existing.task || existing.name || '').toLowerCase()}`;
-          return exKey === cKey;
-        });
-        if (!exists) weeks[normalizedId].chores.push(c);
-      });
-    }
-  });
-
   // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
@@ -116,6 +83,9 @@ export function recalculateAll() {
     return false;
   };
 
+  // Global Set to track absolute unique item IDs across the entire vault to prevent double-counting
+  const globallyProcessedItems = new Set();
+
   // 1. Process Past Daily Deliveries from saved logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
@@ -130,6 +100,10 @@ export function recalculateAll() {
 
     (log.deliveriesDone || []).forEach(item => {
       if (isTicked(item)) {
+        const uniqueKey = `deliv_${item.id || (item.name || item.from) + '_' + item.completedAt}`;
+        if (globallyProcessedItems.has(uniqueKey)) return;
+        globallyProcessedItems.add(uniqueKey);
+
         const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets !== undefined ? item.tickets : 2);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const itemCost = item.cost || 0;
@@ -143,42 +117,43 @@ export function recalculateAll() {
 
   // 2. Process Today's Live Deliveries
   let doubleDeliveryAppliedToday = false;
-
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
-      const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      let calculatedYield = d.baseTickets + deliveryAddon;
+      const uniqueKey = `deliv_${d.id || (d.name || d.from)}`;
+      if (!globallyProcessedItems.has(uniqueKey)) {
+        globallyProcessedItems.add(uniqueKey);
 
-      if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday) {
-        calculatedYield = calculatedYield * 2;
-        doubleDeliveryAppliedToday = true;
-        d.hasDoubleBonus = true;
-      } else {
-        d.hasDoubleBonus = false;
+        const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
+        let calculatedYield = d.baseTickets + deliveryAddon;
+
+        if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday) {
+          calculatedYield = calculatedYield * 2;
+          doubleDeliveryAppliedToday = true;
+          d.hasDoubleBonus = true;
+        } else {
+          d.hasDoubleBonus = false;
+        }
+
+        const dCost = d.itemsCost || d.cost || 0;
+
+        todayDelivTix += calculatedYield;
+        todayCostAll += dCost;
+
+        totalDelivTix += calculatedYield;
+        totalSflCostAll += dCost;
+
+        addWeeklyStat(currentWeekMonday, calculatedYield, dCost);
       }
-
-      const dCost = d.itemsCost || d.cost || 0;
-
-      todayDelivTix += calculatedYield;
-      todayCostAll += dCost;
-
-      totalDelivTix += calculatedYield;
-      totalSflCostAll += dCost;
-
-      addWeeklyStat(currentWeekMonday, calculatedYield, dCost);
     }
   });
 
-  // Universal Global Deduplication Trackers
-  const globallyCountedBounties = new Set();
-  const globallyCountedChores = new Set();
-
   // 3. Process CURRENT Week Bounties (from live state)
   (state.globalData.bounties || []).forEach(b => {
-    const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-    globallyCountedBounties.add(key);
-
     if (isTicked(b)) {
+      const key = `bounty_${b.id || (b.name || '').toLowerCase()}_${b.level || 0}`;
+      if (globallyProcessedItems.has(key)) return;
+      globallyProcessedItems.add(key);
+
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       if (baseTix <= 0) return;
 
@@ -208,10 +183,11 @@ export function recalculateAll() {
 
   // 4. Process CURRENT Week Chores (from live state)
   (state.globalData.chores || []).forEach(c => {
-    const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-    globallyCountedChores.add(key);
-
     if (isTicked(c)) {
+      const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+      if (globallyProcessedItems.has(key)) return;
+      globallyProcessedItems.add(key);
+
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -227,16 +203,17 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV with strict global deduplication
-  Object.entries(weeks).forEach(([wkId, wk]) => {
-    let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
+  // 5. Process PAST Weeks from Cloud KV
+  Object.entries(rawWeeks).forEach(([wkKey, wk]) => {
+    let pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
+    if (pastMonday === currentWeekMonday) return; // Current week handled above
 
     (wk.bounties || []).forEach(b => {
-      const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-      if (globallyCountedBounties.has(key)) return;
-
       if (isTicked(b)) {
-        globallyCountedBounties.add(key);
+        const key = `bounty_${b.id || (b.name || '').toLowerCase()}_${b.level || 0}`;
+        if (globallyProcessedItems.has(key)) return;
+        globallyProcessedItems.add(key);
+
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
         if (baseTix <= 0) return;
 
@@ -256,11 +233,11 @@ export function recalculateAll() {
     });
 
     (wk.chores || []).forEach(c => {
-      const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-      if (globallyCountedChores.has(key)) return;
-
       if (isTicked(c)) {
-        globallyCountedChores.add(key);
+        const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+        if (globallyProcessedItems.has(key)) return;
+        globallyProcessedItems.add(key);
+
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
         const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -314,8 +291,6 @@ export function recalculateAll() {
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weeklyStats[currentWeekMonday]?.tickets || 0} Tix`);
-  setElemText('tipWeekBounty', `📜 Bounties: ${weeklyStats[currentWeekMonday]?.tickets || 0} Tix`);
-
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
