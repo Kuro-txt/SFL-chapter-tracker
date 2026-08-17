@@ -3,7 +3,7 @@ import { recalculateAll } from './render.js';
 import { saveProgressToCloudKV } from './api.js';
 
 // ==========================================
-// 1. Column Edit Modals (Deliveries, Bounties, Chores)
+// 1. Column Edit Modals (Deliveries, Bounties, Animals, Chores)
 // ==========================================
 export function openColumnModal(type) {
   state.activeColumnType = type;
@@ -15,24 +15,28 @@ export function openColumnModal(type) {
   container.innerHTML = '';
   const currentWeekMonday = getMondayBasedWeekId();
 
-  // --- Inline Add Form at Top ---
+  // --- Quick Add Header Bar ---
   const addCard = document.createElement('div');
-  addCard.style.cssText = 'background: #FAF8F5; border: 2px dashed #D2691E; border-radius: 8px; padding: 12px; margin-bottom: 15px;';
+  addCard.style.cssText = 'background: #FAF8F5; border: 1.5px dashed #D2691E; border-radius: 8px; padding: 10px; margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;';
 
+  // --- Render Sections Based on Type ---
   if (type === 'deliveries') {
     if (titleEl) titleEl.textContent = '📦 Edit Daily Deliveries';
+
     addCard.innerHTML = `
-      <div style="font-weight: 900; color: #5C4033; margin-bottom: 8px; font-size: 13px;">➕ ADD NEW DELIVERY ORDER</div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <input type="text" id="manualNameInput" placeholder="NPC Name (e.g. Bert)" style="flex: 2; min-width: 140px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 75px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 95px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('deliveries')">➕ ADD</button>
-      </div>
+      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD CUSTOM DELIVERY</div>
+      <input type="text" id="manualNameInput" placeholder="NPC Name (e.g. Tywin)" style="flex: 2; min-width: 130px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 70px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 90px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('deliveries')">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
     const items = state.globalData?.deliveries || [];
+    if (items.length === 0) {
+      container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No active deliveries found.</p>';
+    }
+
     items.forEach((item, idx) => {
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
@@ -42,7 +46,7 @@ export function openColumnModal(type) {
         <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
           <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('deliveries', ${idx}, this.checked)">
           <span style="font-weight: bold; color: #5C4033;">${item.from || item.name}</span>
-          ${item.isStacked ? '<span style="font-size: 10px; background: #FFE0B2; color: #E65100; padding: 2px 6px; border-radius: 4px;">STACKED</span>' : ''}
+          ${item.isStacked ? '<span style="font-size: 10px; background: #FFE0B2; color: #E65100; padding: 2px 6px; border-radius: 4px; font-weight: bold;">STACKED</span>' : ''}
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
           <span style="font-size: 12px; color: #8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
@@ -52,23 +56,62 @@ export function openColumnModal(type) {
       `;
       container.appendChild(row);
     });
-  } else if (type === 'bounties' || type === 'animalBounties') {
-    const isAnimalFilter = (type === 'animalBounties');
-    if (titleEl) titleEl.textContent = isAnimalFilter ? '🐄 Edit Animal Bounties' : '📜 Edit Item Bounties';
+
+  } else if (type === 'bounties') {
+    if (titleEl) titleEl.textContent = '📜 Edit Item Bounties';
 
     addCard.innerHTML = `
-      <div style="font-weight: 900; color: #5C4033; margin-bottom: 8px; font-size: 13px;">➕ ADD NEW ${isAnimalFilter ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <input type="text" id="manualNameInput" placeholder="${isAnimalFilter ? 'Animal (e.g. Chicken)' : 'Item (e.g. Red Cosmos)'}" style="flex: 2; min-width: 140px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        ${isAnimalFilter ? '<input type="number" id="manualLvlInput" placeholder="Lvl" value="5" min="1" style="width: 60px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">' : ''}
-        <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 75px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 95px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', ${isAnimalFilter})">➕ ADD</button>
-      </div>
+      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD ITEM BOUNTY</div>
+      <input type="text" id="manualNameInput" placeholder="Item Name (e.g. Red Cosmos)" style="flex: 2; min-width: 130px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 70px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 90px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', false)">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
-    const items = (state.globalData?.bounties || []).filter(b => isAnimalFilter ? isAnimalBounty(b) : !isAnimalBounty(b));
+    const items = (state.globalData?.bounties || []).filter(b => !isAnimalBounty(b));
+    if (items.length === 0) {
+      container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No item bounties found.</p>';
+    }
+
+    items.forEach((item) => {
+      const globalIdx = (state.globalData?.bounties || []).indexOf(item);
+      const isDone = item.checked !== undefined ? item.checked : item.completed;
+      const row = document.createElement('div');
+      row.className = 'modal-item-row';
+      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px;';
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
+          <span style="font-weight: bold; color: #5C4033;">${item.name}</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 12px; color: #8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
+          <span style="font-weight: bold; color: #E65100;">${item.baseTickets || item.tickets || 1} Tix</span>
+          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 2px 6px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+
+  } else if (type === 'animalBounties') {
+    if (titleEl) titleEl.textContent = '🐄 Edit Animal Bounties';
+
+    addCard.innerHTML = `
+      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD ANIMAL BOUNTY</div>
+      <input type="text" id="manualNameInput" placeholder="Animal (e.g. Chicken)" style="flex: 2; min-width: 120px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualLvlInput" placeholder="Lvl" value="5" min="1" style="width: 55px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 65px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost" value="0.00" style="width: 80px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', true)">➕ ADD</button>
+    `;
+    container.appendChild(addCard);
+
+    const items = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b));
+    if (items.length === 0) {
+      container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No animal bounties found.</p>';
+    }
+
     items.forEach((item) => {
       const globalIdx = (state.globalData?.bounties || []).indexOf(item);
       const isDone = item.checked !== undefined ? item.checked : item.completed;
@@ -88,21 +131,24 @@ export function openColumnModal(type) {
       `;
       container.appendChild(row);
     });
+
   } else if (type === 'chores') {
     if (titleEl) titleEl.textContent = '🧹 Edit Weekly Chores';
 
     addCard.innerHTML = `
-      <div style="font-weight: 900; color: #5C4033; margin-bottom: 8px; font-size: 13px;">➕ ADD NEW WEEKLY CHORE</div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <input type="text" id="manualNameInput" placeholder="Chore Task (e.g. Harvest Crops 100 times)" style="flex: 2; min-width: 160px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <input type="text" id="manualNpcInput" placeholder="NPC" value="Chore NPC" style="width: 100px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <input type="number" id="manualTixInput" placeholder="Tickets" value="1" min="1" style="width: 75px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-        <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('chores')">➕ ADD</button>
-      </div>
+      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD WEEKLY CHORE</div>
+      <input type="text" id="manualNameInput" placeholder="Task (e.g. Harvest Crops 100 times)" style="flex: 2; min-width: 150px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="text" id="manualNpcInput" placeholder="NPC" value="Chore NPC" style="width: 90px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="1" min="1" style="width: 65px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('chores')">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
     const items = state.globalData?.chores || [];
+    if (items.length === 0) {
+      container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No weekly chores found.</p>';
+    }
+
     items.forEach((item, idx) => {
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
@@ -161,7 +207,7 @@ export function openCategorySummaryModal(category) {
   if (!modal || !body) return;
 
   if (title) title.textContent = `📋 ${category ? category.toUpperCase() : ''} SUMMARY`;
-  body.innerHTML = `<p style="color: #5C4033; padding: 10px;">Viewing detailed summary for ${category}.</p>`;
+  body.innerHTML = `<p style="color: #5C4033; padding: 10px;">Viewing summary for ${category}.</p>`;
   modal.style.display = 'flex';
 }
 
@@ -171,7 +217,7 @@ export function closeCategorySummaryModal() {
 }
 
 // ==========================================
-// 4. Column History & Master History Modals
+// 4. History & Master Log Modals
 // ==========================================
 export function renderColumnHistoryModalList(type = 'deliveries') {
   const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
@@ -312,7 +358,7 @@ export function deleteDeliveryLogItem(logIndex) {
 }
 
 // ==========================================
-// 7. Cloud Sync & Manual Additions
+// 7. Manual Item Submission & Cloud Sync
 // ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
@@ -330,7 +376,7 @@ export function submitNewManualItem(type, isAnimal = false) {
 
   const name = nameInput ? nameInput.value.trim() : '';
   if (!name) {
-    alert('Please enter a valid name/task.');
+    alert('Please enter a valid name or task description.');
     return;
   }
 
