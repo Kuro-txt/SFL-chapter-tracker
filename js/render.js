@@ -41,11 +41,12 @@ export function recalculateAll() {
   const weeklyTicketStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
     if (!mondayKey) mondayKey = currentWeekMonday;
-    if (!weeklyTicketStats[mondayKey]) {
-      weeklyTicketStats[mondayKey] = { tickets: 0, cost: 0 };
+    const normMonday = getMondayBasedWeekId(mondayKey);
+    if (!weeklyTicketStats[normMonday]) {
+      weeklyTicketStats[normMonday] = { tickets: 0, cost: 0 };
     }
-    weeklyTicketStats[mondayKey].tickets += tix;
-    weeklyTicketStats[mondayKey].cost += cost;
+    weeklyTicketStats[normMonday].tickets += tix;
+    weeklyTicketStats[normMonday].cost += cost;
   };
 
   // Category counters
@@ -186,7 +187,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process CURRENT Week Chores (Corrected Chore Calculation: Base + VIP + Boosts)
+  // 4. Process CURRENT Week Chores
   const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -210,9 +211,9 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly isolated by their respective week ID)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly mapped to their own week ID for weekly stats)
   Object.entries(weeks).forEach(([wkId, wk]) => {
-    let pastMonday = getMondayBasedWeekId(wkId);
+    let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
 
     (wk.bounties || []).forEach(b => {
