@@ -12,8 +12,8 @@ import {
 export function recalculateAll() {
   if (!state.globalData) return;
 
-  const vipBonus = getActiveVipBonus(); // +2 for Deliveries & Chores
-  const boostCount = getActiveBoostCount(); // +1 per active boost
+  const vipBonus = getActiveVipBonus(); // +2 if VIP toggle is checked
+  const boostCount = getActiveBoostCount(); // +1 per active boost toggle (#1-#3)
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
 
   // Toggle Double Delivery Banner UI
@@ -61,7 +61,6 @@ export function recalculateAll() {
   // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
-
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
 
   // Weekly ticket accumulator map
@@ -118,7 +117,7 @@ export function recalculateAll() {
 
   const globallyProcessedItems = new Set();
 
-  // Helper to calculate total tickets with VIP (+2) and Boosts (+1 each)
+  // Yield calculator: Deliveries & Chores get VIP (+2) + Boosts; Bounties get Boosts only.
   const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false) => {
     const rawBase = Number(baseTickets) || 0;
     if (rawBase <= 0) return 0;
@@ -194,7 +193,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process CURRENT Week Bounties (from live state)
+  // 3. Process CURRENT Week Bounties (Bounties get Boosts only, NO VIP)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -202,7 +201,7 @@ export function recalculateAll() {
       globallyProcessedItems.add(key);
 
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const finalTix = calculateItemYield(baseTix, false, false); // Bounties get Boosts, not VIP +2
+      const finalTix = calculateItemYield(baseTix, false, false); // false = NO VIP
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -231,7 +230,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process CURRENT Week Chores (from live state)
+  // 4. Process CURRENT Week Chores (Chores get VIP +2 AND Boosts)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -239,7 +238,7 @@ export function recalculateAll() {
       globallyProcessedItems.add(key);
 
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const finalTix = calculateItemYield(baseTix, true, false); // Chores receive VIP +2 & Boosts
+      const finalTix = calculateItemYield(baseTix, true, false); // true = WITH VIP
       if (finalTix <= 0) return;
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -257,7 +256,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process Past Weeks from Cloud KV
+  // 5. Process Past Weeks from Cloud
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
@@ -313,11 +312,10 @@ export function recalculateAll() {
 
   // Totals calculations
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
-  
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
-  // 6. Overview Cards
+  // 6. Overview Cards Count
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
