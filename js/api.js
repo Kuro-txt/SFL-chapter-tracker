@@ -6,7 +6,7 @@ let fetchCooldownTimer = null;
 export async function loadTrackerData() {
   const farmIdInput = document.getElementById('farmId');
   const apiKeyInput = document.getElementById('apiKey');
-  const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
+  const fetchBtn = document.querySelector('button[onclick*="loadTrackerData"]');
   const priceBadge = document.getElementById('priceBadge');
 
   const farmId = farmIdInput?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
@@ -47,10 +47,7 @@ export async function loadTrackerData() {
   }
 
   try {
-    const queryParams = new URLSearchParams({
-      farmId,
-      username: currentUsername
-    });
+    const queryParams = new URLSearchParams({ farmId, username: currentUsername });
     if (apiKey) queryParams.set('apiKey', apiKey);
 
     const res = await fetch(`/api/chapter?${queryParams.toString()}`);
@@ -62,30 +59,31 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // Load Vault Data and hydrate active boards if API returned empty arrays
-    if (data.vaultData) {
-      state.currentVaultData = data.vaultData;
-      state.globalData.cloudHistory = data.vaultData;
+    // Unpack and attach Vault Data
+    const vault = data.vaultData || data.cloudHistory || state.currentVaultData;
+    if (vault) {
+      state.currentVaultData = vault;
+      state.globalData.cloudHistory = vault;
 
-      if ((!state.globalData.deliveries || state.globalData.deliveries.length === 0) && data.vaultData.deliveries) {
-        state.globalData.deliveries = data.vaultData.deliveries;
+      // Populate deliveries, bounties, chores from vault if API is empty
+      if (!Array.isArray(state.globalData.deliveries) || state.globalData.deliveries.length === 0) {
+        state.globalData.deliveries = vault.deliveries || (vault.logs && vault.logs[0]?.deliveriesDone) || [];
       }
-      if ((!state.globalData.bounties || state.globalData.bounties.length === 0) && data.vaultData.bounties) {
-        state.globalData.bounties = data.vaultData.bounties;
+      if (!Array.isArray(state.globalData.bounties) || state.globalData.bounties.length === 0) {
+        state.globalData.bounties = vault.bounties || [];
       }
-      if ((!state.globalData.chores || state.globalData.chores.length === 0) && data.vaultData.chores) {
-        state.globalData.chores = data.vaultData.chores;
+      if (!Array.isArray(state.globalData.chores) || state.globalData.chores.length === 0) {
+        state.globalData.chores = vault.chores || [];
       }
 
-      // Sync stored track & login inputs into the DOM
-      if (data.vaultData.trackTickets !== undefined && document.getElementById('trackTicketsInput')) {
-        document.getElementById('trackTicketsInput').value = data.vaultData.trackTickets;
+      if (vault.trackTickets !== undefined && document.getElementById('trackTicketsInput')) {
+        document.getElementById('trackTicketsInput').value = vault.trackTickets;
       }
-      if (data.vaultData.trackCost !== undefined && document.getElementById('trackCostInput')) {
-        document.getElementById('trackCostInput').value = data.vaultData.trackCost;
+      if (vault.trackCost !== undefined && document.getElementById('trackCostInput')) {
+        document.getElementById('trackCostInput').value = vault.trackCost;
       }
-      if (data.vaultData.dailyLoginTickets !== undefined && document.getElementById('dailyLoginCount')) {
-        document.getElementById('dailyLoginCount').value = data.vaultData.dailyLoginTickets;
+      if (vault.dailyLoginTickets !== undefined && document.getElementById('dailyLoginCount')) {
+        document.getElementById('dailyLoginCount').value = vault.dailyLoginTickets;
       }
     }
 
