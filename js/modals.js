@@ -2,6 +2,7 @@ import { state, formatSFL, getMondayBasedWeekId, isAnimalBounty } from './state.
 import { recalculateAll } from './render.js';
 import { saveProgressToCloudKV } from './api.js';
 
+// 1. Column Edit Modal (Deliveries, Bounties, Animal Bounties, Chores)
 export function openColumnModal(type) {
   state.activeColumnType = type;
   const modal = document.getElementById('detailsModal');
@@ -16,7 +17,7 @@ export function openColumnModal(type) {
     if (titleEl) titleEl.textContent = '📦 Edit Daily Deliveries';
     const items = state.globalData?.deliveries || [];
 
-    // ➕ Add Delivery Button Header
+    // Add Delivery Button Header
     const addBtnRow = document.createElement('div');
     addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
     addBtnRow.innerHTML = `
@@ -49,7 +50,7 @@ export function openColumnModal(type) {
     const isAnimalFilter = (type === 'animalBounties');
     if (titleEl) titleEl.textContent = isAnimalFilter ? '🐄 Edit Animal Bounties' : '📜 Edit Item Bounties';
 
-    // ➕ Add Bounty Button Header
+    // Add Bounty Button Header
     const addBtnRow = document.createElement('div');
     addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
     addBtnRow.innerHTML = `
@@ -83,7 +84,7 @@ export function openColumnModal(type) {
   } else if (type === 'chores') {
     if (titleEl) titleEl.textContent = '🧹 Edit Weekly Chores';
 
-    // ➕ Add Chore Button Header
+    // Add Chore Button Header
     const addBtnRow = document.createElement('div');
     addBtnRow.style.cssText = 'margin-bottom: 12px; display: flex; justify-content: flex-end;';
     addBtnRow.innerHTML = `
@@ -126,7 +127,29 @@ export function closeModal() {
   state.activeColumnType = null;
 }
 
-// Window actions for modal editing
+// 2. Category Summary Modal
+export function openCategorySummaryModal(category) {
+  const modal = document.getElementById('categorySummaryModal');
+  const title = document.getElementById('categorySummaryTitle');
+  const body = document.getElementById('categorySummaryBody');
+  if (!modal || !body) return;
+
+  if (title) title.textContent = `📋 ${category.toUpperCase()} SUMMARY`;
+  body.innerHTML = `<p style="color:#5C4033; padding:10px;">Viewing detailed progress for ${category}.</p>`;
+  modal.style.display = 'flex';
+}
+
+export function closeCategorySummaryModal() {
+  const modal = document.getElementById('categorySummaryModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// 3. Cloud Vault Sync Helper
+export async function syncCurrentVaultToCloud() {
+  await saveProgressToCloudKV(true);
+}
+
+// 4. Window Event Handlers for inline buttons and toggles
 window.toggleModalItem = function(type, index, isChecked) {
   if (!state.globalData) return;
   const list = state.globalData[type];
