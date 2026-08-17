@@ -149,7 +149,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 5. Save Vault Endpoint
+    // 5. Save Vault Endpoint (Explicitly preserves and updates logs)
     if (req.method === 'POST' && action === 'saveVault') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const saveUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
@@ -186,6 +186,8 @@ export default async function handler(req, res) {
         if (body.milestones) existingData.milestones = body.milestones;
 
         const deletedDates = existingData.deletedDates || [];
+        
+        // Explicitly accept and merge logs sent from client
         if (body.logs && Array.isArray(body.logs)) {
           existingData.logs = body.logs.filter(l => {
             const d = (l.date || '').split('T')[0];
