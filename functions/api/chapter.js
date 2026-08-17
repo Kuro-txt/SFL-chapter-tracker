@@ -267,11 +267,13 @@ async function executeCronBackupTask(env) {
         };
       });
 
-      vaultData.weeks[currentWeekMonday] = {
-        weekId: currentWeekMonday,
-        bounties: bountiesList,
-        chores: choresList
-      };
+      if (!vaultData.weeks[currentWeekMonday]) {
+        vaultData.weeks[currentWeekMonday] = {
+          weekId: currentWeekMonday,
+          bounties: bountiesList,
+          chores: choresList
+        };
+      }
 
       let dailyTix = 0;
       let dailyCost = 0;
@@ -481,12 +483,11 @@ export async function onRequest(context) {
       if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
       if (body.lastDailyLoginDate) existingData.lastDailyLoginDate = body.lastDailyLoginDate;
 
-      // Fully accept incoming client weeks (preserves manually added weekly items)
+      // Fully merge and persist incoming client weeks (preserves manually added weekly items)
       if (body.weeks && typeof body.weeks === 'object') {
         existingData.weeks = body.weeks;
       }
 
-      // Fully accept incoming deliveries and logs
       if (body.deliveries) existingData.deliveries = body.deliveries;
       if (body.bounties) existingData.bounties = body.bounties;
       if (body.chores) existingData.chores = body.chores;
