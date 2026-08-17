@@ -24,7 +24,6 @@ export default async function handler(req, res) {
   const username = rawUsername && rawUsername !== ':' ? rawUsername.toLowerCase().replace(/[^a-z0-9_]/g, '') : '';
 
   try {
-    // 1. Get User Vault
     if (action === 'getVault') {
       if (!username) return res.status(200).json({ vaultData: null });
 
@@ -42,7 +41,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2. User Registration
     if (req.method === 'POST' && action === 'register') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const regUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
@@ -59,8 +57,7 @@ export default async function handler(req, res) {
         const passwordHash = hashPassword(password);
         const initialVault = {
           farmId: userFarmId,
-          logs: [],
-          deletedDates: [],
+          archiveDeliveries: [],
           cumulativeTickets: 0,
           cumulativeCost: 0,
           weeks: {},
@@ -85,7 +82,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. User Login
     if (req.method === 'POST' && action === 'login') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const loginUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
@@ -115,41 +111,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Delete Log Endpoint
-    if (req.method === 'POST' && action === 'deleteLog') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const delUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
-      const logIdx = parseInt(body.logIdx, 10);
-
-      if (!delUsername || isNaN(logIdx)) return res.status(400).json({ error: 'Username and valid logIdx required.' });
-
-      const client = await pool.connect();
-      try {
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [delUsername]);
-        if (queryRes.rows.length === 0) return res.status(404).json({ error: 'Vault not found.' });
-
-        let vaultData = queryRes.rows[0].vault_data || {};
-        if (!vaultData.deletedDates) vaultData.deletedDates = [];
-
-        if (vaultData.logs && Array.isArray(vaultData.logs) && vaultData.logs[logIdx]) {
-          const removedLog = vaultData.logs[logIdx];
-          if (removedLog.date) {
-            const cleanDate = removedLog.date.split('T')[0];
-            if (!vaultData.deletedDates.includes(cleanDate)) {
-              vaultData.deletedDates.push(cleanDate);
-            }
-          }
-          vaultData.logs.splice(logIdx, 1);
-        }
-
-        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), delUsername]);
-        return res.status(200).json({ success: true, vaultData });
-      } finally {
-        client.release();
-      }
-    }
-
-    // 5. Save Vault Endpoint (Explicitly preserves and updates logs)
     if (req.method === 'POST' && action === 'saveVault') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const saveUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
@@ -159,8 +120,7 @@ export default async function handler(req, res) {
       try {
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [saveUsername]);
         let existingData = queryRes.rows.length > 0 ? queryRes.rows[0].vault_data : {
-          logs: [],
-          deletedDates: [],
+          archiveDeliveries: [],
           cumulativeTickets: 0,
           cumulativeCost: 0,
           weeks: {},
@@ -181,19 +141,10 @@ export default async function handler(req, res) {
 
         if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
         if (body.deliveries) existingData.deliveries = body.deliveries;
+        if (body.archiveDeliveries) existingData.archiveDeliveries = body.archiveDeliveries;
         if (body.bounties) existingData.bounties = body.bounties;
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
-
-        const deletedDates = existingData.deletedDates || [];
-        
-        // Explicitly accept and merge logs sent from client
-        if (body.logs && Array.isArray(body.logs)) {
-          existingData.logs = body.logs.filter(l => {
-            const d = (l.date || '').split('T')[0];
-            return !deletedDates.includes(d);
-          });
-        }
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), saveUsername]);
         return res.status(200).json({ success: true, vaultData: existingData });
@@ -202,7 +153,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 6. Default GET: Live Sunflower Land API Data Fetch
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -243,6 +193,18 @@ export default async function handler(req, res) {
 
           currentVault.farmId = farmId;
 
+          // Archive previously completed deliveries into archiveDeliveries before refreshing daily list
+          if (!currentVault.archiveDeliveries) currentVault.archiveDeliveries = [];
+          if (currentVault.deliveries) {
+            currentVault.deliveries.forEach(d => {
+              const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+              if (isTicked) {
+                const existsInArchive = currentVault.archiveDeliveries.some(ar => ar.id === d.id && ar.completedDate === d.completedDate);
+                if (!existsInArchive) currentVault.archiveDeliveries.push(d);
+              }
+            });
+          }
+
           const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
           currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
 
@@ -267,14 +229,6 @@ export default async function handler(req, res) {
             currentVault.weeks[currentWeekMonday].chores = [...parsed.choresList, ...savedWeekManualChores];
             currentVault.weeks[currentWeekMonday].bounties = [...parsed.activeBounties, ...savedWeekManualBounties];
           }
-
-          if (!currentVault.logs) currentVault.logs = [];
-
-          const deletedDates = currentVault.deletedDates || [];
-          currentVault.logs = currentVault.logs.filter(l => {
-            const d = (l.date || '').split('T')[0];
-            return !deletedDates.includes(d);
-          });
 
           await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(currentVault), username]);
         }
