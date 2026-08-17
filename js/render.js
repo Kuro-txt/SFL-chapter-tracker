@@ -110,9 +110,10 @@ export function recalculateAll() {
 
   const globallyProcessedItems = new Set();
 
-  const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false) => {
+  const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false, isManual = false) => {
     const rawBase = Number(baseTickets) || 0;
     if (rawBase <= 0) return 0;
+    if (isManual) return rawBase; // Strictly exact tickets for manually added items
     const withBonuses = rawBase + (isVipEligible ? vipBonus : 0) + boostCount;
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
@@ -135,7 +136,8 @@ export function recalculateAll() {
         globallyProcessedItems.add(uniqueKey);
 
         const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        const finalTix = calculateItemYield(baseTix, true, true, Boolean(item.hasDoubleBonus));
+        const isManual = Boolean(item.isManual);
+        const finalTix = calculateItemYield(baseTix, true, true, Boolean(item.hasDoubleBonus), isManual);
         const itemCost = item.cost || item.itemsCost || 0;
 
         totalDelivTix += finalTix;
@@ -158,8 +160,9 @@ export function recalculateAll() {
         globallyProcessedItems.add(uniqueKey);
 
         const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+        const isManual = Boolean(d.isManual);
         let applyDouble = false;
-        if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !d.isManual) {
+        if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !isManual) {
           applyDouble = true;
           doubleDeliveryAppliedToday = true;
           d.hasDoubleBonus = true;
@@ -167,7 +170,7 @@ export function recalculateAll() {
           d.hasDoubleBonus = false;
         }
 
-        const calculatedYield = calculateItemYield(baseTix, true, true, applyDouble);
+        const calculatedYield = calculateItemYield(baseTix, true, true, applyDouble, isManual);
         const dCost = d.itemsCost || d.cost || 0;
 
         todayDelivTix += calculatedYield;
@@ -190,7 +193,8 @@ export function recalculateAll() {
       globallyProcessedItems.add(key);
 
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const finalTix = calculateItemYield(baseTix, false, false);
+      const isManual = Boolean(b.isManual);
+      const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -223,7 +227,8 @@ export function recalculateAll() {
       globallyProcessedItems.add(key);
 
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const finalTix = calculateItemYield(baseTix, true, false);
+      const isManual = Boolean(c.isManual);
+      const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
       if (finalTix <= 0) return;
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -252,7 +257,8 @@ export function recalculateAll() {
         globallyProcessedItems.add(key);
 
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
-        const finalTix = calculateItemYield(baseTix, false, false);
+        const isManual = Boolean(b.isManual);
+        const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
         if (finalTix <= 0) return;
 
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -279,7 +285,8 @@ export function recalculateAll() {
         globallyProcessedItems.add(key);
 
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
-        const finalTix = calculateItemYield(baseTix, true, false);
+        const isManual = Boolean(c.isManual);
+        const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
         if (finalTix <= 0) return;
 
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
