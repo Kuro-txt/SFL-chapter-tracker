@@ -146,7 +146,7 @@ export function renderHistoryModalList() {
   }
 
   container.innerHTML = logs.map((log, idx) => {
-    const completedItems = (log.deliveriesDone || []).filter(d => d.yield > 0 || d.checked || d.completed);
+    const completedItems = (log.deliveriesDone || []).filter(d => (d.yield && d.yield > 0) || d.checked || d.completed);
     const delivHtml = completedItems.length > 0 ? 
       `<div style="color:#5C4033; font-size:11px;"><strong>📦 Completed:</strong> ${completedItems.map(d => `${d.name || d.from} (+${d.yield || d.tickets || d.baseTickets || 0} Tix, ${formatSFL(d.cost || d.itemsCost)} SFL)`).join(', ')}</div>` : '';
 
@@ -176,19 +176,29 @@ export async function deleteMasterLog(logIdx) {
   const label = targetLog.date || `Log #${logs.length - logIdx}`;
   
   if (confirm(`🗑️ Permanently delete snapshot for ${label}?`)) {
-    // Remove log entry from memory
-    logs.splice(logIdx, 1);
+    try {
+      const res = await fetch('/api/chapter?action=deleteLog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: state.currentUser,
+          logIdx: logIdx
+        })
+      });
 
-    if (state.currentVaultData) {
-      state.currentVaultData.logs = logs;
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Failed to delete log.');
+
+      state.currentVaultData = data.vaultData;
+      if (state.globalData) {
+        state.globalData.cloudHistory = data.vaultData;
+      }
+
+      renderHistoryModalList();
+      recalculateAll();
+    } catch (err) {
+      alert(`Delete Error: ${err.message}`);
     }
-
-    // Immediately update modal view & calculate stats
-    renderHistoryModalList();
-    recalculateAll();
-
-    // Commit change directly to cloud database
-    await syncCurrentVaultToCloud();
   }
 }
 
