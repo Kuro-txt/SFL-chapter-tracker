@@ -113,7 +113,7 @@ export function recalculateAll() {
   const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false, isManual = false) => {
     const rawBase = Number(baseTickets) || 0;
     if (rawBase <= 0) return 0;
-    if (isManual) return rawBase; // Strictly exact tickets for manually added items
+    if (isManual) return rawBase;
     const withBonuses = rawBase + (isVipEligible ? vipBonus : 0) + boostCount;
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
@@ -360,33 +360,42 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const badgeEl = document.getElementById('chartSummaryBadge');
   if (!chartContainer) return;
 
-  const distinctMondays = Object.keys(weeklyStats).sort();
-  if (!distinctMondays.includes(currentMondayKey)) {
-    distinctMondays.push(currentMondayKey);
-    distinctMondays.sort();
+  // Week 1 anchored to 2026-08-10, Week 2 to 2026-08-17, etc.
+  const weekMondays = [];
+  const baseEpoch = new Date('2026-08-10T00:00:00.000Z');
+  for (let w = 0; w < (totalPlannedWeeks || 12); w++) {
+    const d = new Date(baseEpoch.getTime());
+    d.setUTCDate(baseEpoch.getUTCDate() + (w * 7));
+    weekMondays.push(d.toISOString().split('T')[0]);
   }
 
-  const maxWeeksToDisplay = Math.max(totalPlannedWeeks || 12, distinctMondays.length, 12);
-  const displayItems = [];
+  // Ensure current week is included if present in stats
+  Object.keys(weeklyStats).forEach(mk => {
+    if (!weekMondays.includes(mk)) {
+      weekMondays.push(mk);
+      weekMondays.sort();
+    }
+  });
 
-  for (let i = 1; i <= maxWeeksToDisplay; i++) {
-    const mondayKey = distinctMondays[i - 1];
-    const isCurrent = (mondayKey === currentMondayKey) || (!mondayKey && i === distinctMondays.length);
-    const data = mondayKey ? weeklyStats[mondayKey] : null;
+  const displayItems = [];
+  weekMondays.forEach((mondayKey, idx) => {
+    const isCurrent = (mondayKey === currentMondayKey);
+    const data = weeklyStats[mondayKey];
 
     displayItems.push({
-      label: `Week ${i}`,
-      mondayKey: mondayKey || `Upcoming`,
+      label: `Week ${idx + 1}`,
+      mondayKey,
       tickets: data ? data.tickets : 0,
       cost: data ? data.cost : 0,
       isCurrent,
       hasData: Boolean(data && data.tickets > 0)
     });
-  }
+  });
 
   if (badgeEl) {
-    const currentWeekIndex = distinctMondays.indexOf(currentMondayKey) + 1;
-    badgeEl.textContent = `WEEK ${currentWeekIndex || 2} OF ${maxWeeksToDisplay} WEEKS (UTC)`;
+    const currentIndex = displayItems.findIndex(d => d.isCurrent);
+    const activeWeekNum = currentIndex !== -1 ? currentIndex + 1 : 2;
+    badgeEl.textContent = `WEEK ${activeWeekNum} OF ${displayItems.length} WEEKS (UTC)`;
   }
 
   const barWidth = 52;
