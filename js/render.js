@@ -64,12 +64,17 @@ export function recalculateAll() {
     weeklyStats[normMonday].cost += cost;
   };
 
-  // Category counters (declared once)
+  // Category counters
   let totalDelivTix = 0;
   let totalBountyTix = 0;
   let totalAnimalBountyTix = 0;
   let totalChoreTix = 0;
   let totalSflCostAll = trackCost;
+
+  let weekDelivTix = 0;
+  let weekBountyTix = 0;
+  let weekAnimalBountyTix = 0;
+  let weekChoreTix = 0;
 
   let todayDelivTix = 0;
   let todayBountyTix = 0;
@@ -109,6 +114,7 @@ export function recalculateAll() {
     if (isTodayLog) return;
 
     const logMonday = getMondayBasedWeekId(rawDate);
+    const isThisWeek = (logMonday === currentWeekMonday);
 
     (log.deliveriesDone || []).forEach(item => {
       if (isTicked(item)) {
@@ -119,6 +125,10 @@ export function recalculateAll() {
         totalDelivTix += finalTix;
         totalSflCostAll += itemCost;
         addWeeklyStat(logMonday, finalTix, itemCost);
+
+        if (isThisWeek) {
+          weekDelivTix += finalTix;
+        }
       }
     });
   });
@@ -145,6 +155,7 @@ export function recalculateAll() {
       todayCostAll += dCost;
 
       totalDelivTix += calculatedYield;
+      weekDelivTix += calculatedYield;
       totalSflCostAll += dCost;
 
       addWeeklyStat(currentWeekMonday, calculatedYield, dCost);
@@ -167,8 +178,10 @@ export function recalculateAll() {
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
+        weekAnimalBountyTix += finalTix;
       } else {
         totalBountyTix += finalTix;
+        weekBountyTix += finalTix;
       }
 
       totalSflCostAll += bCost;
@@ -197,6 +210,7 @@ export function recalculateAll() {
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
       totalChoreTix += finalTix;
+      weekChoreTix += finalTix;
       totalSflCostAll += cCost;
       addWeeklyStat(currentWeekMonday, finalTix, cCost);
 
@@ -210,6 +224,7 @@ export function recalculateAll() {
   // 5. Process PAST and ALL Weeks from Cloud KV
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
+    const isCurrentWeek = (pastMonday === currentWeekMonday);
 
     (wk.bounties || []).forEach(b => {
       const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -226,8 +241,10 @@ export function recalculateAll() {
 
         if (isAnimal) {
           totalAnimalBountyTix += finalTix;
+          if (isCurrentWeek) weekAnimalBountyTix += finalTix;
         } else {
           totalBountyTix += finalTix;
+          if (isCurrentWeek) weekBountyTix += finalTix;
         }
 
         totalSflCostAll += bCost;
@@ -246,6 +263,8 @@ export function recalculateAll() {
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
+        if (isCurrentWeek) weekChoreTix += finalTix;
+
         totalSflCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
@@ -293,10 +312,10 @@ export function recalculateAll() {
   setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
-  setElemText('tipWeekDeliv', `📦 Deliveries: ${weeklyStats[currentWeekMonday]?.tickets || 0} Tix`);
-  setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix || 0} Tix`);
-  setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix || 0} Tix`);
-  setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix || 0} Tix`);
+  setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
+  setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
+  setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix} Tix`);
+  setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
 
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
