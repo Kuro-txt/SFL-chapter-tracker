@@ -100,9 +100,9 @@ export async function saveProgressToCloudKV(silent = false) {
   }
 
   const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
-  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
+  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
 
   const payload = {
     username: state.currentUser,
@@ -111,6 +111,8 @@ export async function saveProgressToCloudKV(silent = false) {
     trackCost,
     dailyLoginTickets,
     lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0],
+    weeks: state.globalData?.cloudHistory?.weeks || {},
+    logs: state.globalData?.cloudHistory?.logs || [],
     deliveries: state.globalData?.deliveries || [],
     bounties: state.globalData?.bounties || [],
     chores: state.globalData?.chores || [],
