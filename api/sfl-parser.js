@@ -1,38 +1,41 @@
 import { SFL_RECIPES } from '../recipes.js';
 
-// Helper to strictly extract Shiny Feather or Seasonal/Chapter Ticket count from reward objects
+// Strict helper to inspect all nested structures for Shiny Feathers
 export function extractRewardTickets(rewardObj) {
-  if (!rewardObj) return 0;
-  if (typeof rewardObj === 'number') return rewardObj;
+  if (!rewardObj || typeof rewardObj !== 'object') return 0;
   
   let count = 0;
-  const items = rewardObj.items || rewardObj;
-  
-  if (typeof items === 'object' && !Array.isArray(items)) {
-    for (const [key, qty] of Object.entries(items)) {
-      const lower = key.toLowerCase().trim();
-      // Match exact chapter currency names
+
+  function scan(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    for (const [key, val] of Object.entries(obj)) {
+      const cleanKey = key.toLowerCase().trim();
+
+      // Check explicit Feather / Ticket keys
       if (
-        lower === 'shiny feather' ||
-        lower.includes('shiny feather') ||
-        lower === 'chapter ticket' ||
-        lower === 'seasonal ticket' ||
-        lower.includes('ticket') ||
-        lower.includes('feather') ||
-        lower.includes('scroll')
+        cleanKey === 'shiny feather' ||
+        cleanKey === 'shiny_feather' ||
+        cleanKey === 'chapter ticket' ||
+        cleanKey === 'chapter_ticket' ||
+        cleanKey === 'seasonal ticket' ||
+        cleanKey === 'seasonal_ticket' ||
+        cleanKey === 'feather'
       ) {
-        count += (typeof qty === 'number' ? qty : parseInt(qty, 10) || 0);
+        if (typeof val === 'number' && val > 0) {
+          count += val;
+        } else if (typeof val === 'string' && !isNaN(parseInt(val, 10))) {
+          count += parseInt(val, 10);
+        }
+      }
+
+      // Traverse deeper if items or rewards are nested
+      if (val && typeof val === 'object' && !Array.isArray(val) && cleanKey !== 'coins' && cleanKey !== 'sfl') {
+        scan(val);
       }
     }
   }
 
-  // Check top-level numeric fields if explicitly labeled as tickets
-  if (count === 0) {
-    if (typeof rewardObj['Shiny Feather'] === 'number') count = rewardObj['Shiny Feather'];
-    else if (typeof rewardObj.tickets === 'number') count = rewardObj.tickets;
-    else if (typeof rewardObj.rewardTickets === 'number') count = rewardObj.rewardTickets;
-  }
-
+  scan(rewardObj);
   return count;
 }
 
@@ -153,30 +156,16 @@ export function getMondayBasedWeekId(d) {
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-  // Calendar events
-  const nowMs = Date.now();
-  const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
-  let isDoubleDeliveryActive = false;
-  if (Array.isArray(calendarEvents)) {
-    isDoubleDeliveryActive = calendarEvents.some(evt => {
-      const title = (evt.name || evt.title || evt.type || '').toLowerCase();
-      const matchesName = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
-      const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
-      const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
-      return matchesName && started && notEnded;
-    });
-  }
-
-  // 1. Deliveries: STRICT LIVE REWARD CHECK ONLY
+  // 1. Deliveries: ONLY orders that explicitly reward Shiny Feathers
   const deliveryList = [];
   const validTicketNpcs = new Set();
 
   (farm.delivery?.orders || []).forEach(order => {
-    // Extract actual tickets/feathers from the live reward object
-    const totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
+    // Inspect order.reward first, then fallback to order.rewardItems
+    const featherCount = extractRewardTickets(order.reward) || extractRewardTickets(order.rewardItems);
 
-    // STRICT CHECK: Drop any NPC whose order does not give tickets/feathers
-    if (totalTickets > 0) {
+    // Hard requirement: must have at least 1 feather in the live reward
+    if (featherCount > 0) {
       const npcClean = (order.from || '').toLowerCase().trim();
       validTicketNpcs.add(npcClean);
 
@@ -199,8 +188,8 @@ export function parseFarmData(farm, priceMap) {
         itemsCost,
         cost: itemsCost,
         itemDetails,
-        baseTickets: totalTickets,
-        tickets: totalTickets,
+        baseTickets: featherCount,
+        tickets: featherCount,
         isChapterNpc: true,
         completed: isCompleted,
         checked: isCompleted,
@@ -210,7 +199,7 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // Milestones: Filter ONLY for NPCs that currently reward tickets/feathers
+  // Milestones: ONLY for NPCs who awarded feathers
   const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
   const liveMilestones = {};
   Object.entries(rawMilestones).forEach(([npc, count]) => {
@@ -220,7 +209,21 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // 2. Bounties: Strictly require feathers / tickets in reward
+  // Calendar Events (2x Double Delivery)
+  const nowMs = Date.now();
+  const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
+  let isDoubleDeliveryActive = false;
+  if (Array.isArray(calendarEvents)) {
+    isDoubleDeliveryActive = calendarEvents.some(evt => {
+      const title = (evt.name || evt.title || evt.type || '').toLowerCase();
+      const matchesName = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
+      const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
+      const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
+      return matchesName && started && notEnded;
+    });
+  }
+
+  // 2. Bounties: ONLY bounties that award Shiny Feathers
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -257,10 +260,8 @@ export function parseFarmData(farm, priceMap) {
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
-      const baseTicketCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || (typeof b.tickets === 'number' ? b.tickets : 0);
-
-      // STRICT: Skip any bounty that does not reward Shiny Feathers / Tickets
-      if (baseTicketCount <= 0) return;
+      const featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items);
+      if (featherCount <= 0) return; // Drop bounties that only award Coins or SFL
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
       if (seenBountyKeys.has(uniqueKey)) return;
@@ -282,8 +283,8 @@ export function parseFarmData(farm, priceMap) {
         id: b.id || uniqueKey,
         name: bName || `Animal Bounty (Lvl ${b.level || 1})`,
         level: b.level || (b.category === 'animal' ? 1 : null),
-        baseTickets: baseTicketCount,
-        tickets: baseTicketCount,
+        baseTickets: featherCount,
+        tickets: featherCount,
         cost: unitPrice,
         itemsCost: unitPrice,
         completed: isCompleted,
@@ -294,15 +295,14 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 3. Chores: Strictly require feathers / tickets in reward
+  // 3. Chores: ONLY chores that award Shiny Feathers
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
 
   Object.entries(choreObj).forEach(([key, details]) => {
-    const baseTicketCount = extractRewardTickets(details.reward) || (typeof details.tickets === 'number' ? details.tickets : 0) || details.baseTickets || 0;
+    const featherCount = extractRewardTickets(details.reward);
 
-    // STRICT: Skip any chore that does not give Shiny Feathers / Tickets
-    if (baseTicketCount > 0) {
+    if (featherCount > 0) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
@@ -313,8 +313,8 @@ export function parseFarmData(farm, priceMap) {
         npc: details.npc || details.from || 'Chore NPC',
         name: taskLabel,
         task: taskLabel,
-        baseTickets: baseTicketCount,
-        tickets: baseTicketCount,
+        baseTickets: featherCount,
+        tickets: featherCount,
         cost: 0,
         itemsCost: 0,
         progress: currentProgress,
