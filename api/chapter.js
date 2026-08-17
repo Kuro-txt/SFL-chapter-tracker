@@ -1,291 +1,254 @@
-import { pool, hashPassword } from './db.js';
 import { 
-  extractPricesRecursive, 
-  getMondayBasedWeekId, 
-  parseFarmData 
-} from './sfl-parser.js';
+  state, 
+  getActiveBoostCount, 
+  getActiveVipBonus, 
+  getMondayBasedWeekId,
+  isLoginClaimedToday
+} from './state.js';
+import { recalculateAll } from './render.js';
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+let fetchCooldownTimer = null;
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+export async function loadTrackerData() {
+  const farmIdInput = document.getElementById('farmId');
+  const apiKeyInput = document.getElementById('apiKey');
+  const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
+  const priceBadge = document.getElementById('priceBadge');
 
-  const action = req.query.action;
-  const farmId = req.query.farmId || '8472883706403914';
-  const apiKey = req.query.apiKey || process.env.SFL_API_KEY || '';
+  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  const apiKey = apiKeyInput?.value.trim() || '';
+  const currentUsername = state.currentUser || '';
+
+  localStorage.setItem('sfl_farmId', farmId);
+
+  if (fetchCooldownTimer) {
+    alert('⏳ Please wait for the cooldown before fetching again.');
+    return;
+  }
+
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    let secondsLeft = 10;
+    fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+    fetchCooldownTimer = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft > 0) {
+        fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+      } else {
+        clearInterval(fetchCooldownTimer);
+        fetchCooldownTimer = null;
+        fetchBtn.disabled = false;
+        fetchBtn.textContent = '🌾 FETCH DATA';
+      }
+    }, 1000);
+  }
+
+  if (priceBadge) {
+    priceBadge.style.display = 'inline-block';
+    priceBadge.textContent = 'FETCHING SFL DATA...';
+    priceBadge.style.background = '#FFF9C4';
+    priceBadge.style.borderColor = '#FBC02D';
+    priceBadge.style.color = '#F57F17';
+  }
 
   try {
-    if (action === 'getVault') {
-      const username = (req.query.username || '').toLowerCase().trim();
-      if (!username) return res.status(200).json({ vaultData: null });
-
-      const client = await pool.connect();
-      try {
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
-        if (queryRes.rows.length > 0) {
-          const vaultData = queryRes.rows[0].vault_data;
-          delete vaultData.apiKey;
-          return res.status(200).json({ success: true, vaultData });
-        }
-        return res.status(200).json({ vaultData: null });
-      } finally {
-        client.release();
-      }
-    }
-
-    if (req.method === 'POST' && action === 'register') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const username = (body.username || '').toLowerCase().trim();
-      const password = body.password || '';
-      const userFarmId = body.farmId || farmId;
-
-      if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
-
-      const client = await pool.connect();
-      try {
-        const check = await client.query('SELECT username FROM user_vaults WHERE username = $1', [username]);
-        if (check.rows.length > 0) return res.status(400).json({ error: 'Username already taken.' });
-
-        const passwordHash = hashPassword(password);
-        const initialVault = {
-          farmId: userFarmId,
-          logs: [],
-          deletedDates: [],
-          cumulativeTickets: 0,
-          cumulativeCost: 0,
-          weeks: {},
-          trackTickets: 0,
-          trackCost: 0,
-          dailyLoginTickets: 0,
-          lastDailyLoginDate: null,
-          deliveries: [],
-          bounties: [],
-          chores: [],
-          milestones: {}
-        };
-
-        await client.query(
-          'INSERT INTO user_vaults (username, auth_data, vault_data) VALUES ($1, $2, $3)',
-          [username, JSON.stringify({ username, passwordHash }), JSON.stringify(initialVault)]
-        );
-
-        return res.status(200).json({ success: true, username, farmId: userFarmId });
-      } finally {
-        client.release();
-      }
-    }
-
-    if (req.method === 'POST' && action === 'login') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const username = (body.username || '').toLowerCase().trim();
-      const password = body.password || '';
-      const userFarmId = body.farmId;
-
-      if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
-
-      const client = await pool.connect();
-      try {
-        const queryRes = await client.query('SELECT auth_data, vault_data FROM user_vaults WHERE username = $1', [username]);
-        if (queryRes.rows.length === 0) return res.status(401).json({ error: 'Account not found.' });
-
-        const authData = queryRes.rows[0].auth_data;
-        if (authData.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Incorrect password.' });
-
-        const vaultData = queryRes.rows[0].vault_data;
-        if (userFarmId && !vaultData.farmId) {
-          vaultData.farmId = userFarmId;
-          await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), username]);
-        }
-
-        delete vaultData.apiKey;
-        return res.status(200).json({ success: true, username, vaultData });
-      } finally {
-        client.release();
-      }
-    }
-
-    if (req.method === 'POST' && action === 'deleteLog') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const username = (body.username || '').toLowerCase().trim();
-      const logIdx = parseInt(body.logIdx, 10);
-
-      if (!username || isNaN(logIdx)) return res.status(400).json({ error: 'Username and valid logIdx required.' });
-
-      const client = await pool.connect();
-      try {
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
-        if (queryRes.rows.length === 0) return res.status(404).json({ error: 'Vault not found.' });
-
-        let vaultData = queryRes.rows[0].vault_data || {};
-        if (!vaultData.deletedDates) vaultData.deletedDates = [];
-
-        if (vaultData.logs && Array.isArray(vaultData.logs) && vaultData.logs[logIdx]) {
-          const removedLog = vaultData.logs[logIdx];
-          if (removedLog.date) {
-            const cleanDate = removedLog.date.split('T')[0];
-            if (!vaultData.deletedDates.includes(cleanDate)) {
-              vaultData.deletedDates.push(cleanDate);
-            }
-          }
-          vaultData.logs.splice(logIdx, 1);
-        }
-
-        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), username]);
-        return res.status(200).json({ success: true, vaultData });
-      } finally {
-        client.release();
-      }
-    }
-
-    if (req.method === 'POST' && action === 'saveVault') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const username = (body.username || '').toLowerCase().trim();
-      if (!username) return res.status(401).json({ error: 'Not logged in.' });
-
-      const client = await pool.connect();
-      try {
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
-        let existingData = queryRes.rows.length > 0 ? queryRes.rows[0].vault_data : {
-          logs: [],
-          deletedDates: [],
-          cumulativeTickets: 0,
-          cumulativeCost: 0,
-          weeks: {},
-          trackTickets: 0,
-          trackCost: 0,
-          dailyLoginTickets: 0,
-          lastDailyLoginDate: null,
-          milestones: {}
-        };
-
-        if (body.farmId) existingData.farmId = body.farmId;
-        if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets, 10) || 0;
-        if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
-        if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
-        if (body.lastDailyLoginDate) existingData.lastDailyLoginDate = body.lastDailyLoginDate;
-        if (body.cumulativeTickets !== undefined) existingData.cumulativeTickets = parseInt(body.cumulativeTickets, 10) || 0;
-        if (body.cumulativeCost !== undefined) existingData.cumulativeCost = parseFloat(body.cumulativeCost) || 0;
-
-        if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
-        if (body.deliveries) existingData.deliveries = body.deliveries;
-        if (body.bounties) existingData.bounties = body.bounties;
-        if (body.chores) existingData.chores = body.chores;
-        if (body.milestones) existingData.milestones = body.milestones;
-
-        const deletedDates = existingData.deletedDates || [];
-        if (body.logs && Array.isArray(body.logs)) {
-          existingData.logs = body.logs.filter(l => {
-            const d = (l.date || '').split('T')[0];
-            return !deletedDates.includes(d);
-          });
-        }
-
-        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), username]);
-        return res.status(200).json({ success: true, vaultData: existingData });
-      } finally {
-        client.release();
-      }
-    }
-
-    const sflHeaders = {
-      'Accept': 'application/json, text/plain, */*',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Referer': 'https://sunflower-land.com/',
-      'Origin': 'https://sunflower-land.com'
-    };
-    if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
-
-    const [sflResponse, pricesResponse] = await Promise.all([
-      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => null),
-      fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
-    ]);
-
-    if (!sflResponse || !sflResponse.ok) {
-      const status = sflResponse?.status || 500;
-      return res.status(status).json({ error: status === 401 ? 'SFL API 401 Unauthorized.' : `SFL API error (${status}). Check Farm ID.` });
-    }
-
-    const payload = await sflResponse.json().catch(() => ({}));
-    const farm = payload.farm || {};
-
-    let priceMap = {};
-    if (pricesResponse && pricesResponse.ok) {
-      const rawPricesData = await pricesResponse.json().catch(() => null);
-      if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
-    }
-
-    const parsed = parseFarmData(farm, priceMap);
-    const usernameParam = (req.query.username || '').toLowerCase().trim();
-    let currentVault = null;
-
-    if (usernameParam) {
-      const client = await pool.connect();
-      try {
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [usernameParam]);
-        if (queryRes.rows.length > 0) {
-          currentVault = queryRes.rows[0].vault_data || {};
-          const currentWeekMonday = getMondayBasedWeekId();
-
-          currentVault.farmId = farmId;
-
-          const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
-          currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
-
-          const existingManualBounties = (currentVault.bounties || []).filter(b => b.isManual);
-          currentVault.bounties = [...parsed.activeBounties, ...existingManualBounties];
-
-          const existingManualChores = (currentVault.chores || []).filter(c => c.isManual);
-          currentVault.chores = [...parsed.choresList, ...existingManualChores];
-
-          currentVault.milestones = parsed.liveMilestones;
-
-          if (!currentVault.weeks) currentVault.weeks = {};
-          if (!currentVault.weeks[currentWeekMonday]) {
-            currentVault.weeks[currentWeekMonday] = {
-              weekId: currentWeekMonday,
-              bounties: currentVault.bounties,
-              chores: currentVault.chores
-            };
-          } else {
-            const savedWeekManualChores = (currentVault.weeks[currentWeekMonday].chores || []).filter(c => c.isManual);
-            const savedWeekManualBounties = (currentVault.weeks[currentWeekMonday].bounties || []).filter(b => b.isManual);
-            currentVault.weeks[currentWeekMonday].chores = [...parsed.choresList, ...savedWeekManualChores];
-            currentVault.weeks[currentWeekMonday].bounties = [...parsed.activeBounties, ...savedWeekManualBounties];
-          }
-
-          if (!currentVault.logs) currentVault.logs = [];
-
-          const deletedDates = currentVault.deletedDates || [];
-          currentVault.logs = currentVault.logs.filter(l => {
-            const d = (l.date || '').split('T')[0];
-            return !deletedDates.includes(d);
-          });
-
-          await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(currentVault), usernameParam]);
-        }
-      } finally {
-        client.release();
-      }
-    }
-
-    return res.status(200).json({
+    const queryParams = new URLSearchParams({
       farmId,
-      isVipActive: parsed.isVipActive,
-      isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
-      milestones: parsed.liveMilestones,
-      pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: currentVault ? currentVault.deliveries : parsed.deliveryList,
-      bounties: currentVault ? currentVault.bounties : parsed.activeBounties,
-      chores: currentVault ? currentVault.chores : parsed.choresList,
-      vaultData: currentVault
+      username: currentUsername
     });
+    if (apiKey) queryParams.set('apiKey', apiKey);
+
+    const res = await fetch(`/api/chapter?${queryParams.toString()}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Server error (${res.status})`);
+    }
+
+    const data = await res.json();
+    state.globalData = data;
+
+    if (data.vaultData) {
+      state.currentVaultData = data.vaultData;
+      // Explicitly initialize cloudHistory and assign logs from vault data
+      state.globalData.cloudHistory = {
+        logs: data.vaultData.logs || [],
+        weeks: data.vaultData.weeks || {},
+        trackTickets: data.vaultData.trackTickets || 0,
+        trackCost: data.vaultData.trackCost || 0,
+        dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
+      };
+    } else if (!state.globalData.cloudHistory) {
+      state.globalData.cloudHistory = { logs: [], weeks: {} };
+    }
+
+    if (data.isVipActive !== undefined) {
+      const vipToggle = document.getElementById('vipToggle');
+      if (vipToggle) {
+        vipToggle.checked = Boolean(data.isVipActive);
+        localStorage.setItem('sfl_vip', vipToggle.checked);
+      }
+    }
+
+    if (priceBadge) {
+      priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED & SAVED`;
+      priceBadge.style.background = '#E8F5E9';
+      priceBadge.style.borderColor = '#4CAF50';
+      priceBadge.style.color = '#2E7D32';
+    }
+
+    recalculateAll();
   } catch (err) {
-    return res.status(500).json({ error: `Server Error: ${err.message}` });
+    if (priceBadge) {
+      priceBadge.textContent = `❌ ${err.message}`;
+      priceBadge.style.background = '#FFEBEE';
+      priceBadge.style.borderColor = '#E53935';
+      priceBadge.style.color = '#B71C1C';
+    }
+    alert(`Failed to fetch farm data: ${err.message}`);
+  }
+}
+
+export async function saveProgressToCloudKV(silent = false) {
+  if (!state.currentUser) {
+    if (!silent) alert('Please login to save your progress in your Cloud Vault.');
+    return;
+  }
+
+  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
+
+  const vipBonus = getActiveVipBonus();
+  const boostCount = getActiveBoostCount();
+  const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
+
+  const todayDate = new Date().toISOString().split('T')[0];
+  const currentWeekMonday = getMondayBasedWeekId();
+
+  let todayEarnedTix = isLoginClaimedToday() ? 1 : 0;
+  let todayEarnedCost = 0;
+  const todayDoneItems = [];
+
+  let calculatedTotalTickets = trackTickets + dailyLoginTickets;
+  let calculatedTotalCost = trackCost;
+  let doubleDeliveryApplied = false;
+
+  (state.globalData?.deliveries || []).forEach(d => {
+    const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+    if (isTicked) {
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      let yieldAmt = base;
+      if (!d.isManual) {
+        yieldAmt += (vipBonus + boostCount);
+        if (isDoubleDeliveryActive && !doubleDeliveryApplied) {
+          yieldAmt *= 2;
+          doubleDeliveryApplied = true;
+        }
+      }
+      calculatedTotalTickets += yieldAmt;
+      const lineCost = (d.itemsCost || d.cost || 0);
+      calculatedTotalCost += lineCost;
+
+      const isToday = d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayDate;
+      if (isToday || (!d.completedAt && (!d.weekId || d.weekId === currentWeekMonday))) {
+        todayEarnedTix += yieldAmt;
+        todayEarnedCost += lineCost;
+        todayDoneItems.push({
+          name: d.name || d.from,
+          yield: yieldAmt,
+          cost: lineCost
+        });
+      }
+    }
+  });
+
+  (state.globalData?.bounties || []).forEach(b => {
+    const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
+    if (isTicked) {
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const lineCost = (b.itemsCost || b.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+    }
+  });
+
+  (state.globalData?.chores || []).forEach(c => {
+    const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
+    if (isTicked) {
+      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
+      const lineCost = (c.itemsCost || c.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+    }
+  });
+
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
+  const logs = [...(state.globalData.cloudHistory.logs || [])];
+  
+  const existingLogIdx = logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+  const logEntry = {
+    date: todayDate,
+    weekId: currentWeekMonday,
+    timestamp: new Date().toISOString(),
+    ticketsSaved: todayEarnedTix,
+    costSaved: todayEarnedCost,
+    deliveriesDone: todayDoneItems,
+    milestones: state.globalData?.milestones || {}
+  };
+
+  if (existingLogIdx !== -1) {
+    logs[existingLogIdx] = logEntry;
+  } else {
+    logs.unshift(logEntry);
+  }
+
+  state.globalData.cloudHistory.logs = logs;
+
+  const payload = {
+    username: state.currentUser,
+    farmId,
+    trackTickets,
+    trackCost,
+    dailyLoginTickets,
+    cumulativeTickets: calculatedTotalTickets,
+    cumulativeCost: calculatedTotalCost,
+    lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || todayDate,
+    weeks: state.globalData.cloudHistory.weeks || {},
+    logs,
+    deliveries: state.globalData?.deliveries || [],
+    bounties: state.globalData?.bounties || [],
+    chores: state.globalData?.chores || [],
+    milestones: state.globalData?.milestones || {}
+  };
+
+  try {
+    const res = await fetch('/api/chapter?action=saveVault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed to save.');
+
+    state.currentVaultData = data.vaultData;
+    if (state.globalData) {
+      state.globalData.cloudHistory = {
+        logs: data.vaultData.logs || [],
+        weeks: data.vaultData.weeks || {}
+      };
+    }
+
+    recalculateAll();
+
+    if (!silent) {
+      const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Today's Yield: +${todayEarnedTix} Tickets\n• Total Tickets: ${totalTix}`);
+    }
+  } catch (err) {
+    if (!silent) alert(`Cloud Save Error: ${err.message}`);
   }
 }
