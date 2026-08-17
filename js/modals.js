@@ -131,8 +131,35 @@ export function openModal(type) {
 }
 
 // ==========================================
-// 2. History, Logs & Weekly Modals
+// 2. History, Logs & List Rendering Functions
 // ==========================================
+export function renderColumnHistoryModalList(type = 'deliveries') {
+  const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
+  if (!body) return;
+
+  const rawLogs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs || [];
+  if (rawLogs.length === 0) {
+    body.innerHTML = '<p style="color:#8C7853; text-align:center; padding:15px;">No historical logs found.</p>';
+    return;
+  }
+
+  let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
+  rawLogs.forEach((log, logIdx) => {
+    html += `
+      <div style="background:#FAF8F5; border:1px solid #E0D5C1; padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="font-weight:bold; color:#5C4033;">${log.date}</span>
+          <span style="margin-left:10px; color:#E65100; font-weight:bold;">${log.ticketsSaved || 0} Tickets</span>
+          <span style="margin-left:8px; color:#8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
+        </div>
+        <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+
 export function openColumnHistoryModal(type) {
   openMasterHistoryModal(type);
 }
@@ -160,32 +187,10 @@ export function closeLogsModal() {
 export function openMasterHistoryModal(type = 'deliveries') {
   const modal = document.getElementById('masterHistoryModal') || document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
   const title = document.getElementById('masterHistoryTitle') || document.getElementById('columnHistoryTitle') || document.getElementById('historyModalTitle');
-  const body = document.getElementById('masterHistoryBody') || document.getElementById('columnHistoryBody') || document.getElementById('historyModalBody');
   if (!modal) return;
 
   if (title) title.textContent = `📜 ${type ? type.toUpperCase() : 'DELIVERY'} HISTORY`;
-  if (body) {
-    const rawLogs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs || [];
-    if (rawLogs.length === 0) {
-      body.innerHTML = '<p style="color:#8C7853; text-align:center; padding:15px;">No historical logs found.</p>';
-    } else {
-      let html = '<div style="display:flex; flex-direction:column; gap:8px;">';
-      rawLogs.forEach((log, logIdx) => {
-        html += `
-          <div style="background:#FAF8F5; border:1px solid #E0D5C1; padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span style="font-weight:bold; color:#5C4033;">${log.date}</span>
-              <span style="margin-left:10px; color:#E65100; font-weight:bold;">${log.ticketsSaved || 0} Tickets</span>
-              <span style="margin-left:8px; color:#8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
-            </div>
-            <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
-          </div>
-        `;
-      });
-      html += '</div>';
-      body.innerHTML = html;
-    }
-  }
+  renderColumnHistoryModalList(type);
   modal.style.display = 'flex';
 }
 
@@ -215,7 +220,7 @@ export function deleteMasterLog(logIndex) {
   if (confirm(`Delete delivery log entry for ${logs[logIndex].date}?`)) {
     logs.splice(logIndex, 1);
     recalculateAll();
-    openMasterHistoryModal(state.activeColumnType || 'deliveries');
+    renderColumnHistoryModalList(state.activeColumnType || 'deliveries');
     saveProgressToCloudKV(true);
   }
 }
@@ -334,6 +339,7 @@ export function addNewManualItem(type, isAnimal = false) {
 // ==========================================
 // 6. Global Window Handlers
 // ==========================================
+window.renderColumnHistoryModalList = renderColumnHistoryModalList;
 window.deleteWeeklyItem = deleteWeeklyItem;
 window.deleteMasterLog = deleteMasterLog;
 window.deleteDeliveryLogItem = deleteDeliveryLogItem;
