@@ -37,10 +37,24 @@ export function recalculateAll() {
       weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
     }
     if (Array.isArray(wkVal.bounties)) {
-      weeks[normalizedId].bounties.push(...wkVal.bounties);
+      wkVal.bounties.forEach(b => {
+        const bKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
+        const exists = weeks[normalizedId].bounties.some(existing => {
+          const exKey = existing.id ? String(existing.id) : `${(existing.name || '').toLowerCase()}_${existing.level || 0}`;
+          return exKey === bKey;
+        });
+        if (!exists) weeks[normalizedId].bounties.push(b);
+      });
     }
     if (Array.isArray(wkVal.chores)) {
-      weeks[normalizedId].chores.push(...wkVal.chores);
+      wkVal.chores.forEach(c => {
+        const cKey = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
+        const exists = weeks[normalizedId].chores.some(existing => {
+          const exKey = `${(existing.npc || '').toLowerCase()}_${(existing.task || existing.name || '').toLowerCase()}`;
+          return exKey === cKey;
+        });
+        if (!exists) weeks[normalizedId].chores.push(c);
+      });
     }
   });
 
@@ -113,14 +127,13 @@ export function recalculateAll() {
   // Global Set to track absolute unique item IDs across the entire vault to prevent double-counting
   const globallyProcessedItems = new Set();
 
-  // 1. Process Past Daily Deliveries from saved logs (Strictly past dates only)
+  // 1. Process Past Daily Deliveries from saved logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
     const rawDate = (log.date || '').split('T')[0];
     if (!rawDate || seenDates.has(rawDate)) return;
     seenDates.add(rawDate);
 
-    // Skip today's log here so it doesn't double count with live state
     if (rawDate === todayUtcStr) return;
 
     const logMonday = getMondayBasedWeekId(rawDate);
@@ -230,10 +243,9 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST Weeks from Cloud KV (Strictly past weeks only)
-  Object.entries(weeks).forEach(([wkKey, wk]) => {
-    let pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
-    if (pastMonday === currentWeekMonday) return; // Current week handled above
+  // 5. Process PAST Weeks from Cloud KV (Processes BOTH Bounties & Chores correctly)
+  Object.entries(weeks).forEach(([wkId, wk]) => {
+    let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
 
     (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
