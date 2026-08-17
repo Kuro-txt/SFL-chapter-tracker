@@ -422,7 +422,7 @@ export function renderColumnHistoryModalList() {
           <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Boosted Ticket Total" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
-      `;
+      </div>`;
     }).join('');
   }
 
@@ -438,11 +438,10 @@ export async function addNewItemFromModal() {
 
   if (!state.globalData) return;
 
-  // Resolve Week ID from dropdown selection (e.g. 'w1', 'w2')
   let targetWeekId = getMondayBasedWeekId();
   const weekNum = parseInt(weekSelectVal.substring(1), 10);
   if (!isNaN(weekNum) && weekNum > 0) {
-    const baseMonday = new Date('2026-08-17'); // Week 1 start base
+    const baseMonday = new Date('2026-08-17');
     baseMonday.setDate(baseMonday.getDate() + ((weekNum - 1) * 7));
     targetWeekId = getMondayBasedWeekId(baseMonday);
   }
@@ -451,7 +450,6 @@ export async function addNewItemFromModal() {
     if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
     if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
 
-    // Map delivery to the Monday of the selected week
     const deliveryDate = targetWeekId;
     let logEntry = state.globalData.cloudHistory.logs.find(l => (l.date || '').split('T')[0] === deliveryDate);
     if (!logEntry) {
