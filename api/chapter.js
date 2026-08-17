@@ -21,7 +21,6 @@ export default async function handler(req, res) {
   const apiKey = req.query.apiKey || process.env.SFL_API_KEY || '';
 
   try {
-    // 1. Get User Vault
     if (action === 'getVault') {
       const username = (req.query.username || '').toLowerCase().trim();
       if (!username) return res.status(200).json({ vaultData: null });
@@ -40,7 +39,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 2. User Registration
     if (req.method === 'POST' && action === 'register') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -83,7 +81,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 3. User Login
     if (req.method === 'POST' && action === 'login') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -113,7 +110,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Dedicated Delete Log Endpoint
     if (req.method === 'POST' && action === 'deleteLog') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -147,7 +143,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 5. Save Vault Endpoint
     if (req.method === 'POST' && action === 'saveVault') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -198,7 +193,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // 6. Default GET: Live Sunflower Land API Data Fetch
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -240,7 +234,6 @@ export default async function handler(req, res) {
 
           currentVault.farmId = farmId;
 
-          // Merge live deliveries with saved manual deliveries
           const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
           currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
 
