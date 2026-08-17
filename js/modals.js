@@ -84,8 +84,6 @@ export function openCategorySummaryModal(cat) {
   const totalsEl = document.getElementById('categorySummaryTotals');
   const bodyEl = document.getElementById('categorySummaryBody');
 
-  const boostCount = getActiveBoostCount();
-
   if (!state.globalData) {
     alert('Please click "FETCH DATA" first!');
     return;
@@ -425,8 +423,13 @@ export async function addNewItemFromModal() {
     targetWeekId = getMondayBasedWeekId(baseMonday);
   }
 
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+  if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
+    state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
+  }
+
   if (type === 'delivery') {
-    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
     if (!state.globalData.cloudHistory.logs) state.globalData.cloudHistory.logs = [];
 
     const deliveryDate = targetWeekId;
@@ -481,17 +484,12 @@ export async function addNewItemFromModal() {
         if (!state.globalData.bounties) state.globalData.bounties = [];
         state.globalData.bounties.push(newItem);
       }
+    }
+
+    if (isChore) {
+      state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
     } else {
-      if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-      if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-      if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
-        state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
-      }
-      if (isChore) {
-        state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
-      } else {
-        state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
-      }
+      state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
     }
   }
 
