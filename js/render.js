@@ -27,7 +27,22 @@ export function recalculateAll() {
   const currentWeekMonday = getMondayBasedWeekId(now);
 
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
-  const weeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
+  const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
+
+  // Normalize weeks to prevent duplicate counting between '2026-08-17' and '2026-W32'
+  const weeks = {};
+  Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
+    const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
+    if (!weeks[normalizedId]) {
+      weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
+    }
+    if (Array.isArray(wkVal.bounties)) {
+      weeks[normalizedId].bounties.push(...wkVal.bounties);
+    }
+    if (Array.isArray(wkVal.chores)) {
+      weeks[normalizedId].chores.push(...wkVal.chores);
+    }
+  });
 
   // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
@@ -150,7 +165,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Process CURRENT Week Bounties
+  // 3. Process CURRENT Week Bounties (from live state)
   const countedBountyKeys = new Set();
   (state.globalData.bounties || []).forEach(b => {
     const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -187,7 +202,7 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Process CURRENT Week Chores
+  // 4. Process CURRENT Week Chores (from live state)
   const countedChoreKeys = new Set();
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -211,10 +226,15 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly mapped to their own week ID)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly mapped and deduplicated)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
+
+    if (isCurrentWeek) {
+      // Current week items are already processed above from live state to avoid double-counting
+      return;
+    }
 
     (wk.bounties || []).forEach(b => {
       const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -231,14 +251,11 @@ export function recalculateAll() {
 
         if (isAnimal) {
           totalAnimalBountyTix += finalTix;
-          if (isCurrentWeek) weekAnimalBountyTix += finalTix;
         } else {
           totalBountyTix += finalTix;
-          if (isCurrentWeek) weekBountyTix += finalTix;
         }
 
         totalSflCostAll += bCost;
-        if (isCurrentWeek) weekCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
       }
     });
@@ -254,10 +271,7 @@ export function recalculateAll() {
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
-        if (isCurrentWeek) weekChoreTix += finalTix;
-
         totalSflCostAll += cCost;
-        if (isCurrentWeek) weekCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
     });
