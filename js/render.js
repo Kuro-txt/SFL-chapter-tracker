@@ -94,8 +94,10 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  const isDoneToday = (item) => {
+  // STRICT: Must have a completedAt timestamp matching today's UTC date, AND belong to the current week
+  const isDoneToday = (item, itemWeekMonday) => {
     if (!isTicked(item)) return false;
+    if (itemWeekMonday && itemWeekMonday !== currentWeekMonday) return false;
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -103,8 +105,6 @@ export function recalculateAll() {
         return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
       }
     }
-    // If it's a manual item added for Week 1, strictly prevent it from counting as "Done Today"
-    if (item.weekId && item.weekId !== currentWeekMonday) return false;
     return false;
   };
 
@@ -142,7 +142,7 @@ export function recalculateAll() {
         const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
 
         const isThisWeek = (itemWeekMonday === currentWeekMonday);
-        const isToday = isDoneToday(d);
+        const isToday = isDoneToday(d, itemWeekMonday);
 
         if (isToday) {
           todayDelivTix += calculatedYield;
@@ -190,7 +190,7 @@ export function recalculateAll() {
       if (isThisWeek) weekCostAll += bCost;
       addWeeklyStat(itemWeekMonday, finalTix, bCost);
 
-      if (isDoneToday(b)) {
+      if (isDoneToday(b, itemWeekMonday)) {
         if (isAnimal) todayAnimalBountyTix += finalTix;
         else todayBountyTix += finalTix;
         todayCostAll += bCost;
@@ -221,7 +221,7 @@ export function recalculateAll() {
       if (isThisWeek) weekCostAll += cCost;
       addWeeklyStat(itemWeekMonday, finalTix, cCost);
 
-      if (isDoneToday(c)) {
+      if (isDoneToday(c, itemWeekMonday)) {
         todayChoreTix += finalTix;
         todayCostAll += cCost;
       }
@@ -259,7 +259,7 @@ export function recalculateAll() {
         if (isCurrentWeek) weekCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
 
-        if (isDoneToday(b)) {
+        if (isDoneToday(b, pastMonday)) {
           if (isAnimal) todayAnimalBountyTix += finalTix;
           else todayBountyTix += finalTix;
           todayCostAll += bCost;
@@ -287,7 +287,7 @@ export function recalculateAll() {
         if (isCurrentWeek) weekCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
 
-        if (isDoneToday(c)) {
+        if (isDoneToday(c, pastMonday)) {
           todayChoreTix += finalTix;
           todayCostAll += cCost;
         }
