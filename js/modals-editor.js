@@ -1,5 +1,23 @@
-import { state, formatSFL, setElemText, getMondayBasedWeekId, isAnimalBounty, resolveAnimalLevel, syncCurrentVaultToCloud } from './state.js';
+import { 
+  state, 
+  formatSFL, 
+  setElemText, 
+  getMondayBasedWeekId, 
+  isAnimalBounty, 
+  resolveAnimalLevel, 
+  syncCurrentVaultToCloud,
+  getActiveBoostCount,
+  getActiveVipBonus
+} from './state.js';
 import { recalculateAll } from './render.js';
+
+function computeYield(base, isVipEligible = true) {
+  const raw = Number(base) || 0;
+  if (raw <= 0) return 0;
+  const vip = isVipEligible ? getActiveVipBonus() : 0;
+  const boost = getActiveBoostCount();
+  return raw + vip + boost;
+}
 
 function formatRequestedItems(items) {
   if (!items) return '';
@@ -82,7 +100,7 @@ export function renderColumnHistoryModalList() {
         ${weekOptionsHtml}
       </select>
       <input type="number" step="0.01" id="addModalCost" placeholder="Cost SFL" style="width:70px; padding:4px; font-size:11px;" />
-      <input type="number" id="addModalTickets" placeholder="Tickets" style="width:60px; padding:4px; font-size:11px;" />
+      <input type="number" id="addModalTickets" placeholder="Base Tix" style="width:65px; padding:4px; font-size:11px;" />
       <button onclick="addNewItemFromModal()" class="btn btn-sm btn-wood" style="background:#2E7D32; border-color:#1B5E20; color:#fff; padding:4px 10px; font-weight:bold;">Add</button>
     </div>
   </div>`;
@@ -100,7 +118,10 @@ export function renderColumnHistoryModalList() {
         const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
         if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
 
-        const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        let finalTix = computeYield(baseTix, true);
+        if (item.hasDoubleBonus) finalTix *= 2;
+
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
         const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
@@ -111,6 +132,7 @@ export function renderColumnHistoryModalList() {
           name: itemName,
           requestedItems: requestedStr,
           cost: item.cost || item.itemsCost || 0,
+          baseTickets: baseTix,
           displayTickets: finalTix,
           checked: isChecked,
           status: isChecked ? '✨ Done' : '⏳ Active',
@@ -149,7 +171,8 @@ export function renderColumnHistoryModalList() {
     });
 
     Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId, idx, source }]) => {
-      const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
+      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
+      const finalTix = computeYield(baseTix, isChore); // Chores get VIP; Bounties get Boosts only
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
@@ -161,6 +184,7 @@ export function renderColumnHistoryModalList() {
         npc: item.npc || null,
         level: lvl,
         cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
+        baseTickets: baseTix,
         displayTickets: finalTix,
         checked: isChecked,
         status: isChecked ? '✨ Done' : '⏳ Active'
@@ -210,13 +234,14 @@ export function renderColumnHistoryModalList() {
             <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
             ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${stackedTag}
             ${itemsRow}
+            <div style="color:#2E7D32; font-weight:900; margin-top:2px;">Yield: ${r.displayTickets} Tickets</div>
           </div>
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
           <span>SFL:</span>
           <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:60px; padding:2px; font-size:10px;" />
-          <span>Tix:</span>
-          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Total" />
+          <span>Base:</span>
+          <input type="number" value="${r.baseTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Base Ticket Count" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
