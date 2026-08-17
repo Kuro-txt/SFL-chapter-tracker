@@ -131,6 +131,7 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
   return 0;
 }
 
+// Week 1 anchored to August 10, 2026. Week 2 anchored to August 17, 2026.
 export function getMondayBasedWeekId(d) {
   let date;
   try {
