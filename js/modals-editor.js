@@ -11,9 +11,10 @@ import {
 } from './state.js';
 import { recalculateAll } from './render.js';
 
-function computeYield(base, isVipEligible = true) {
+function computeYield(base, isVipEligible = true, isManual = false) {
   const raw = Number(base) || 0;
   if (raw <= 0) return 0;
+  if (isManual) return raw; // Manual items do NOT receive VIP or item boosts
   const vip = isVipEligible ? getActiveVipBonus() : 0;
   const boost = getActiveBoostCount();
   return raw + vip + boost;
@@ -93,14 +94,14 @@ export function renderColumnHistoryModalList() {
   }
 
   let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
-    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
+    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'} (EXACT TICKETS)</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
       <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task (e.g. Goblin: Water)' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
       <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
         ${weekOptionsHtml}
       </select>
       <input type="number" step="0.01" id="addModalCost" placeholder="Cost SFL" style="width:70px; padding:4px; font-size:11px;" />
-      <input type="number" id="addModalTickets" placeholder="Base Tix" style="width:65px; padding:4px; font-size:11px;" />
+      <input type="number" id="addModalTickets" placeholder="Tickets" style="width:65px; padding:4px; font-size:11px;" />
       <button onclick="addNewItemFromModal()" class="btn btn-sm btn-wood" style="background:#2E7D32; border-color:#1B5E20; color:#fff; padding:4px 10px; font-weight:bold;">Add</button>
     </div>
   </div>`;
@@ -119,8 +120,9 @@ export function renderColumnHistoryModalList() {
         if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
 
         const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-        let finalTix = computeYield(baseTix, true);
-        if (item.hasDoubleBonus) finalTix *= 2;
+        const isManual = Boolean(item.isManual);
+        let finalTix = computeYield(baseTix, true, isManual);
+        if (item.hasDoubleBonus && !isManual) finalTix *= 2;
 
         const requestedStr = formatRequestedItems(item.itemDetails || item.items);
         const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
@@ -136,7 +138,8 @@ export function renderColumnHistoryModalList() {
           displayTickets: finalTix,
           checked: isChecked,
           status: isChecked ? '✨ Done' : '⏳ Active',
-          isStacked: item.isStacked || false
+          isStacked: item.isStacked || false,
+          isManual
         });
       });
     });
@@ -172,7 +175,8 @@ export function renderColumnHistoryModalList() {
 
     Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId, idx, source }]) => {
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
-      const finalTix = computeYield(baseTix, isChore); // Chores get VIP; Bounties get Boosts only
+      const isManual = Boolean(item.isManual);
+      const finalTix = computeYield(baseTix, isChore, isManual);
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
@@ -187,7 +191,8 @@ export function renderColumnHistoryModalList() {
         baseTickets: baseTix,
         displayTickets: finalTix,
         checked: isChecked,
-        status: isChecked ? '✨ Done' : '⏳ Active'
+        status: isChecked ? '✨ Done' : '⏳ Active',
+        isManual
       });
     });
   }
@@ -218,6 +223,10 @@ export function renderColumnHistoryModalList() {
         ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
         : '';
 
+      const manualTag = r.isManual
+        ? `<span style="background:#E0F2F1; color:#00796B; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #B2DFDB; margin-left:4px;">📌 MANUAL</span>`
+        : '';
+
       const stackedTag = r.isStacked
         ? `<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>`
         : '';
@@ -232,7 +241,7 @@ export function renderColumnHistoryModalList() {
           <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
           <div>
             <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
-            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${stackedTag}
+            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}
             ${itemsRow}
             <div style="color:#2E7D32; font-weight:900; margin-top:2px;">Yield: ${r.displayTickets} Tickets</div>
           </div>
@@ -254,7 +263,7 @@ export function renderColumnHistoryModalList() {
 export async function addNewItemFromModal() {
   const type = state.activeColumnType;
   const nameInput = document.getElementById('addModalName')?.value.trim() || 'Custom Item';
-  const weekSelectVal = document.getElementById('addModalWeekSelect')?.value || 'w1';
+  const weekSelectVal = document.getElementById('addModalWeekSelect')?.value || 'w2';
   const costInput = parseFloat(document.getElementById('addModalCost')?.value) || 0;
   const ticketsInput = parseInt(document.getElementById('addModalTickets')?.value, 10) || 2;
 
@@ -283,7 +292,7 @@ export async function addNewItemFromModal() {
       state.globalData.cloudHistory.logs.push(logEntry);
     }
 
-    logEntry.deliveriesDone.push({
+    const newDeliv = {
       from: nameInput,
       name: nameInput,
       baseTickets: ticketsInput,
@@ -292,8 +301,13 @@ export async function addNewItemFromModal() {
       itemsCost: costInput,
       checked: true,
       completed: true,
-      completedAt: Date.now()
-    });
+      completedAt: Date.now(),
+      isManual: true
+    };
+
+    logEntry.deliveriesDone.push(newDeliv);
+    if (!state.globalData.deliveries) state.globalData.deliveries = [];
+    state.globalData.deliveries.push(newDeliv);
   } else {
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
@@ -307,7 +321,8 @@ export async function addNewItemFromModal() {
       itemsCost: costInput,
       checked: true,
       completed: true,
-      completedAt: Date.now()
+      completedAt: Date.now(),
+      isManual: true
     } : {
       name: nameInput,
       baseTickets: ticketsInput,
@@ -317,7 +332,8 @@ export async function addNewItemFromModal() {
       level: isAnimal ? 1 : undefined,
       checked: true,
       completed: true,
-      completedAt: Date.now()
+      completedAt: Date.now(),
+      isManual: true
     };
 
     if (isChore) {
