@@ -33,7 +33,7 @@ export function recalculateAll() {
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
 
-  // Weekly ticket accumulator map (strictly grouped by Monday UTC dates)
+  // Weekly ticket accumulator map (strictly grouped by Monday UTC dates - NO track/login tickets)
   const weeklyTicketStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
     if (!mondayKey) mondayKey = currentWeekMonday;
@@ -115,8 +115,11 @@ export function recalculateAll() {
     });
   });
 
-  // 2. Process Today's Live Deliveries
+  // 2. Process Today's Live Deliveries (Assigned to today's Monday week)
+  const liveDeliveryMonday = getMondayBasedWeekId(todayUtcStr);
+  const isLiveDeliveryInCurrentWeek = (liveDeliveryMonday === currentWeekMonday);
   let doubleDeliveryAppliedToday = false;
+
   (state.globalData.deliveries || []).forEach(d => {
     if (isTicked(d)) {
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
@@ -136,11 +139,14 @@ export function recalculateAll() {
       todayCostAll += dCost;
 
       totalDelivTix += calculatedYield;
-      weekDelivTix += calculatedYield;
       totalSflCostAll += dCost;
-      weekCostAll += dCost;
 
-      addWeeklyStat(currentWeekMonday, calculatedYield, dCost);
+      if (isLiveDeliveryInCurrentWeek) {
+        weekDelivTix += calculatedYield;
+        weekCostAll += dCost;
+      }
+
+      addWeeklyStat(liveDeliveryMonday, calculatedYield, dCost);
     }
   });
 
@@ -272,7 +278,7 @@ export function recalculateAll() {
     }
   });
 
-  // Calculate Totals: Track & Daily Login tickets are ONLY in Total Counter
+  // Totals: Track & Daily Login tickets are ONLY in Total Counter
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
@@ -327,7 +333,7 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  // Render Weekly Progression Chart
+  // Render Weekly Progression Chart (Guaranteed Pure Gameplay Only)
   renderWeeklyChart(weeklyTicketStats, currentWeekMonday, targetPerWeek, targetWeeks);
 }
 
