@@ -22,7 +22,7 @@ import {
 import { recalculateAll, renderDashboardCards } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
-// Expose handlers to window for inline HTML events
+// Expose handlers once to window
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
@@ -82,7 +82,6 @@ window.saveLoginCountAndRecalculate = () => {
   renderDashboardCards();
 };
 
-// Focused Gameplay Tips Rotation
 const FARMER_TIPS = [
   '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? The tracker automatically detects milestone increases!',
   '⚡ <strong>DOUBLE DELIVERIES:</strong> 2x event automatically doubles total tickets on your 1st completed order of the day!',
