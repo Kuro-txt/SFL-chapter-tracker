@@ -332,7 +332,8 @@ export function recalculateAll() {
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
   // 8. Render Weekly Progression Chart
-  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, totalWeeks);
+  const targetWeeksInput = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
+  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, targetWeeksInput);
 }
 
 function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, totalPlannedWeeks) {
