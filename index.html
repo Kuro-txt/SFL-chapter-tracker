@@ -529,7 +529,6 @@
         <div class="input-group">
           <button onclick="loadTrackerData()" class="btn btn-wood">🌾 FETCH DATA</button>
           <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE IN CLOUD</button>
-          <button onclick="toggleHistoryModal()" class="btn btn-indigo">📜 LOGS</button>
           <button onclick="toggleGuideModal()" class="btn btn-guide">📖 GUIDE</button>
         </div>
       </div>
@@ -745,18 +744,6 @@
         <div id="categorySummaryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
           <p style="font-size: 13px; color: #8C7853; font-weight: bold;">Loading summary...</p>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="historyModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📜 SAVED CLOUD LOGS & HISTORY</h3>
-        <button onclick="toggleHistoryModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
-      </div>
-      <div id="modalLogList" class="modal-body">
-        <p style="color:#8C7853; font-size:13px; font-weight:bold;">No logs loaded yet. Login and save first.</p>
       </div>
     </div>
   </div>
