@@ -1,5 +1,3 @@
-import { recalculateAll } from './render.js';
-
 export const state = {
   globalData: null,
   currentUser: null,
@@ -129,6 +127,7 @@ export async function checkAndAutoClaimDailyLogin() {
     if (loginCheck) loginCheck.checked = true;
 
     try {
+      const { recalculateAll } = await import('./render.js');
       recalculateAll();
       await syncCurrentVaultToCloud();
     } catch (e) {}
@@ -154,6 +153,7 @@ export async function handleDailyLoginToggle() {
   }
 
   try {
+    const { recalculateAll } = await import('./render.js');
     recalculateAll();
     await syncCurrentVaultToCloud();
   } catch (e) {}
