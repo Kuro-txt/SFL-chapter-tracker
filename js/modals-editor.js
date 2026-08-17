@@ -83,7 +83,6 @@ export function renderColumnHistoryModalList() {
 
   let weekOptionsHtml = '';
   for (let w = 1; w <= 12; w++) {
-    // Default selected week to w2
     const selectedAttr = (w === 2) ? 'selected' : '';
     weekOptionsHtml += `<option value="w${w}" ${selectedAttr}>Week ${w}</option>`;
   }
@@ -301,11 +300,11 @@ export async function addNewItemFromModal() {
     };
 
     // Week 1 base Monday: 2026-08-10. Week 2 base Monday: 2026-08-17.
-    let targetWeekId = getMondayBasedWeekId();
+    let targetWeekId = '2026-08-10';
     const weekNum = parseInt(weekSelectVal.substring(1), 10);
     if (!isNaN(weekNum) && weekNum > 0) {
-      const baseMonday = new Date('2026-08-17T00:00:00.000Z');
-      baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 2) * 7));
+      const baseMonday = new Date('2026-08-10T00:00:00.000Z');
+      baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
       targetWeekId = getMondayBasedWeekId(baseMonday);
     }
 
@@ -317,16 +316,8 @@ export async function addNewItemFromModal() {
 
     if (isChore) {
       state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
-      if (targetWeekId === getMondayBasedWeekId()) {
-        if (!state.globalData.chores) state.globalData.chores = [];
-        state.globalData.chores.push(newItem);
-      }
     } else {
       state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
-      if (targetWeekId === getMondayBasedWeekId()) {
-        if (!state.globalData.bounties) state.globalData.bounties = [];
-        state.globalData.bounties.push(newItem);
-      }
     }
   }
 
