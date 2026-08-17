@@ -124,14 +124,38 @@ export function closeModal() {
   state.activeColumnType = null;
 }
 
-// 2. Column History Modal & Log Item Deletion
+// 2. History & Master Log Modals
 export function openColumnHistoryModal(type) {
-  const modal = document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
-  const title = document.getElementById('columnHistoryTitle') || document.getElementById('historyModalTitle');
-  const body = document.getElementById('columnHistoryBody') || document.getElementById('historyModalBody');
+  openMasterHistoryModal(type);
+}
+
+export function closeColumnHistoryModal() {
+  closeMasterHistoryModal();
+}
+
+export function openHistoryModal(type) {
+  openMasterHistoryModal(type);
+}
+
+export function closeHistoryModal() {
+  closeMasterHistoryModal();
+}
+
+export function openLogsModal() {
+  openMasterHistoryModal('deliveries');
+}
+
+export function closeLogsModal() {
+  closeMasterHistoryModal();
+}
+
+export function openMasterHistoryModal(type = 'deliveries') {
+  const modal = document.getElementById('masterHistoryModal') || document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
+  const title = document.getElementById('masterHistoryTitle') || document.getElementById('columnHistoryTitle') || document.getElementById('historyModalTitle');
+  const body = document.getElementById('masterHistoryBody') || document.getElementById('columnHistoryBody') || document.getElementById('historyModalBody');
   if (!modal) return;
 
-  if (title) title.textContent = `📜 ${type ? type.toUpperCase() : ''} HISTORY`;
+  if (title) title.textContent = `📜 ${type ? type.toUpperCase() : 'DELIVERY'} HISTORY`;
   if (body) {
     const rawLogs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs || [];
     if (rawLogs.length === 0) {
@@ -146,7 +170,7 @@ export function openColumnHistoryModal(type) {
               <span style="margin-left:10px; color:#E65100; font-weight:bold;">${log.ticketsSaved || 0} Tickets</span>
               <span style="margin-left:8px; color:#8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
             </div>
-            <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteDeliveryLogItem(${logIdx})">✕</button>
+            <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
           </div>
         `;
       });
@@ -157,24 +181,33 @@ export function openColumnHistoryModal(type) {
   modal.style.display = 'flex';
 }
 
-export function closeColumnHistoryModal() {
-  const modal = document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
+export function closeMasterHistoryModal() {
+  const modal = document.getElementById('masterHistoryModal') || document.getElementById('columnHistoryModal') || document.getElementById('historyModal');
   if (modal) modal.style.display = 'none';
 }
 
-export function deleteDeliveryLogItem(logIndex) {
+// 3. Log Item Deletion Handlers
+export function deleteMasterLog(logIndex) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
   if (!logs || logIndex < 0 || logIndex >= logs.length) return;
 
   if (confirm(`Delete delivery log entry for ${logs[logIndex].date}?`)) {
     logs.splice(logIndex, 1);
     recalculateAll();
-    openColumnHistoryModal(state.activeColumnType || 'deliveries');
+    openMasterHistoryModal(state.activeColumnType || 'deliveries');
     saveProgressToCloudKV(true);
   }
 }
 
-// 3. Category Summary Modal
+export function deleteDeliveryLogItem(logIndex) {
+  deleteMasterLog(logIndex);
+}
+
+export function deleteLogItem(logIndex) {
+  deleteMasterLog(logIndex);
+}
+
+// 4. Category Summary Modal
 export function openCategorySummaryModal(category) {
   const modal = document.getElementById('categorySummaryModal');
   const title = document.getElementById('categorySummaryTitle');
@@ -191,13 +224,15 @@ export function closeCategorySummaryModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// 4. Cloud Vault Sync Helper
+// 5. Cloud Vault Sync Helper
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
 }
 
-// 5. Global Window Event Handlers
+// 6. Global Window Handlers
+window.deleteMasterLog = deleteMasterLog;
 window.deleteDeliveryLogItem = deleteDeliveryLogItem;
+window.deleteLogItem = deleteLogItem;
 
 window.toggleModalItem = function(type, index, isChecked) {
   if (!state.globalData) return;
