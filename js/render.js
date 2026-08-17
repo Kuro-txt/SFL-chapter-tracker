@@ -12,16 +12,34 @@ import {
 // 1. Render Dashboard Column Cards
 // ==========================================
 export function renderDashboardCards() {
-  if (!state.globalData) return;
+  const vault = state.globalData?.cloudHistory || state.currentVaultData || {};
+  
+  // Safe Fallback to ensure deliveries, bounties, and chores always load
+  const deliveries = (state.globalData && state.globalData.deliveries && state.globalData.deliveries.length > 0)
+    ? state.globalData.deliveries
+    : (vault.deliveries || (vault.logs && vault.logs[0]?.deliveriesDone) || []);
+
+  const allBounties = (state.globalData && state.globalData.bounties && state.globalData.bounties.length > 0)
+    ? state.globalData.bounties
+    : (vault.bounties || []);
+
+  const chores = (state.globalData && state.globalData.chores && state.globalData.chores.length > 0)
+    ? state.globalData.chores
+    : (vault.chores || []);
+
+  if (state.globalData) {
+    if (!state.globalData.deliveries || state.globalData.deliveries.length === 0) state.globalData.deliveries = deliveries;
+    if (!state.globalData.bounties || state.globalData.bounties.length === 0) state.globalData.bounties = allBounties;
+    if (!state.globalData.chores || state.globalData.chores.length === 0) state.globalData.chores = chores;
+  }
 
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
-  const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+  const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
 
-  // 1. Deliveries Column (supports deliveriesList or deliveriesContainer)
+  // 1. Deliveries Column
   const delivContainer = document.getElementById('deliveriesList') || document.getElementById('deliveriesContainer') || document.getElementById('deliveryCards');
   if (delivContainer) {
-    const deliveries = state.globalData.deliveries || [];
     if (deliveries.length === 0) {
       delivContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No active deliveries found.</div>';
     } else {
@@ -65,13 +83,13 @@ export function renderDashboardCards() {
   // 2. Item Bounties Column
   const bountiesContainer = document.getElementById('bountiesList') || document.getElementById('bountiesContainer') || document.getElementById('bountyCards');
   if (bountiesContainer) {
-    const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
+    const regularBounties = allBounties.filter(b => !isAnimalBounty(b));
     if (regularBounties.length === 0) {
       bountiesContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No item bounties found.</div>';
     } else {
       let html = '';
       regularBounties.forEach((b) => {
-        const globalIdx = (state.globalData.bounties || []).indexOf(b);
+        const globalIdx = allBounties.indexOf(b);
         const isDone = b.checked !== undefined ? b.checked : b.completed;
         const tix = (b.baseTickets || b.tickets || 1) + boostCount;
 
@@ -95,13 +113,13 @@ export function renderDashboardCards() {
   // 3. Animal Bounties Column
   const animalContainer = document.getElementById('animalBountiesList') || document.getElementById('animalBountiesContainer') || document.getElementById('animalCards');
   if (animalContainer) {
-    const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
+    const animalBounties = allBounties.filter(b => isAnimalBounty(b));
     if (animalBounties.length === 0) {
       animalContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No animal bounties found.</div>';
     } else {
       let html = '';
       animalBounties.forEach((b) => {
-        const globalIdx = (state.globalData.bounties || []).indexOf(b);
+        const globalIdx = allBounties.indexOf(b);
         const isDone = b.checked !== undefined ? b.checked : b.completed;
         const tix = (b.baseTickets || b.tickets || 2) + boostCount;
 
@@ -128,7 +146,6 @@ export function renderDashboardCards() {
   // 4. Chores Column
   const choresContainer = document.getElementById('choresList') || document.getElementById('choresContainer') || document.getElementById('choreCards');
   if (choresContainer) {
-    const chores = state.globalData.chores || [];
     if (chores.length === 0) {
       choresContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No weekly chores found.</div>';
     } else {
@@ -162,11 +179,9 @@ export function renderDashboardCards() {
 // 2. Recalculate Stats, Counters & Weekly Chart
 // ==========================================
 export function recalculateAll() {
-  if (!state.globalData) return;
-
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
-  const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+  const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
 
   if (document.getElementById('doubleDeliveryBanner')) {
     document.getElementById('doubleDeliveryBanner').style.display = isDoubleDeliveryActive ? 'flex' : 'none';
@@ -177,7 +192,7 @@ export function recalculateAll() {
   const todayUtcStr = now.toISOString().split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId(todayUtcStr);
 
-  const vault = state.globalData.cloudHistory || state.currentVaultData || {};
+  const vault = state.globalData?.cloudHistory || state.currentVaultData || {};
   const rawLogs = vault.logs || [];
   const rawWeeks = vault.weeks || {};
 
@@ -231,7 +246,8 @@ export function recalculateAll() {
   const seenDeliveryKeys = new Set();
   let doubleDeliveryAppliedToday = false;
 
-  (state.globalData.deliveries || []).forEach(d => {
+  const activeDeliveries = (state.globalData && state.globalData.deliveries) || vault.deliveries || [];
+  activeDeliveries.forEach(d => {
     const key = d.id ? String(d.id) : `${(d.name || d.from || '').toLowerCase()}_${d.completedAt || 0}`;
     seenDeliveryKeys.add(key);
 
@@ -308,7 +324,8 @@ export function recalculateAll() {
 
   // 2. Process Bounties
   const seenBountyKeys = new Set();
-  (state.globalData.bounties || []).forEach(b => {
+  const activeBounties = (state.globalData && state.globalData.bounties) || vault.bounties || [];
+  activeBounties.forEach(b => {
     const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
     seenBountyKeys.add(key);
 
@@ -381,7 +398,8 @@ export function recalculateAll() {
 
   // 3. Process Chores
   const seenChoreKeys = new Set();
-  (state.globalData.chores || []).forEach(c => {
+  const activeChores = (state.globalData && state.globalData.chores) || vault.chores || [];
+  activeChores.forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
     seenChoreKeys.add(key);
 
@@ -439,13 +457,13 @@ export function recalculateAll() {
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
-  const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
-  const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
+  const regularBounties = activeBounties.filter(b => !isAnimalBounty(b));
+  const animalBounties = activeBounties.filter(b => isAnimalBounty(b));
 
-  setElemText('deliveriesCount', `${state.globalData.deliveries?.length || 0} Orders`);
+  setElemText('deliveriesCount', `${activeDeliveries.length} Orders`);
   setElemText('bountiesCount', `${regularBounties.length} Items`);
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
-  setElemText('choresCount', `${state.globalData.chores?.length || 0} Tasks`);
+  setElemText('choresCount', `${activeChores.length} Tasks`);
 
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
@@ -485,7 +503,6 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  renderDashboardCards();
   renderWeeklyChart(weeklyTicketStats, currentWeekMonday, targetPerWeek, targetWeeks);
 }
 
@@ -594,7 +611,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   `;
 }
 
-// Window Checkbox Toggles for Dashboard Cards
+// Window Checkbox Toggles for Main Column Cards
 window.toggleMainDeliveryCheck = function(index, isChecked) {
   if (!state.globalData?.deliveries?.[index]) return;
   state.globalData.deliveries[index].checked = isChecked;
@@ -602,6 +619,7 @@ window.toggleMainDeliveryCheck = function(index, isChecked) {
   state.globalData.deliveries[index].completedAt = isChecked ? Date.now() : null;
   state.globalData.deliveries[index].checkedToday = isChecked;
   recalculateAll();
+  renderDashboardCards();
   import('./api.js').then(m => m.saveProgressToCloudKV(true));
 };
 
@@ -612,6 +630,7 @@ window.toggleMainBountyCheck = function(index, isChecked) {
   state.globalData.bounties[index].completedAt = isChecked ? Date.now() : null;
   state.globalData.bounties[index].checkedToday = isChecked;
   recalculateAll();
+  renderDashboardCards();
   import('./api.js').then(m => m.saveProgressToCloudKV(true));
 };
 
@@ -622,5 +641,6 @@ window.toggleMainChoreCheck = function(index, isChecked) {
   state.globalData.chores[index].completedAt = isChecked ? Date.now() : null;
   state.globalData.chores[index].checkedToday = isChecked;
   recalculateAll();
+  renderDashboardCards();
   import('./api.js').then(m => m.saveProgressToCloudKV(true));
 };
