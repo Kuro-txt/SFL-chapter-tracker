@@ -18,8 +18,8 @@ export function renderDashboardCards() {
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
 
-  // 1. Deliveries Column
-  const delivContainer = document.getElementById('deliveriesList') || document.getElementById('deliveriesContainer');
+  // 1. Deliveries Column (supports deliveriesList or deliveriesContainer)
+  const delivContainer = document.getElementById('deliveriesList') || document.getElementById('deliveriesContainer') || document.getElementById('deliveryCards');
   if (delivContainer) {
     const deliveries = state.globalData.deliveries || [];
     if (deliveries.length === 0) {
@@ -63,7 +63,7 @@ export function renderDashboardCards() {
   }
 
   // 2. Item Bounties Column
-  const bountiesContainer = document.getElementById('bountiesList') || document.getElementById('bountiesContainer');
+  const bountiesContainer = document.getElementById('bountiesList') || document.getElementById('bountiesContainer') || document.getElementById('bountyCards');
   if (bountiesContainer) {
     const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
     if (regularBounties.length === 0) {
@@ -93,7 +93,7 @@ export function renderDashboardCards() {
   }
 
   // 3. Animal Bounties Column
-  const animalContainer = document.getElementById('animalBountiesList') || document.getElementById('animalBountiesContainer');
+  const animalContainer = document.getElementById('animalBountiesList') || document.getElementById('animalBountiesContainer') || document.getElementById('animalCards');
   if (animalContainer) {
     const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
     if (animalBounties.length === 0) {
@@ -126,7 +126,7 @@ export function renderDashboardCards() {
   }
 
   // 4. Chores Column
-  const choresContainer = document.getElementById('choresList') || document.getElementById('choresContainer');
+  const choresContainer = document.getElementById('choresList') || document.getElementById('choresContainer') || document.getElementById('choreCards');
   if (choresContainer) {
     const chores = state.globalData.chores || [];
     if (chores.length === 0) {
