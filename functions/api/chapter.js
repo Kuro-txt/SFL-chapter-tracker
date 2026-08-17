@@ -313,36 +313,6 @@ async function executeCronBackupTask(env) {
       vaultData.chores = choresList;
       vaultData.milestones = liveMilestones;
 
-      let totalTix = (vaultData.trackTickets || 0) + (vaultData.dailyLoginTickets || 0);
-      let totalCost = vaultData.trackCost || 0;
-
-      vaultData.logs.forEach(l => {
-        (l.deliveriesDone || []).forEach(d => {
-          if (d.checked || d.completed) {
-            totalTix += (d.tickets || d.baseTickets || 0);
-            totalCost += (d.cost || 0);
-          }
-        });
-      });
-
-      Object.values(vaultData.weeks).forEach(wk => {
-        (wk.bounties || []).forEach(b => {
-          if (b.completed || b.checked) {
-            totalTix += (b.tickets || b.baseTickets || 0);
-            totalCost += (b.cost || 0);
-          }
-        });
-        (wk.chores || []).forEach(c => {
-          if (c.completed || c.checked) {
-            totalTix += (c.tickets || c.baseTickets || 0);
-            totalCost += (c.cost || 0);
-          }
-        });
-      });
-
-      vaultData.cumulativeTickets = totalTix;
-      vaultData.cumulativeCost = totalCost;
-
       delete vaultData.apiKey;
       await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
       processedCount++;
@@ -505,155 +475,22 @@ export async function onRequest(context) {
         milestones: {}
       };
 
-      const todayDate = new Date().toISOString().split('T')[0];
-      const currentWeekMonday = getMondayBasedWeekId();
-      if (!existingData.weeks) existingData.weeks = {};
-
       if (body.farmId) existingData.farmId = body.farmId;
       if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets) || 0;
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
-      
-      if (body.dailyLoginTickets !== undefined) {
-        existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
-      }
-      if (body.lastDailyLoginDate) {
-        existingData.lastDailyLoginDate = body.lastDailyLoginDate;
-      } else {
-        existingData.lastDailyLoginDate = todayDate;
+      if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
+      if (body.lastDailyLoginDate) existingData.lastDailyLoginDate = body.lastDailyLoginDate;
+
+      // Fully accept incoming client weeks (preserves manually added weekly items)
+      if (body.weeks && typeof body.weeks === 'object') {
+        existingData.weeks = body.weeks;
       }
 
-      if (body.milestones) {
-        const cleanedMilestones = {};
-        Object.entries(body.milestones).forEach(([k, v]) => {
-          if (CHAPTER_NPC_TICKETS[k.toLowerCase().trim()] !== undefined) {
-            cleanedMilestones[k.toLowerCase().trim()] = v;
-          }
-        });
-        existingData.milestones = cleanedMilestones;
-      }
-
-      const incomingBounties = (body.bounties || [])
-        .filter(bItem => (bItem.baseTickets || bItem.tickets || 0) > 0)
-        .map(bItem => {
-          const isDone = bItem.checked !== undefined ? bItem.checked : Boolean(bItem.completed);
-          return {
-            id: bItem.id || null,
-            level: bItem.level || null,
-            weekId: currentWeekMonday, 
-            name: bItem.name, 
-            cost: bItem.itemsCost || bItem.cost || 0,
-            baseTickets: bItem.baseTickets !== undefined ? bItem.baseTickets : (bItem.tickets || 0),
-            tickets: bItem.baseTickets !== undefined ? bItem.baseTickets : (bItem.tickets || 0), 
-            completed: isDone, 
-            completedAt: bItem.completedAt || null,
-            checked: isDone,
-            checkedToday: bItem.checkedToday || false
-          };
-        });
-
-      const incomingChores = (body.chores || []).map(cItem => {
-        const isDone = cItem.checked !== undefined ? cItem.checked : Boolean(cItem.completed);
-        const taskName = cItem.task || cItem.name || 'Chore';
-        return {
-          weekId: currentWeekMonday, 
-          name: taskName, 
-          task: taskName, 
-          npc: cItem.npc || 'NPC',
-          baseTickets: cItem.baseTickets !== undefined ? cItem.baseTickets : (cItem.tickets || 1),
-          tickets: cItem.baseTickets !== undefined ? cItem.baseTickets : (cItem.tickets || 1), 
-          cost: cItem.itemsCost || cItem.cost || 0,
-          completed: isDone, 
-          completedAt: cItem.completedAt || null,
-          checked: isDone,
-          checkedToday: cItem.checkedToday || false
-        };
-      });
-
-      if (incomingBounties.length > 0 || incomingChores.length > 0) {
-        existingData.weeks[currentWeekMonday] = { 
-          weekId: currentWeekMonday, 
-          bounties: incomingBounties.length > 0 ? incomingBounties : (existingData.weeks[currentWeekMonday]?.bounties || []), 
-          chores: incomingChores.length > 0 ? incomingChores : (existingData.weeks[currentWeekMonday]?.chores || []) 
-        };
-      }
-
-      if (body.logs && Array.isArray(body.logs)) {
-        existingData.logs = body.logs;
-      } else {
-        const allDeliveries = (body.deliveries || []).map(d => {
-          const isDone = d.checked !== undefined ? d.checked : Boolean(d.completed);
-          return {
-            name: d.from || d.name, 
-            cost: d.itemsCost || d.cost || 0, 
-            baseTickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
-            tickets: d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2),
-            completed: isDone, 
-            completedAt: d.completedAt || (isDone ? Date.now() : null),
-            items: d.itemDetails || d.items || [], 
-            itemDetails: d.itemDetails || d.items || [], 
-            checked: isDone,
-            isStacked: d.isStacked || false
-          };
-        });
-
-        const dailyTickets = body.dailyDeliveryTicketsSaved || 0;
-        const dailyCost = body.dailyDeliveryCostSaved || 0;
-
-        const existingTodayLogIndex = existingData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
-        if (existingTodayLogIndex !== -1) {
-          existingData.logs[existingTodayLogIndex] = { 
-            date: todayDate, 
-            weekId: currentWeekMonday, 
-            timestamp: new Date().toISOString(), 
-            ticketsSaved: dailyTickets, 
-            costSaved: dailyCost, 
-            deliveriesDone: allDeliveries,
-            milestones: existingData.milestones || {}
-          };
-        } else {
-          existingData.logs.unshift({ 
-            date: todayDate, 
-            weekId: currentWeekMonday, 
-            timestamp: new Date().toISOString(), 
-            ticketsSaved: dailyTickets, 
-            costSaved: dailyCost, 
-            deliveriesDone: allDeliveries,
-            milestones: existingData.milestones || {}
-          });
-        }
-      }
-
-      let totalTix = (existingData.trackTickets || 0) + (existingData.dailyLoginTickets || 0);
-      let totalCost = existingData.trackCost || 0;
-      existingData.logs.forEach(l => {
-        (l.deliveriesDone || []).forEach(d => {
-          if (d.checked !== undefined ? d.checked : d.completed) {
-            totalTix += (d.baseTickets || d.tickets || 0);
-            totalCost += (d.cost || 0);
-          }
-        });
-      });
-
-      Object.values(existingData.weeks).forEach(wk => {
-        (wk.bounties || []).forEach(bItem => {
-          if (bItem.completed || bItem.checked) {
-            totalTix += (bItem.tickets || bItem.baseTickets || 0);
-            totalCost += (bItem.cost || 0);
-          }
-        });
-        (wk.chores || []).forEach(cItem => {
-          if (cItem.completed || cItem.checked) {
-            totalTix += (cItem.tickets || cItem.baseTickets || 0);
-            totalCost += (cItem.cost || 0);
-          }
-        });
-      });
-
-      existingData.cumulativeTickets = totalTix;
-      existingData.cumulativeCost = totalCost;
-      existingData.deliveries = body.deliveries || existingData.deliveries || [];
-      existingData.bounties = incomingBounties.length > 0 ? incomingBounties : (existingData.bounties || []);
-      existingData.chores = incomingChores.length > 0 ? incomingChores : (existingData.chores || []);
+      // Fully accept incoming deliveries and logs
+      if (body.deliveries) existingData.deliveries = body.deliveries;
+      if (body.bounties) existingData.bounties = body.bounties;
+      if (body.chores) existingData.chores = body.chores;
+      if (body.logs && Array.isArray(body.logs)) existingData.logs = body.logs;
 
       delete existingData.apiKey;
       await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
@@ -909,11 +746,13 @@ export async function onRequest(context) {
       currentVault.milestones = liveMilestones;
 
       if (!currentVault.weeks) currentVault.weeks = {};
-      currentVault.weeks[currentWeekMonday] = {
-        weekId: currentWeekMonday,
-        bounties: activeBounties,
-        chores: choresList
-      };
+      if (!currentVault.weeks[currentWeekMonday]) {
+        currentVault.weeks[currentWeekMonday] = {
+          weekId: currentWeekMonday,
+          bounties: activeBounties,
+          chores: choresList
+        };
+      }
 
       let dailyTix = 0;
       let dailyCost = 0;
