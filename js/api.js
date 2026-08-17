@@ -70,6 +70,8 @@ export async function loadTrackerData() {
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
       state.globalData.cloudHistory = data.vaultData;
+    } else if (!state.globalData.cloudHistory) {
+      state.globalData.cloudHistory = { logs: [], weeks: {} };
     }
 
     if (data.isVipActive !== undefined) {
@@ -162,12 +164,6 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
-
-      const isToday = b.completedAt && new Date(b.completedAt).toISOString().split('T')[0] === todayDate;
-      if (isToday) {
-        todayEarnedTix += yieldAmt;
-        todayEarnedCost += lineCost;
-      }
     }
   });
 
@@ -179,16 +175,13 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (c.itemsCost || c.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
-
-      const isToday = c.completedAt && new Date(c.completedAt).toISOString().split('T')[0] === todayDate;
-      if (isToday) {
-        todayEarnedTix += yieldAmt;
-        todayEarnedCost += lineCost;
-      }
     }
   });
 
-  const logs = [...(state.globalData?.cloudHistory?.logs || [])];
+  // Ensure cloudHistory and logs array exist
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
+  const logs = [...(state.globalData.cloudHistory.logs || [])];
+  
   const existingLogIdx = logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
   const logEntry = {
     date: todayDate,
@@ -206,6 +199,8 @@ export async function saveProgressToCloudKV(silent = false) {
     logs.unshift(logEntry);
   }
 
+  state.globalData.cloudHistory.logs = logs;
+
   const payload = {
     username: state.currentUser,
     farmId,
@@ -215,7 +210,7 @@ export async function saveProgressToCloudKV(silent = false) {
     cumulativeTickets: calculatedTotalTickets,
     cumulativeCost: calculatedTotalCost,
     lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || todayDate,
-    weeks: state.globalData?.cloudHistory?.weeks || {},
+    weeks: state.globalData.cloudHistory.weeks || {},
     logs,
     deliveries: state.globalData?.deliveries || [],
     bounties: state.globalData?.bounties || [],
