@@ -15,6 +15,7 @@ export function openColumnModal(type) {
   container.innerHTML = '';
   const currentWeekMonday = getMondayBasedWeekId();
 
+  // Top Add Card
   const addCard = document.createElement('div');
   addCard.style.cssText = 'background: #FAF8F5; border: 1.5px dashed #D2691E; border-radius: 8px; padding: 10px; margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;';
 
@@ -39,17 +40,19 @@ export function openColumnModal(type) {
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
       row.className = 'modal-item-row';
-      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px;';
+      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px; background: ' + (isDone ? '#F1F8E9' : '#FFF') + '; border-radius: 6px; margin-bottom: 6px;';
       row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('deliveries', ${idx}, this.checked)">
-          <span style="font-weight: bold; color: #5C4033;">${item.from || item.name}</span>
-          ${item.isStacked ? '<span style="font-size: 10px; background: #FFE0B2; color: #E65100; padding: 2px 6px; border-radius: 4px; font-weight: bold;">STACKED</span>' : ''}
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" onchange="window.toggleModalItem('deliveries', ${idx}, this.checked)">
+          <div>
+            <span style="font-weight: bold; color: #5C4033; font-size: 14px;">${item.from || item.name}</span>
+            ${item.isStacked ? '<span style="margin-left: 6px; font-size: 10px; background: #FFE0B2; color: #E65100; padding: 2px 6px; border-radius: 4px; font-weight: bold;">STACKED</span>' : ''}
+          </div>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 12px; color: #8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
-          <span style="font-weight: bold; color: #E65100;">${item.baseTickets || item.tickets || 2} Tix</span>
-          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 2px 6px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('deliveries', ${idx})">✕</button>
+          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 85px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('deliveries', ${idx}, this.value)">
+          <input type="number" value="${item.baseTickets || item.tickets || 2}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('deliveries', ${idx}, this.value)">
+          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('deliveries', ${idx})">✕</button>
         </div>
       `;
       container.appendChild(row);
@@ -77,16 +80,16 @@ export function openColumnModal(type) {
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
       row.className = 'modal-item-row';
-      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px;';
+      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px; background: ' + (isDone ? '#F1F8E9' : '#FFF') + '; border-radius: 6px; margin-bottom: 6px;';
       row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
-          <span style="font-weight: bold; color: #5C4033;">${item.name}</span>
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
+          <span style="font-weight: bold; color: #5C4033; font-size: 14px;">${item.name}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 12px; color: #8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
-          <span style="font-weight: bold; color: #E65100;">${item.baseTickets || item.tickets || 1} Tix</span>
-          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 2px 6px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
+          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 85px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('bounties', ${globalIdx}, this.value)">
+          <input type="number" value="${item.baseTickets || item.tickets || 1}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('bounties', ${globalIdx}, this.value)">
+          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
         </div>
       `;
       container.appendChild(row);
@@ -115,16 +118,19 @@ export function openColumnModal(type) {
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
       row.className = 'modal-item-row';
-      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px;';
+      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px; background: ' + (isDone ? '#F1F8E9' : '#FFF') + '; border-radius: 6px; margin-bottom: 6px;';
       row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
-          <span style="font-weight: bold; color: #5C4033;">${item.name} ${item.level ? `(Lvl ${item.level})` : ''}</span>
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
+          <div>
+            <span style="font-weight: bold; color: #5C4033; font-size: 14px;">${item.name}</span>
+            ${item.level ? `<span style="margin-left: 6px; font-size: 11px; color: #8C7853; font-weight: bold;">(Lvl ${item.level})</span>` : ''}
+          </div>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 12px; color: #8C7853;">${formatSFL(item.itemsCost || item.cost || 0)} SFL</span>
-          <span style="font-weight: bold; color: #E65100;">${item.baseTickets || item.tickets || 1} Tix</span>
-          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 2px 6px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
+          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 85px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('bounties', ${globalIdx}, this.value)">
+          <input type="number" value="${item.baseTickets || item.tickets || 2}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('bounties', ${globalIdx}, this.value)">
+          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
         </div>
       `;
       container.appendChild(row);
@@ -151,18 +157,18 @@ export function openColumnModal(type) {
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
       row.className = 'modal-item-row';
-      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px;';
+      row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #E0D5C1; gap: 10px; background: ' + (isDone ? '#F1F8E9' : '#FFF') + '; border-radius: 6px; margin-bottom: 6px;';
       row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-          <input type="checkbox" ${isDone ? 'checked' : ''} onchange="window.toggleModalItem('chores', ${idx}, this.checked)">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" onchange="window.toggleModalItem('chores', ${idx}, this.checked)">
           <div>
-            <div style="font-weight: bold; color: #5C4033;">${item.task || item.name}</div>
+            <div style="font-weight: bold; color: #5C4033; font-size: 13px;">${item.task || item.name}</div>
             <div style="font-size: 11px; color: #8C7853;">NPC: ${item.npc || 'NPC'}</div>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-weight: bold; color: #E65100;">${item.baseTickets || item.tickets || 1} Tix</span>
-          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 2px 6px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('chores', ${idx})">✕</button>
+          <input type="number" value="${item.baseTickets || item.tickets || 1}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('chores', ${idx}, this.value)">
+          <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('chores', ${idx})">✕</button>
         </div>
       `;
       container.appendChild(row);
@@ -270,7 +276,7 @@ export function toggleHistoryModal(show) {
 }
 
 // ==========================================
-// 5. Item Toggles & Inline Field Updates
+// 5. Item Updates, Checks & Deletions
 // ==========================================
 export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
@@ -325,9 +331,6 @@ export function updateHistoryItemCost(logIndex, itemIndex, newCost) {
   }
 }
 
-// ==========================================
-// 6. Deletion Functions
-// ==========================================
 export function deleteWeeklyItem(weekId, category, index) {
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
   if (!weeks || !weeks[weekId] || !weeks[weekId][category]) return;
@@ -356,7 +359,7 @@ export function deleteDeliveryLogItem(logIndex) {
 }
 
 // ==========================================
-// 7. Manual Item Submission & Cloud Sync
+// 6. Manual Submission & Modal Handlers
 // ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
@@ -451,6 +454,32 @@ window.toggleModalItem = function(type, index, isChecked) {
   list[index].completed = isChecked;
   list[index].completedAt = isChecked ? Date.now() : null;
   list[index].checkedToday = isChecked;
+
+  recalculateAll();
+  saveProgressToCloudKV(true);
+};
+
+window.updateModalItemCost = function(type, index, newCost) {
+  if (!state.globalData) return;
+  const list = state.globalData[type];
+  if (!list || !list[index]) return;
+
+  const cost = parseFloat(newCost) || 0;
+  list[index].cost = cost;
+  list[index].itemsCost = cost;
+
+  recalculateAll();
+  saveProgressToCloudKV(true);
+};
+
+window.updateModalItemTickets = function(type, index, newTickets) {
+  if (!state.globalData) return;
+  const list = state.globalData[type];
+  if (!list || !list[index]) return;
+
+  const tickets = parseInt(newTickets, 10) || 0;
+  list[index].tickets = tickets;
+  list[index].baseTickets = tickets;
 
   recalculateAll();
   saveProgressToCloudKV(true);
