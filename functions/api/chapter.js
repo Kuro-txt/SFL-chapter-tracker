@@ -7,6 +7,24 @@ import {
   extractRewardTickets 
 } from '../utils/sfl-pricing.js';
 import { SFL_RECIPES } from '../../recipes.js';
+import pkg from 'pg';
+const { Pool } = pkg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+async function ensureTableExists() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_vaults (
+      username TEXT PRIMARY KEY,
+      auth_data JSONB,
+      vault_data JSONB
+    );
+  `);
+}
+ensureTableExists().catch(console.error);
 
 const jsonRes = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -84,298 +102,29 @@ async function fetchFarmWithRetry(farmId, apiKey) {
   return null;
 }
 
-async function executeCronBackupTask(env) {
-  const backupTimestamp = new Date().toISOString();
-  const todayDate = backupTimestamp.split('T')[0];
-  const currentWeekMonday = getMondayBasedWeekId();
-  const serverApiKey = env?.SFL_API_KEY || '';
-
-  let priceMap = {};
-  try {
-    const pricesRes = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (pricesRes.ok) {
-      const rawData = await pricesRes.json().catch(() => null);
-      if (rawData) priceMap = extractPricesRecursive(rawData);
-    }
-  } catch (e) {}
-
-  if (!env?.TRACKER_KV) return;
-
-  const list = await env.TRACKER_KV.list({ prefix: "user_" });
-  let processedCount = 0;
-
-  for (const keyObj of list.keys) {
-    if (!keyObj.name.endsWith("_vault")) continue;
-
-    let vaultData = await env.TRACKER_KV.get(keyObj.name, "json");
-    if (!vaultData) continue;
-
-    if (!vaultData.logs) vaultData.logs = [];
-    if (!vaultData.weeks) vaultData.weeks = {};
-
-    const targetFarmId = vaultData.farmId;
-    if (!targetFarmId) continue;
-
-    const farm = await fetchFarmWithRetry(targetFarmId, serverApiKey);
-
-    if (farm) {
-      if (vaultData.lastDailyLoginDate !== todayDate) {
-        vaultData.dailyLoginTickets = (vaultData.dailyLoginTickets || 0) + 1;
-        vaultData.lastDailyLoginDate = todayDate;
-      }
-
-      const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
-      const liveMilestones = {};
-      Object.entries(rawMilestones).forEach(([npc, count]) => {
-        const cleanName = npc.toLowerCase().trim();
-        if (CHAPTER_NPC_TICKETS[cleanName] !== undefined) {
-          liveMilestones[cleanName] = count;
-        }
-      });
-
-      const baselineMilestones = vaultData.logs[0]?.milestones || vaultData.milestones || {};
-
-      const nowMs = Date.now();
-      const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
-      let isDoubleDeliveryActive = false;
-      if (Array.isArray(calendarEvents)) {
-        isDoubleDeliveryActive = calendarEvents.some(evt => {
-          const title = (evt.name || evt.title || evt.type || '').toLowerCase();
-          const matches = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
-          const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
-          const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
-          return matches && started && notEnded;
-        });
-      }
-
-      const deliveryList = [];
-      const npcOrderCounts = {};
-      (farm.delivery?.orders || []).forEach(order => {
-        const npcClean = (order.from || '').toLowerCase().trim();
-        let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
-        if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
-          totalTickets = CHAPTER_NPC_TICKETS[npcClean];
-        }
-
-        if (totalTickets > 0) {
-          let itemsCost = 0;
-          const itemDetails = [];
-          Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-            const unitPrice = getItemUnitPrice(itemName, priceMap);
-            const lineCost = unitPrice * qty;
-            itemsCost += lineCost;
-            itemDetails.push({ 
-              name: itemName, 
-              qty, 
-              unitPrice, 
-              lineCost, 
-              isRecipe: !getDirectMarketPrice(itemName, priceMap) && !!SFL_RECIPES[itemName.toLowerCase().trim()] 
-            });
-          });
-
-          const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-          if (isCompleted) {
-            npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
-          }
-
-          deliveryList.push({
-            name: order.from,
-            from: order.from,
-            itemsCost,
-            cost: itemsCost,
-            baseTickets: totalTickets,
-            tickets: totalTickets,
-            completed: isCompleted,
-            checked: isCompleted,
-            completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
-            itemDetails,
-            isStacked: false
-          });
-        }
-      });
-
-      Object.entries(liveMilestones).forEach(([npcClean, liveCount]) => {
-        const prevCount = baselineMilestones[npcClean] !== undefined ? baselineMilestones[npcClean] : 0;
-        const completedToday = Math.max(0, liveCount - prevCount);
-        const inOrdersCompleted = npcOrderCounts[npcClean] || 0;
-
-        if (completedToday > inOrdersCompleted && prevCount > 0) {
-          const extraStacked = completedToday - inOrdersCompleted;
-          const npcTickets = CHAPTER_NPC_TICKETS[npcClean] || 2;
-          for (let i = 0; i < extraStacked; i++) {
-            deliveryList.push({
-              name: npcClean.charAt(0).toUpperCase() + npcClean.slice(1),
-              from: npcClean.charAt(0).toUpperCase() + npcClean.slice(1),
-              cost: 0,
-              itemsCost: 0,
-              baseTickets: npcTickets,
-              tickets: npcTickets,
-              completed: true,
-              checked: true,
-              completedAt: Date.now(),
-              itemDetails: [{ name: 'Stacked Previous Order', qty: 1, unitPrice: 0, lineCost: 0 }],
-              isStacked: true
-            });
-          }
-        }
-      });
-
-      const bountiesList = [];
-      const seenBounties = new Set();
-      const rawBounties = Array.isArray(farm.bounties) ? farm.bounties : (farm.bounties?.requests || farm.bounties?.board || []);
-      rawBounties.forEach(b => {
-        let tix = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || b.tickets || 0;
-        if (tix <= 0) return;
-        const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
-        if (seenBounties.has(key)) return;
-        seenBounties.add(key);
-
-        const bCost = b.name ? getItemUnitPrice(b.name, priceMap) : 0;
-        const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed';
-        bountiesList.push({
-          id: b.id || key,
-          name: b.name,
-          level: b.level || null,
-          cost: bCost,
-          itemsCost: bCost,
-          baseTickets: tix,
-          tickets: tix,
-          completed: isCompleted,
-          checked: isCompleted,
-          completedAt: typeof b.completedAt === 'number' ? b.completedAt : null
-        });
-      });
-
-      const choresObj = farm.choreBoard?.chores || farm.chores || {};
-      const choresList = Object.entries(choresObj).map(([key, details]) => {
-        let tix = extractRewardTickets(details.reward) || details.tickets || details.baseTickets || 1;
-        const prog = details.initialProgress ?? details.progress ?? 0;
-        const req = details.requirement ?? details.target ?? details.total ?? 0;
-        const isDone = typeof details.completedAt === 'number' || details.completed === true || (req > 0 && prog >= req);
-        const taskLabel = details.name || details.description || key;
-        return {
-          npc: details.npc || details.from || 'NPC',
-          task: taskLabel,
-          name: taskLabel,
-          baseTickets: tix,
-          tickets: tix,
-          cost: 0,
-          itemsCost: 0,
-          completed: isDone,
-          checked: isDone,
-          completedAt: typeof details.completedAt === 'number' ? details.completedAt : null
-        };
-      });
-
-      if (!vaultData.weeks[currentWeekMonday]) {
-        vaultData.weeks[currentWeekMonday] = {
-          weekId: currentWeekMonday,
-          bounties: bountiesList,
-          chores: choresList
-        };
-      }
-
-      let dailyTix = 0;
-      let dailyCost = 0;
-      let doubleApplied = false;
-
-      const formattedDeliveries = deliveryList.map(d => {
-        let yld = d.baseTickets;
-        if (d.checked || d.completed) {
-          if (isDoubleDeliveryActive && !doubleApplied) {
-            yld = yld * 2;
-            doubleApplied = true;
-          }
-          dailyTix += yld;
-          dailyCost += d.cost;
-        }
-        return { ...d, tickets: yld };
-      });
-
-      const existingIndex = vaultData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
-      const logEntry = {
-        date: todayDate,
-        weekId: currentWeekMonday,
-        timestamp: backupTimestamp,
-        ticketsSaved: dailyTix,
-        costSaved: dailyCost,
-        autoBackup: true,
-        deliveriesDone: formattedDeliveries,
-        milestones: liveMilestones
-      };
-
-      if (existingIndex !== -1) {
-        vaultData.logs[existingIndex] = logEntry;
-      } else {
-        vaultData.logs.unshift(logEntry);
-      }
-
-      vaultData.deliveries = formattedDeliveries;
-      vaultData.bounties = bountiesList;
-      vaultData.chores = choresList;
-      vaultData.milestones = liveMilestones;
-
-      delete vaultData.apiKey;
-      await env.TRACKER_KV.put(keyObj.name, JSON.stringify(vaultData));
-      processedCount++;
-
-      await sleep(1000);
-    }
-  }
-
-  await env.TRACKER_KV.put(`system_last_cron_backup`, JSON.stringify({ 
-    timestamp: backupTimestamp, 
-    vaultsProcessed: processedCount 
-  }));
+export async function GET(request) {
+  return handleRequest(request);
 }
 
-export async function onRequest(context) {
-  const { request, env, waitUntil } = context;
+export async function POST(request) {
+  return handleRequest(request);
+}
+
+async function handleRequest(request) {
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
   const farmId = url.searchParams.get('farmId') || '8472883706403914';
-  const apiKey = url.searchParams.get('apiKey') || env?.SFL_API_KEY || '';
-
-  if (action === 'cronBackup') {
-    const secretKey = url.searchParams.get('key');
-    const expectedKey = env?.CRON_SECRET || 'kuro123';
-    if (secretKey !== expectedKey) {
-      return jsonRes({ error: 'Unauthorized cron key.' }, 401);
-    }
-
-    if (waitUntil) {
-      waitUntil(executeCronBackupTask(env));
-    } else {
-      context.waitUntil(executeCronBackupTask(env));
-    }
-
-    return jsonRes({
-      success: true,
-      status: "BACKGROUND_CRAWLER_STARTED",
-      message: "Cron backup initiated in background. Processing all farms with retry engine."
-    });
-  }
+  const apiKey = url.searchParams.get('apiKey') || process.env.SFL_API_KEY || '';
 
   if (action === 'getVault') {
     const username = (url.searchParams.get('username') || '').toLowerCase().trim();
-    if (env?.TRACKER_KV && username) {
-      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
-        farmId,
-        logs: [], 
-        cumulativeTickets: 0, 
-        cumulativeCost: 0, 
-        weeks: {}, 
-        trackTickets: 0, 
-        trackCost: 0,
-        dailyLoginTickets: 0,
-        lastDailyLoginDate: null,
-        deliveries: [], 
-        bounties: [], 
-        chores: [],
-        milestones: {}
-      };
-      delete vaultData.apiKey;
-      return jsonRes({ success: true, vaultData });
+    if (username) {
+      const res = await pool.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
+      if (res.rows.length > 0) {
+        let vaultData = res.rows[0].vault_data;
+        delete vaultData.apiKey;
+        return jsonRes({ success: true, vaultData });
+      }
     }
     return jsonRes({ vaultData: null });
   }
@@ -388,28 +137,31 @@ export async function onRequest(context) {
       const userFarmId = body.farmId || farmId;
 
       if (!username || !password) return jsonRes({ error: 'Username and password required.' }, 400);
-      if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
 
-      const userKey = `user_${username}_auth`;
-      if (await env.TRACKER_KV.get(userKey)) return jsonRes({ error: 'Username already taken.' }, 400);
+      const check = await pool.query('SELECT username FROM user_vaults WHERE username = $1', [username]);
+      if (check.rows.length > 0) return jsonRes({ error: 'Username already taken.' }, 400);
 
       const passwordHash = await hashPassword(password);
-      await env.TRACKER_KV.put(userKey, JSON.stringify({ username, passwordHash, createdAt: new Date().toISOString() }));
-      await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify({ 
+      const initialVault = {
         farmId: userFarmId,
-        logs: [], 
-        cumulativeTickets: 0, 
-        cumulativeCost: 0, 
-        weeks: {}, 
-        trackTickets: 0, 
+        logs: [],
+        cumulativeTickets: 0,
+        cumulativeCost: 0,
+        weeks: {},
+        trackTickets: 0,
         trackCost: 0,
         dailyLoginTickets: 0,
         lastDailyLoginDate: null,
-        deliveries: [], 
-        bounties: [], 
+        deliveries: [],
+        bounties: [],
         chores: [],
         milestones: {}
-      }));
+      };
+
+      await pool.query(
+        'INSERT INTO user_vaults (username, auth_data, vault_data) VALUES ($1, $2, $3)',
+        [username, JSON.stringify({ username, passwordHash }), JSON.stringify(initialVault)]
+      );
 
       return jsonRes({ success: true, username, farmId: userFarmId });
     } catch (err) {
@@ -425,29 +177,17 @@ export async function onRequest(context) {
       const userFarmId = body.farmId;
 
       if (!username || !password) return jsonRes({ error: 'Username and password required.' }, 400);
-      if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
 
-      const userDataStr = await env.TRACKER_KV.get(`user_${username}_auth`);
-      if (!userDataStr) return jsonRes({ error: 'Account not found.' }, 401);
+      const res = await pool.query('SELECT auth_data, vault_data FROM user_vaults WHERE username = $1', [username]);
+      if (res.rows.length === 0) return jsonRes({ error: 'Account not found.' }, 401);
 
-      const userData = JSON.parse(userDataStr);
-      if (userData.passwordHash !== await hashPassword(password)) return jsonRes({ error: 'Incorrect password.' }, 401);
+      const authData = res.rows[0].auth_data;
+      if (authData.passwordHash !== await hashPassword(password)) return jsonRes({ error: 'Incorrect password.' }, 401);
 
-      let vaultData = await env.TRACKER_KV.get(`user_${username}_vault`, 'json') || { 
-        logs: [], 
-        cumulativeTickets: 0, 
-        cumulativeCost: 0, 
-        weeks: {}, 
-        trackTickets: 0, 
-        trackCost: 0,
-        dailyLoginTickets: 0,
-        lastDailyLoginDate: null,
-        milestones: {}
-      };
-
+      let vaultData = res.rows[0].vault_data;
       if (userFarmId && !vaultData.farmId) {
         vaultData.farmId = userFarmId;
-        await env.TRACKER_KV.put(`user_${username}_vault`, JSON.stringify(vaultData));
+        await pool.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), username]);
       }
 
       delete vaultData.apiKey;
@@ -462,15 +202,14 @@ export async function onRequest(context) {
       const body = await request.json().catch(() => ({}));
       const username = (body.username || '').toLowerCase().trim();
       if (!username) return jsonRes({ error: 'Not logged in.' }, 401);
-      if (!env?.TRACKER_KV) return jsonRes({ error: 'KV Database missing.' }, 500);
 
-      const vaultKey = `user_${username}_vault`;
-      let existingData = await env.TRACKER_KV.get(vaultKey, 'json') || { 
-        logs: [], 
-        cumulativeTickets: 0, 
-        cumulativeCost: 0, 
-        weeks: {}, 
-        trackTickets: 0, 
+      const res = await pool.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
+      let existingData = res.rows.length > 0 ? res.rows[0].vault_data : {
+        logs: [],
+        cumulativeTickets: 0,
+        cumulativeCost: 0,
+        weeks: {},
+        trackTickets: 0,
         trackCost: 0,
         dailyLoginTickets: 0,
         lastDailyLoginDate: null,
@@ -482,19 +221,17 @@ export async function onRequest(context) {
       if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
       if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
       if (body.lastDailyLoginDate) existingData.lastDailyLoginDate = body.lastDailyLoginDate;
-
-      // Fully merge and persist incoming client weeks (preserves manually added weekly items)
-      if (body.weeks && typeof body.weeks === 'object') {
-        existingData.weeks = body.weeks;
-      }
-
+      if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
       if (body.deliveries) existingData.deliveries = body.deliveries;
       if (body.bounties) existingData.bounties = body.bounties;
       if (body.chores) existingData.chores = body.chores;
       if (body.logs && Array.isArray(body.logs)) existingData.logs = body.logs;
 
-      delete existingData.apiKey;
-      await env.TRACKER_KV.put(vaultKey, JSON.stringify(existingData));
+      await pool.query(
+        'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+        [JSON.stringify(existingData), username]
+      );
+
       return jsonRes({ success: true, vaultData: existingData });
     } catch (err) {
       return jsonRes({ error: err.message }, 500);
@@ -558,8 +295,11 @@ export async function onRequest(context) {
     const usernameParam = (url.searchParams.get('username') || '').toLowerCase().trim();
     let currentVault = null;
 
-    if (env?.TRACKER_KV && usernameParam) {
-      currentVault = await env.TRACKER_KV.get(`user_${usernameParam}_vault`, 'json');
+    if (usernameParam) {
+      const res = await pool.query('SELECT vault_data FROM user_vaults WHERE username = $1', [usernameParam]);
+      if (res.rows.length > 0) {
+        currentVault = res.rows[0].vault_data;
+      }
       if (!currentVault) {
         currentVault = {
           farmId,
@@ -736,7 +476,7 @@ export async function onRequest(context) {
       };
     });
 
-    if (env?.TRACKER_KV && usernameParam && currentVault) {
+    if (usernameParam && currentVault) {
       const todayDate = new Date().toISOString().split('T')[0];
       const currentWeekMonday = getMondayBasedWeekId();
 
@@ -782,8 +522,7 @@ export async function onRequest(context) {
         currentVault.logs.unshift(logEntry);
       }
 
-      delete currentVault.apiKey;
-      await env.TRACKER_KV.put(`user_${usernameParam}_vault`, JSON.stringify(currentVault));
+      await pool.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(currentVault), usernameParam]);
     }
 
     return jsonRes({
