@@ -210,10 +210,10 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST Weeks from Cloud KV (Bounties & Chores added to Total & Weekly)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Fully aggregates into Total & Weekly stats)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wkId);
-    if (pastMonday === currentWeekMonday) return;
+    const isCurrentWeek = (pastMonday === currentWeekMonday);
 
     (wk.bounties || []).forEach(b => {
       const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -230,11 +230,14 @@ export function recalculateAll() {
 
         if (isAnimal) {
           totalAnimalBountyTix += finalTix;
+          if (isCurrentWeek) weekAnimalBountyTix += finalTix;
         } else {
           totalBountyTix += finalTix;
+          if (isCurrentWeek) weekBountyTix += finalTix;
         }
 
         totalSflCostAll += bCost;
+        if (isCurrentWeek) weekCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
       }
     });
@@ -250,14 +253,16 @@ export function recalculateAll() {
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
+        if (isCurrentWeek) weekChoreTix += finalTix;
+
         totalSflCostAll += cCost;
+        if (isCurrentWeek) weekCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
     });
   });
 
-  // Totals calculations
-  // NOTE: trackTickets & totalLoginTickets add to Total Count ONLY
+  // Totals calculations (trackTickets & totalLoginTickets add to Total Count ONLY)
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
