@@ -10,6 +10,7 @@ export async function syncCurrentVaultToCloud() {
     const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
 
     if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
 
     const payload = {
       username: state.currentUser,
@@ -19,7 +20,7 @@ export async function syncCurrentVaultToCloud() {
       lastDailyLoginDate,
       milestones: state.globalData.milestones || {},
       logs: state.globalData.cloudHistory.logs || [],
-      weeks: state.globalData.cloudHistory.weeks || {},
+      weeks: state.globalData.cloudHistory.weeks,
       bounties: state.globalData.bounties || [],
       chores: state.globalData.chores || [],
       deliveries: state.globalData.deliveries || []
