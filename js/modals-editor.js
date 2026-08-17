@@ -92,9 +92,9 @@ export function renderColumnHistoryModalList() {
   }
 
   let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
-    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'} (EXACT TICKETS)</div>
+    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
-      <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task (e.g. Goblin: Water)' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
+      <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
       <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
         ${weekOptionsHtml}
       </select>
@@ -105,13 +105,10 @@ export function renderColumnHistoryModalList() {
   </div>`;
 
   if (type === 'delivery') {
-    const allDeliveries = [
-      ...(state.globalData?.deliveries || []),
-      ...(state.globalData?.archiveDeliveries || [])
-    ];
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
 
-    allDeliveries.forEach((item, itemIdx) => {
+    // Process active deliveries
+    (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
 
@@ -120,7 +117,33 @@ export function renderColumnHistoryModalList() {
       let finalTix = computeYield(baseTix, true, isManual);
       if (item.hasDoubleBonus && !isManual) finalTix *= 2;
 
-      let weekDisplay = item.completedDate || 'Live Order';
+      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
+
+      records.push({
+        source: 'live',
+        itemIdx,
+        date: 'Live Order',
+        name: itemName,
+        requestedItems: formatRequestedItems(item.itemDetails || item.items),
+        cost: item.cost || item.itemsCost || 0,
+        displayTickets: finalTix,
+        checked: isChecked,
+        status: isChecked ? '✨ Done' : '⏳ Active',
+        isStacked: item.isStacked || false,
+        isManual
+      });
+    });
+
+    // Process archived deliveries so multiple orders of same NPC remain distinct
+    (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
+      const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
+      if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
+
+      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+      const isManual = Boolean(item.isManual);
+      let finalTix = computeYield(baseTix, true, isManual);
+
+      let weekDisplay = item.completedDate || 'Archived';
       if (item.weekId) {
         const baseW1 = new Date('2026-08-10T00:00:00.000Z').getTime();
         const itemTime = new Date(`${item.weekId}T00:00:00.000Z`).getTime();
@@ -128,15 +151,14 @@ export function renderColumnHistoryModalList() {
         if (diffWeeks >= 1 && diffWeeks <= 12) weekDisplay = `Week ${diffWeeks}`;
       }
 
-      const requestedStr = formatRequestedItems(item.itemDetails || item.items);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
       records.push({
-        isDeliveryArchive: Boolean(item.completedDate),
+        source: 'archive',
         itemIdx,
         date: weekDisplay,
         name: itemName,
-        requestedItems: requestedStr,
+        requestedItems: formatRequestedItems(item.itemDetails || item.items),
         cost: item.cost || item.itemsCost || 0,
         displayTickets: finalTix,
         checked: isChecked,
@@ -156,9 +178,7 @@ export function renderColumnHistoryModalList() {
       const targetArr = isChore ? (wk.chores || []) : (wk.bounties || []);
       targetArr.forEach((item, idx) => {
         if (!isChore && isAnimalBounty(item) !== isAnimal) return;
-        const dedupeKey = isChore 
-          ? `${wkId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
-          : `${wkId}_${item.id || (item.name || '').toLowerCase()}_${item.level || 0}`;
+        const dedupeKey = `${wkId}_${idx}_${item.id || (item.name || item.task || '').toLowerCase()}`;
         allItemsMap.set(dedupeKey, { item, weekId: wkId, idx, source: 'week' });
       });
     });
@@ -167,9 +187,7 @@ export function renderColumnHistoryModalList() {
     const currentWeekId = getMondayBasedWeekId();
     liveArr.forEach((item, idx) => {
       if (!isChore && isAnimalBounty(item) !== isAnimal) return;
-      const dedupeKey = isChore 
-        ? `${currentWeekId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
-        : `${currentWeekId}_${item.id || (item.name || '').toLowerCase()}_${item.level || 0}`;
+      const dedupeKey = `${currentWeekId}_live_${idx}_${item.id || (item.name || item.task || '').toLowerCase()}`;
       if (!allItemsMap.has(dedupeKey)) {
         allItemsMap.set(dedupeKey, { item, weekId: currentWeekId, idx, source: 'current' });
       }
@@ -222,11 +240,11 @@ export function renderColumnHistoryModalList() {
       }
       const labelId = r.date || r.weekDisplay || 'Week';
       const changeHandler = type === 'delivery'
-        ? `toggleDeliveryLogCheck(0, ${r.itemIdx})`
+        ? `toggleDeliveryLogCheck('${r.source}', ${r.itemIdx})`
         : `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey}')`;
       
       const deleteHandler = type === 'delivery'
-        ? `deleteDeliveryLogItem(0, ${r.itemIdx})`
+        ? `deleteDeliveryLogItem('${r.source}', ${r.itemIdx})`
         : `deleteWeeklyItem('${r.weekId}', '${r.mapKey}')`;
 
       const animalLevelTag = (type === 'animalBounty' && r.level) 
@@ -257,9 +275,9 @@ export function renderColumnHistoryModalList() {
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
           <span>SFL:</span>
-          <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || 0}', '${r.mapKey || r.itemIdx}', this.value)" style="width:60px; padding:2px; font-size:10px;" />
+          <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:60px; padding:2px; font-size:10px;" />
           <span>Tickets:</span>
-          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || 0}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Yield" />
+          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Yield" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
@@ -282,13 +300,6 @@ export async function addNewItemFromModal() {
   const baseMonday = new Date('2026-08-10T00:00:00.000Z');
   baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
   const targetWeekId = getMondayBasedWeekId(baseMonday);
-
-  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-  if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
-    state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
-  }
-
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   if (type === 'delivery') {
@@ -310,6 +321,12 @@ export async function addNewItemFromModal() {
     if (!state.globalData.archiveDeliveries) state.globalData.archiveDeliveries = [];
     state.globalData.archiveDeliveries.push(newDeliv);
   } else if (type === 'chore') {
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+    if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
+      state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
+    }
+
     const newChore = {
       npc: nameInput.includes(':') ? nameInput.split(':')[0].trim() : 'Custom',
       task: nameInput.includes(':') ? nameInput.split(':')[1].trim() : nameInput,
@@ -327,6 +344,12 @@ export async function addNewItemFromModal() {
 
     state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newChore);
   } else {
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+    if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
+      state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
+    }
+
     const isAnimal = type === 'animalBounty';
     const newBounty = {
       name: nameInput,
@@ -350,11 +373,11 @@ export async function addNewItemFromModal() {
   await syncCurrentVaultToCloud();
 }
 
-export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
-  const deliveries = state.globalData?.deliveries;
-  const archives = state.globalData?.archiveDeliveries;
-  
-  let target = deliveries?.[itemIdx] || archives?.[itemIdx];
+export async function toggleDeliveryLogCheck(source, itemIdx) {
+  const target = source === 'live' 
+    ? state.globalData?.deliveries?.[itemIdx] 
+    : state.globalData?.archiveDeliveries?.[itemIdx];
+
   if (target) {
     const newStatus = !(target.checked !== undefined ? target.checked : Boolean(target.completed));
     target.checked = newStatus;
@@ -368,10 +391,10 @@ export async function toggleDeliveryLogCheck(logIdx, itemIdx) {
   }
 }
 
-export async function deleteDeliveryLogItem(logIdx, itemIdx) {
-  if (state.globalData?.deliveries?.[itemIdx]) {
+export async function deleteDeliveryLogItem(source, itemIdx) {
+  if (source === 'live' && state.globalData?.deliveries?.[itemIdx]) {
     state.globalData.deliveries.splice(itemIdx, 1);
-  } else if (state.globalData?.archiveDeliveries?.[itemIdx]) {
+  } else if (source === 'archive' && state.globalData?.archiveDeliveries?.[itemIdx]) {
     state.globalData.archiveDeliveries.splice(itemIdx, 1);
   }
   renderColumnHistoryModalList();
@@ -407,13 +430,16 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
   }
 }
 
-export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
+export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
   const type = state.activeColumnType;
   const inputVal = parseInt(val, 10) || 0;
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    const target = state.globalData?.deliveries?.[itemIdx] || state.globalData?.archiveDeliveries?.[itemIdx];
+    const target = sourceOrWkId === 'live' 
+      ? state.globalData?.deliveries?.[itemIdx] 
+      : state.globalData?.archiveDeliveries?.[itemIdx];
+
     if (target) {
       const isManual = Boolean(target.isManual);
       const vip = isManual ? 0 : getActiveVipBonus();
@@ -452,13 +478,16 @@ export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
   await syncCurrentVaultToCloud();
 }
 
-export async function updateHistoryItemCost(idKey, mapKeyOrIdx, val) {
+export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
   const type = state.activeColumnType;
   const costVal = parseFloat(val) || 0;
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    const target = state.globalData?.deliveries?.[itemIdx] || state.globalData?.archiveDeliveries?.[itemIdx];
+    const target = sourceOrWkId === 'live' 
+      ? state.globalData?.deliveries?.[itemIdx] 
+      : state.globalData?.archiveDeliveries?.[itemIdx];
+
     if (target) {
       target.cost = costVal;
       target.itemsCost = costVal;
