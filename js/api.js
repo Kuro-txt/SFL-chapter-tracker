@@ -67,15 +67,13 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    const todayDate = new Date().toISOString().split('T')[0];
-    const currentWeekMonday = getMondayBasedWeekId();
-
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      let vaultLogs = data.vaultData.logs || [];
-
+      if (data.vaultData.archiveDeliveries) {
+        state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
+      }
       state.globalData.cloudHistory = {
-        logs: vaultLogs,
+        logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {},
         trackTickets: data.vaultData.trackTickets || 0,
         trackCost: data.vaultData.trackCost || 0,
@@ -138,7 +136,7 @@ export async function saveProgressToCloudKV(silent = false) {
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
 
-  // Gather all completed items across deliveries, bounties, and chores
+  // Gather completed live deliveries
   (state.globalData?.deliveries || []).forEach(d => {
     const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
     if (isTicked) {
@@ -166,6 +164,28 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
+  // Gather archived / manually added deliveries
+  (state.globalData?.archiveDeliveries || []).forEach(d => {
+    const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+    if (isTicked) {
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const yieldAmt = d.isManual ? base : computeYield(base, true, false);
+      calculatedTotalTickets += yieldAmt;
+      const lineCost = (d.itemsCost || d.cost || 0);
+      calculatedTotalCost += lineCost;
+
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+      allCompletedItems.push({
+        name: d.name || d.from,
+        yield: yieldAmt,
+        cost: lineCost,
+        weekId: d.weekId || currentWeekMonday
+      });
+    }
+  });
+
+  // Gather bounties and chores
   (state.globalData?.bounties || []).forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
     if (isTicked) {
@@ -177,12 +197,6 @@ export async function saveProgressToCloudKV(silent = false) {
 
       totalEarnedTix += yieldAmt;
       totalEarnedCost += lineCost;
-      allCompletedItems.push({
-        name: b.name || 'Bounty',
-        yield: yieldAmt,
-        cost: lineCost,
-        weekId: b.weekId || currentWeekMonday
-      });
     }
   });
 
@@ -197,12 +211,6 @@ export async function saveProgressToCloudKV(silent = false) {
 
       totalEarnedTix += yieldAmt;
       totalEarnedCost += lineCost;
-      allCompletedItems.push({
-        name: c.task || c.name || c.npc || 'Chore',
-        yield: yieldAmt,
-        cost: lineCost,
-        weekId: c.weekId || currentWeekMonday
-      });
     }
   });
 
@@ -218,7 +226,6 @@ export async function saveProgressToCloudKV(silent = false) {
     milestones: state.globalData?.milestones || {}
   };
 
-  // Keep a clean history log array containing our active snapshot
   const logs = [logEntry];
   state.globalData.cloudHistory.logs = logs;
 
@@ -234,6 +241,7 @@ export async function saveProgressToCloudKV(silent = false) {
     weeks: state.globalData.cloudHistory.weeks || {},
     logs,
     deliveries: state.globalData?.deliveries || [],
+    archiveDeliveries: state.globalData?.archiveDeliveries || [],
     bounties: state.globalData?.bounties || [],
     chores: state.globalData?.chores || [],
     milestones: state.globalData?.milestones || {}
@@ -255,13 +263,16 @@ export async function saveProgressToCloudKV(silent = false) {
         logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {}
       };
+      if (data.vaultData.archiveDeliveries) {
+        state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
+      }
     }
 
     recalculateAll();
 
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
-      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Yield: ${totalEarnedTix} Tickets\n• Total Tickets: ${totalTix}`);
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}`);
     }
   } catch (err) {
     if (!silent) alert(`Cloud Save Error: ${err.message}`);
