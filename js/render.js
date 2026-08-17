@@ -8,6 +8,159 @@ import {
   isAnimalBounty 
 } from './state.js';
 
+// ==========================================
+// 1. Render Dashboard Column Cards
+// ==========================================
+export function renderDashboardCards() {
+  if (!state.globalData) return;
+
+  const vipBonus = getActiveVipBonus();
+  const boostCount = getActiveBoostCount();
+  const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+
+  // 1. Deliveries Column
+  const delivContainer = document.getElementById('deliveriesList') || document.getElementById('deliveriesContainer');
+  if (delivContainer) {
+    const deliveries = state.globalData.deliveries || [];
+    if (deliveries.length === 0) {
+      delivContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No active deliveries found.</div>';
+    } else {
+      let html = '';
+      let doubleApplied = false;
+
+      deliveries.forEach((d, idx) => {
+        const isDone = d.checked !== undefined ? d.checked : d.completed;
+        const addon = d.isManual ? 0 : (vipBonus + boostCount);
+        let tix = (d.baseTickets || 2) + addon;
+
+        if (isDoubleDeliveryActive && !doubleApplied && isDone) {
+          tix = tix * 2;
+          doubleApplied = true;
+        }
+
+        const itemsSummary = (d.itemDetails && d.itemDetails.length > 0)
+          ? d.itemDetails.map(it => `${it.qty}x ${it.name}`).join(', ')
+          : (d.items && typeof d.items === 'object' ? Object.entries(d.items).map(([k, v]) => `${v}x ${k}`).join(', ') : '');
+
+        html += `
+          <div class="tracker-card ${isDone ? 'completed-card' : ''}" style="background: ${isDone ? '#E8F5E9' : '#FAF8F5'}; border: 2px solid ${isDone ? '#4CAF50' : '#E0D5C1'}; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; align-items:center; gap:10px; flex:1;">
+              <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.3); cursor: pointer;" onchange="window.toggleMainDeliveryCheck(${idx}, this.checked)">
+              <div>
+                <div style="font-weight: 900; color: #5C4033; font-size: 14px;">${d.from || d.name}</div>
+                ${itemsSummary ? `<div style="font-size: 11px; color: #8C7853;">${itemsSummary}</div>` : ''}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 900; color: #E65100; font-size: 14px;">${tix} Tix</div>
+              <div style="font-size: 12px; color: #8C7853; font-weight: bold;">${formatSFL(d.itemsCost || d.cost || 0)} SFL</div>
+            </div>
+          </div>
+        `;
+      });
+      delivContainer.innerHTML = html;
+    }
+  }
+
+  // 2. Item Bounties Column
+  const bountiesContainer = document.getElementById('bountiesList') || document.getElementById('bountiesContainer');
+  if (bountiesContainer) {
+    const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
+    if (regularBounties.length === 0) {
+      bountiesContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No item bounties found.</div>';
+    } else {
+      let html = '';
+      regularBounties.forEach((b) => {
+        const globalIdx = (state.globalData.bounties || []).indexOf(b);
+        const isDone = b.checked !== undefined ? b.checked : b.completed;
+        const tix = (b.baseTickets || b.tickets || 1) + boostCount;
+
+        html += `
+          <div class="tracker-card ${isDone ? 'completed-card' : ''}" style="background: ${isDone ? '#E8F5E9' : '#FAF8F5'}; border: 2px solid ${isDone ? '#4CAF50' : '#E0D5C1'}; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; align-items:center; gap:10px; flex:1;">
+              <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.3); cursor: pointer;" onchange="window.toggleMainBountyCheck(${globalIdx}, this.checked)">
+              <div style="font-weight: 900; color: #5C4033; font-size: 14px;">${b.name}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 900; color: #E65100; font-size: 14px;">${tix} Tix</div>
+              <div style="font-size: 12px; color: #8C7853; font-weight: bold;">${formatSFL(b.itemsCost || b.cost || 0)} SFL</div>
+            </div>
+          </div>
+        `;
+      });
+      bountiesContainer.innerHTML = html;
+    }
+  }
+
+  // 3. Animal Bounties Column
+  const animalContainer = document.getElementById('animalBountiesList') || document.getElementById('animalBountiesContainer');
+  if (animalContainer) {
+    const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
+    if (animalBounties.length === 0) {
+      animalContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No animal bounties found.</div>';
+    } else {
+      let html = '';
+      animalBounties.forEach((b) => {
+        const globalIdx = (state.globalData.bounties || []).indexOf(b);
+        const isDone = b.checked !== undefined ? b.checked : b.completed;
+        const tix = (b.baseTickets || b.tickets || 2) + boostCount;
+
+        html += `
+          <div class="tracker-card ${isDone ? 'completed-card' : ''}" style="background: ${isDone ? '#E8F5E9' : '#FAF8F5'}; border: 2px solid ${isDone ? '#4CAF50' : '#E0D5C1'}; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; align-items:center; gap:10px; flex:1;">
+              <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.3); cursor: pointer;" onchange="window.toggleMainBountyCheck(${globalIdx}, this.checked)">
+              <div>
+                <div style="font-weight: 900; color: #5C4033; font-size: 14px;">${b.name}</div>
+                ${b.level ? `<div style="font-size: 11px; color: #8C7853; font-weight: bold;">Level ${b.level}</div>` : ''}
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 900; color: #E65100; font-size: 14px;">${tix} Tix</div>
+              <div style="font-size: 12px; color: #8C7853; font-weight: bold;">${formatSFL(b.itemsCost || b.cost || 0)} SFL</div>
+            </div>
+          </div>
+        `;
+      });
+      animalContainer.innerHTML = html;
+    }
+  }
+
+  // 4. Chores Column
+  const choresContainer = document.getElementById('choresList') || document.getElementById('choresContainer');
+  if (choresContainer) {
+    const chores = state.globalData.chores || [];
+    if (chores.length === 0) {
+      choresContainer.innerHTML = '<div style="color:#8C7853; text-align:center; padding:20px; font-weight:bold;">No weekly chores found.</div>';
+    } else {
+      let html = '';
+      chores.forEach((c, idx) => {
+        const isDone = c.checked !== undefined ? c.checked : c.completed;
+        const tix = (c.baseTickets || c.tickets || 1) + vipBonus + boostCount;
+
+        html += `
+          <div class="tracker-card ${isDone ? 'completed-card' : ''}" style="background: ${isDone ? '#E8F5E9' : '#FAF8F5'}; border: 2px solid ${isDone ? '#4CAF50' : '#E0D5C1'}; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; align-items:center; gap:10px; flex:1;">
+              <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.3); cursor: pointer;" onchange="window.toggleMainChoreCheck(${idx}, this.checked)">
+              <div>
+                <div style="font-weight: 900; color: #5C4033; font-size: 13px;">${c.task || c.name}</div>
+                <div style="font-size: 11px; color: #8C7853;">NPC: ${c.npc || 'NPC'}</div>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 900; color: #E65100; font-size: 14px;">${tix} Tix</div>
+              <div style="font-size: 12px; color: #8C7853; font-weight: bold;">FREE</div>
+            </div>
+          </div>
+        `;
+      });
+      choresContainer.innerHTML = html;
+    }
+  }
+}
+
+// ==========================================
+// 2. Recalculate Stats, Counters & Weekly Chart
+// ==========================================
 export function recalculateAll() {
   if (!state.globalData) return;
 
@@ -19,9 +172,7 @@ export function recalculateAll() {
     document.getElementById('doubleDeliveryBanner').style.display = isDoubleDeliveryActive ? 'flex' : 'none';
   }
 
-  const week2MondayStr = '2026-08-17';
   const week2StartMs = new Date('2026-08-17T00:00:00.000Z').getTime();
-
   const now = new Date();
   const todayUtcStr = now.toISOString().split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId(todayUtcStr);
@@ -30,9 +181,9 @@ export function recalculateAll() {
   const rawLogs = vault.logs || [];
   const rawWeeks = vault.weeks || {};
 
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (vault.trackTickets || 0);
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (vault.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (vault.trackCost || 0);
-  const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (vault.dailyLoginTickets || 0);
+  const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (vault.dailyLoginTickets || 0);
 
   const weeklyTicketStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
@@ -86,12 +237,11 @@ export function recalculateAll() {
 
     if (isTicked(d)) {
       const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-      let calculatedYield = d.baseTickets + deliveryAddon;
+      let calculatedYield = (d.baseTickets || 2) + deliveryAddon;
 
       const itemMs = getItemTimestamp(d);
       const deliveryMonday = (itemMs && itemMs < week2StartMs) ? '2026-08-10' : getMondayBasedWeekId(todayUtcStr);
       const isCurrentWeek = (deliveryMonday === currentWeekMonday);
-
       const isToday = itemMs ? (new Date(itemMs).toISOString().split('T')[0] === todayUtcStr) : (d.checkedToday === true);
 
       if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && isToday) {
@@ -158,7 +308,6 @@ export function recalculateAll() {
 
   // 2. Process Bounties
   const seenBountyKeys = new Set();
-
   (state.globalData.bounties || []).forEach(b => {
     const key = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
     seenBountyKeys.add(key);
@@ -172,7 +321,7 @@ export function recalculateAll() {
       const isAnimal = isAnimalBounty(b);
       const itemMs = getItemTimestamp(b);
 
-      const bountyMonday = (itemMs && itemMs < week2StartMs) || (b.weekId && b.weekId !== week2MondayStr) ? '2026-08-10' : currentWeekMonday;
+      const bountyMonday = (itemMs && itemMs < week2StartMs) ? '2026-08-10' : currentWeekMonday;
       const isCurrentWeek = (bountyMonday === currentWeekMonday);
 
       if (isAnimal) {
@@ -232,7 +381,6 @@ export function recalculateAll() {
 
   // 3. Process Chores
   const seenChoreKeys = new Set();
-
   (state.globalData.chores || []).forEach(c => {
     const key = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
     seenChoreKeys.add(key);
@@ -243,7 +391,7 @@ export function recalculateAll() {
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
       const itemMs = getItemTimestamp(c);
 
-      const choreMonday = (itemMs && itemMs < week2StartMs) || (c.weekId && c.weekId !== week2MondayStr) ? '2026-08-10' : currentWeekMonday;
+      const choreMonday = (itemMs && itemMs < week2StartMs) ? '2026-08-10' : currentWeekMonday;
       const isCurrentWeek = (choreMonday === currentWeekMonday);
 
       totalChoreTix += finalTix;
@@ -329,14 +477,15 @@ export function recalculateAll() {
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
-  const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value) || 1000;
-  const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
+  const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
+  const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
   const targetPerWeek = targetWeeks > 0 ? Math.ceil(remainingNeeded / targetWeeks) : 0;
 
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
+  renderDashboardCards();
   renderWeeklyChart(weeklyTicketStats, currentWeekMonday, targetPerWeek, targetWeeks);
 }
 
@@ -346,14 +495,12 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   if (!chartContainer) return;
 
   const recordedMondays = Array.from(new Set(Object.keys(weeklyStats).map(k => getMondayBasedWeekId(k)))).sort();
-  
   if (!recordedMondays.includes(currentMondayKey)) {
     recordedMondays.push(currentMondayKey);
     recordedMondays.sort();
   }
 
   const maxWeeksToDisplay = Math.max(totalPlannedWeeks || 12, recordedMondays.length, 12);
-
   const displayItems = [];
   for (let i = 1; i <= maxWeeksToDisplay; i++) {
     const mondayKey = recordedMondays[i - 1];
@@ -446,3 +593,34 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     </svg>
   `;
 }
+
+// Window Checkbox Toggles for Dashboard Cards
+window.toggleMainDeliveryCheck = function(index, isChecked) {
+  if (!state.globalData?.deliveries?.[index]) return;
+  state.globalData.deliveries[index].checked = isChecked;
+  state.globalData.deliveries[index].completed = isChecked;
+  state.globalData.deliveries[index].completedAt = isChecked ? Date.now() : null;
+  state.globalData.deliveries[index].checkedToday = isChecked;
+  recalculateAll();
+  import('./api.js').then(m => m.saveProgressToCloudKV(true));
+};
+
+window.toggleMainBountyCheck = function(index, isChecked) {
+  if (!state.globalData?.bounties?.[index]) return;
+  state.globalData.bounties[index].checked = isChecked;
+  state.globalData.bounties[index].completed = isChecked;
+  state.globalData.bounties[index].completedAt = isChecked ? Date.now() : null;
+  state.globalData.bounties[index].checkedToday = isChecked;
+  recalculateAll();
+  import('./api.js').then(m => m.saveProgressToCloudKV(true));
+};
+
+window.toggleMainChoreCheck = function(index, isChecked) {
+  if (!state.globalData?.chores?.[index]) return;
+  state.globalData.chores[index].checked = isChecked;
+  state.globalData.chores[index].completed = isChecked;
+  state.globalData.chores[index].completedAt = isChecked ? Date.now() : null;
+  state.globalData.chores[index].checkedToday = isChecked;
+  recalculateAll();
+  import('./api.js').then(m => m.saveProgressToCloudKV(true));
+};
