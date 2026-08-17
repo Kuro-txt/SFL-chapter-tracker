@@ -1,6 +1,6 @@
 import { SFL_RECIPES } from '../recipes.js';
 
-// Complete Chapter NPC Base Tickets Table
+// Exact Chapter NPCs that reward Shiny Feathers / Chapter Tickets
 export const CHAPTER_NPC_TICKETS = {
   "pumpkin pete": 1,
   "pumpkin' pete": 1,
@@ -41,9 +41,11 @@ export function extractRewardTickets(rewardObj) {
   if (typeof items === 'object') {
     for (const [key, qty] of Object.entries(items)) {
       const lower = key.toLowerCase();
+      // Explicitly check for Shiny Feather and Seasonal/Chapter Tickets
       if (
+        lower.includes('shiny feather') ||
+        lower.includes('feather') ||
         lower.includes('ticket') || 
-        lower.includes('feather') || 
         lower.includes('scale') || 
         lower.includes('scroll') ||
         lower.includes('token') ||
@@ -181,7 +183,7 @@ export function getMondayBasedWeekId(d) {
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-  // Milestones
+  // Milestones: Filter ONLY for Chapter NPCs
   const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
   const liveMilestones = {};
   Object.entries(rawMilestones).forEach(([npc, count]) => {
@@ -205,53 +207,54 @@ export function parseFarmData(farm, priceMap) {
     });
   }
 
-  // 1. Deliveries (Checks specific NPC base tickets)
+  // 1. Deliveries: Filter strictly for ticket-rewarding NPCs
   const deliveryList = [];
   const npcOrderCounts = {};
   (farm.delivery?.orders || []).forEach(order => {
     const npcClean = (order.from || '').toLowerCase().trim();
+    const isChapterNpc = CHAPTER_NPC_TICKETS[npcClean] !== undefined;
+
     let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.items);
-
-    // If order reward is not specified, use NPC base tickets
-    if (totalTickets === 0 && CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
+    if (totalTickets === 0 && isChapterNpc) {
       totalTickets = CHAPTER_NPC_TICKETS[npcClean];
-    } else if (totalTickets === 0) {
-      totalTickets = 2; // Default delivery tickets
     }
 
-    let itemsCost = 0;
-    const itemDetails = [];
-    Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-      const unitPrice = getItemUnitPrice(itemName, priceMap);
-      const lineCost = unitPrice * qty;
-      itemsCost += lineCost;
-      itemDetails.push({ name: itemName, qty, unitPrice, lineCost });
-    });
+    // STRICT FILTER: Only include if it explicitly awards Shiny Feathers/Tickets or is a confirmed Chapter NPC
+    if (totalTickets > 0 && isChapterNpc) {
+      let itemsCost = 0;
+      const itemDetails = [];
+      Object.entries(order.items || {}).forEach(([itemName, qty]) => {
+        const unitPrice = getItemUnitPrice(itemName, priceMap);
+        const lineCost = unitPrice * qty;
+        itemsCost += lineCost;
+        itemDetails.push({ name: itemName, qty, unitPrice, lineCost });
+      });
 
-    const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-    if (isCompleted) {
-      npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
+      const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+      if (isCompleted) {
+        npcOrderCounts[npcClean] = (npcOrderCounts[npcClean] || 0) + 1;
+      }
+
+      deliveryList.push({
+        id: order.id,
+        from: order.from,
+        name: order.from,
+        items: order.items || {},
+        itemsCost,
+        cost: itemsCost,
+        itemDetails,
+        baseTickets: totalTickets,
+        tickets: totalTickets,
+        isChapterNpc: true,
+        completed: isCompleted,
+        checked: isCompleted,
+        completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
+        isStacked: false
+      });
     }
-
-    deliveryList.push({
-      id: order.id,
-      from: order.from,
-      name: order.from,
-      items: order.items || {},
-      itemsCost,
-      cost: itemsCost,
-      itemDetails,
-      baseTickets: totalTickets,
-      tickets: totalTickets,
-      isChapterNpc: CHAPTER_NPC_TICKETS[npcClean] !== undefined,
-      completed: isCompleted,
-      checked: isCompleted,
-      completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
-      isStacked: false
-    });
   });
 
-  // 2. Bounties (Extracts exact reward tickets per bounty)
+  // 2. Bounties (Only include if rewarding Shiny Feathers / Chapter Tickets)
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -290,14 +293,11 @@ export function parseFarmData(farm, priceMap) {
 
       let baseTicketCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || (typeof b.tickets === 'number' ? b.tickets : 0);
 
-      // Fallbacks based on bounty level/type if reward object didn't have ticket item
-      if (baseTicketCount === 0) {
-        if (b.level !== undefined) {
-          baseTicketCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
-        } else {
-          baseTicketCount = 2;
-        }
+      if (baseTicketCount === 0 && b.level !== undefined) {
+        baseTicketCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
       }
+
+      if (baseTicketCount <= 0) return;
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
       if (seenBountyKeys.has(uniqueKey)) return;
@@ -331,31 +331,36 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 3. Chores (Extracts exact reward tickets per chore)
+  // 3. Chores (Only include if rewarding Shiny Feathers / Chapter Tickets)
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
-  const choresList = Object.entries(choreObj).map(([key, details]) => {
-    let baseTicketCount = extractRewardTickets(details.reward) || (typeof details.tickets === 'number' ? details.tickets : 0) || details.baseTickets || 1;
-    const currentProgress = details.initialProgress ?? details.progress ?? 0;
-    const requirement = details.requirement ?? details.target ?? details.total ?? 0;
-    const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-    const completionTime = typeof details.completedAt === 'number' ? details.completedAt : null;
-    const taskLabel = details.name || details.description || key;
+  const choresList = [];
+  
+  Object.entries(choreObj).forEach(([key, details]) => {
+    let baseTicketCount = extractRewardTickets(details.reward) || (typeof details.tickets === 'number' ? details.tickets : 0) || details.baseTickets || 0;
+    
+    if (baseTicketCount > 0) {
+      const currentProgress = details.initialProgress ?? details.progress ?? 0;
+      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
+      const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
+      const completionTime = typeof details.completedAt === 'number' ? details.completedAt : null;
+      const taskLabel = details.name || details.description || key;
 
-    return {
-      npc: details.npc || details.from || 'Chore NPC',
-      name: taskLabel,
-      task: taskLabel,
-      baseTickets: baseTicketCount,
-      tickets: baseTicketCount,
-      cost: 0,
-      itemsCost: 0,
-      progress: currentProgress,
-      requirement,
-      completed: isCompleted,
-      checked: isCompleted,
-      completedAt: completionTime,
-      checkedToday: false
-    };
+      choresList.push({
+        npc: details.npc || details.from || 'Chore NPC',
+        name: taskLabel,
+        task: taskLabel,
+        baseTickets: baseTicketCount,
+        tickets: baseTicketCount,
+        cost: 0,
+        itemsCost: 0,
+        progress: currentProgress,
+        requirement,
+        completed: isCompleted,
+        checked: isCompleted,
+        completedAt: completionTime,
+        checkedToday: false
+      });
+    }
   });
 
   return {
