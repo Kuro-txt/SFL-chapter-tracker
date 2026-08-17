@@ -1,6 +1,9 @@
 import { pool } from './db.js';
 import { extractPricesRecursive, getMondayBasedWeekId, parseFarmData } from './sfl-parser.js';
 
+// Helper function to pause execution for a given number of milliseconds
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default async function handler(req, res) {
   // Verify Vercel cron secret authorization header for security
   const authHeader = req.headers['authorization'];
@@ -41,60 +44,80 @@ export default async function handler(req, res) {
       const vault = row.vault_data || {};
       const farmId = vault.farmId || '8472883706403914';
 
-      try {
-        const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders });
-        if (!sflRes.ok) continue;
+      let success = false;
+      let lastError = null;
 
-        const payload = await sflRes.json();
-        const farm = payload.farm || {};
-        const parsed = parseFarmData(farm, priceMap);
-        const currentWeekMonday = getMondayBasedWeekId();
+      // 3 Tries with 8s, 10s, and 12s gaps between attempts
+      const retryGaps = [8000, 10000, 12000];
 
-        // 1. Archive completed deliveries
-        if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
-        if (vault.deliveries) {
-          vault.deliveries.forEach(d => {
-            const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
-            if (isTicked) {
-              const exists = vault.archiveDeliveries.some(ar => ar.id === d.id && ar.completedDate === d.completedDate);
-              if (!exists) vault.archiveDeliveries.push(d);
-            }
-          });
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders });
+          if (!sflRes.ok) {
+            throw new Error(`SFL API error status: ${sflRes.status}`);
+          }
+
+          const payload = await sflRes.json();
+          const farm = payload.farm || {};
+          const parsed = parseFarmData(farm, priceMap);
+          const currentWeekMonday = getMondayBasedWeekId();
+
+          // 1. Archive completed deliveries
+          if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
+          if (vault.deliveries) {
+            vault.deliveries.forEach(d => {
+              const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+              if (isTicked) {
+                const exists = vault.archiveDeliveries.some(ar => ar.id === d.id && ar.completedDate === d.completedDate);
+                if (!exists) vault.archiveDeliveries.push(d);
+              }
+            });
+          }
+
+          // 2. Refresh active items while preserving manual entries
+          const existingManualDeliveries = (vault.deliveries || []).filter(d => d.isManual);
+          vault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
+
+          const existingManualBounties = (vault.bounties || []).filter(b => b.isManual);
+          vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
+
+          const existingManualChores = (vault.chores || []).filter(c => c.isManual);
+          vault.chores = [...parsed.choresList, ...existingManualChores];
+
+          vault.milestones = parsed.liveMilestones;
+
+          // 3. Update weekly storage
+          if (!vault.weeks) vault.weeks = {};
+          if (!vault.weeks[currentWeekMonday]) {
+            vault.weeks[currentWeekMonday] = {
+              weekId: currentWeekMonday,
+              bounties: vault.bounties,
+              chores: vault.chores
+            };
+          }
+
+          // 4. Update database vault
+          await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vault), username]);
+          
+          success = true;
+          processedCount++;
+          break; // Exit retry loop on success
+        } catch (attemptErr) {
+          lastError = attemptErr.message;
+          if (attempt < 2) {
+            await sleep(retryGaps[attempt]);
+          }
         }
+      }
 
-        // 2. Refresh active items while preserving manual entries
-        const existingManualDeliveries = (vault.deliveries || []).filter(d => d.isManual);
-        vault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
-
-        const existingManualBounties = (vault.bounties || []).filter(b => b.isManual);
-        vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
-
-        const existingManualChores = (vault.chores || []).filter(c => c.isManual);
-        vault.chores = [...parsed.choresList, ...existingManualChores];
-
-        vault.milestones = parsed.liveMilestones;
-
-        // 3. Update weekly storage
-        if (!vault.weeks) vault.weeks = {};
-        if (!vault.weeks[currentWeekMonday]) {
-          vault.weeks[currentWeekMonday] = {
-            weekId: currentWeekMonday,
-            bounties: vault.bounties,
-            chores: vault.chores
-          };
-        }
-
-        // 4. Update database vault
-        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vault), username]);
-        processedCount++;
-      } catch (userErr) {
-        errors.push({ username, error: userErr.message });
+      if (!success) {
+        errors.push({ username, farmId, error: lastError });
       }
     }
 
     return res.status(200).json({ 
       success: true, 
-      message: `Cron executed successfully at 23:00 UTC.`, 
+      message: `Cron executed successfully at 23:00 UTC with retry logic.`, 
       processedUsers: processedCount,
       errors: errors.length > 0 ? errors : undefined 
     });
