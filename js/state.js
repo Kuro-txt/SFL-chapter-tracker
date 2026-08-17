@@ -61,7 +61,9 @@ export function getMondayBasedWeekId(d) {
     date = new Date();
   }
 
-  if (!date || isNaN(date.getTime())) date = new Date();
+  if (!date || isNaN(date.getTime())) {
+    date = new Date();
+  }
 
   const day = date.getUTCDay();
   const utcDate = date.getUTCDate();
@@ -164,6 +166,30 @@ export async function syncCurrentVaultToCloud() {
     const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
     const farmId = document.getElementById('farmId')?.value.trim() || state.globalData.cloudHistory?.farmId || '8472883706403914';
 
+    let totalTix = trackTickets + dailyLoginTickets;
+    let totalCost = trackCost;
+
+    (state.globalData?.deliveries || []).forEach(d => {
+      if (d.checked || d.completed) {
+        totalTix += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
+        totalCost += (d.itemsCost || d.cost || 0);
+      }
+    });
+
+    (state.globalData?.bounties || []).forEach(b => {
+      if (b.checked || b.completed) {
+        totalTix += (b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0));
+        totalCost += (b.itemsCost || b.cost || 0);
+      }
+    });
+
+    (state.globalData?.chores || []).forEach(c => {
+      if (c.checked || c.completed) {
+        totalTix += (c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 0));
+        totalCost += (c.itemsCost || c.cost || 0);
+      }
+    });
+
     if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
     if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
 
@@ -173,6 +199,8 @@ export async function syncCurrentVaultToCloud() {
       trackTickets,
       trackCost,
       dailyLoginTickets,
+      cumulativeTickets: totalTix,
+      cumulativeCost: totalCost,
       lastDailyLoginDate,
       milestones: state.globalData.milestones || {},
       logs: state.globalData.cloudHistory.logs || [],
