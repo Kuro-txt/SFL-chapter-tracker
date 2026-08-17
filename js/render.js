@@ -29,7 +29,7 @@ export function recalculateAll() {
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Normalize weeks to prevent duplicate counting between '2026-08-17' and '2026-W32'
+  // Normalize weeks to prevent duplicate counting
   const weeks = {};
   Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
     const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
@@ -52,7 +52,7 @@ export function recalculateAll() {
   const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
   const todayLoginTickets = isDoneLoginToday ? 1 : 0;
 
-  // Weekly ticket accumulator map (strictly grouped by Monday UTC dates)
+  // Weekly ticket accumulator map
   const weeklyStats = {};
   const addWeeklyStat = (mondayKey, tix, cost) => {
     if (!mondayKey) mondayKey = currentWeekMonday;
@@ -115,7 +115,7 @@ export function recalculateAll() {
     if (isTodayLog) return;
 
     const logMonday = getMondayBasedWeekId(rawDate);
-    const isThisWeek = logMonday === currentWeekMonday;
+    const isThisWeek = (logMonday === currentWeekMonday);
 
     (log.deliveriesDone || []).forEach(item => {
       if (isTicked(item)) {
@@ -226,7 +226,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Only ticked items counted in Total & Weekly stats)
+  // 5. Process PAST and ALL Weeks from Cloud KV
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
@@ -280,7 +280,12 @@ export function recalculateAll() {
 
   // Totals calculations (trackTickets & totalLoginTickets add to Total Count ONLY)
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
-  const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
+  
+  // Strict Week Total: Includes ONLY current week Monday stats
+  const currentWeekStats = weeklyStats[currentWeekMonday] || { tickets: 0, cost: 0 };
+  const weekTicketsAll = currentWeekStats.tickets;
+  const weekCostAll = currentWeekStats.cost;
+
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
   // 6. Overview Cards
