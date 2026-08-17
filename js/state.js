@@ -160,80 +160,9 @@ export async function handleDailyLoginToggle() {
 export async function syncCurrentVaultToCloud() {
   if (!state.currentUser || !state.globalData) return;
   try {
-    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
-    const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
-    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
-    const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
-    const farmId = document.getElementById('farmId')?.value.trim() || state.globalData.cloudHistory?.farmId || '8472883706403914';
-
-    const vipBonus = getActiveVipBonus();
-    const boostCount = getActiveBoostCount();
-    const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
-
-    let totalTix = trackTickets + dailyLoginTickets;
-    let totalCost = trackCost;
-    let doubleDeliveryApplied = false;
-
-    (state.globalData?.deliveries || []).forEach(d => {
-      if (d.checked || d.completed) {
-        const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-        let yieldAmt = base + vipBonus + boostCount;
-        if (isDoubleDeliveryActive && !doubleDeliveryApplied && !d.isManual) {
-          yieldAmt *= 2;
-          doubleDeliveryApplied = true;
-        }
-        totalTix += yieldAmt;
-        totalCost += (d.itemsCost || d.cost || 0);
-      }
-    });
-
-    (state.globalData?.bounties || []).forEach(b => {
-      if (b.checked || b.completed) {
-        const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-        totalTix += (base + boostCount);
-        totalCost += (b.itemsCost || b.cost || 0);
-      }
-    });
-
-    (state.globalData?.chores || []).forEach(c => {
-      if (c.checked || c.completed) {
-        const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-        totalTix += (base + vipBonus + boostCount);
-        totalCost += (c.itemsCost || c.cost || 0);
-      }
-    });
-
-    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
-    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
-
-    const payload = {
-      username: state.currentUser,
-      farmId,
-      trackTickets,
-      trackCost,
-      dailyLoginTickets,
-      cumulativeTickets: totalTix,
-      cumulativeCost: totalCost,
-      lastDailyLoginDate,
-      milestones: state.globalData.milestones || {},
-      logs: state.globalData.cloudHistory.logs || [],
-      weeks: state.globalData.cloudHistory.weeks,
-      bounties: state.globalData.bounties || [],
-      chores: state.globalData.chores || [],
-      deliveries: state.globalData.deliveries || []
-    };
-
-    const response = await fetch('/api/chapter?action=saveVault', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const resData = await response.json();
-    if (resData.vaultData) {
-      state.currentVaultData = resData.vaultData;
-      state.globalData.cloudHistory = resData.vaultData;
-    }
+    const { saveProgressToCloudKV } = await import('./api.js');
+    await saveProgressToCloudKV(true);
   } catch (err) {
-    console.error('Failed to auto-sync edit to Cloud KV:', err);
+    console.error('Auto-sync to Cloud failed:', err);
   }
 }
