@@ -1,5 +1,5 @@
 import { state, formatSFL, getMondayBasedWeekId, isAnimalBounty } from './state.js';
-import { recalculateAll } from './render.js';
+import { recalculateAll, renderDashboardCards } from './render.js';
 import { saveProgressToCloudKV } from './api.js';
 
 // ==========================================
@@ -13,7 +13,7 @@ export function openColumnModal(type) {
   if (!modal || !container) return;
 
   container.innerHTML = '';
-  const currentWeekMonday = getMondayBasedWeekId();
+  const vault = state.globalData?.cloudHistory || state.currentVaultData || {};
 
   // Top Add Section Form
   const addCard = document.createElement('div');
@@ -31,7 +31,12 @@ export function openColumnModal(type) {
     `;
     container.appendChild(addCard);
 
-    const items = state.globalData?.deliveries || [];
+    let items = state.globalData?.deliveries;
+    if (!items || items.length === 0) {
+      items = vault.deliveries || (vault.logs && vault.logs[0]?.deliveriesDone) || [];
+      if (state.globalData) state.globalData.deliveries = items;
+    }
+
     if (items.length === 0) {
       container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No active deliveries found.</p>';
     }
@@ -70,13 +75,19 @@ export function openColumnModal(type) {
     `;
     container.appendChild(addCard);
 
-    const items = (state.globalData?.bounties || []).filter(b => !isAnimalBounty(b));
+    let allB = state.globalData?.bounties;
+    if (!allB || allB.length === 0) {
+      allB = vault.bounties || [];
+      if (state.globalData) state.globalData.bounties = allB;
+    }
+    const items = allB.filter(b => !isAnimalBounty(b));
+
     if (items.length === 0) {
       container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No item bounties found.</p>';
     }
 
     items.forEach((item) => {
-      const globalIdx = (state.globalData?.bounties || []).indexOf(item);
+      const globalIdx = allB.indexOf(item);
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
       row.className = 'modal-item-row';
@@ -108,13 +119,19 @@ export function openColumnModal(type) {
     `;
     container.appendChild(addCard);
 
-    const items = (state.globalData?.bounties || []).filter(b => isAnimalBounty(b));
+    let allB = state.globalData?.bounties;
+    if (!allB || allB.length === 0) {
+      allB = vault.bounties || [];
+      if (state.globalData) state.globalData.bounties = allB;
+    }
+    const items = allB.filter(b => isAnimalBounty(b));
+
     if (items.length === 0) {
       container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No animal bounties found.</p>';
     }
 
     items.forEach((item) => {
-      const globalIdx = (state.globalData?.bounties || []).indexOf(item);
+      const globalIdx = allB.indexOf(item);
       const isDone = item.checked !== undefined ? item.checked : item.completed;
       const row = document.createElement('div');
       row.className = 'modal-item-row';
@@ -148,7 +165,12 @@ export function openColumnModal(type) {
     `;
     container.appendChild(addCard);
 
-    const items = state.globalData?.chores || [];
+    let items = state.globalData?.chores;
+    if (!items || items.length === 0) {
+      items = vault.chores || [];
+      if (state.globalData) state.globalData.chores = items;
+    }
+
     if (items.length === 0) {
       container.innerHTML += '<p style="color: #8C7853; text-align: center; padding: 15px;">No weekly chores found.</p>';
     }
@@ -221,7 +243,7 @@ export function closeCategorySummaryModal() {
 }
 
 // ==========================================
-// 4. Column History & Master History Modals
+// 4. Column History & Master History Modals (Direct from Vault Logs)
 // ==========================================
 export function renderColumnHistoryModalList(type = 'deliveries') {
   const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
@@ -229,20 +251,23 @@ export function renderColumnHistoryModalList(type = 'deliveries') {
 
   const rawLogs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs || [];
   if (rawLogs.length === 0) {
-    body.innerHTML = '<p style="color: #8C7853; text-align: center; padding: 15px;">No historical logs found.</p>';
+    body.innerHTML = '<p style="color: #8C7853; text-align: center; padding: 20px; font-weight: bold;">No historical logs found in your vault.</p>';
     return;
   }
 
   let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
   rawLogs.forEach((log, logIdx) => {
+    const tix = log.ticketsSaved !== undefined ? log.ticketsSaved : (log.deliveriesDone || []).reduce((acc, it) => acc + (it.tickets || 2), 0);
+    const cost = log.costSaved !== undefined ? log.costSaved : (log.deliveriesDone || []).reduce((acc, it) => acc + (it.cost || 0), 0);
+
     html += `
-      <div style="background: #FAF8F5; border: 1px solid #E0D5C1; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="background: #FAF8F5; border: 1px solid #E0D5C1; padding: 10px 14px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <span style="font-weight: bold; color: #5C4033;">${log.date}</span>
-          <span style="margin-left: 10px; color: #E65100; font-weight: bold;">${log.ticketsSaved || 0} Tickets</span>
-          <span style="margin-left: 8px; color: #8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
+          <span style="font-weight: 900; color: #5C4033; font-size: 14px;">${log.date}</span>
+          <span style="margin-left: 12px; color: #E65100; font-weight: 900;">${tix} Tickets</span>
+          <span style="margin-left: 10px; color: #8C7853; font-weight: bold;">${formatSFL(cost)} SFL</span>
         </div>
-        <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 2px 6px; border-radius: 4px; cursor: pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
+        <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 3px 8px; border-radius: 4px; cursor: pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
       </div>
     `;
   });
@@ -276,7 +301,7 @@ export function toggleHistoryModal(show) {
 }
 
 // ==========================================
-// 5. Item Toggles & Field Updates
+// 5. Item Toggles & Inline Field Updates
 // ==========================================
 export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
@@ -287,6 +312,7 @@ export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
     item.checked = isChecked;
     item.completed = isChecked;
     recalculateAll();
+    renderDashboardCards();
     saveProgressToCloudKV(true);
   }
 }
@@ -301,6 +327,7 @@ export function toggleWeeklyItemCheck(weekId, category, index, isChecked) {
     item.completed = isChecked;
     item.completedAt = isChecked ? Date.now() : null;
     recalculateAll();
+    renderDashboardCards();
     saveProgressToCloudKV(true);
   }
 }
@@ -314,6 +341,7 @@ export function updateHistoryItemTickets(logIndex, itemIndex, newTickets) {
     item.tickets = parseInt(newTickets, 10) || 0;
     item.baseTickets = item.tickets;
     recalculateAll();
+    renderDashboardCards();
     saveProgressToCloudKV(true);
   }
 }
@@ -327,6 +355,7 @@ export function updateHistoryItemCost(logIndex, itemIndex, newCost) {
     item.cost = parseFloat(newCost) || 0;
     item.itemsCost = item.cost;
     recalculateAll();
+    renderDashboardCards();
     saveProgressToCloudKV(true);
   }
 }
@@ -341,6 +370,7 @@ export function deleteWeeklyItem(weekId, category, index) {
   if (confirm(`Remove this ${category} item from ${weekId}?`)) {
     weeks[weekId][category].splice(index, 1);
     recalculateAll();
+    renderDashboardCards();
     saveProgressToCloudKV(true);
   }
 }
@@ -352,6 +382,7 @@ export function deleteMasterLog(logIndex) {
   if (confirm(`Delete delivery log entry for ${logs[logIndex].date}?`)) {
     logs.splice(logIndex, 1);
     recalculateAll();
+    renderDashboardCards();
     renderColumnHistoryModalList(state.activeColumnType || 'deliveries');
     saveProgressToCloudKV(true);
   }
@@ -441,6 +472,7 @@ export function submitNewManualItem(type, isAnimal = false) {
   }
 
   recalculateAll();
+  renderDashboardCards();
   openColumnModal(state.activeColumnType);
   saveProgressToCloudKV(true);
 }
@@ -459,6 +491,7 @@ window.toggleModalItem = function(type, index, isChecked) {
   list[index].checkedToday = isChecked;
 
   recalculateAll();
+  renderDashboardCards();
   saveProgressToCloudKV(true);
 };
 
@@ -472,6 +505,7 @@ window.updateModalItemCost = function(type, index, newCost) {
   list[index].itemsCost = cost;
 
   recalculateAll();
+  renderDashboardCards();
   saveProgressToCloudKV(true);
 };
 
@@ -485,6 +519,7 @@ window.updateModalItemTickets = function(type, index, newTickets) {
   list[index].baseTickets = tickets;
 
   recalculateAll();
+  renderDashboardCards();
   saveProgressToCloudKV(true);
 };
 
@@ -495,6 +530,7 @@ window.removeModalItem = function(type, index) {
 
   list.splice(index, 1);
   recalculateAll();
+  renderDashboardCards();
   openColumnModal(state.activeColumnType);
   saveProgressToCloudKV(true);
 };
