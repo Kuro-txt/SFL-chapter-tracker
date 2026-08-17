@@ -72,21 +72,7 @@ export async function loadTrackerData() {
 
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      
-      // Ensure logs array exists and has at least a default entry if empty
       let vaultLogs = data.vaultData.logs || [];
-      if (vaultLogs.length === 0) {
-        vaultLogs = [{
-          date: todayDate,
-          weekId: currentWeekMonday,
-          timestamp: new Date().toISOString(),
-          ticketsSaved: 0,
-          costSaved: 0,
-          deliveriesDone: [],
-          milestones: data.vaultData.milestones || {}
-        }];
-        data.vaultData.logs = vaultLogs;
-      }
 
       state.globalData.cloudHistory = {
         logs: vaultLogs,
@@ -96,18 +82,7 @@ export async function loadTrackerData() {
         dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
       };
     } else {
-      state.globalData.cloudHistory = {
-        logs: [{
-          date: todayDate,
-          weekId: currentWeekMonday,
-          timestamp: new Date().toISOString(),
-          ticketsSaved: 0,
-          costSaved: 0,
-          deliveriesDone: [],
-          milestones: {}
-        }],
-        weeks: {}
-      };
+      state.globalData.cloudHistory = { logs: [], weeks: {} };
     }
 
     if (data.isVipActive !== undefined) {
@@ -155,14 +130,15 @@ export async function saveProgressToCloudKV(silent = false) {
   const todayDate = new Date().toISOString().split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId();
 
-  let todayEarnedTix = isLoginClaimedToday() ? 1 : 0;
-  let todayEarnedCost = 0;
-  const todayDoneItems = [];
+  let totalEarnedTix = isLoginClaimedToday() ? 1 : 0;
+  let totalEarnedCost = 0;
+  const allCompletedItems = [];
 
   let calculatedTotalTickets = trackTickets + dailyLoginTickets;
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
 
+  // Gather all completed items across deliveries, bounties, and chores
   (state.globalData?.deliveries || []).forEach(d => {
     const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
     if (isTicked) {
@@ -179,16 +155,14 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (d.itemsCost || d.cost || 0);
       calculatedTotalCost += lineCost;
 
-      const isToday = d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayDate;
-      if (isToday || (!d.completedAt && (!d.weekId || d.weekId === currentWeekMonday))) {
-        todayEarnedTix += yieldAmt;
-        todayEarnedCost += lineCost;
-        todayDoneItems.push({
-          name: d.name || d.from,
-          yield: yieldAmt,
-          cost: lineCost
-        });
-      }
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+      allCompletedItems.push({
+        name: d.name || d.from,
+        yield: yieldAmt,
+        cost: lineCost,
+        weekId: d.weekId || currentWeekMonday
+      });
     }
   });
 
@@ -200,6 +174,15 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
+
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+      allCompletedItems.push({
+        name: b.name || 'Bounty',
+        yield: yieldAmt,
+        cost: lineCost,
+        weekId: b.weekId || currentWeekMonday
+      });
     }
   });
 
@@ -211,29 +194,32 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (c.itemsCost || c.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
+
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+      allCompletedItems.push({
+        name: c.task || c.name || c.npc || 'Chore',
+        yield: yieldAmt,
+        cost: lineCost,
+        weekId: c.weekId || currentWeekMonday
+      });
     }
   });
 
   if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
-  const logs = [...(state.globalData.cloudHistory.logs || [])];
   
-  const existingLogIdx = logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
   const logEntry = {
     date: todayDate,
     weekId: currentWeekMonday,
     timestamp: new Date().toISOString(),
-    ticketsSaved: todayEarnedTix,
-    costSaved: todayEarnedCost,
-    deliveriesDone: todayDoneItems,
+    ticketsSaved: totalEarnedTix,
+    costSaved: totalEarnedCost,
+    deliveriesDone: allCompletedItems,
     milestones: state.globalData?.milestones || {}
   };
 
-  if (existingLogIdx !== -1) {
-    logs[existingLogIdx] = logEntry;
-  } else {
-    logs.unshift(logEntry);
-  }
-
+  // Keep a clean history log array containing our active snapshot
+  const logs = [logEntry];
   state.globalData.cloudHistory.logs = logs;
 
   const payload = {
@@ -275,7 +261,7 @@ export async function saveProgressToCloudKV(silent = false) {
 
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
-      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Today's Yield: +${todayEarnedTix} Tickets\n• Total Tickets: ${totalTix}`);
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Yield: ${totalEarnedTix} Tickets\n• Total Tickets: ${totalTix}`);
     }
   } catch (err) {
     if (!silent) alert(`Cloud Save Error: ${err.message}`);
