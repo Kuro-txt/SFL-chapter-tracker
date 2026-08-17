@@ -211,7 +211,7 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly mapped to their own week ID for weekly stats)
+  // 5. Process PAST and ALL Weeks from Cloud KV (Strictly mapped to their own week ID)
   Object.entries(weeks).forEach(([wkId, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
@@ -318,8 +318,8 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  // 8. Render Weekly Progression Chart
-  renderWeeklyChart(weeklyTicketStats, currentWeekMonday, targetPerWeek, targetWeeks);
+  // 8. Render Weekly Progression Chart with Week 1 starting at Week 32
+  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, totalWeeks);
 }
 
 function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, totalPlannedWeeks) {
@@ -337,6 +337,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
 
   const displayItems = [];
   for (let i = 1; i <= maxWeeksToDisplay; i++) {
+    // Map chronological weeks starting from August 2026 (Week 32) as Week 1
     const mondayKey = distinctMondays[i - 1];
     const isCurrent = (mondayKey === currentMondayKey) || (!mondayKey && i === distinctMondays.length);
     const data = mondayKey ? weeklyStats[mondayKey] : null;
