@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { recalculateAll } from './render.js';
+import { recalculateAll, renderDashboardCards } from './render.js';
 
 let fetchCooldownTimer = null;
 
@@ -64,6 +64,17 @@ export async function loadTrackerData() {
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
       state.globalData.cloudHistory = data.vaultData;
+      
+      // If live deliveries are empty from API, restore active board from vault data
+      if ((!state.globalData.deliveries || state.globalData.deliveries.length === 0) && data.vaultData.deliveries) {
+        state.globalData.deliveries = data.vaultData.deliveries;
+      }
+      if ((!state.globalData.bounties || state.globalData.bounties.length === 0) && data.vaultData.bounties) {
+        state.globalData.bounties = data.vaultData.bounties;
+      }
+      if ((!state.globalData.chores || state.globalData.chores.length === 0) && data.vaultData.chores) {
+        state.globalData.chores = data.vaultData.chores;
+      }
     }
 
     if (data.isVipActive !== undefined) {
@@ -82,6 +93,7 @@ export async function loadTrackerData() {
     }
 
     recalculateAll();
+    renderDashboardCards();
   } catch (err) {
     if (priceBadge) {
       priceBadge.textContent = `❌ ${err.message}`;
@@ -100,9 +112,9 @@ export async function saveProgressToCloudKV(silent = false) {
   }
 
   const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || 0;
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
-  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || 0;
+  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
 
   const payload = {
     username: state.currentUser,
@@ -133,6 +145,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
 
     recalculateAll();
+    renderDashboardCards();
 
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || 0;
