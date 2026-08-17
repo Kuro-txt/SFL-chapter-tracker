@@ -1,25 +1,22 @@
 import { state } from './state.js';
-import { recalculateAll, renderDashboardCards } from './render.js';
+import { recalculateAll } from './render.js';
 import { loadTrackerData } from './api.js';
 
-let isPromptActive = false;
+export async function userRegister() {
+  const usernameInput = document.getElementById('authUsername');
+  const passwordInput = document.getElementById('authPassword');
+  const farmIdInput = document.getElementById('farmId');
 
-export async function userRegister(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
+  const username = usernameInput?.value.trim().toLowerCase();
+  const password = passwordInput?.value.trim();
+  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+
+  if (!username || !password) {
+    alert('Please enter both a username and password to register.');
+    return;
   }
-  if (isPromptActive) return;
-  isPromptActive = true;
 
   try {
-    const username = window.prompt('Choose a Username:')?.trim().toLowerCase();
-    if (!username) return;
-    const password = window.prompt('Choose a Password:');
-    if (!password) return;
-
-    const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
-
     const res = await fetch('/api/chapter?action=register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -29,36 +26,28 @@ export async function userRegister(e) {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Registration failed.');
 
-    state.currentUser = username;
-    localStorage.setItem('sfl_logged_user', username);
-    updateAuthUI();
-    alert(`🎉 Account created! Welcome, ${username}.`);
-    
-    // Pass true so loadTrackerData does not prompt again
-    await loadTrackerData(true);
+    alert(`Account "${username}" registered and linked to Farm #${farmId}! Logging you in...`);
+    await userLogin();
   } catch (err) {
-    alert(`Register Error: ${err.message}`);
-  } finally {
-    isPromptActive = false;
+    alert(`Registration Error: ${err.message}`);
   }
 }
 
-export async function userLogin(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
+export async function userLogin() {
+  const usernameInput = document.getElementById('authUsername');
+  const passwordInput = document.getElementById('authPassword');
+  const farmIdInput = document.getElementById('farmId');
+
+  const username = usernameInput?.value.trim().toLowerCase();
+  const password = passwordInput?.value.trim();
+  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+
+  if (!username || !password) {
+    alert('Please enter your username and password.');
+    return;
   }
-  if (isPromptActive) return;
-  isPromptActive = true;
 
   try {
-    const username = window.prompt('Enter your Username:')?.trim().toLowerCase();
-    if (!username) return;
-    const password = window.prompt('Enter your Password:');
-    if (!password) return;
-
-    const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
-
     const res = await fetch('/api/chapter?action=login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -68,67 +57,101 @@ export async function userLogin(e) {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Login failed.');
 
-    state.currentUser = username;
-    localStorage.setItem('sfl_logged_user', username);
-    
-    if (data.vaultData) {
-      state.currentVaultData = data.vaultData;
-      if (!state.globalData) state.globalData = {};
+    state.currentUser = data.username;
+    state.currentVaultData = data.vaultData;
+
+    localStorage.setItem('sfl_auth_user', data.username);
+
+    if (data.vaultData?.farmId && farmIdInput) {
+      farmIdInput.value = data.vaultData.farmId;
+      localStorage.setItem('sfl_farmId', data.vaultData.farmId);
+    }
+
+    updateAuthUI(true, data.username);
+
+    if (data.vaultData?.dailyLoginTickets !== undefined) {
+      const loginCountEl = document.getElementById('dailyLoginCount');
+      if (loginCountEl) loginCountEl.value = data.vaultData.dailyLoginTickets;
+      localStorage.setItem('sfl_daily_login_count', data.vaultData.dailyLoginTickets);
+    }
+
+    if (data.vaultData?.trackTickets !== undefined) {
+      const trackTixEl = document.getElementById('trackTicketsInput');
+      if (trackTixEl) trackTixEl.value = data.vaultData.trackTickets;
+    }
+    if (data.vaultData?.trackCost !== undefined) {
+      const trackCostEl = document.getElementById('trackCostInput');
+      if (trackCostEl) trackCostEl.value = data.vaultData.trackCost;
+    }
+
+    if (state.globalData) {
       state.globalData.cloudHistory = data.vaultData;
     }
 
-    updateAuthUI();
-    alert(`🔓 Logged in as ${username}! Loading your vault data...`);
-    
-    // Pass true so loadTrackerData does not prompt again
-    await loadTrackerData(true);
+    recalculateAll();
+    loadTrackerData();
   } catch (err) {
     alert(`Login Error: ${err.message}`);
-  } finally {
-    isPromptActive = false;
   }
 }
 
-export function userLogout(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
+export function userLogout() {
   state.currentUser = null;
   state.currentVaultData = null;
-  localStorage.removeItem('sfl_logged_user');
-  updateAuthUI();
+  localStorage.removeItem('sfl_auth_user');
+
+  updateAuthUI(false, '');
+  if (state.globalData) {
+    state.globalData.cloudHistory = null;
+  }
   recalculateAll();
-  renderDashboardCards();
-  alert('Logged out.');
 }
 
-export function checkSavedAuth() {
-  const savedUser = localStorage.getItem('sfl_logged_user');
-  if (savedUser) {
-    state.currentUser = savedUser;
-    updateAuthUI();
-  } else {
-    updateAuthUI();
-  }
-}
+export async function checkSavedAuth() {
+  const savedUser = localStorage.getItem('sfl_auth_user');
+  if (!savedUser) return;
 
-export function updateAuthUI() {
-  const userStatus = document.getElementById('userStatusBadge');
-  if (userStatus) {
-    if (state.currentUser) {
-      userStatus.textContent = `👤 ${state.currentUser.toUpperCase()}`;
-      userStatus.style.display = 'inline-block';
-    } else {
-      userStatus.style.display = 'none';
+  try {
+    const res = await fetch(`/api/chapter?action=getVault&username=${encodeURIComponent(savedUser)}`);
+    const data = await res.json();
+    if (data.vaultData) {
+      state.currentUser = savedUser;
+      state.currentVaultData = data.vaultData;
+
+      if (data.vaultData.farmId) {
+        const farmIdInput = document.getElementById('farmId');
+        if (farmIdInput) farmIdInput.value = data.vaultData.farmId;
+        localStorage.setItem('sfl_farmId', data.vaultData.farmId);
+      }
+
+      updateAuthUI(true, savedUser);
+
+      if (data.vaultData.dailyLoginTickets !== undefined) {
+        const loginCountEl = document.getElementById('dailyLoginCount');
+        if (loginCountEl) loginCountEl.value = data.vaultData.dailyLoginTickets;
+        localStorage.setItem('sfl_daily_login_count', data.vaultData.dailyLoginTickets);
+      }
+
+      if (state.globalData) {
+        state.globalData.cloudHistory = data.vaultData;
+      }
+      recalculateAll();
     }
+  } catch (e) {}
+}
+
+function updateAuthUI(isLoggedIn, username) {
+  const loggedOutBox = document.getElementById('authLoggedOut');
+  const loggedInBox = document.getElementById('authLoggedIn');
+  const displayUser = document.getElementById('displayUsername');
+
+  if (isLoggedIn) {
+    if (loggedOutBox) loggedOutBox.style.display = 'none';
+    if (loggedInBox) loggedInBox.style.display = 'flex';
+    if (displayUser) displayUser.textContent = username;
+  } else {
+    if (loggedOutBox) loggedOutBox.style.display = 'flex';
+    if (loggedInBox) loggedInBox.style.display = 'none';
+    if (displayUser) displayUser.textContent = '';
   }
-
-  const loginBtn = document.getElementById('loginBtn');
-  const registerBtn = document.getElementById('registerBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
-
-  if (loginBtn) loginBtn.style.display = state.currentUser ? 'none' : 'inline-block';
-  if (registerBtn) registerBtn.style.display = state.currentUser ? 'none' : 'inline-block';
-  if (logoutBtn) logoutBtn.style.display = state.currentUser ? 'inline-block' : 'none';
 }
