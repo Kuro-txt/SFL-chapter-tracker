@@ -12,8 +12,8 @@ import {
 export function recalculateAll() {
   if (!state.globalData) return;
 
-  const vipBonus = getActiveVipBonus();
-  const boostCount = getActiveBoostCount();
+  const vipBonus = getActiveVipBonus(); // +2 for Deliveries & Chores
+  const boostCount = getActiveBoostCount(); // +1 per active boost
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
 
   // Toggle Double Delivery Banner UI
@@ -59,12 +59,10 @@ export function recalculateAll() {
   });
 
   // Track & Login inputs
-  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
 
-  const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
-  const isDoneLoginToday = isLoginClaimedToday() || !!document.getElementById('dailyLoginCheck')?.checked;
-  const todayLoginTickets = isDoneLoginToday ? 1 : 0;
+  const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
 
   // Weekly ticket accumulator map
   const weeklyStats = {};
@@ -120,6 +118,14 @@ export function recalculateAll() {
 
   const globallyProcessedItems = new Set();
 
+  // Helper to calculate total tickets with VIP (+2) and Boosts (+1 each)
+  const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false) => {
+    const rawBase = Number(baseTickets) || 0;
+    if (rawBase <= 0) return 0;
+    const withBonuses = rawBase + (isVipEligible ? vipBonus : 0) + boostCount;
+    return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
+  };
+
   // 1. Process Past Daily Deliveries from saved logs
   const seenDates = new Set();
   rawLogs.forEach(log => {
@@ -138,7 +144,8 @@ export function recalculateAll() {
         if (globallyProcessedItems.has(uniqueKey)) return;
         globallyProcessedItems.add(uniqueKey);
 
-        const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        const finalTix = calculateItemYield(baseTix, true, true, Boolean(item.hasDoubleBonus));
         const itemCost = item.cost || item.itemsCost || 0;
 
         totalDelivTix += finalTix;
@@ -161,16 +168,17 @@ export function recalculateAll() {
       if (!globallyProcessedItems.has(uniqueKey)) {
         globallyProcessedItems.add(uniqueKey);
 
-        let calculatedYield = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-
+        const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+        let applyDouble = false;
         if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !d.isManual) {
-          calculatedYield = calculatedYield * 2;
+          applyDouble = true;
           doubleDeliveryAppliedToday = true;
           d.hasDoubleBonus = true;
         } else {
           d.hasDoubleBonus = false;
         }
 
+        const calculatedYield = calculateItemYield(baseTix, true, true, applyDouble);
         const dCost = d.itemsCost || d.cost || 0;
 
         todayDelivTix += calculatedYield;
@@ -193,7 +201,8 @@ export function recalculateAll() {
       if (globallyProcessedItems.has(key)) return;
       globallyProcessedItems.add(key);
 
-      const finalTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const finalTix = calculateItemYield(baseTix, false, false); // Bounties get Boosts, not VIP +2
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -229,7 +238,8 @@ export function recalculateAll() {
       if (globallyProcessedItems.has(key)) return;
       globallyProcessedItems.add(key);
 
-      const finalTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const finalTix = calculateItemYield(baseTix, true, false); // Chores receive VIP +2 & Boosts
       if (finalTix <= 0) return;
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -247,9 +257,9 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process Weeks (including custom weeks added via modals) from Cloud KV
+  // 5. Process Past Weeks from Cloud KV
   Object.entries(weeks).forEach(([wkKey, wk]) => {
-    let pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
+    const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
 
     (wk.bounties || []).forEach(b => {
@@ -258,7 +268,8 @@ export function recalculateAll() {
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
-        const finalTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
+        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
+        const finalTix = calculateItemYield(baseTix, false, false);
         if (finalTix <= 0) return;
 
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -284,7 +295,8 @@ export function recalculateAll() {
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
-        const finalTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
+        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
+        const finalTix = calculateItemYield(baseTix, true, false);
         if (finalTix <= 0) return;
 
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
@@ -347,8 +359,8 @@ export function recalculateAll() {
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
   // Goal Calculator
-  const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value) || 1000;
-  const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
+  const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
+  const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
   const targetPerWeek = targetWeeks > 0 ? Math.ceil(remainingNeeded / targetWeeks) : 0;
 
@@ -356,7 +368,7 @@ export function recalculateAll() {
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
   // 8. Render Weekly Progression Chart
-  const targetWeeksInput = parseInt(document.getElementById('targetWeeksInput')?.value) || 12;
+  const targetWeeksInput = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, targetWeeksInput);
 }
 
