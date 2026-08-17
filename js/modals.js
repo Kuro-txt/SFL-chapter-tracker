@@ -131,7 +131,7 @@ export function openModal(type) {
 }
 
 // ==========================================
-// 2. History, Logs & List Rendering Functions
+// 2. History & Master Log Modals
 // ==========================================
 export function renderColumnHistoryModalList(type = 'deliveries') {
   const body = document.getElementById('columnHistoryBody') || document.getElementById('masterHistoryBody') || document.getElementById('historyModalBody');
@@ -152,7 +152,9 @@ export function renderColumnHistoryModalList(type = 'deliveries') {
           <span style="margin-left:10px; color:#E65100; font-weight:bold;">${log.ticketsSaved || 0} Tickets</span>
           <span style="margin-left:8px; color:#8C7853;">${formatSFL(log.costSaved || 0)} SFL</span>
         </div>
-        <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-sm" style="background:#FFEBEE; border:1px solid #E53935; color:#B71C1C; font-weight:bold; padding:2px 6px; border-radius:4px; cursor:pointer;" onclick="window.deleteMasterLog(${logIdx})">✕</button>
+        </div>
       </div>
     `;
   });
@@ -200,7 +202,41 @@ export function closeMasterHistoryModal() {
 }
 
 // ==========================================
-// 3. Deletion Functions for Logs & Weekly Items
+// 3. Toggle & Check Handlers for Logs & Weekly Items
+// ==========================================
+export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
+  const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
+  if (!logs || !logs[logIndex] || !logs[logIndex].deliveriesDone) return;
+
+  const item = logs[logIndex].deliveriesDone[itemIndex];
+  if (item) {
+    item.checked = isChecked;
+    item.completed = isChecked;
+    recalculateAll();
+    saveProgressToCloudKV(true);
+  }
+}
+
+export function toggleLogItemCheck(logIndex, itemIndex, isChecked) {
+  toggleDeliveryLogCheck(logIndex, itemIndex, isChecked);
+}
+
+export function toggleWeeklyItem(weekId, category, index, isChecked) {
+  const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
+  if (!weeks || !weeks[weekId] || !weeks[weekId][category]) return;
+
+  const item = weeks[weekId][category][index];
+  if (item) {
+    item.checked = isChecked;
+    item.completed = isChecked;
+    item.completedAt = isChecked ? Date.now() : null;
+    recalculateAll();
+    saveProgressToCloudKV(true);
+  }
+}
+
+// ==========================================
+// 4. Deletion Handlers for Logs & Weekly Items
 // ==========================================
 export function deleteWeeklyItem(weekId, category, index) {
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
@@ -234,7 +270,7 @@ export function deleteLogItem(logIndex) {
 }
 
 // ==========================================
-// 4. Category Summary Modal
+// 5. Category Summary Modal
 // ==========================================
 export function openCategorySummaryModal(category) {
   const modal = document.getElementById('categorySummaryModal');
@@ -253,7 +289,7 @@ export function closeCategorySummaryModal() {
 }
 
 // ==========================================
-// 5. Cloud Sync & Manual Item Additions
+// 6. Cloud Sync & Manual Item Additions
 // ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
@@ -337,8 +373,12 @@ export function addNewManualItem(type, isAnimal = false) {
 }
 
 // ==========================================
-// 6. Global Window Handlers
+// 7. Global Window Bindings
 // ==========================================
+window.toggleDeliveryLogCheck = toggleDeliveryLogCheck;
+window.toggleLogItemCheck = toggleLogItemCheck;
+window.toggleWeeklyItem = toggleWeeklyItem;
+
 window.renderColumnHistoryModalList = renderColumnHistoryModalList;
 window.deleteWeeklyItem = deleteWeeklyItem;
 window.deleteMasterLog = deleteMasterLog;
