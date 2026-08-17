@@ -104,12 +104,39 @@ export async function saveProgressToCloudKV(silent = false) {
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
   const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
 
+  // Calculate total grand tickets and cost directly from frontend state
+  let calculatedTotalTickets = trackTickets + dailyLoginTickets;
+  let calculatedTotalCost = trackCost;
+
+  (state.globalData?.deliveries || []).forEach(d => {
+    if (d.checked || d.completed) {
+      calculatedTotalTickets += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
+      calculatedTotalCost += (d.itemsCost || d.cost || 0);
+    }
+  });
+
+  (state.globalData?.bounties || []).forEach(b => {
+    if (b.checked || b.completed) {
+      calculatedTotalTickets += (b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0));
+      calculatedTotalCost += (b.itemsCost || b.cost || 0);
+    }
+  });
+
+  (state.globalData?.chores || []).forEach(c => {
+    if (c.checked || c.completed) {
+      calculatedTotalTickets += (c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 0));
+      calculatedTotalCost += (c.itemsCost || c.cost || 0);
+    }
+  });
+
   const payload = {
     username: state.currentUser,
     farmId,
     trackTickets,
     trackCost,
     dailyLoginTickets,
+    cumulativeTickets: calculatedTotalTickets,
+    cumulativeCost: calculatedTotalCost,
     lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0],
     weeks: state.globalData?.cloudHistory?.weeks || {},
     logs: state.globalData?.cloudHistory?.logs || [],
@@ -137,7 +164,7 @@ export async function saveProgressToCloudKV(silent = false) {
     recalculateAll();
 
     if (!silent) {
-      const totalTix = data.vaultData?.cumulativeTickets || 0;
+      const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
       alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}\n• Auto-backup schedule active.`);
     }
   } catch (err) {
