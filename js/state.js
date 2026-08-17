@@ -61,9 +61,7 @@ export function getMondayBasedWeekId(d) {
     date = new Date();
   }
 
-  if (!date || isNaN(date.getTime())) {
-    date = new Date();
-  }
+  if (!date || isNaN(date.getTime())) date = new Date();
 
   const day = date.getUTCDay();
   const utcDate = date.getUTCDate();
