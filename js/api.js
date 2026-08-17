@@ -1,4 +1,8 @@
-import { state } from './state.js';
+import { 
+  state, 
+  getActiveBoostCount, 
+  getActiveVipBonus 
+} from './state.js';
 import { recalculateAll } from './render.js';
 
 let fetchCooldownTimer = null;
@@ -104,27 +108,39 @@ export async function saveProgressToCloudKV(silent = false) {
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
   const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
 
-  // Calculate total grand tickets and cost directly from frontend state
+  const vipBonus = getActiveVipBonus();
+  const boostCount = getActiveBoostCount();
+  const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
+
   let calculatedTotalTickets = trackTickets + dailyLoginTickets;
   let calculatedTotalCost = trackCost;
+  let doubleDeliveryApplied = false;
 
   (state.globalData?.deliveries || []).forEach(d => {
     if (d.checked || d.completed) {
-      calculatedTotalTickets += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      let yieldAmt = base + vipBonus + boostCount;
+      if (isDoubleDeliveryActive && !doubleDeliveryApplied && !d.isManual) {
+        yieldAmt *= 2;
+        doubleDeliveryApplied = true;
+      }
+      calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += (d.itemsCost || d.cost || 0);
     }
   });
 
   (state.globalData?.bounties || []).forEach(b => {
     if (b.checked || b.completed) {
-      calculatedTotalTickets += (b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0));
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      calculatedTotalTickets += (base + boostCount); // Bounties get Boosts only
       calculatedTotalCost += (b.itemsCost || b.cost || 0);
     }
   });
 
   (state.globalData?.chores || []).forEach(c => {
     if (c.checked || c.completed) {
-      calculatedTotalTickets += (c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 0));
+      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      calculatedTotalTickets += (base + vipBonus + boostCount); // Chores get VIP + Boosts
       calculatedTotalCost += (c.itemsCost || c.cost || 0);
     }
   });
