@@ -118,18 +118,6 @@ export function recalculateAll() {
     return false;
   };
 
-  const getCleanBountyKey = (b) => {
-    const name = (b.name || '').toLowerCase().trim();
-    const lvl = b.level || b.tier || 0;
-    return b.id ? `bounty_${b.id}` : `bounty_${name}_${lvl}`;
-  };
-
-  const getCleanChoreKey = (c) => {
-    const npc = (c.npc || '').toLowerCase().trim();
-    const task = (c.task || c.name || '').toLowerCase().trim();
-    return `chore_${npc}_${task}`;
-  };
-
   const globallyProcessedItems = new Set();
 
   // 1. Process Past Daily Deliveries from saved logs
@@ -150,9 +138,8 @@ export function recalculateAll() {
         if (globallyProcessedItems.has(uniqueKey)) return;
         globallyProcessedItems.add(uniqueKey);
 
-        const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets !== undefined ? item.tickets : 2);
-        const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
-        const itemCost = item.cost || 0;
+        const finalTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+        const itemCost = item.cost || item.itemsCost || 0;
 
         totalDelivTix += finalTix;
         totalSflCostAll += itemCost;
@@ -174,10 +161,9 @@ export function recalculateAll() {
       if (!globallyProcessedItems.has(uniqueKey)) {
         globallyProcessedItems.add(uniqueKey);
 
-        const deliveryAddon = d.isManual ? 0 : (vipBonus + boostCount);
-        let calculatedYield = d.baseTickets + deliveryAddon;
+        let calculatedYield = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
 
-        if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday) {
+        if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !d.isManual) {
           calculatedYield = calculatedYield * 2;
           doubleDeliveryAppliedToday = true;
           d.hasDoubleBonus = true;
@@ -203,14 +189,13 @@ export function recalculateAll() {
   // 3. Process CURRENT Week Bounties (from live state)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
-      const key = getCleanBountyKey(b);
+      const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
       if (globallyProcessedItems.has(key)) return;
       globallyProcessedItems.add(key);
 
-      const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      if (baseTix <= 0) return;
+      const finalTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      if (finalTix <= 0) return;
 
-      const finalTix = baseTix + boostCount;
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
 
@@ -240,12 +225,13 @@ export function recalculateAll() {
   // 4. Process CURRENT Week Chores (from live state)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
-      const key = getCleanChoreKey(c);
+      const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
       if (globallyProcessedItems.has(key)) return;
       globallyProcessedItems.add(key);
 
-      const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+      const finalTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      if (finalTix <= 0) return;
+
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
       totalChoreTix += finalTix;
@@ -261,21 +247,20 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST Weeks from Cloud KV (Strictly isolated from current week counters)
+  // 5. Process Weeks (including custom weeks added via modals) from Cloud KV
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     let pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
 
     (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
-        const key = getCleanBountyKey(b);
+        const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
-        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
-        if (baseTix <= 0) return;
+        const finalTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
+        if (finalTix <= 0) return;
 
-        const finalTix = baseTix + boostCount;
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
         const isAnimal = isAnimalBounty(b);
 
@@ -295,12 +280,13 @@ export function recalculateAll() {
 
     (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
-        const key = getCleanChoreKey(c);
+        const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
         if (globallyProcessedItems.has(key)) return;
         globallyProcessedItems.add(key);
 
-        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
-        const finalTix = baseTix > 0 ? (baseTix + vipBonus + boostCount) : 0;
+        const finalTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
+        if (finalTix <= 0) return;
+
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
@@ -313,10 +299,9 @@ export function recalculateAll() {
     });
   });
 
-  // Totals calculations (trackTickets & totalLoginTickets add to Total Count ONLY)
+  // Totals calculations
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   
-  // Strict Week Total: Includes ONLY current week state stats
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
 
