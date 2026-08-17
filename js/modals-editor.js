@@ -87,7 +87,7 @@ export function renderColumnHistoryModalList() {
   }
 
   let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
-    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'} (EXACT TICKETS)</div>
+    <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
       <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task (e.g. Goblin: Water)' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
       <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
@@ -123,7 +123,6 @@ export function renderColumnHistoryModalList() {
         name: itemName,
         requestedItems: requestedStr,
         cost: item.cost || item.itemsCost || 0,
-        baseTickets: baseTix,
         displayTickets: finalTix,
         checked: isChecked,
         status: isChecked ? '✨ Done' : '⏳ Active',
@@ -176,7 +175,6 @@ export function renderColumnHistoryModalList() {
         npc: item.npc || null,
         level: lvl,
         cost: item.cost !== undefined ? item.cost : (item.itemsCost || 0),
-        baseTickets: baseTix,
         displayTickets: finalTix,
         checked: isChecked,
         status: isChecked ? '✨ Done' : '⏳ Active',
@@ -231,14 +229,13 @@ export function renderColumnHistoryModalList() {
             <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
             ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}
             ${itemsRow}
-            <div style="color:#2E7D32; font-weight:900; margin-top:2px;">Yield: ${r.displayTickets} Tickets</div>
           </div>
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
           <span>SFL:</span>
           <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:60px; padding:2px; font-size:10px;" />
-          <span>Base:</span>
-          <input type="number" value="${r.baseTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Base Ticket Count" />
+          <span>Tickets:</span>
+          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.weekId || r.logIdx}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Yield" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
         </div>
       </div>`;
@@ -394,8 +391,13 @@ export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
     const deliveries = state.globalData?.deliveries;
     const itemIdx = parseInt(mapKeyOrIdx, 10);
     if (deliveries?.[itemIdx]) {
-      deliveries[itemIdx].baseTickets = inputVal;
-      deliveries[itemIdx].tickets = inputVal;
+      const isManual = Boolean(deliveries[itemIdx].isManual);
+      const vip = isManual ? 0 : getActiveVipBonus();
+      const boost = isManual ? 0 : getActiveBoostCount();
+      const baseVal = Math.max(1, inputVal - vip - boost);
+
+      deliveries[itemIdx].baseTickets = baseVal;
+      deliveries[itemIdx].tickets = baseVal;
     }
   } else {
     const parts = mapKeyOrIdx.split('_');
@@ -403,13 +405,22 @@ export async function updateHistoryItemTickets(idKey, mapKeyOrIdx, val) {
     const wkId = parts[1];
     const idx = parseInt(parts[2], 10);
 
+    let target = null;
     if (source === 'week') {
       const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
-      const target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
-      if (target) { target.baseTickets = inputVal; target.tickets = inputVal; }
+      target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
     } else if (source === 'current') {
-      const target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
-      if (target) { target.baseTickets = inputVal; target.tickets = inputVal; }
+      target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+    }
+
+    if (target) {
+      const isManual = Boolean(target.isManual);
+      const vip = (type === 'chore' && !isManual) ? getActiveVipBonus() : 0;
+      const boost = isManual ? 0 : getActiveBoostCount();
+      const baseVal = Math.max(1, inputVal - vip - boost);
+
+      target.baseTickets = baseVal;
+      target.tickets = baseVal;
     }
   }
 
