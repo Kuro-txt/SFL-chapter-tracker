@@ -18,6 +18,7 @@ export default async function handler(req, res) {
   const apiKey = req.query.apiKey || process.env.SFL_API_KEY || '';
 
   try {
+    // 1. Get User Vault
     if (action === 'getVault') {
       const username = (req.query.username || '').toLowerCase().trim();
       if (!username) return res.status(200).json({ vaultData: null });
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // 2. User Registration
     if (req.method === 'POST' && action === 'register') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -77,6 +79,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // 3. User Login
     if (req.method === 'POST' && action === 'login') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -106,6 +109,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // 4. Save Vault Endpoint
     if (req.method === 'POST' && action === 'saveVault') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -126,17 +130,54 @@ export default async function handler(req, res) {
           milestones: {}
         };
 
+        const todayDate = new Date().toISOString().split('T')[0];
+        const currentWeekMonday = getMondayBasedWeekId();
+
         if (body.farmId) existingData.farmId = body.farmId;
         if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets, 10) || 0;
         if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
         if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
         if (body.lastDailyLoginDate) existingData.lastDailyLoginDate = body.lastDailyLoginDate;
+        if (body.cumulativeTickets !== undefined) existingData.cumulativeTickets = parseInt(body.cumulativeTickets, 10) || 0;
+        if (body.cumulativeCost !== undefined) existingData.cumulativeCost = parseFloat(body.cumulativeCost) || 0;
+
         if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
         if (body.deliveries) existingData.deliveries = body.deliveries;
         if (body.bounties) existingData.bounties = body.bounties;
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
-        if (body.logs && Array.isArray(body.logs)) existingData.logs = body.logs;
+
+        // Construct / Update Daily Snapshot Log
+        if (!existingData.logs) existingData.logs = [];
+        if (body.logs && Array.isArray(body.logs) && body.logs.length > 0) {
+          existingData.logs = body.logs;
+        }
+
+        let dailyTix = 0;
+        let dailyCost = 0;
+        (existingData.deliveries || []).forEach(d => {
+          if (d.checked || d.completed) {
+            dailyTix += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
+            dailyCost += (d.itemsCost || d.cost || 0);
+          }
+        });
+
+        const existingLogIdx = existingData.logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+        const logEntry = {
+          date: todayDate,
+          weekId: currentWeekMonday,
+          timestamp: new Date().toISOString(),
+          ticketsSaved: dailyTix,
+          costSaved: dailyCost,
+          deliveriesDone: existingData.deliveries || [],
+          milestones: existingData.milestones || {}
+        };
+
+        if (existingLogIdx !== -1) {
+          existingData.logs[existingLogIdx] = logEntry;
+        } else {
+          existingData.logs.unshift(logEntry);
+        }
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), username]);
         return res.status(200).json({ success: true, vaultData: existingData });
@@ -145,6 +186,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // 5. Default GET: Sunflower Land Live Farm Data Fetch
     const sflHeaders = {
       'Accept': 'application/json, text/plain, */*',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -207,8 +249,8 @@ export default async function handler(req, res) {
           let dailyCost = 0;
           parsed.deliveryList.forEach(d => {
             if (d.checked || d.completed) {
-              dailyTix += d.baseTickets;
-              dailyCost += d.itemsCost;
+              dailyTix += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 0));
+              dailyCost += (d.itemsCost || d.cost || 0);
             }
           });
 
