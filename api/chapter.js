@@ -58,6 +58,7 @@ export default async function handler(req, res) {
         const initialVault = {
           farmId: userFarmId,
           logs: [],
+          deletedDates: [],
           cumulativeTickets: 0,
           cumulativeCost: 0,
           weeks: {},
@@ -112,7 +113,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // 4. Dedicated Delete Log Endpoint (Prevents Re-creation)
+    // 4. Dedicated Delete Log Endpoint (Adds to Blacklist)
     if (req.method === 'POST' && action === 'deleteLog') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const username = (body.username || '').toLowerCase().trim();
@@ -126,7 +127,16 @@ export default async function handler(req, res) {
         if (queryRes.rows.length === 0) return res.status(404).json({ error: 'Vault not found.' });
 
         let vaultData = queryRes.rows[0].vault_data || {};
-        if (vaultData.logs && Array.isArray(vaultData.logs)) {
+        if (!vaultData.deletedDates) vaultData.deletedDates = [];
+
+        if (vaultData.logs && Array.isArray(vaultData.logs) && vaultData.logs[logIdx]) {
+          const removedLog = vaultData.logs[logIdx];
+          if (removedLog.date) {
+            const cleanDate = removedLog.date.split('T')[0];
+            if (!vaultData.deletedDates.includes(cleanDate)) {
+              vaultData.deletedDates.push(cleanDate);
+            }
+          }
           vaultData.logs.splice(logIdx, 1);
         }
 
@@ -148,6 +158,7 @@ export default async function handler(req, res) {
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
         let existingData = queryRes.rows.length > 0 ? queryRes.rows[0].vault_data : {
           logs: [],
+          deletedDates: [],
           cumulativeTickets: 0,
           cumulativeCost: 0,
           weeks: {},
@@ -172,9 +183,13 @@ export default async function handler(req, res) {
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
 
-        // Persist Logs Array directly without forced re-insertion
+        // Filter incoming logs against deletedDates blacklist
+        const deletedDates = existingData.deletedDates || [];
         if (body.logs && Array.isArray(body.logs)) {
-          existingData.logs = body.logs;
+          existingData.logs = body.logs.filter(l => {
+            const d = (l.date || '').split('T')[0];
+            return !deletedDates.includes(d);
+          });
         }
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), username]);
@@ -254,7 +269,13 @@ export default async function handler(req, res) {
 
           if (!currentVault.logs) currentVault.logs = [];
 
-          // NOTE: We do NOT auto-create a daily log on GET requests, preserving your manual deletions!
+          // Ensure deleted dates blacklist is strictly applied to logs
+          const deletedDates = currentVault.deletedDates || [];
+          currentVault.logs = currentVault.logs.filter(l => {
+            const d = (l.date || '').split('T')[0];
+            return !deletedDates.includes(d);
+          });
+
           await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(currentVault), usernameParam]);
         }
       } finally {
