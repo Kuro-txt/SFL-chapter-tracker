@@ -29,21 +29,6 @@ export function recalculateAll() {
   const rawLogs = (state.globalData.cloudHistory && state.globalData.cloudHistory.logs) || [];
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
 
-  // Normalize weeks to prevent duplicate counting between '2026-08-17' and '2026-W32'
-  const weeks = {};
-  Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
-    const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
-    if (!weeks[normalizedId]) {
-      weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
-    }
-    if (Array.isArray(wkVal.bounties)) {
-      weeks[normalizedId].bounties.push(...wkVal.bounties);
-    }
-    if (Array.isArray(wkVal.chores)) {
-      weeks[normalizedId].chores.push(...wkVal.chores);
-    }
-  });
-
   // Track & Login inputs
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
@@ -226,9 +211,9 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Process PAST and ALL Weeks from Cloud KV (Adds to Total Count and properly groups into weekly chart stats without leaking past weeks into current week's counter)
-  Object.entries(weeks).forEach(([wkId, wk]) => {
-    let pastMonday = getMondayBasedWeekId(wk.weekId || wkId);
+  // 5. Process PAST and ALL Weeks from Cloud KV (Adds to Total Count and properly groups into weekly chart stats without duplicating current week items)
+  Object.entries(rawWeeks).forEach(([wkKey, wk]) => {
+    let pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     const isCurrentWeek = (pastMonday === currentWeekMonday);
 
     (wk.bounties || []).forEach(b => {
