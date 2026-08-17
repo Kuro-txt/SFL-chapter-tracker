@@ -2,15 +2,26 @@ import { state } from './state.js';
 import { recalculateAll, renderDashboardCards } from './render.js';
 import { loadTrackerData } from './api.js';
 
-export async function userRegister() {
-  const username = prompt('Choose a Username:')?.trim().toLowerCase();
-  if (!username) return;
-  const password = prompt('Choose a Password:');
-  if (!password) return;
+let isAuthPromptOpen = false;
 
-  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+export async function userRegister() {
+  if (isAuthPromptOpen) return;
+  isAuthPromptOpen = true;
 
   try {
+    const username = prompt('Choose a Username:')?.trim().toLowerCase();
+    if (!username) {
+      isAuthPromptOpen = false;
+      return;
+    }
+    const password = prompt('Choose a Password:');
+    if (!password) {
+      isAuthPromptOpen = false;
+      return;
+    }
+
+    const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
+
     const res = await fetch('/api/chapter?action=register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -27,18 +38,29 @@ export async function userRegister() {
     await loadTrackerData();
   } catch (err) {
     alert(`Register Error: ${err.message}`);
+  } finally {
+    isAuthPromptOpen = false;
   }
 }
 
 export async function userLogin() {
-  const username = prompt('Enter your Username:')?.trim().toLowerCase();
-  if (!username) return;
-  const password = prompt('Enter your Password:');
-  if (!password) return;
-
-  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  if (isAuthPromptOpen) return;
+  isAuthPromptOpen = true;
 
   try {
+    const username = prompt('Enter your Username:')?.trim().toLowerCase();
+    if (!username) {
+      isAuthPromptOpen = false;
+      return;
+    }
+    const password = prompt('Enter your Password:');
+    if (!password) {
+      isAuthPromptOpen = false;
+      return;
+    }
+
+    const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
+
     const res = await fetch('/api/chapter?action=login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,6 +83,8 @@ export async function userLogin() {
     await loadTrackerData();
   } catch (err) {
     alert(`Login Error: ${err.message}`);
+  } finally {
+    isAuthPromptOpen = false;
   }
 }
 
@@ -79,14 +103,12 @@ export function checkSavedAuth() {
   if (savedUser) {
     state.currentUser = savedUser;
     updateAuthUI();
-    loadTrackerData();
   } else {
     updateAuthUI();
   }
 }
 
 export function updateAuthUI() {
-  const authContainer = document.getElementById('authStatusContainer');
   const userStatus = document.getElementById('userStatusBadge');
   
   if (userStatus) {
