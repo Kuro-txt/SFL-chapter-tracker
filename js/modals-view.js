@@ -139,7 +139,7 @@ export function renderHistoryModalList() {
   const container = document.getElementById('modalLogList');
   if (!container) return;
 
-  // Check all possible places where logs might be stored
+  // Comprehensive check across all possible state and vault properties
   const logs = 
     (state.globalData?.cloudHistory?.logs && state.globalData.cloudHistory.logs.length > 0 ? state.globalData.cloudHistory.logs : null) ||
     (state.globalData?.vaultData?.logs && state.globalData.vaultData.logs.length > 0 ? state.globalData.vaultData.logs : null) ||
