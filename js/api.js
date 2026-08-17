@@ -1,7 +1,9 @@
 import { 
   state, 
   getActiveBoostCount, 
-  getActiveVipBonus 
+  getActiveVipBonus, 
+  getMondayBasedWeekId,
+  isLoginClaimedToday
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -112,6 +114,13 @@ export async function saveProgressToCloudKV(silent = false) {
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
 
+  const todayDate = new Date().toISOString().split('T')[0];
+  const currentWeekMonday = getMondayBasedWeekId();
+
+  let todayEarnedTix = isLoginClaimedToday() ? 1 : 0;
+  let todayEarnedCost = 0;
+  const todayDoneItems = [];
+
   let calculatedTotalTickets = trackTickets + dailyLoginTickets;
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
@@ -119,35 +128,76 @@ export async function saveProgressToCloudKV(silent = false) {
   (state.globalData?.deliveries || []).forEach(d => {
     if (d.checked || d.completed) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      if (d.isManual) {
-        calculatedTotalTickets += base;
-      } else {
-        let yieldAmt = base + vipBonus + boostCount;
+      let yieldAmt = base;
+      if (!d.isManual) {
+        yieldAmt += (vipBonus + boostCount);
         if (isDoubleDeliveryActive && !doubleDeliveryApplied) {
           yieldAmt *= 2;
           doubleDeliveryApplied = true;
         }
-        calculatedTotalTickets += yieldAmt;
       }
-      calculatedTotalCost += (d.itemsCost || d.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      const lineCost = (d.itemsCost || d.cost || 0);
+      calculatedTotalCost += lineCost;
+
+      todayEarnedTix += yieldAmt;
+      todayEarnedCost += lineCost;
+      todayDoneItems.push({
+        name: d.name || d.from,
+        yield: yieldAmt,
+        cost: lineCost
+      });
     }
   });
 
   (state.globalData?.bounties || []).forEach(b => {
     if (b.checked || b.completed) {
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      calculatedTotalTickets += b.isManual ? base : (base + boostCount);
-      calculatedTotalCost += (b.itemsCost || b.cost || 0);
+      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const lineCost = (b.itemsCost || b.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+
+      if (b.checkedToday || b.completedAt) {
+        todayEarnedTix += yieldAmt;
+        todayEarnedCost += lineCost;
+      }
     }
   });
 
   (state.globalData?.chores || []).forEach(c => {
     if (c.checked || c.completed) {
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      calculatedTotalTickets += c.isManual ? base : (base + vipBonus + boostCount);
-      calculatedTotalCost += (c.itemsCost || c.cost || 0);
+      const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
+      const lineCost = (c.itemsCost || c.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+
+      if (c.checkedToday || c.completedAt) {
+        todayEarnedTix += yieldAmt;
+        todayEarnedCost += lineCost;
+      }
     }
   });
+
+  // Construct Today's Snapshot Log Entry
+  const logs = [...(state.globalData?.cloudHistory?.logs || [])];
+  const existingLogIdx = logs.findIndex(l => (l.date || '').split('T')[0] === todayDate);
+  const logEntry = {
+    date: todayDate,
+    weekId: currentWeekMonday,
+    timestamp: new Date().toISOString(),
+    ticketsSaved: todayEarnedTix,
+    costSaved: todayEarnedCost,
+    deliveriesDone: todayDoneItems,
+    milestones: state.globalData?.milestones || {}
+  };
+
+  if (existingLogIdx !== -1) {
+    logs[existingLogIdx] = logEntry;
+  } else {
+    logs.unshift(logEntry);
+  }
 
   const payload = {
     username: state.currentUser,
@@ -157,9 +207,9 @@ export async function saveProgressToCloudKV(silent = false) {
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,
     cumulativeCost: calculatedTotalCost,
-    lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0],
+    lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || todayDate,
     weeks: state.globalData?.cloudHistory?.weeks || {},
-    logs: state.globalData?.cloudHistory?.logs || [],
+    logs,
     deliveries: state.globalData?.deliveries || [],
     bounties: state.globalData?.bounties || [],
     chores: state.globalData?.chores || [],
@@ -185,7 +235,7 @@ export async function saveProgressToCloudKV(silent = false) {
 
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
-      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}\n• Auto-backup schedule active.`);
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Today's Yield: +${todayEarnedTix} Tickets\n• Total Tickets: ${totalTix}`);
     }
   } catch (err) {
     if (!silent) alert(`Cloud Save Error: ${err.message}`);
