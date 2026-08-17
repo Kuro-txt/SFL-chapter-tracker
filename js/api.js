@@ -3,7 +3,7 @@ import { recalculateAll, renderDashboardCards } from './render.js';
 
 let fetchCooldownTimer = null;
 
-export async function loadTrackerData() {
+export async function loadTrackerData(isAutomated = false) {
   const farmIdInput = document.getElementById('farmId');
   const apiKeyInput = document.getElementById('apiKey');
   const fetchBtn = document.querySelector('button[onclick*="loadTrackerData"]');
@@ -16,12 +16,12 @@ export async function loadTrackerData() {
   if (farmIdInput) farmIdInput.value = farmId;
   localStorage.setItem('sfl_farmId', farmId);
 
-  if (fetchCooldownTimer) {
+  if (fetchCooldownTimer && !isAutomated) {
     alert('⏳ Please wait for the cooldown before fetching again.');
     return;
   }
 
-  if (fetchBtn) {
+  if (fetchBtn && !isAutomated) {
     fetchBtn.disabled = true;
     let secondsLeft = 10;
     fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
@@ -59,13 +59,12 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // Unpack and attach Vault Data
+    // Load Vault Data directly
     const vault = data.vaultData || data.cloudHistory || state.currentVaultData;
     if (vault) {
       state.currentVaultData = vault;
       state.globalData.cloudHistory = vault;
 
-      // Populate deliveries, bounties, chores from vault if API is empty
       if (!Array.isArray(state.globalData.deliveries) || state.globalData.deliveries.length === 0) {
         state.globalData.deliveries = vault.deliveries || (vault.logs && vault.logs[0]?.deliveriesDone) || [];
       }
@@ -111,7 +110,7 @@ export async function loadTrackerData() {
       priceBadge.style.borderColor = '#E53935';
       priceBadge.style.color = '#B71C1C';
     }
-    alert(`Failed to fetch farm data: ${err.message}`);
+    if (!isAutomated) alert(`Failed to fetch farm data: ${err.message}`);
   }
 }
 
@@ -122,7 +121,7 @@ export async function saveProgressToCloudKV(silent = false) {
     return;
   }
 
-  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  const farmId = document.getElementById('farmId')?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
   const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
