@@ -38,7 +38,6 @@ export function getActiveVipBonus() {
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 
-// 100% Bulletproof UTC Monday-based Week Calculator
 export function getMondayBasedWeekId(d) {
   let date;
   try {
@@ -66,11 +65,10 @@ export function getMondayBasedWeekId(d) {
     date = new Date();
   }
 
-  const day = date.getUTCDay(); // 0 = Sunday, 1 = Monday ... 6 = Saturday
+  const day = date.getUTCDay();
   const utcDate = date.getUTCDate();
   const diffToMonday = (day === 0 ? -6 : 1 - day);
   date.setUTCDate(utcDate + diffToMonday);
-  
   return date.toISOString().split('T')[0];
 }
 
@@ -86,8 +84,24 @@ export function isAnimalBounty(item) {
   
   if (animalKeywords.some(kw => lowerName.includes(kw))) return true;
   if (/(?:lvl|level|#|\()\s*(\d+)/i.test(rawName)) return true;
-
   return false;
+}
+
+export function resolveAnimalLevel(item) {
+  if (item.level) return item.level;
+  if (item.tier) return item.tier;
+  const rawName = typeof item === 'string' ? item : (item.name || '');
+  const lvlMatch = rawName.match(/(?:lvl|level|#|\()\s*(\d+)/i);
+  if (lvlMatch) return lvlMatch[1];
+
+  if (state.globalData?.bounties) {
+    const liveMatch = state.globalData.bounties.find(b => 
+      (b.id && item.id && String(b.id) === String(item.id)) ||
+      (b.name && rawName && b.name.toLowerCase() === rawName.toLowerCase())
+    );
+    if (liveMatch?.level) return liveMatch.level;
+  }
+  return null;
 }
 
 export function isLoginClaimedToday() {
@@ -113,7 +127,6 @@ export async function checkAndAutoClaimDailyLogin() {
     if (loginCheck) loginCheck.checked = true;
 
     try {
-      const { syncCurrentVaultToCloud } = await import('./modals.js');
       const { recalculateAll } = await import('./render.js');
       recalculateAll();
       await syncCurrentVaultToCloud();
@@ -140,7 +153,48 @@ export async function handleDailyLoginToggle() {
   }
 
   try {
-    const { syncCurrentVaultToCloud } = await import('./modals.js');
     await syncCurrentVaultToCloud();
   } catch (e) {}
+}
+
+export async function syncCurrentVaultToCloud() {
+  if (!state.currentUser || !state.globalData) return;
+  try {
+    const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
+    const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
+    const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
+    const lastDailyLoginDate = localStorage.getItem('sfl_daily_login_last_date') || new Date().toISOString().split('T')[0];
+    const farmId = document.getElementById('farmId')?.value.trim() || state.globalData.cloudHistory?.farmId || '8472883706403914';
+
+    if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
+    if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+
+    const payload = {
+      username: state.currentUser,
+      farmId,
+      trackTickets,
+      trackCost,
+      dailyLoginTickets,
+      lastDailyLoginDate,
+      milestones: state.globalData.milestones || {},
+      logs: state.globalData.cloudHistory.logs || [],
+      weeks: state.globalData.cloudHistory.weeks,
+      bounties: state.globalData.bounties || [],
+      chores: state.globalData.chores || [],
+      deliveries: state.globalData.deliveries || []
+    };
+
+    const response = await fetch('/api/chapter?action=saveVault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const resData = await response.json();
+    if (resData.vaultData) {
+      state.currentVaultData = resData.vaultData;
+      state.globalData.cloudHistory = resData.vaultData;
+    }
+  } catch (err) {
+    console.error('Failed to auto-sync edit to Cloud KV:', err);
+  }
 }
