@@ -300,13 +300,11 @@ export async function addNewItemFromModal() {
 
     if (!state.globalData.deliveries) state.globalData.deliveries = [];
     state.globalData.deliveries.push(newDeliv);
-  } else {
-    const isChore = type === 'chore';
-    const isAnimal = type === 'animalBounty';
-
-    const newItem = isChore ? {
+  } else if (type === 'chore') {
+    const newChore = {
       npc: nameInput.includes(':') ? nameInput.split(':')[0].trim() : 'Custom',
       task: nameInput.includes(':') ? nameInput.split(':')[1].trim() : nameInput,
+      name: nameInput,
       baseTickets: ticketsInput,
       tickets: ticketsInput,
       cost: costInput,
@@ -316,7 +314,16 @@ export async function addNewItemFromModal() {
       completedAt: Date.now(),
       isManual: true,
       weekId: targetWeekId
-    } : {
+    };
+
+    state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newChore);
+    if (targetWeekId === getMondayBasedWeekId()) {
+      if (!state.globalData.chores) state.globalData.chores = [];
+      state.globalData.chores.push(newChore);
+    }
+  } else {
+    const isAnimal = type === 'animalBounty';
+    const newBounty = {
       name: nameInput,
       baseTickets: ticketsInput,
       tickets: ticketsInput,
@@ -330,11 +337,7 @@ export async function addNewItemFromModal() {
       weekId: targetWeekId
     };
 
-    if (isChore) {
-      state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
-    } else {
-      state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
-    }
+    state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newBounty);
   }
 
   renderColumnHistoryModalList();
