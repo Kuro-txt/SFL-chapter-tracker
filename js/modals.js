@@ -15,19 +15,19 @@ export function openColumnModal(type) {
   container.innerHTML = '';
   const currentWeekMonday = getMondayBasedWeekId();
 
-  // Top Add Card
+  // Top Add Section Form
   const addCard = document.createElement('div');
-  addCard.style.cssText = 'background: #FAF8F5; border: 1.5px dashed #D2691E; border-radius: 8px; padding: 10px; margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;';
+  addCard.style.cssText = 'background: #FAF8F5; border: 2px dashed #D2691E; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between;';
 
   if (type === 'deliveries') {
     if (titleEl) titleEl.textContent = '📦 Edit Daily Deliveries';
 
     addCard.innerHTML = `
-      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD CUSTOM DELIVERY</div>
-      <input type="text" id="manualNameInput" placeholder="NPC Name (e.g. Tywin)" style="flex: 2; min-width: 130px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 70px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 90px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('deliveries')">➕ ADD</button>
+      <div style="font-weight: 900; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD CUSTOM DELIVERY</div>
+      <input type="text" id="manualNameInput" placeholder="NPC Name (e.g. Bert)" style="flex: 2; min-width: 130px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 75px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 95px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('deliveries')">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
@@ -49,8 +49,8 @@ export function openColumnModal(type) {
             ${item.isStacked ? '<span style="margin-left: 6px; font-size: 10px; background: #FFE0B2; color: #E65100; padding: 2px 6px; border-radius: 4px; font-weight: bold;">STACKED</span>' : ''}
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 85px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('deliveries', ${idx}, this.value)">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 80px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('deliveries', ${idx}, this.value)">
           <input type="number" value="${item.baseTickets || item.tickets || 2}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('deliveries', ${idx}, this.value)">
           <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('deliveries', ${idx})">✕</button>
         </div>
@@ -62,11 +62,11 @@ export function openColumnModal(type) {
     if (titleEl) titleEl.textContent = '📜 Edit Item Bounties';
 
     addCard.innerHTML = `
-      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD ITEM BOUNTY</div>
-      <input type="text" id="manualNameInput" placeholder="Item Name (e.g. Red Cosmos)" style="flex: 2; min-width: 130px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 70px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 90px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', false)">➕ ADD</button>
+      <div style="font-weight: 900; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD ITEM BOUNTY</div>
+      <input type="text" id="manualNameInput" placeholder="Item Name (e.g. Red Cosmos)" style="flex: 2; min-width: 130px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 75px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost (SFL)" value="0.00" style="width: 95px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', false)">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
@@ -86,8 +86,8 @@ export function openColumnModal(type) {
           <input type="checkbox" ${isDone ? 'checked' : ''} style="transform: scale(1.2); cursor: pointer;" onchange="window.toggleModalItem('bounties', ${globalIdx}, this.checked)">
           <span style="font-weight: bold; color: #5C4033; font-size: 14px;">${item.name}</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 85px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('bounties', ${globalIdx}, this.value)">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 80px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('bounties', ${globalIdx}, this.value)">
           <input type="number" value="${item.baseTickets || item.tickets || 1}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('bounties', ${globalIdx}, this.value)">
           <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
         </div>
@@ -99,12 +99,12 @@ export function openColumnModal(type) {
     if (titleEl) titleEl.textContent = '🐄 Edit Animal Bounties';
 
     addCard.innerHTML = `
-      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD ANIMAL BOUNTY</div>
-      <input type="text" id="manualNameInput" placeholder="Animal (e.g. Chicken)" style="flex: 2; min-width: 120px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" id="manualLvlInput" placeholder="Lvl" value="5" min="1" style="width: 55px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 65px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost" value="0.00" style="width: 80px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', true)">➕ ADD</button>
+      <div style="font-weight: 900; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD ANIMAL BOUNTY</div>
+      <input type="text" id="manualNameInput" placeholder="Animal (e.g. Chicken)" style="flex: 2; min-width: 120px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualLvlInput" placeholder="Lvl" value="5" min="1" style="width: 60px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="2" min="1" style="width: 70px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" step="0.01" id="manualCostInput" placeholder="Cost" value="0.00" style="width: 85px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('bounties', true)">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
@@ -127,8 +127,8 @@ export function openColumnModal(type) {
             ${item.level ? `<span style="margin-left: 6px; font-size: 11px; color: #8C7853; font-weight: bold;">(Lvl ${item.level})</span>` : ''}
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 85px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('bounties', ${globalIdx}, this.value)">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="number" step="0.01" value="${item.itemsCost !== undefined ? item.itemsCost : (item.cost || 0)}" style="width: 80px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemCost('bounties', ${globalIdx}, this.value)">
           <input type="number" value="${item.baseTickets || item.tickets || 2}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('bounties', ${globalIdx}, this.value)">
           <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('bounties', ${globalIdx})">✕</button>
         </div>
@@ -140,11 +140,11 @@ export function openColumnModal(type) {
     if (titleEl) titleEl.textContent = '🧹 Edit Weekly Chores';
 
     addCard.innerHTML = `
-      <div style="font-weight: bold; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD WEEKLY CHORE</div>
-      <input type="text" id="manualNameInput" placeholder="Task (e.g. Harvest Crops 100 times)" style="flex: 2; min-width: 150px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="text" id="manualNpcInput" placeholder="NPC" value="Chore NPC" style="width: 90px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <input type="number" id="manualTixInput" placeholder="Tickets" value="1" min="1" style="width: 65px; padding: 6px 8px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
-      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="window.submitNewManualItem('chores')">➕ ADD</button>
+      <div style="font-weight: 900; color: #5C4033; font-size: 13px; width: 100%;">➕ ADD WEEKLY CHORE</div>
+      <input type="text" id="manualNameInput" placeholder="Task (e.g. Harvest Crops 100 times)" style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="text" id="manualNpcInput" placeholder="NPC" value="Chore NPC" style="width: 95px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <input type="number" id="manualTixInput" placeholder="Tickets" value="1" min="1" style="width: 70px; padding: 6px 10px; border: 1px solid #D2691E; border-radius: 4px; font-weight: bold;">
+      <button class="btn btn-sm" style="background: #4CAF50; color: #fff; border: 2px solid #2E7D32; font-weight: bold; border-radius: 4px; padding: 6px 14px; cursor: pointer;" onclick="window.submitNewManualItem('chores')">➕ ADD</button>
     `;
     container.appendChild(addCard);
 
@@ -166,7 +166,7 @@ export function openColumnModal(type) {
             <div style="font-size: 11px; color: #8C7853;">NPC: ${item.npc || 'NPC'}</div>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
           <input type="number" value="${item.baseTickets || item.tickets || 1}" style="width: 55px; padding: 4px 6px; border: 1px solid #D2691E; border-radius: 4px; text-align: right; font-weight: bold;" onchange="window.updateModalItemTickets('chores', ${idx}, this.value)">
           <button class="btn btn-sm" style="background: #FFEBEE; border: 1px solid #E53935; color: #B71C1C; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer;" onclick="window.removeModalItem('chores', ${idx})">✕</button>
         </div>
@@ -276,7 +276,7 @@ export function toggleHistoryModal(show) {
 }
 
 // ==========================================
-// 5. Item Updates, Checks & Deletions
+// 5. Item Toggles & Field Updates
 // ==========================================
 export function toggleDeliveryLogCheck(logIndex, itemIndex, isChecked) {
   const logs = state.globalData?.cloudHistory?.logs || state.currentVaultData?.logs;
@@ -331,6 +331,9 @@ export function updateHistoryItemCost(logIndex, itemIndex, newCost) {
   }
 }
 
+// ==========================================
+// 6. Deletions
+// ==========================================
 export function deleteWeeklyItem(weekId, category, index) {
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks;
   if (!weeks || !weeks[weekId] || !weeks[weekId][category]) return;
@@ -359,7 +362,7 @@ export function deleteDeliveryLogItem(logIndex) {
 }
 
 // ==========================================
-// 6. Manual Submission & Modal Handlers
+// 7. Manual Additions & Cloud Sync
 // ==========================================
 export async function syncCurrentVaultToCloud() {
   await saveProgressToCloudKV(true);
