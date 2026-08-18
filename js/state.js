@@ -17,8 +17,8 @@ export const SFL_FLOWER_ITEMS = new Set([
 ]);
 
 export function formatSFL(num) {
-  if (num === null || num === undefined || isNaN(num)) return "0.00";
-  return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (num === null || num === undefined || isNaN(num)) return "0.000";
+  return Number(num).toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
 
 export function setElemText(id, text) {
