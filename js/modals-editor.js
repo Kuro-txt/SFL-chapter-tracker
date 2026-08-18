@@ -62,16 +62,6 @@ export function openColumnHistoryModal(type) {
         if (name) npcSet.add(name.trim());
       });
 
-      const weeksObj = state.globalData?.cloudHistory?.weeks || {};
-      Object.values(weeksObj).forEach(wk => {
-        if (Array.isArray(wk.deliveries)) {
-          wk.deliveries.forEach(d => {
-            const name = d.from || d.name;
-            if (name) npcSet.add(name.trim());
-          });
-        }
-      });
-
       const sortedNpcs = Array.from(npcSet).sort((a, b) => a.localeCompare(b));
       npcDropdown.innerHTML = '<option value="">👤 ALL NPCS</option>' + sortedNpcs.map(npc => 
         `<option value="${npc.toLowerCase()}">${npc.toUpperCase()}</option>`
@@ -117,7 +107,6 @@ export function renderColumnHistoryModalList() {
   if (type === 'delivery') {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
 
-    // 1. Process active live deliveries
     (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
       if (item.isManual) return;
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
@@ -144,7 +133,6 @@ export function renderColumnHistoryModalList() {
       });
     });
 
-    // 2. Process archive deliveries
     (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
@@ -177,45 +165,6 @@ export function renderColumnHistoryModalList() {
         isManual
       });
     });
-
-    // 3. Process week-stored deliveries (including manual ones added to specific weeks)
-    const weeks = state.globalData?.cloudHistory?.weeks || {};
-    Object.entries(weeks).forEach(([wkId, wk]) => {
-      if (Array.isArray(wk.deliveries)) {
-        wk.deliveries.forEach((item, itemIdx) => {
-          const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-          if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
-
-          const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-          const isManual = Boolean(item.isManual);
-          const finalTix = computeYield(baseTix, true, isManual);
-
-          let weekDisplay = 'Week';
-          const baseW1 = new Date('2026-08-10T00:00:00.000Z').getTime();
-          const itemTime = new Date(`${wkId}T00:00:00.000Z`).getTime();
-          const diffWeeks = Math.round((itemTime - baseW1) / (7 * 24 * 60 * 60 * 1000)) + 1;
-          if (diffWeeks >= 1 && diffWeeks <= 12) weekDisplay = `Week ${diffWeeks}`;
-
-          const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-
-          records.push({
-            weekId: wkId,
-            source: 'week_delivery',
-            itemIdx,
-            mapKey: `week_deliv_${wkId}_${itemIdx}`,
-            date: weekDisplay,
-            name: itemName,
-            requestedItems: formatRequestedItems(item.itemDetails || item.items),
-            cost: item.cost || item.itemsCost || 0,
-            displayTickets: finalTix,
-            checked: isChecked,
-            status: isChecked ? '✨ Done' : '⏳ Active',
-            isManual
-          });
-        });
-      }
-    });
-
   } else {
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
@@ -289,11 +238,11 @@ export function renderColumnHistoryModalList() {
       }
       const labelId = r.date || r.weekDisplay || 'Week';
       const changeHandler = type === 'delivery'
-        ? (r.source === 'week_delivery' ? `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey}')` : `toggleDeliveryLogCheck('${r.source}', ${r.itemIdx})`)
+        ? `toggleDeliveryLogCheck('${r.source}', ${r.itemIdx})`
         : `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey}')`;
       
       const deleteHandler = type === 'delivery'
-        ? (r.source === 'week_delivery' ? `deleteWeeklyItem('${r.weekId}', '${r.mapKey}')` : `deleteDeliveryLogItem('${r.source}', ${r.itemIdx})`)
+        ? `deleteDeliveryLogItem('${r.source}', ${r.itemIdx})`
         : `deleteWeeklyItem('${r.weekId}', '${r.mapKey}')`;
 
       const animalLevelTag = (type === 'animalBounty' && r.level) 
@@ -354,38 +303,225 @@ export async function addNewItemFromModal() {
   if (!state.globalData.cloudHistory) state.globalData.cloudHistory = {};
   if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
   if (!state.globalData.cloudHistory.weeks[targetWeekId]) {
-    state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, deliveries: [], bounties: [], chores: [] };
+    state.globalData.cloudHistory.weeks[targetWeekId] = { weekId: targetWeekId, bounties: [], chores: [] };
   }
 
-  const newItem = {
-    from: nameInput,
-    name: nameInput,
-    task: nameInput,
-    baseTickets: ticketsInput,
-    tickets: ticketsInput,
-    cost: costInput,
-    itemsCost: costInput,
-    checked: true,
-    completed: true,
-    completedAt: Date.now(),
-    completedDate: todayDateStr,
-    isManual: true,
-    weekId: targetWeekId
-  };
-
   if (type === 'delivery') {
-    if (!state.globalData.cloudHistory.weeks[targetWeekId].deliveries) {
-      state.globalData.cloudHistory.weeks[targetWeekId].deliveries = [];
-    }
-    state.globalData.cloudHistory.weeks[targetWeekId].deliveries.push(newItem);
+    const newDeliv = {
+      from: nameInput,
+      name: nameInput,
+      baseTickets: ticketsInput,
+      tickets: ticketsInput,
+      cost: costInput,
+      itemsCost: costInput,
+      checked: true,
+      completed: true,
+      completedAt: Date.now(),
+      completedDate: todayDateStr,
+      isManual: true,
+      weekId: targetWeekId
+    };
+
+    if (!state.globalData.archiveDeliveries) state.globalData.archiveDeliveries = [];
+    state.globalData.archiveDeliveries.push(newDeliv);
   } else if (type === 'chore') {
-    newItem.npc = nameInput.includes(':') ? nameInput.split(':')[0].trim() : 'Custom';
-    newItem.task = nameInput.includes(':') ? nameInput.split(':')[1].trim() : nameInput;
-    state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newItem);
+    const newChore = {
+      npc: nameInput.includes(':') ? nameInput.split(':')[0].trim() : 'Custom',
+      task: nameInput.includes(':') ? nameInput.split(':')[1].trim() : nameInput,
+      name: nameInput,
+      baseTickets: ticketsInput,
+      tickets: ticketsInput,
+      cost: costInput,
+      itemsCost: costInput,
+      checked: true,
+      completed: true,
+      completedAt: Date.now(),
+      isManual: true,
+      weekId: targetWeekId
+    };
+
+    state.globalData.cloudHistory.weeks[targetWeekId].chores.push(newChore);
   } else {
     const isAnimal = type === 'animalBounty';
-    newItem.level = isAnimal ? 1 : undefined;
-    state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newItem);
+    const newBounty = {
+      name: nameInput,
+      baseTickets: ticketsInput,
+      tickets: ticketsInput,
+      cost: costInput,
+      itemsCost: costInput,
+      level: isAnimal ? 1 : undefined,
+      checked: true,
+      completed: true,
+      completedAt: Date.now(),
+      isManual: true,
+      weekId: targetWeekId
+    };
+
+    state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newBounty);
+  }
+
+  renderColumnHistoryModalList();
+  recalculateAll();
+  await syncCurrentVaultToCloud();
+}
+
+export async function toggleDeliveryLogCheck(source, itemIdx) {
+  const target = source === 'live' 
+    ? state.globalData?.deliveries?.[itemIdx] 
+    : state.globalData?.archiveDeliveries?.[itemIdx];
+
+  if (target) {
+    const newStatus = !(target.checked !== undefined ? target.checked : Boolean(target.completed));
+    target.checked = newStatus;
+    target.completed = newStatus;
+    if (newStatus && !target.completedDate) {
+      target.completedDate = new Date().toISOString().split('T')[0];
+    }
+    renderColumnHistoryModalList();
+    recalculateAll();
+    await syncCurrentVaultToCloud();
+  }
+}
+
+export async function deleteDeliveryLogItem(source, itemIdx) {
+  if (source === 'live' && state.globalData?.deliveries?.[itemIdx]) {
+    state.globalData.deliveries.splice(itemIdx, 1);
+  } else if (source === 'archive' && state.globalData?.archiveDeliveries?.[itemIdx]) {
+    state.globalData.archiveDeliveries.splice(itemIdx, 1);
+  }
+  renderColumnHistoryModalList();
+  recalculateAll();
+  await syncCurrentVaultToCloud();
+}
+
+export async function toggleWeeklyItemCheck(weekId, mapKey) {
+  const type = state.activeColumnType;
+  const isChore = type === 'chore';
+  const parts = mapKey.split('_');
+  const source = parts[0];
+  const wkId = parts[1];
+  const idx = parseInt(parts[2], 10);
+
+  let targetItem = null;
+  if (source === 'week') {
+    const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+    if (wk) targetItem = isChore ? wk.chores?.[idx] : wk.bounties?.[idx];
+  } else if (source === 'current') {
+    targetItem = isChore ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+  }
+
+  if (targetItem) {
+    const newStatus = !(targetItem.checked !== undefined ? targetItem.checked : Boolean(targetItem.completed));
+    targetItem.checked = newStatus;
+    targetItem.completed = newStatus;
+    targetItem.completedAt = newStatus ? (targetItem.completedAt || Date.now()) : null;
+
+    renderColumnHistoryModalList();
+    recalculateAll();
+    await syncCurrentVaultToCloud();
+  }
+}
+
+export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
+  const type = state.activeColumnType;
+  const inputVal = parseInt(val, 10) || 0;
+
+  if (type === 'delivery') {
+    const itemIdx = parseInt(mapKeyOrIdx, 10);
+    const target = sourceOrWkId === 'live' 
+      ? state.globalData?.deliveries?.[itemIdx] 
+      : state.globalData?.archiveDeliveries?.[itemIdx];
+
+    if (target) {
+      const isManual = Boolean(target.isManual);
+      const vip = isManual ? 0 : getActiveVipBonus();
+      const boost = isManual ? 0 : getActiveBoostCount();
+      const baseVal = Math.max(1, inputVal - vip - boost);
+      target.baseTickets = baseVal;
+      target.tickets = baseVal;
+    }
+  } else {
+    const parts = mapKeyOrIdx.split('_');
+    const source = parts[0];
+    const wkId = parts[1];
+    const idx = parseInt(parts[2], 10);
+
+    let target = null;
+    if (source === 'week') {
+      const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+      target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+    } else if (source === 'current') {
+      target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+    }
+
+    if (target) {
+      const isManual = Boolean(target.isManual);
+      const vip = (type === 'chore' && !isManual) ? getActiveVipBonus() : 0;
+      const boost = isManual ? 0 : getActiveBoostCount();
+      const baseVal = Math.max(1, inputVal - vip - boost);
+
+      target.baseTickets = baseVal;
+      target.tickets = baseVal;
+    }
+  }
+
+  renderColumnHistoryModalList();
+  recalculateAll();
+  await syncCurrentVaultToCloud();
+}
+
+export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
+  const type = state.activeColumnType;
+  const costVal = parseFloat(val) || 0;
+
+  if (type === 'delivery') {
+    const itemIdx = parseInt(mapKeyOrIdx, 10);
+    const target = sourceOrWkId === 'live' 
+      ? state.globalData?.deliveries?.[itemIdx] 
+      : state.globalData?.archiveDeliveries?.[itemIdx];
+
+    if (target) {
+      target.cost = costVal;
+      target.itemsCost = costVal;
+    }
+  } else {
+    const parts = mapKeyOrIdx.split('_');
+    const source = parts[0];
+    const wkId = parts[1];
+    const idx = parseInt(parts[2], 10);
+
+    if (source === 'week') {
+      const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+      const target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+      if (target) { target.cost = costVal; target.itemsCost = costVal; }
+    } else if (source === 'current') {
+      const target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+      if (target) { target.cost = costVal; target.itemsCost = costVal; }
+    }
+  }
+
+  renderColumnHistoryModalList();
+  recalculateAll();
+  await syncCurrentVaultToCloud();
+}
+
+export async function deleteWeeklyItem(weekId, mapKey) {
+  const type = state.activeColumnType;
+  const isChore = type === 'chore';
+  const parts = mapKey.split('_');
+  const source = parts[0];
+  const wkId = parts[1];
+  const idx = parseInt(parts[2], 10);
+
+  if (source === 'week') {
+    const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+    if (wk) {
+      if (isChore) wk.chores?.splice(idx, 1);
+      else wk.bounties?.splice(idx, 1);
+    }
+  } else if (source === 'current') {
+    if (isChore) state.globalData?.chores?.splice(idx, 1);
+    else state.globalData?.bounties?.splice(idx, 1);
   }
 
   renderColumnHistoryModalList();
