@@ -9,6 +9,15 @@ import { recalculateAll } from './render.js';
 
 let fetchCooldownTimer = null;
 
+function computeYield(base, isVipEligible = true, isManual = false) {
+  const raw = Number(base) || 0;
+  if (raw <= 0) return 0;
+  if (isManual) return raw;
+  const vip = isVipEligible ? getActiveVipBonus() : 0;
+  const boost = getActiveBoostCount();
+  return raw + vip + boost;
+}
+
 export async function loadTrackerData() {
   const farmIdInput = document.getElementById('farmId');
   const apiKeyInput = document.getElementById('apiKey');
