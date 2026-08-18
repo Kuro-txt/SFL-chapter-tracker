@@ -1,5 +1,6 @@
 import { pool } from './db.js';
 import { extractPricesRecursive, getMondayBasedWeekId, parseFarmData } from './sfl-parser.js';
+import { reconcileDeliveriesWithNpcs } from './chapter.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -16,7 +17,6 @@ export default async function handler(req, res) {
   try {
     const vaultsRes = await client.query('SELECT username, vault_data FROM user_vaults');
     
-    // Fetch prices with timeout safeguard
     let priceMap = {};
     try {
       const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
@@ -62,23 +62,10 @@ export default async function handler(req, res) {
           const parsed = parseFarmData(farm, priceMap);
           const currentWeekMonday = getMondayBasedWeekId();
 
-          // 1. Archive Completed Deliveries
-          if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
-          if (vault.deliveries) {
-            vault.deliveries.forEach(d => {
-              const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
-              if (isTicked) {
-                const uniqueKey = `${d.id || d.from || d.name}_${d.completedAt || d.completedDate || ''}`;
-                const exists = vault.archiveDeliveries.some(ar => {
-                  const arKey = `${ar.id || ar.from || ar.name}_${ar.completedAt || ar.completedDate || ''}`;
-                  return arKey === uniqueKey;
-                });
-                if (!exists) vault.archiveDeliveries.push({ ...d, archiveKey: uniqueKey });
-              }
-            });
-          }
+          // 1. Reconcile Deliveries with NPC Counts & Stacks
+          reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
 
-          // 2. Archive Completed Bounties & Chores into their respective week bucket
+          // 2. Archive Chores & Bounties
           if (!vault.weeks) vault.weeks = {};
           if (!vault.weeks[currentWeekMonday]) {
             vault.weeks[currentWeekMonday] = {
@@ -94,9 +81,6 @@ export default async function handler(req, res) {
           vault.weeks[currentWeekMonday].chores = [...parsed.choresList, ...existingManualChores];
           vault.weeks[currentWeekMonday].bounties = [...parsed.activeBounties, ...existingManualBounties];
 
-          // 3. Refresh live arrays
-          const existingManualDeliveries = (vault.deliveries || []).filter(d => d.isManual);
-          vault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
           vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
           vault.chores = [...parsed.choresList, ...existingManualChores];
           vault.milestones = parsed.liveMilestones;
