@@ -5,309 +5,295 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
   <title>Sunflower Land Chapter Tracker</title>
   
-  <!-- Modern Google Fonts for Cozy Farming Aesthetic -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700;800&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
-
   <style>
-    :root {
-      --bg-dark: #2d4218;
-      --panel-bg: #fffbf0;
-      --panel-border: #8b5a2b;
-      --panel-shadow: #503319;
-      --wood-light: #c27b38;
-      --wood-dark: #8b4e1d;
-      --gold-border: #d4a373;
-      --accent-green: #2e7d32;
-      --accent-orange: #d35400;
-      --accent-purple: #8e44ad;
-      --text-dark: #3e2723;
-      --text-muted: #795548;
-    }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background-color: var(--bg-dark);
-      background-image: 
-        radial-gradient(#3d5822 18%, transparent 19%), 
-        radial-gradient(#223312 18%, transparent 19%);
-      background-size: 28px 28px;
-      background-position: 0 0, 14px 14px;
-      color: var(--text-dark);
-      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
-      padding: clamp(12px, 2.5vw, 24px);
+      background-color: #3b5323;
+      background-image: radial-gradient(#4d6b2c 15%, transparent 16%), radial-gradient(#2d401a 15%, transparent 16%);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+      color: #3e2723;
+      font-family: 'Courier New', Courier, monospace, sans-serif;
+      padding: clamp(14px, 3vw, 28px);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      font-size: 14px;
+      font-size: 15px;
       -webkit-text-size-adjust: 100%;
     }
-
     .wrapper { 
-      max-width: 1180px; 
+      max-width: 1240px; 
       width: 100%; 
       display: flex; 
       flex-direction: column; 
-      gap: 16px; 
+      gap: 20px; 
     }
     
-    /* Header */
     header {
-      background: linear-gradient(180deg, #966133 0%, #6e411f 100%);
-      border: 3.5px solid #3e2723;
-      border-radius: 16px;
+      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
+      border: 4px solid #3E2723;
+      border-radius: 14px;
       text-align: center;
-      padding: 16px 20px;
-      box-shadow: 0 6px 0px var(--panel-shadow), inset 0 2px 4px rgba(255,255,255,0.25);
+      padding: 20px 16px;
+      box-shadow: 0 8px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
     }
     h1 { 
-      font-family: 'Fredoka', cursive, sans-serif;
-      font-size: clamp(20px, 3.2vw, 28px); 
-      font-weight: 800; 
-      color: #fff8dc; 
-      text-shadow: 2px 2px 0px #271813; 
-      margin-bottom: 4px; 
-      letter-spacing: 0.8px; 
+      font-size: clamp(22px, 3.2vw, 30px); 
+      font-weight: 900; 
+      color: #FFF8DC; 
+      text-shadow: 2px 2px #271813; 
+      margin-bottom: 6px; 
+      letter-spacing: 1.5px; 
     }
-    header p { 
-      font-size: clamp(12px, 1.8vw, 14px); 
-      color: #fef08a; 
-      font-weight: 800; 
-      text-shadow: 1px 1px 0px #271813; 
+    p { 
+      font-size: clamp(13px, 2vw, 15px); 
+      color: #EEDC82; 
+      font-weight: bold; 
+      text-shadow: 1px 1px #271813; 
     }
     
-    /* Banners */
+    /* Rotating Tip Banner */
     .tip-banner {
-      background: #fffdf5;
-      border: 2px dashed #d4a373;
-      border-radius: 12px;
-      padding: 10px 16px;
+      background: #FFF8DC;
+      border: 2px dashed #D2691E;
+      border-radius: 10px;
+      padding: 12px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      min-height: 42px;
+      min-height: 46px;
       font-size: 13px;
-      font-weight: 800;
-      color: #78350f;
+      font-weight: 900;
+      color: #8B4513;
       cursor: pointer;
       user-select: none;
       gap: 10px;
-      box-shadow: 0 4px 0px rgba(0,0,0,0.15);
+      box-shadow: 0 3px 0px #5C4033;
     }
     #rotatingTipText {
-      transition: opacity 0.25s ease;
+      transition: opacity 0.3s ease;
       opacity: 1;
-      line-height: 1.4;
+      line-height: 1.45;
     }
-    #rotatingTipText.fade-out { opacity: 0; }
+    #rotatingTipText.fade-out {
+      opacity: 0;
+    }
 
+    /* ⚡ Double Delivery Event Alert Banner */
     .event-banner {
-      background: linear-gradient(135deg, #fff7ed, #ffedd5);
-      border: 2px solid #ea580c;
-      border-radius: 12px;
-      padding: 10px 16px;
+      background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+      border: 2px solid #FF9800;
+      border-radius: 10px;
+      padding: 12px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 4px 10px rgba(234, 88, 12, 0.2);
+      box-shadow: 0 4px 8px rgba(255, 152, 0, 0.25);
       font-size: 13px;
       gap: 10px;
     }
 
-    /* Standardized Panels */
     .panel {
-      background-color: var(--panel-bg);
-      border: 3.5px solid var(--panel-border);
-      border-radius: 16px;
-      padding: 16px 18px;
-      box-shadow: 0 6px 0px var(--panel-shadow);
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 7px 0px #5C4033;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 18px;
     }
     .controls-row { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 12px; 
+      gap: 14px; 
       align-items: center; 
       justify-content: space-between; 
     }
     .input-group { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 8px; 
+      gap: 10px; 
       align-items: center; 
     }
     
     label { 
-      font-size: 12px; 
+      font-size: 13px; 
       font-weight: 900; 
-      color: #5c4033; 
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      color: #5C4033; 
     }
     input[type="text"], input[type="password"], input[type="number"], select {
-      background-color: #fffdf5;
-      border: 2px solid #8b5a2b;
-      color: #3e2723;
-      padding: 7px 10px;
+      background-color: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      color: #3E2723;
+      padding: 9px 12px;
       font-size: 13px;
-      font-weight: 800;
+      font-weight: bold;
       border-radius: 8px;
       outline: none;
       font-family: inherit;
-      transition: all 0.15s ease;
     }
-    input:focus, select:focus { 
-      border-color: #d97706; 
+    input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus { 
+      border-color: #D2691E; 
       background-color: #fff; 
-      box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.2);
     }
     
-    .pill-box {
-      background: #fefce8;
-      border: 2px solid #d97706;
-      padding: 6px 12px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 900;
-      color: #78350f;
-    }
     .checkbox-label {
+      background-color: #FFFACD;
+      border: 2px solid #D2691E;
+      padding: 8px 12px;
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
-      user-select: none;
+      gap: 7px;
+      font-size: 13px;
+      color: #8B4513;
+      font-weight: 900;
     }
 
-    /* Buttons */
     .btn {
-      font-family: 'Fredoka', cursive, sans-serif;
-      font-weight: 700;
+      font-family: inherit;
+      font-weight: 900;
       font-size: 13px;
-      letter-spacing: 0.5px;
       text-transform: uppercase;
-      padding: 8px 14px;
-      border-radius: 10px;
-      border: 2px solid #3e2723;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 2px solid #3E2723;
       cursor: pointer;
-      box-shadow: 0 4px 0px #3e2723;
+      box-shadow: 0 4px 0px #3E2723;
       transition: all 0.1s ease;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 7px;
       touch-action: manipulation;
     }
-    .btn:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 5px 0px #3e2723; }
-    .btn:active { transform: translateY(3px); box-shadow: 0 1px 0px #3e2723; }
+    .btn:hover { filter: brightness(1.06); }
+    .btn:active { transform: translateY(2px); box-shadow: 0 2px 0px #3E2723; }
 
     .btn-wood {
-      background: linear-gradient(180deg, #d97706 0%, #b45309 100%);
-      color: #fff8dc;
-      border-color: #451a03;
-      box-shadow: 0 4px 0px #291002;
-      text-shadow: 1px 1px 0px #1c0b02;
+      background: linear-gradient(180deg, #C27B38 0%, #8B4E1D 100%);
+      color: #FFF8DC;
+      border-color: #4A280E;
+      box-shadow: 0 4px 0px #341B07;
+      text-shadow: 1px 1px 0px #241103;
     }
-    .btn-emerald { 
-      background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
-      color: #fff; 
-      border-color: #14532d; 
-      box-shadow: 0 4px 0px #0e371e; 
-      text-shadow: 1px 1px 0px #0a2514; 
-    }
-    .btn-indigo { 
-      background: linear-gradient(180deg, #78350f 0%, #54250a 100%);
-      color: #fff8dc; 
-      border-color: #2e1b17; 
-      box-shadow: 0 3px 0px #1e100e; 
-    }
-    .btn-guide { 
-      background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
-      color: #fff; 
-      border-color: #0c4a6e; 
-      box-shadow: 0 4px 0px #082f49; 
-      text-shadow: 1px 1px 0px #041b2b; 
-    }
-    .btn-sm { padding: 5px 10px; font-size: 11px; box-shadow: 0 3px 0px #2e1b17; border-radius: 6px; }
+    .btn-emerald { background-color: #388E3C; color: #FFF8DC; border-color: #1B5E20; box-shadow: 0 4px 0px #1B5E20; text-shadow: 1px 1px 0px #0F3812; }
+    .btn-indigo { background-color: #6D4C41; color: #FFF8DC; border-color: #3E2723; box-shadow: 0 4px 0px #2E1B17; }
+    .btn-guide { background-color: #2980B9; color: #FFF8DC; border-color: #1B4F72; box-shadow: 0 4px 0px #154360; text-shadow: 1px 1px 0px #0E2F44; }
+    .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 4px 0px #5B2C6F; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; box-shadow: 0 3px 0px #2E1B17; }
 
-    /* 4-Stat Box Grid */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+    }
+    .overview-card {
+      background: #FFFDF7;
+      border: 3px solid #8B5A2B;
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 6px 0px #5C4033;
+      transition: transform 0.15s ease;
+    }
+    .overview-card:hover {
+      transform: translateY(-2px);
+    }
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+      font-size: 14px;
+      color: #4E342E;
+      border-bottom: 2px dashed #D7CCC8;
+      padding-bottom: 10px;
+    }
+    .overview-count {
+      background: #EFEBE9;
+      color: #4E342E;
+      padding: 4px 10px;
+      border: 2px solid #A1887F;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .overview-actions {
+      display: flex;
+      gap: 10px;
+    }
+
     .stats-grid { 
       display: grid; 
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
-      gap: 14px; 
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); 
+      gap: 18px; 
     }
     
     .stat-box {
       position: relative;
-      background: #fffdf5;
-      border: 3px solid #8b5a2b;
-      border-radius: 14px;
-      padding: 14px 16px;
+      background-color: #FFF8DC;
+      border: 3px solid #8B5A2B;
+      border-radius: 12px;
+      padding: 15px 16px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      gap: 10px;
-      box-shadow: 0 5px 0px var(--panel-shadow);
+      gap: 8px;
+      box-shadow: 0 5px 0px #5C4033;
       cursor: help;
-      transition: transform 0.12s ease;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
     }
     .stat-box:hover {
       transform: translateY(-2px);
-      box-shadow: 0 7px 0px var(--panel-shadow);
+      box-shadow: 0 7px 0px #5C4033;
     }
     .stat-title { 
-      font-size: 11px; 
+      font-size: 12px; 
       font-weight: 900; 
-      color: #8b5a2b; 
+      color: #8B5A2B; 
       text-transform: uppercase; 
-      letter-spacing: 0.6px;
     }
     .stat-val { 
-      font-family: 'Fredoka', cursive, sans-serif;
-      font-size: clamp(22px, 2.4vw, 26px); 
-      font-weight: 800; 
-      color: #d97706; 
-      line-height: 1.1;
+      font-size: clamp(23px, 2.5vw, 27px); 
+      font-weight: 900; 
+      color: #D2691E; 
     }
     .stat-footer { 
-      border-top: 1.5px dashed #d4a373; 
+      border-top: 2px dashed #D2B48C; 
       padding-top: 8px; 
       display: flex; 
       flex-direction: column; 
-      gap: 4px; 
+      gap: 5px; 
       font-size: 12px; 
-      font-weight: 800; 
-      color: #5c4033; 
+      font-weight: bold; 
+      color: #5C4033; 
     }
 
     .stat-box .tooltip {
       visibility: hidden;
       opacity: 0;
-      width: 280px;
-      background-color: #271813;
-      color: #fff8dc;
+      width: 290px;
+      background-color: #3E2723;
+      color: #FFF8DC;
       text-align: left;
-      border: 2px solid #d97706;
-      border-radius: 10px;
+      border: 2px solid #D2691E;
+      border-radius: 8px;
       padding: 10px 14px;
       position: absolute;
       z-index: 20;
       bottom: 105%;
       left: 50%;
       transform: translateX(-50%);
-      transition: opacity 0.15s ease;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
       font-size: 12px;
-      font-weight: 800;
-      line-height: 1.5;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+      font-weight: 900;
+      line-height: 1.55;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.35);
       pointer-events: none;
     }
     .stat-box .tooltip::after {
@@ -318,77 +304,37 @@
       margin-left: -6px;
       border-width: 6px;
       border-style: solid;
-      border-color: #271813 transparent transparent transparent;
+      border-color: #3E2723 transparent transparent transparent;
     }
-    .stat-box:hover .tooltip { visibility: visible; opacity: 1; }
-
-    /* 4-Category Action Cards */
-    .overview-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-    }
-    .overview-card {
-      background: #fffdf5;
-      border: 3px solid #8b5a2b;
-      border-radius: 14px;
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 5px 0px var(--panel-shadow);
-      transition: transform 0.12s ease;
-    }
-    .overview-card:hover { transform: translateY(-2px); }
-    .overview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 900;
-      font-size: 13px;
-      color: #4e342e;
-      border-bottom: 1.5px dashed #d7ccc8;
-      padding-bottom: 8px;
-    }
-    .overview-count {
-      background: #f5efe6;
-      color: #5c4033;
-      padding: 3px 8px;
-      border: 1.5px solid #a1887f;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 900;
-    }
-    .overview-actions {
-      display: flex;
-      gap: 8px;
+    .stat-box:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
     }
 
-    /* Chart Section */
+    /* 📊 Weekly Progression Chart Section */
     .chart-panel {
-      background: #fffdf5;
-      border: 3.5px solid var(--panel-border);
-      border-radius: 16px;
-      padding: 16px 18px;
-      box-shadow: 0 6px 0px var(--panel-shadow);
+      background: #FFFDF7;
+      border: 4px solid #8B5A2B;
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 7px 0px #5C4033;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
     .chart-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 8px;
-      border-bottom: 1.5px dashed #d4a373;
-      padding-bottom: 8px;
+      gap: 10px;
+      border-bottom: 2px dashed #D2B48C;
+      padding-bottom: 10px;
     }
     .chart-title {
-      font-family: 'Fredoka', cursive, sans-serif;
       font-size: 16px;
-      font-weight: 700;
-      color: #5c4033;
+      font-weight: 900;
+      color: #5C4033;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -398,76 +344,102 @@
       align-items: center;
       gap: 12px;
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 900;
     }
-    .legend-item { display: flex; align-items: center; gap: 5px; }
-    .legend-box { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.2); }
-    .chart-container { width: 100%; overflow-x: auto; padding-bottom: 6px; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .chart-container {
+      width: 100%;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
 
-    /* Modals */
+    .badge {
+      padding: 3px 9px;
+      font-size: 11px;
+      font-weight: 900;
+      border-radius: 6px;
+      text-transform: uppercase;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .badge-done { background-color: #C8E6C9; color: #2E7D32; }
+    .badge-active { background-color: #FFE0B2; color: #E65100; }
+
     .modal {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(26, 40, 14, 0.85);
-      backdrop-filter: blur(2px);
+      background: rgba(45, 64, 26, 0.85);
       z-index: 100;
       justify-content: center;
       align-items: center;
-      padding: 16px;
+      padding: 20px;
     }
     .modal.show { display: flex; }
     .modal-content {
-      background-color: var(--panel-bg);
-      border: 4px solid #6e411f;
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
       width: 100%;
-      max-width: 650px;
+      max-width: 680px;
       max-height: 85vh;
-      border-radius: 16px;
+      border-radius: 14px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 0px #271813;
+      box-shadow: 0 10px 0px #5C4033;
     }
     .modal-header { 
-      padding: 14px 18px; 
-      border-bottom: 3px solid #503319; 
+      padding: 16px 20px; 
+      border-bottom: 3px solid #8B5A2B; 
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
-      background: linear-gradient(180deg, #966133 0%, #6e411f 100%); 
-      color: #fff8dc; 
-      border-top-left-radius: 12px; 
-      border-top-right-radius: 12px; 
+      background: #8B5A2B; 
+      color: #FFF8DC; 
+      border-top-left-radius: 10px; 
+      border-top-right-radius: 10px; 
     }
     .modal-body { 
-      padding: 16px 18px; 
+      padding: 18px 20px; 
       overflow-y: auto; 
       display: flex; 
       flex-direction: column; 
-      gap: 12px; 
+      gap: 14px; 
     }
 
     .guide-card {
-      background: #fffdf5;
-      border: 2px solid #8b5a2b;
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 7px;
       font-size: 13px;
     }
     .guide-card-title {
       font-weight: 900;
-      color: #8b4513;
+      color: #8B4513;
       display: flex;
       align-items: center;
-      gap: 6px;
-      border-bottom: 1px dashed #d4a373;
-      padding-bottom: 4px;
-      font-size: 13px;
+      gap: 8px;
+      border-bottom: 1px dashed #D2B48C;
+      padding-bottom: 6px;
+      font-size: 14px;
     }
-    .guide-card-text { color: #5c4033; line-height: 1.45; font-weight: 800; }
+    .guide-card-text {
+      color: #5C4033;
+      line-height: 1.5;
+      font-weight: bold;
+    }
 
     @media (max-width: 650px) {
       .controls-row { flex-direction: column; align-items: stretch; }
@@ -486,79 +458,74 @@
     <!-- Interactive Rotating Tip Banner -->
     <div class="tip-banner" id="tipBanner">
       <span id="rotatingTipText">📦 <strong>WEEK-BY-WEEK LOGGING:</strong> Click the EDIT button on any card to view and filter all items by week!</span>
-      <span style="font-size: 11px; opacity: 0.75; font-weight:800;">(Hover to Pause)</span>
+      <span style="font-size: 11px; opacity: 0.7;">(Hover to Pause)</span>
     </div>
 
     <!-- ⚡ Dynamic Double Delivery Event Banner -->
     <div id="doubleDeliveryBanner" class="event-banner" style="display: none;">
-      <div style="display: flex; align-items: center; gap: 8px; color: #ea580c; font-weight: 900;">
+      <div style="display: flex; align-items: center; gap: 10px; color: #E65100; font-weight: 900;">
         <span style="font-size: 18px;">⚡</span>
-        <span>DOUBLE DELIVERY EVENT ACTIVE! 1st live completed order of today receives 2x tickets!</span>
+        <span>DOUBLE DELIVERY EVENT ACTIVE! First completed delivery of today receives 2x Total Tickets [(Base + VIP + Boosts) × 2]</span>
       </div>
-      <span style="background: #ea580c; color: #fff; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 6px;">2X ACTIVE</span>
+      <span style="background: #E65100; color: #FFF; font-size: 11px; font-weight: 900; padding: 3px 8px; border-radius: 6px;">2X ACTIVE</span>
     </div>
 
-    <!-- Auth / Vault Panel -->
-    <div class="panel" style="padding: 10px 16px; background: #fffbe8;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0;">
-          <span style="font-size: 12px; font-weight: 900; color: #8b4513;">🔐 VAULT LOGIN:</span>
-          <input type="text" id="authUsername" placeholder="Username" style="width: 110px;" autocomplete="username" />
-          <input type="password" id="authPassword" placeholder="Password" style="width: 110px;" autocomplete="current-password" />
+    <div class="panel" style="padding: 12px 20px; background: #FFFACD;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
+          <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
+          <input type="text" id="authUsername" placeholder="Username" style="width: 125px;" autocomplete="username" />
+          <input type="password" id="authPassword" placeholder="Password" style="width: 125px;" autocomplete="current-password" />
           <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
           <button type="button" onclick="userRegister()" class="btn btn-sm btn-wood">REGISTER</button>
         </form>
 
-        <div id="authLoggedIn" style="display: none; align-items: center; gap: 12px;">
-          <span style="font-size: 13px; font-weight: 900; color: #2e7d32;">👤 Logged in as: <strong id="displayUsername" style="color:#8b4513;"></strong></span>
-          <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#dc2626; border-color:#991b1b; color:#fff; box-shadow:0 3px 0px #7f1d1d;">LOGOUT</button>
+        <div id="authLoggedIn" style="display: none; align-items: center; gap: 14px;">
+          <span style="font-size: 13px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
+          <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; box-shadow:0 3px 0px #78281F;">LOGOUT</button>
         </div>
       </div>
     </div>
 
-    <!-- Farm Setup & Controls Panel -->
     <div class="panel">
       <div class="controls-row">
-        <form onsubmit="return false;" class="input-group" style="margin:0;">
-          <label for="farmId">Farm ID:</label>
-          <input type="text" id="farmId" value="8472883706403914" style="width: 145px;" />
+        <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <label for="farmId">FARM ID:</label>
+          <input type="text" id="farmId" value="8472883706403914" style="width: 155px;" />
           
-          <label for="apiKey">API Key:</label>
-          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 120px;" />
+          <label for="apiKey">API KEY:</label>
+          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 130px;" />
 
-          <label class="pill-box checkbox-label">
-            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #d97706; width: 15px; height: 15px;" />
+          <label class="checkbox-label">
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 16px; height: 16px;" />
             👑 VIP (+2)
           </label>
-          <span id="priceBadge" style="display:none; font-size:11px; padding:4px 8px; background:#e8f5e9; color: #2e7d32; border:2px solid #4caf50; border-radius:6px; font-weight:900;">FETCHING...</span>
+          <span id="priceBadge" style="display:none; font-size:11px; padding:5px 9px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
-        <!-- Boosts & Daily Login -->
-        <div class="pill-box">
-          <span style="color:#8b4513;">+1 BOOSTS:</span>
-          <label class="checkbox-label"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#d97706;" /> #1</label>
-          <label class="checkbox-label"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#d97706;" /> #2</label>
-          <label class="checkbox-label"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#d97706;" /> #3</label>
+        <div class="input-group" style="background:#FFFACD; padding:8px 12px; border:2px solid #D2691E; border-radius:8px;">
+          <label style="color:#8B4513;">+1 BOOSTS:</label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #3</label>
           
-          <div style="border-left: 2px dashed #d4a373; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
-            <label class="checkbox-label" title="Auto-increments +1 ticket every calendar day">
-              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #16a34a; width: 14px; height: 14px;" />
+          <div style="border-left: 2px dashed #D2B48C; padding-left: 10px; margin-left: 6px; display: flex; align-items: center; gap: 8px;">
+            <label class="checkbox-label" style="padding: 4px 8px; font-size: 12px;" title="Auto-increments +1 ticket every calendar day">
+              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 15px; height: 15px;" />
               🎁 LOGIN
             </label>
-            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 50px; padding: 3px 5px; font-size: 12px; text-align: center;" />
+            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 55px; padding: 4px 6px; font-size: 12px; text-align: center;" title="Total Daily Login Tickets Collected" />
           </div>
         </div>
 
-        <!-- Track Adjustments -->
-        <div class="pill-box" style="background:#f0fdf4; border-color:#16a34a; color:#166534;">
-          <span>🛤️ TRACK:</span>
-          <label for="trackTicketsInput" style="color:#166534; font-size:11px;">Tix:</label>
-          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 55px; padding: 3px 5px; font-size: 12px;" />
-          <label for="trackCostInput" style="color:#166534; font-size:11px;">SFL:</label>
-          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 3px 5px; font-size: 12px;" />
+        <div class="input-group" style="background:#E8F5E9; padding:8px 12px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:8px;">
+          <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
+          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
+          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 4px 6px; font-size: 12px;" title="Total Track / Adjustment Tickets" />
+          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
+          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 80px; padding: 4px 6px; font-size: 12px;" title="Total Track / Adjustment SFL Cost" />
         </div>
 
-        <!-- Action Buttons -->
         <div class="input-group">
           <button onclick="loadTrackerData()" class="btn btn-wood">🌾 FETCH DATA</button>
           <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE IN CLOUD</button>
@@ -567,9 +534,7 @@
       </div>
     </div>
 
-    <!-- 4 Stats Cards Grid -->
     <div class="stats-grid">
-      <!-- Total Tickets -->
       <div id="boxTotalTickets" class="stat-box">
         <div class="tooltip" id="tooltipTotal">
           <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
@@ -581,15 +546,14 @@
           <div id="tipTotalLogin">🎁 Daily Login: 0 Tix</div>
         </div>
         <div class="stat-title">🏆 TOTAL TICKETS COLLECTED</div>
-        <div id="statTotalTickets" class="stat-val">0 Tickets</div>
+        <div id="statTotalTickets" class="stat-val">0</div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Total Vault Cost:</span><strong id="statTotalCost" style="color:#8b4513;">0.000 SFL</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Avg Cost / Ticket:</span><strong id="statTotalRatio" style="color:#2e7d32;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Total Vault Cost:</span><strong id="statTotalCost" style="color:#8B4513;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Avg Cost / Ticket:</span><strong id="statTotalRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
         </div>
       </div>
 
-      <!-- This Week -->
-      <div id="boxWeekTickets" class="stat-box" style="border-color: #d97706;">
+      <div id="boxWeekTickets" class="stat-box" style="border-color: #D2691E;">
         <div class="tooltip" id="tooltipWeek">
           <div>📅 <strong>WEEK BREAKDOWN:</strong></div>
           <div id="tipWeekDeliv">📦 Deliveries: 0 Tix</div>
@@ -599,16 +563,15 @@
           <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
           <div id="tipWeekLogin">🎁 Daily Login: 0 Tix</div>
         </div>
-        <div class="stat-title" style="color: #b45309;">📅 THIS WEEK'S PROGRESS</div>
-        <div id="statWeekTickets" class="stat-val" style="color: #d97706;">0 Tickets</div>
+        <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK'S PROGRESS</div>
+        <div id="statWeekTickets" class="stat-val" style="color: #D2691E;">0 Tickets</div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Week Cost Spent:</span><strong id="statWeekCost" style="color:#8b4513;">0.000 SFL</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Week Efficiency:</span><strong id="statWeekRatio" style="color:#2e7d32;">0.000 SFL / Ticket</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Week Cost Spent:</span><strong id="statWeekCost" style="color:#8B4513;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Week Efficiency:</span><strong id="statWeekRatio" style="color:#2E7D32;">0.000 SFL / Ticket</strong></div>
         </div>
       </div>
 
-      <!-- Done Today -->
-      <div id="boxTodayTickets" class="stat-box" style="border-color: #16a34a;">
+      <div id="boxTodayTickets" class="stat-box" style="border-color: #4CAF50;">
         <div class="tooltip" id="tooltipToday">
           <div>✨ <strong>TODAY'S BREAKDOWN:</strong></div>
           <div id="tipTodayDeliv">📦 Deliveries: 0 Tix</div>
@@ -617,110 +580,104 @@
           <div id="tipTodayChore">🧹 Chores: 0 Tix</div>
           <div id="tipTodayLogin">🎁 Daily Login: 0 Tix</div>
         </div>
-        <div class="stat-title" style="color: #15803d;">✨ DONE TODAY</div>
-        <div id="statEarnedTickets" class="stat-val" style="color: #16a34a;">0 Tickets</div>
+        <div class="stat-title" style="color: #2E7D32;">✨ DONE TODAY</div>
+        <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0 Tickets</div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Today Cost Spent:</span><strong id="statEarnedCost" style="color:#16a34a;">0.000 SFL</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Cost / Ticket Ratio:</span><strong id="statEarnedRatio" style="color:#16a34a;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Today Cost Spent:</span><strong id="statEarnedCost" style="color:#2E7D32;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Flower / Ticket Ratio:</span><strong id="statEarnedRatio" style="color:#2E7D32;">0.000 SFL / Ticket</strong></div>
         </div>
       </div>
 
-      <!-- Chapter Target -->
-      <div class="stat-box" style="border-color: #8e44ad; cursor: default;">
-        <div class="stat-title" style="color: #8e44ad;">🎯 CHAPTER END GOAL TARGET</div>
-        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 75px; padding: 4px; font-size: 13px; font-weight: 900; color: #8e44ad; border-color: #8e44ad;" />
-          <span style="font-size: 11px; font-weight: 900; color: #8e44ad;">Tix in</span>
-          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 50px; padding: 4px; font-size: 13px; font-weight: 900; color: #8e44ad; border-color: #8e44ad;" />
-          <span style="font-size: 11px; font-weight: 900; color: #8e44ad;">Wks</span>
+      <div class="stat-box" style="border-color: #8E44AD; cursor: default;">
+        <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER END GOAL TARGET</div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 85px; padding: 4px 6px; font-size: 14px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
+          <span style="font-size: 12px; font-weight: 900; color: #8E44AD;">Tix in</span>
+          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 60px; padding: 4px 6px; font-size: 14px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
+          <span style="font-size: 12px; font-weight: 900; color: #8E44AD;">Weeks</span>
         </div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Remaining:</span><strong id="statGoalRemaining" style="color:#ea580c;">0 Tickets</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Pace / Wk:</span><strong id="statGoalPerWeek" style="color:#8e44ad;">0 Tickets / Wk</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Remaining Needed:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Target per Week:</span><strong id="statGoalPerWeek" style="color:#8E44AD;">0 Tickets / Wk</strong></div>
         </div>
       </div>
     </div>
 
-    <!-- 4 Activity Category Overview Cards -->
     <div class="overview-grid">
-      <!-- NPC Deliveries -->
       <div class="overview-card">
         <div class="overview-header">
           <span>📦 NPC DELIVERIES</span>
           <span id="deliveriesCount" class="overview-count">0 Orders</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
           <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
 
-      <!-- Bounties -->
       <div class="overview-card">
         <div class="overview-header">
           <span>📜 BOUNTIES</span>
           <span id="bountiesCount" class="overview-count">0 Items</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
           <button onclick="openColumnHistoryModal('bounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
 
-      <!-- Animal Bounties -->
       <div class="overview-card">
         <div class="overview-header">
           <span>🐄 ANIMAL BOUNTIES</span>
           <span id="animalBountiesCount" class="overview-count">0 Animals</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
           <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
 
-      <!-- Chores -->
       <div class="overview-card">
         <div class="overview-header">
           <span>🧹 CHORES</span>
           <span id="choresCount" class="overview-count">0 Tasks</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1;">📋 OVERVIEW</button>
           <button onclick="openColumnHistoryModal('chore')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
     </div>
 
-    <!-- 📊 Weekly Progression Chart Section -->
+    <!-- 📊 WEEKLY PROGRESSION CHART PANEL -->
     <div class="chart-panel">
       <div class="chart-header">
         <div class="chart-title">
           <span>📈 WEEKLY TICKETS PROGRESSION</span>
-          <span id="chartSummaryBadge" class="badge" style="background:#e8f5e9; color:#2e7d32; font-size:11px; padding:3px 8px; border-radius:6px; border:1px solid #4caf50;">0 WEEKS RECORDED</span>
+          <span id="chartSummaryBadge" class="badge" style="background:#E8F5E9; color:#2E7D32; font-size:11px;">0 WEEKS RECORDED</span>
         </div>
         <div class="chart-legend">
-          <div class="legend-item"><div class="legend-box" style="background:#4caf50;"></div><span>Completed</span></div>
-          <div class="legend-item"><div class="legend-box" style="background:#d97706;"></div><span>Current Week</span></div>
-          <div class="legend-item"><div class="legend-box" style="background:#e0e0e0; border:1px dashed #9e9e9e;"></div><span>Target Pace</span></div>
+          <div class="legend-item"><div class="legend-box" style="background:#4CAF50;"></div><span>Completed</span></div>
+          <div class="legend-item"><div class="legend-box" style="background:#D2691E;"></div><span>Current Week</span></div>
+          <div class="legend-item"><div class="legend-box" style="background:#E0E0E0; border:1px dashed #9E9E9E;"></div><span>Target Pace</span></div>
         </div>
       </div>
       <div class="chart-container" id="weeklyChartContainer">
-        <p style="color:#8c7853; font-size:12px; font-weight:800; text-align:center; padding: 20px 0;">Loading weekly chart data...</p>
+        <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 20px 0;">Loading weekly chart data...</p>
       </div>
     </div>
   </div>
 
-  <!-- Guide Modal -->
+  <!-- Updated Comprehensive Guide Modal -->
   <div id="guideModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-family:'Fredoka',sans-serif; font-size: 16px; font-weight: 700; color: #fff8dc;">📖 CHAPTER TRACKER GUIDE</h3>
-        <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+        <h3 style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📖 CHAPTER TRACKER GUIDE</h3>
+        <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div class="guide-card" style="background:#f0fdf4; border-color:#16a34a;">
-          <div class="guide-card-title" style="color:#166534;">💾 1. SAVE IN CLOUD VAULT</div>
+        <div class="guide-card" style="background:#E8F5E9; border-color:#2E7D32;">
+          <div class="guide-card-title" style="color:#1B5E20;">💾 1. SAVE IN CLOUD VAULT</div>
           <div class="guide-card-text">
             • Click <strong>☁️ SAVE IN CLOUD</strong> anytime you make changes to securely sync your completed deliveries, chores, bounties, and tickets to your database vault.
           </div>
@@ -759,43 +716,41 @@
     </div>
   </div>
 
-  <!-- Category Summary Modal -->
   <div id="categorySummaryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="categorySummaryTitle" style="font-family:'Fredoka',sans-serif; font-size: 16px; font-weight: 700; color: #fff8dc;">📋 SUMMARY OVERVIEW</h3>
-        <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+        <h3 id="categorySummaryTitle" style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📋 SUMMARY OVERVIEW</h3>
+        <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="background:#fefce8; padding:10px 14px; border:2px solid #d97706; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:12px; font-weight:900; color:#8b4513;">TICKED TOTALS:</span>
-          <span id="categorySummaryTotals" style="font-size:13px; font-weight:900; color:#2e7d32;">0 Tickets | 0.000 SFL</span>
+        <div style="background:#FFFACD; padding:12px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="categorySummaryTotals" style="font-size:13px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
         </div>
-        <div id="categorySummaryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-          <p style="font-size: 13px; color: #8c7853; font-weight: 800;">Loading summary...</p>
+        <div id="categorySummaryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+          <p style="font-size: 13px; color: #8C7853; font-weight: bold;">Loading summary...</p>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Column History / Edit Modal -->
   <div id="columnHistoryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 id="columnHistoryTitle" style="font-family:'Fredoka',sans-serif; font-size: 16px; font-weight: 700; color: #fff8dc;">📜 EDIT / HISTORY</h3>
-        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+        <h3 id="columnHistoryTitle" style="font-size: 15px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
+        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 5px 10px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="background:#fefce8; padding:10px 14px; border:2px solid #d97706; border-radius:10px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:12px; font-weight:900; color:#8b4513;">TICKED TOTALS:</span>
-          <span id="columnHistoryStats" style="font-size:13px; font-weight:900; color:#2e7d32;">0 Tickets | 0.000 SFL</span>
+        <div style="background:#FFFACD; padding:12px; border:2px solid #D2691E; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="columnHistoryStats" style="font-size:13px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
         </div>
 
-        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; background: #f0fdf4; padding: 10px; border: 2px solid #16a34a; border-radius: 10px;">
-          <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 12px; flex: 1; min-width: 130px;">
+        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 10px; align-items: center; background: #E8F5E9; padding: 12px; border: 2px solid #2E7D32; border-radius: 8px;">
+          <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 8px 12px; font-size: 12px; flex: 1; min-width: 140px;">
             <option value="">👤 ALL NPCS</option>
           </select>
-          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 12px; flex: 1; min-width: 130px; background:#fffdf5; border:2px solid #8b5a2b;">
+          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 8px 12px; font-size: 12px; flex: 1; min-width: 140px; background:#FFF8DC; border:2px solid #8B5A2B;">
             <option value="">📅 ALL WEEKS</option>
             <option value="w1">Week 1 (Aug 10 - Aug 16)</option>
             <option value="w2">Week 2 (Aug 17 - Aug 23)</option>
@@ -812,8 +767,8 @@
           </select>
         </div>
 
-        <div id="columnHistoryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-          <p style="font-size: 13px; color: #8c7853; font-weight: 800;">No history found.</p>
+        <div id="columnHistoryBody" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+          <p style="font-size: 13px; color: #8C7853; font-weight: bold;">No history found.</p>
         </div>
       </div>
     </div>
