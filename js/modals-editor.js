@@ -120,7 +120,7 @@ export function renderColumnHistoryModalList() {
       <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
         ${weekOptionsHtml}
       </select>
-      <input type="number" step="0.01" id="addModalCost" placeholder="Cost SFL" style="width:70px; padding:4px; font-size:11px;" />
+      <input type="number" step="0.001" id="addModalCost" placeholder="Cost SFL" style="width:75px; padding:4px; font-size:11px;" />
       <input type="number" id="addModalTickets" placeholder="Tickets" style="width:65px; padding:4px; font-size:11px;" />
       <button onclick="addNewItemFromModal()" class="btn btn-sm btn-wood" style="background:#2E7D32; border-color:#1B5E20; color:#fff; padding:4px 10px; font-weight:bold;">Add</button>
     </div>
@@ -168,7 +168,7 @@ export function renderColumnHistoryModalList() {
       });
     });
 
-    // 2. Archived / Past Deliveries
+    // 2. Archived Deliveries
     (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
@@ -314,7 +314,7 @@ export function renderColumnHistoryModalList() {
         </label>
         <div style="display:flex; align-items:center; gap:6px;">
           <span>SFL:</span>
-          <input type="number" step="0.01" value="${r.cost}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:60px; padding:2px; font-size:10px;" />
+          <input type="number" step="0.001" value="${r.cost}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:65px; padding:2px; font-size:10px;" />
           <span>Tickets:</span>
           <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Yield" />
           <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
