@@ -35,6 +35,7 @@ function formatRequestedItems(items) {
 }
 
 function resolveItemDate(item) {
+  if (item.weekId) return item.weekId;
   if (item.completedDate) return item.completedDate;
   if (item.completedAt) {
     const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
@@ -43,14 +44,16 @@ function resolveItemDate(item) {
       return new Date(ms).toISOString().split('T')[0];
     }
   }
-  if (item.weekId) return item.weekId;
   return new Date().toISOString().split('T')[0];
 }
 
-function getWeekNumber(dateStr) {
-  if (!dateStr) return 2;
+function getWeekNumber(dateOrWeekStr) {
+  if (!dateOrWeekStr) return 2;
+  if (typeof dateOrWeekStr === 'string' && dateOrWeekStr.startsWith('w')) {
+    return parseInt(dateOrWeekStr.replace('w', ''), 10) || 1;
+  }
   const baseW1 = new Date('2026-08-10T00:00:00.000Z').getTime();
-  const targetTime = new Date(`${dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00.000Z'}`).getTime();
+  const targetTime = new Date(`${dateOrWeekStr.includes('T') ? dateOrWeekStr : dateOrWeekStr + 'T00:00:00.000Z'}`).getTime();
   const diffWeeks = Math.floor((targetTime - baseW1) / (7 * 24 * 60 * 60 * 1000)) + 1;
   return Math.max(1, Math.min(12, diffWeeks));
 }
@@ -137,8 +140,8 @@ export function renderColumnHistoryModalList() {
     (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
-      const itemWeekNum = getWeekNumber(dateDisplay);
-      const key = `${(item.id || itemName).toLowerCase()}_${item.completedAt || ''}_${item.isManual ? 'm' : 'l'}`;
+      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
+      const key = `${(item.id || itemName).toLowerCase()}_${item.weekId || item.completedAt || ''}_${item.isManual ? 'm' : 'l'}`;
 
       if (seenDeliveries.has(key)) return;
       seenDeliveries.add(key);
@@ -168,12 +171,12 @@ export function renderColumnHistoryModalList() {
       });
     });
 
-    // 2. Archived Deliveries
+    // 2. Archived / Past Deliveries
     (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
-      const itemWeekNum = getWeekNumber(dateDisplay);
-      const key = `${(item.id || itemName).toLowerCase()}_${item.completedAt || ''}_${item.isManual ? 'm' : 'l'}`;
+      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
+      const key = `${(item.id || itemName).toLowerCase()}_${item.weekId || item.completedAt || ''}_${item.isManual ? 'm' : 'l'}`;
 
       if (seenDeliveries.has(key)) return;
       seenDeliveries.add(key);
@@ -237,7 +240,7 @@ export function renderColumnHistoryModalList() {
 
     Array.from(allItemsMap.values()).forEach(({ item, weekId, idx, source }) => {
       const dateDisplay = resolveItemDate(item);
-      const itemWeekNum = getWeekNumber(weekId || dateDisplay);
+      const itemWeekNum = getWeekNumber(item.weekId || weekId || dateDisplay);
 
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
@@ -339,7 +342,7 @@ export async function addNewItemFromModal() {
   const baseMonday = new Date('2026-08-10T00:00:00.000Z');
   baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
   const targetWeekId = getMondayBasedWeekId(baseMonday);
-  const todayDateStr = new Date().toISOString().split('T')[0];
+  const targetWeekTimestamp = baseMonday.getTime();
 
   if (type === 'delivery') {
     const newDeliv = {
@@ -351,8 +354,8 @@ export async function addNewItemFromModal() {
       itemsCost: costInput,
       checked: true,
       completed: true,
-      completedAt: Date.now(),
-      completedDate: todayDateStr,
+      completedAt: targetWeekTimestamp,
+      completedDate: targetWeekId,
       isManual: true,
       weekId: targetWeekId
     };
@@ -376,8 +379,8 @@ export async function addNewItemFromModal() {
       itemsCost: costInput,
       checked: true,
       completed: true,
-      completedAt: Date.now(),
-      completedDate: todayDateStr,
+      completedAt: targetWeekTimestamp,
+      completedDate: targetWeekId,
       isManual: true,
       weekId: targetWeekId
     };
@@ -400,8 +403,8 @@ export async function addNewItemFromModal() {
       level: isAnimal ? 1 : undefined,
       checked: true,
       completed: true,
-      completedAt: Date.now(),
-      completedDate: todayDateStr,
+      completedAt: targetWeekTimestamp,
+      completedDate: targetWeekId,
       isManual: true,
       weekId: targetWeekId
     };
@@ -424,7 +427,7 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
     target.checked = newStatus;
     target.completed = newStatus;
     if (newStatus && !target.completedDate) {
-      target.completedDate = new Date().toISOString().split('T')[0];
+      target.completedDate = target.weekId || new Date().toISOString().split('T')[0];
     }
     renderColumnHistoryModalList();
     recalculateAll();
