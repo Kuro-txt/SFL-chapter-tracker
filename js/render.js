@@ -34,9 +34,9 @@ export function recalculateAll() {
     }
     if (Array.isArray(wkVal.bounties)) {
       wkVal.bounties.forEach(b => {
-        const bKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}_${b.completedAt || ''}`;
+        const bKey = b.id ? String(b.id) : `${(b.name || '').toLowerCase()}_${b.level || 0}`;
         const exists = weeks[normalizedId].bounties.some(existing => {
-          const exKey = existing.id ? String(existing.id) : `${(existing.name || '').toLowerCase()}_${existing.level || 0}_${existing.completedAt || ''}`;
+          const exKey = existing.id ? String(existing.id) : `${(existing.name || '').toLowerCase()}_${existing.level || 0}`;
           return exKey === bKey;
         });
         if (!exists) weeks[normalizedId].bounties.push(b);
@@ -44,9 +44,9 @@ export function recalculateAll() {
     }
     if (Array.isArray(wkVal.chores)) {
       wkVal.chores.forEach(c => {
-        const cKey = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}_${c.completedAt || ''}`;
+        const cKey = `${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
         const exists = weeks[normalizedId].chores.some(existing => {
-          const exKey = `${(existing.npc || '').toLowerCase()}_${(existing.task || existing.name || '').toLowerCase()}_${existing.completedAt || ''}`;
+          const exKey = `${(existing.npc || '').toLowerCase()}_${(existing.task || existing.name || '').toLowerCase()}`;
           return exKey === cKey;
         });
         if (!exists) weeks[normalizedId].chores.push(c);
@@ -191,7 +191,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Live & Archive Bounties
+  // 3. Live Bounties
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
@@ -228,37 +228,7 @@ export function recalculateAll() {
     }
   });
 
-  (state.globalData.archiveBounties || []).forEach((b, idx) => {
-    if (isTicked(b)) {
-      const key = `arch_bounty_${b.id || idx}`;
-      if (globallyProcessedItems.has(key)) return;
-      globallyProcessedItems.add(key);
-
-      const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const isManual = Boolean(b.isManual);
-      const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
-      if (finalTix <= 0) return;
-
-      const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
-      const isAnimal = isAnimalBounty(b);
-      const itemWeekMonday = getMondayBasedWeekId(b.weekId || currentWeekMonday);
-      const isThisWeek = (itemWeekMonday === currentWeekMonday);
-
-      if (isAnimal) {
-        totalAnimalBountyTix += finalTix;
-        if (isThisWeek) weekAnimalBountyTix += finalTix;
-      } else {
-        totalBountyTix += finalTix;
-        if (isThisWeek) weekBountyTix += finalTix;
-      }
-
-      totalSflCostAll += bCost;
-      if (isThisWeek) weekCostAll += bCost;
-      addWeeklyStat(itemWeekMonday, finalTix, bCost);
-    }
-  });
-
-  // 4. Live & Archive Chores
+  // 4. Live Chores
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
@@ -288,34 +258,10 @@ export function recalculateAll() {
     }
   });
 
-  (state.globalData.archiveChores || []).forEach((c, idx) => {
-    if (isTicked(c)) {
-      const key = `arch_chore_${c.npc || ''}_${idx}`;
-      if (globallyProcessedItems.has(key)) return;
-      globallyProcessedItems.add(key);
-
-      const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const isManual = Boolean(c.isManual);
-      const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
-      if (finalTix <= 0) return;
-
-      const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
-      const itemWeekMonday = getMondayBasedWeekId(c.weekId || currentWeekMonday);
-      const isThisWeek = (itemWeekMonday === currentWeekMonday);
-
-      totalChoreTix += finalTix;
-      if (isThisWeek) weekChoreTix += finalTix;
-
-      totalSflCostAll += cCost;
-      if (isThisWeek) weekCostAll += cCost;
-      addWeeklyStat(itemWeekMonday, finalTix, cCost);
-    }
-  });
-
-  // 5. Stored Weekly Chores & Bounties
+  // 5. Past Weeks Storage
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
-    const isCurrentWeek = (pastMonday === currentWeekMonday);
+    if (pastMonday === currentWeekMonday) return; // Skip current week as it is already processed in live
 
     (wk.bounties || []).forEach((b, idx) => {
       if (isTicked(b)) {
@@ -333,14 +279,11 @@ export function recalculateAll() {
 
         if (isAnimal) {
           totalAnimalBountyTix += finalTix;
-          if (isCurrentWeek) weekAnimalBountyTix += finalTix;
         } else {
           totalBountyTix += finalTix;
-          if (isCurrentWeek) weekBountyTix += finalTix;
         }
 
         totalSflCostAll += bCost;
-        if (isCurrentWeek) weekCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
       }
     });
@@ -359,16 +302,13 @@ export function recalculateAll() {
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
 
         totalChoreTix += finalTix;
-        if (isCurrentWeek) weekChoreTix += finalTix;
-
         totalSflCostAll += cCost;
-        if (isCurrentWeek) weekCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
     });
   });
 
-  // DAILY LOGIN IS ADDED ONLY TO TOTAL (NOT TO WEEK OR CHART)
+  // Calculate distinct aggregates
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
