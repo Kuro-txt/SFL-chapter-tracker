@@ -74,8 +74,6 @@ export default async function handler(req, res) {
         const initialVault = {
           farmId: userFarmId,
           archiveDeliveries: [],
-          archiveBounties: [],
-          archiveChores: [],
           cumulativeTickets: 0,
           cumulativeCost: 0,
           weeks: {},
@@ -141,8 +139,6 @@ export default async function handler(req, res) {
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [saveUsername]);
         let existingData = queryRes.rows.length > 0 ? queryRes.rows[0].vault_data : {
           archiveDeliveries: [],
-          archiveBounties: [],
-          archiveChores: [],
           cumulativeTickets: 0,
           cumulativeCost: 0,
           weeks: {},
@@ -165,9 +161,7 @@ export default async function handler(req, res) {
         if (body.deliveries) existingData.deliveries = body.deliveries;
         if (body.archiveDeliveries) existingData.archiveDeliveries = body.archiveDeliveries;
         if (body.bounties) existingData.bounties = body.bounties;
-        if (body.archiveBounties) existingData.archiveBounties = body.archiveBounties;
         if (body.chores) existingData.chores = body.chores;
-        if (body.archiveChores) existingData.archiveChores = body.archiveChores;
         if (body.milestones) existingData.milestones = body.milestones;
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), saveUsername]);
@@ -218,47 +212,7 @@ export default async function handler(req, res) {
           const currentWeekMonday = getMondayBasedWeekId();
           currentVault.farmId = farmId;
 
-          // 1. Archive Deliveries
-          if (!currentVault.archiveDeliveries) currentVault.archiveDeliveries = [];
-          if (currentVault.deliveries) {
-            currentVault.deliveries.forEach(d => {
-              const uniqueKey = `${d.id || d.from || d.name}_${d.completedAt || d.completedDate || ''}`;
-              const exists = currentVault.archiveDeliveries.some(ar => {
-                const arKey = `${ar.id || ar.from || ar.name}_${ar.completedAt || ar.completedDate || ''}`;
-                return arKey === uniqueKey;
-              });
-              if (!exists) {
-                currentVault.archiveDeliveries.push({ ...d, archiveKey: uniqueKey });
-              }
-            });
-          }
-
-          // 2. Archive Bounties
-          if (!currentVault.archiveBounties) currentVault.archiveBounties = [];
-          if (currentVault.bounties) {
-            currentVault.bounties.forEach(b => {
-              const uniqueKey = `${b.id || b.name}_${b.level || 0}_${b.completedAt || b.completedDate || ''}`;
-              const exists = currentVault.archiveBounties.some(ar => {
-                const arKey = `${ar.id || ar.name}_${ar.level || 0}_${ar.completedAt || ar.completedDate || ''}`;
-                return arKey === uniqueKey;
-              });
-              if (!exists) currentVault.archiveBounties.push({ ...b, archiveKey: uniqueKey });
-            });
-          }
-
-          // 3. Archive Chores
-          if (!currentVault.archiveChores) currentVault.archiveChores = [];
-          if (currentVault.chores) {
-            currentVault.chores.forEach(c => {
-              const uniqueKey = `${c.npc || ''}_${c.task || c.name || ''}_${c.completedAt || c.completedDate || ''}`;
-              const exists = currentVault.archiveChores.some(ar => {
-                const arKey = `${ar.npc || ''}_${ar.task || ar.name || ''}_${ar.completedAt || ar.completedDate || ''}`;
-                return arKey === uniqueKey;
-              });
-              if (!exists) currentVault.archiveChores.push({ ...c, archiveKey: uniqueKey });
-            });
-          }
-
+          // Keep live deliveries fresh from API + manual entries
           const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
           currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
 
