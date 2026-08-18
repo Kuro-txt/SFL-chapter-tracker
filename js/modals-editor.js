@@ -47,6 +47,14 @@ function resolveItemDate(item) {
   return new Date().toISOString().split('T')[0];
 }
 
+function getWeekNumber(dateStr) {
+  if (!dateStr) return 2;
+  const baseW1 = new Date('2026-08-10T00:00:00.000Z').getTime();
+  const targetTime = new Date(`${dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00.000Z'}`).getTime();
+  const diffWeeks = Math.floor((targetTime - baseW1) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.max(1, Math.min(12, diffWeeks));
+}
+
 export function openColumnHistoryModal(type) {
   state.activeColumnType = type;
   let title = '📜 BOUNTIES EDIT / HISTORY';
@@ -57,14 +65,15 @@ export function openColumnHistoryModal(type) {
   setElemText('columnHistoryTitle', title);
 
   const filterContainer = document.getElementById('editFilterContainer');
-  const searchInput = document.getElementById('editSearchFilter');
   const npcDropdown = document.getElementById('editNpcDropdown');
+  const weekDropdown = document.getElementById('editWeekFilterDropdown');
 
-  if (searchInput) searchInput.value = '';
+  if (filterContainer) filterContainer.style.display = 'flex';
+  if (weekDropdown) weekDropdown.value = '';
 
   if (type === 'delivery') {
-    if (filterContainer) filterContainer.style.display = 'flex';
     if (npcDropdown) {
+      npcDropdown.style.display = 'block';
       const npcSet = new Set();
       (state.globalData?.deliveries || []).forEach(d => {
         const name = d.from || d.name;
@@ -82,7 +91,7 @@ export function openColumnHistoryModal(type) {
       npcDropdown.value = '';
     }
   } else {
-    if (filterContainer) filterContainer.style.display = 'none';
+    if (npcDropdown) npcDropdown.style.display = 'none';
   }
 
   renderColumnHistoryModalList();
@@ -117,18 +126,21 @@ export function renderColumnHistoryModalList() {
     </div>
   </div>`;
 
+  const selectedWeekFilter = document.getElementById('editWeekFilterDropdown')?.value || '';
+  const selectedWeekNum = selectedWeekFilter ? parseInt(selectedWeekFilter.replace('w', ''), 10) : null;
+
   if (type === 'delivery') {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
-    const searchFilter = (document.getElementById('editSearchFilter')?.value || '').toLowerCase().trim();
 
-    // Process live deliveries
+    // 1. Live Deliveries
     (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
       if (item.isManual) return;
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
+      const itemWeekNum = getWeekNumber(dateDisplay);
 
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
-      if (searchFilter && !itemName.toLowerCase().includes(searchFilter) && !dateDisplay.toLowerCase().includes(searchFilter)) return;
+      if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
       let finalTix = computeYield(baseTix, true, false);
@@ -140,6 +152,7 @@ export function renderColumnHistoryModalList() {
         source: 'live',
         itemIdx,
         date: dateDisplay,
+        weekNum: itemWeekNum,
         name: itemName,
         requestedItems: formatRequestedItems(item.itemDetails || item.items),
         cost: item.cost || item.itemsCost || 0,
@@ -151,24 +164,25 @@ export function renderColumnHistoryModalList() {
       });
     });
 
-    // Process archived deliveries
+    // 2. Archived Deliveries
     (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
+      const itemWeekNum = getWeekNumber(dateDisplay);
 
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
-      if (searchFilter && !itemName.toLowerCase().includes(searchFilter) && !dateDisplay.toLowerCase().includes(searchFilter)) return;
+      if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
       const isManual = Boolean(item.isManual);
       const finalTix = computeYield(baseTix, true, isManual);
-
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
       records.push({
         source: 'archive',
         itemIdx,
         date: dateDisplay,
+        weekNum: itemWeekNum,
         name: itemName,
         requestedItems: formatRequestedItems(item.itemDetails || item.items),
         cost: item.cost || item.itemsCost || 0,
@@ -185,7 +199,8 @@ export function renderColumnHistoryModalList() {
 
     const allItemsMap = new Map();
     const weeks = state.globalData?.cloudHistory?.weeks || {};
-    
+
+    // 1. Process items in weekly historical buckets
     Object.entries(weeks).forEach(([wkId, wk]) => {
       const targetArr = isChore ? (wk.chores || []) : (wk.bounties || []);
       targetArr.forEach((item, idx) => {
@@ -195,6 +210,18 @@ export function renderColumnHistoryModalList() {
       });
     });
 
+    // 2. Process archive list for this type
+    const archiveArr = isChore ? (state.globalData?.archiveChores || []) : (state.globalData?.archiveBounties || []);
+    archiveArr.forEach((item, idx) => {
+      if (!isChore && isAnimalBounty(item) !== isAnimal) return;
+      const wkId = item.weekId || getMondayBasedWeekId(resolveItemDate(item));
+      const dedupeKey = `archived_${wkId}_${idx}_${item.id || (item.name || item.task || '').toLowerCase()}`;
+      if (!allItemsMap.has(dedupeKey)) {
+        allItemsMap.set(dedupeKey, { item, weekId: wkId, idx, source: 'archive' });
+      }
+    });
+
+    // 3. Process live array
     const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
     const currentWeekId = getMondayBasedWeekId();
     liveArr.forEach((item, idx) => {
@@ -206,19 +233,16 @@ export function renderColumnHistoryModalList() {
     });
 
     Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId, idx, source }]) => {
+      const dateDisplay = resolveItemDate(item);
+      const itemWeekNum = getWeekNumber(weekId || dateDisplay);
+
+      if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
+
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
       const isManual = Boolean(item.isManual);
       const finalTix = computeYield(baseTix, isChore, isManual);
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-
-      let weekDisplay = 'Week 2';
-      if (weekId) {
-        const baseW1 = new Date('2026-08-10T00:00:00.000Z').getTime();
-        const itemTime = new Date(`${weekId}T00:00:00.000Z`).getTime();
-        const diffWeeks = Math.round((itemTime - baseW1) / (7 * 24 * 60 * 60 * 1000)) + 1;
-        if (diffWeeks >= 1 && diffWeeks <= 12) weekDisplay = `Week ${diffWeeks}`;
-      }
 
       records.push({
         weekId,
@@ -231,7 +255,8 @@ export function renderColumnHistoryModalList() {
         displayTickets: finalTix,
         checked: isChecked,
         status: isChecked ? '✨ Done' : '⏳ Active',
-        weekDisplay,
+        date: dateDisplay,
+        weekNum: itemWeekNum,
         isManual
       });
     });
@@ -243,14 +268,13 @@ export function renderColumnHistoryModalList() {
   let totalTickedCost = 0;
 
   if (records.length === 0) {
-    bodyEl.innerHTML = addFormHtml + '<p style="font-size: 12px; color: #8C7853; font-weight: bold; margin-top:10px;">No records found.</p>';
+    bodyEl.innerHTML = addFormHtml + '<p style="font-size: 12px; color: #8C7853; font-weight: bold; margin-top:10px;">No records found for selected filter.</p>';
   } else {
     bodyEl.innerHTML = addFormHtml + records.map(r => {
       if (r.checked) {
         totalTickedTickets += r.displayTickets;
         totalTickedCost += r.cost;
       }
-      const labelId = r.date || r.weekDisplay || 'Week';
       const changeHandler = type === 'delivery'
         ? `toggleDeliveryLogCheck('${r.source}', ${r.itemIdx})`
         : `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey}')`;
@@ -280,7 +304,7 @@ export function renderColumnHistoryModalList() {
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; padding-right:8px;">
           <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
           <div>
-            <span style="font-weight:bold; color:#8B4513;">📅 ${labelId} (${r.status})</span><br/>
+            <span style="font-weight:bold; color:#8B4513;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
             ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}
             ${itemsRow}
           </div>
@@ -350,6 +374,7 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: Date.now(),
+      completedDate: todayDateStr,
       isManual: true,
       weekId: targetWeekId
     };
@@ -373,6 +398,7 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: Date.now(),
+      completedDate: todayDateStr,
       isManual: true,
       weekId: targetWeekId
     };
@@ -426,6 +452,9 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
   if (source === 'week') {
     const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
     if (wk) targetItem = isChore ? wk.chores?.[idx] : wk.bounties?.[idx];
+  } else if (source === 'archive') {
+    const archiveArr = isChore ? state.globalData?.archiveChores : state.globalData?.archiveBounties;
+    if (archiveArr) targetItem = archiveArr[idx];
   } else if (source === 'current') {
     targetItem = isChore ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
   }
@@ -470,6 +499,9 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     if (source === 'week') {
       const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
       target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+    } else if (source === 'archive') {
+      const archiveArr = type === 'chore' ? state.globalData?.archiveChores : state.globalData?.archiveBounties;
+      target = archiveArr?.[idx];
     } else if (source === 'current') {
       target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
     }
@@ -510,13 +542,20 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
     const wkId = parts[1];
     const idx = parseInt(parts[2], 10);
 
+    let target = null;
     if (source === 'week') {
       const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
-      const target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
-      if (target) { target.cost = costVal; target.itemsCost = costVal; }
+      target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+    } else if (source === 'archive') {
+      const archiveArr = type === 'chore' ? state.globalData?.archiveChores : state.globalData?.archiveBounties;
+      target = archiveArr?.[idx];
     } else if (source === 'current') {
-      const target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
-      if (target) { target.cost = costVal; target.itemsCost = costVal; }
+      target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+    }
+
+    if (target) {
+      target.cost = costVal;
+      target.itemsCost = costVal;
     }
   }
 
@@ -539,6 +578,9 @@ export async function deleteWeeklyItem(weekId, mapKey) {
       if (isChore) wk.chores?.splice(idx, 1);
       else wk.bounties?.splice(idx, 1);
     }
+  } else if (source === 'archive') {
+    const archiveArr = isChore ? state.globalData?.archiveChores : state.globalData?.archiveBounties;
+    if (archiveArr) archiveArr.splice(idx, 1);
   } else if (source === 'current') {
     if (isChore) state.globalData?.chores?.splice(idx, 1);
     else state.globalData?.bounties?.splice(idx, 1);
