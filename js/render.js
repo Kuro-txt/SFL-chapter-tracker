@@ -88,7 +88,7 @@ export function recalculateAll() {
   let todayCostAll = 0;
 
   const isTicked = (item) => {
-    if (!item) return false;
+    if (!item || item.isSkipped) return false;
     if (item.checked !== undefined) return Boolean(item.checked);
     return Boolean(item.completed);
   };
@@ -167,7 +167,7 @@ export function recalculateAll() {
   // 2. Archived / Manual Deliveries
   (state.globalData.archiveDeliveries || []).forEach((d, idx) => {
     if (isTicked(d)) {
-      const uniqueKey = `archive_${d.id || d.from || d.name}_${idx}`;
+      const uniqueKey = `archive_${d.id || d.from || d.name}_${d.completedAt || idx}`;
       if (globallyProcessedItems.has(uniqueKey)) return;
       globallyProcessedItems.add(uniqueKey);
 
@@ -355,7 +355,6 @@ export function recalculateAll() {
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
-  // Target Goal Calculation: Total Goal / Total Weeks
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
