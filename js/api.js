@@ -78,9 +78,10 @@ export async function loadTrackerData() {
 
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      if (data.vaultData.archiveDeliveries) state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
-      if (data.vaultData.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
-      if (data.vaultData.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
+      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
+      state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
+      state.globalData.archiveChores = data.vaultData.archiveChores || [];
+      state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
       
       state.globalData.cloudHistory = {
         logs: data.vaultData.logs || [],
@@ -148,7 +149,7 @@ export async function saveProgressToCloudKV(silent = false) {
 
   // Live Deliveries
   (state.globalData?.deliveries || []).forEach(d => {
-    const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+    const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     if (isTicked) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       let yieldAmt = base;
@@ -176,7 +177,7 @@ export async function saveProgressToCloudKV(silent = false) {
 
   // Archive Deliveries
   (state.globalData?.archiveDeliveries || []).forEach(d => {
-    const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+    const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     if (isTicked) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const yieldAmt = d.isManual ? base : computeYield(base, true, false);
@@ -195,7 +196,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // Live & Archive Bounties
+  // Bounties
   (state.globalData?.bounties || []).forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
     if (isTicked) {
@@ -209,34 +210,8 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  (state.globalData?.archiveBounties || []).forEach(b => {
-    const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
-    if (isTicked) {
-      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const yieldAmt = b.isManual ? base : (base + boostCount);
-      const lineCost = (b.itemsCost || b.cost || 0);
-      calculatedTotalTickets += yieldAmt;
-      calculatedTotalCost += lineCost;
-      totalEarnedTix += yieldAmt;
-      totalEarnedCost += lineCost;
-    }
-  });
-
-  // Live & Archive Chores
+  // Chores
   (state.globalData?.chores || []).forEach(c => {
-    const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
-    if (isTicked) {
-      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
-      const lineCost = (c.itemsCost || c.cost || 0);
-      calculatedTotalTickets += yieldAmt;
-      calculatedTotalCost += lineCost;
-      totalEarnedTix += yieldAmt;
-      totalEarnedCost += lineCost;
-    }
-  });
-
-  (state.globalData?.archiveChores || []).forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
     if (isTicked) {
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -281,7 +256,8 @@ export async function saveProgressToCloudKV(silent = false) {
     archiveBounties: state.globalData?.archiveBounties || [],
     chores: state.globalData?.chores || [],
     archiveChores: state.globalData?.archiveChores || [],
-    milestones: state.globalData?.milestones || {}
+    milestones: state.globalData?.milestones || {},
+    npcSnapshots: state.globalData?.npcSnapshots || state.currentVaultData?.npcSnapshots || {}
   };
 
   try {
@@ -300,9 +276,10 @@ export async function saveProgressToCloudKV(silent = false) {
         logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {}
       };
-      if (data.vaultData.archiveDeliveries) state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
-      if (data.vaultData.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
-      if (data.vaultData.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
+      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
+      state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
+      state.globalData.archiveChores = data.vaultData.archiveChores || [];
+      state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
     }
 
     recalculateAll();
