@@ -106,14 +106,17 @@ export function resolveAnimalLevel(item) {
 
 export function isLoginClaimedToday() {
   const todayUtc = new Date().toISOString().split('T')[0];
-  const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
+  const lastClaimed = state.currentVaultData?.lastDailyLoginDate || localStorage.getItem('sfl_daily_login_last_date');
   return lastClaimed === todayUtc;
 }
 
 export async function checkAndAutoClaimDailyLogin() {
   const todayUtc = new Date().toISOString().split('T')[0];
-  const lastClaimed = localStorage.getItem('sfl_daily_login_last_date');
-  let count = parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10);
+  const lastClaimed = state.currentVaultData?.lastDailyLoginDate || localStorage.getItem('sfl_daily_login_last_date');
+  
+  let count = state.currentVaultData?.dailyLoginTickets !== undefined
+    ? parseInt(state.currentVaultData.dailyLoginTickets, 10)
+    : parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10);
 
   const loginInput = document.getElementById('dailyLoginCount');
   const loginCheck = document.getElementById('dailyLoginCheck');
@@ -122,6 +125,10 @@ export async function checkAndAutoClaimDailyLogin() {
     count += 1;
     localStorage.setItem('sfl_daily_login_count', count);
     localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+    if (state.currentVaultData) {
+      state.currentVaultData.dailyLoginTickets = count;
+      state.currentVaultData.lastDailyLoginDate = todayUtc;
+    }
 
     if (loginInput) loginInput.value = count;
     if (loginCheck) loginCheck.checked = true;
@@ -144,7 +151,10 @@ export async function handleDailyLoginToggle() {
   let count = parseInt(loginInput?.value || '0', 10);
 
   if (loginCheck?.checked) {
+    count += 1;
+    localStorage.setItem('sfl_daily_login_count', count);
     localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+    if (loginInput) loginInput.value = count;
   } else {
     count = Math.max(0, count - 1);
     localStorage.setItem('sfl_daily_login_count', count);
