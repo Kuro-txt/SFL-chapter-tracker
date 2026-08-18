@@ -2,7 +2,8 @@ import { pool, hashPassword } from './db.js';
 import { 
   extractPricesRecursive, 
   getMondayBasedWeekId, 
-  parseFarmData 
+  parseFarmData,
+  CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
 
 async function ensureTableExists(client) {
@@ -13,6 +14,111 @@ async function ensureTableExists(client) {
       vault_data JSONB NOT NULL
     );
   `);
+}
+
+export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
+  const currentWeekMonday = getMondayBasedWeekId();
+  if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
+  if (!vault.npcSnapshots) vault.npcSnapshots = {};
+
+  const previousDeliveries = vault.deliveries || [];
+  const incomingBoardMap = new Map();
+  parsedDeliveryList.forEach(d => {
+    const key = (d.from || d.name || '').toLowerCase().trim();
+    incomingBoardMap.set(key, d);
+  });
+
+  // Track each chapter NPC
+  Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
+    const npcClean = npcName.toLowerCase().trim();
+    const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
+    const prevStat = vault.npcSnapshots[npcClean] || { deliveryCount: currStat.deliveryCount, skippedCount: currStat.skippedCount, deliveryCompletedAt: currStat.deliveryCompletedAt };
+
+    const delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
+    const skipDelta = currStat.skippedCount - prevStat.skippedCount;
+
+    // Locate previously active unfulfilled order for this NPC
+    const prevActiveOrderIdx = previousDeliveries.findIndex(d => {
+      const dNpc = (d.from || d.name || '').toLowerCase().trim();
+      const isUnfulfilled = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+      return dNpc === npcClean && isUnfulfilled;
+    });
+
+    if (delivDelta > 0) {
+      const completionTime = currStat.deliveryCompletedAt || Date.now();
+      const completionDateStr = new Date(completionTime).toISOString().split('T')[0];
+
+      if (prevActiveOrderIdx !== -1) {
+        // Order #1: Mark active order as Completed (Ticked)
+        const prevOrder = previousDeliveries[prevActiveOrderIdx];
+        prevOrder.completed = true;
+        prevOrder.checked = true;
+        prevOrder.isSkipped = false;
+        prevOrder.completedAt = completionTime;
+        prevOrder.completedDate = completionDateStr;
+        prevOrder.weekId = getMondayBasedWeekId(completionTime);
+
+        // Move to Archive if not already there
+        const uniqueKey = `${prevOrder.id || prevOrder.from}_${prevOrder.completedAt}`;
+        if (!vault.archiveDeliveries.some(a => (a.id && a.id === prevOrder.id) || a.archiveKey === uniqueKey)) {
+          vault.archiveDeliveries.push({ ...prevOrder, archiveKey: uniqueKey });
+        }
+      }
+
+      // If delivDelta >= 2, Order #2 was completed in the background (Stacked Order)
+      if (delivDelta >= 2) {
+        for (let s = 1; s < delivDelta; s++) {
+          const stackedOrder = {
+            id: `stacked_${npcClean}_${completionTime}_${s}`,
+            from: npcName,
+            name: npcName,
+            baseTickets: defaultTix,
+            tickets: defaultTix,
+            cost: 0,
+            itemsCost: 0,
+            itemDetails: [],
+            items: {},
+            completed: true,
+            checked: true,
+            isSkipped: false,
+            isStacked: true,
+            completedAt: completionTime,
+            completedDate: completionDateStr,
+            weekId: getMondayBasedWeekId(completionTime),
+            isManual: false
+          };
+          vault.archiveDeliveries.push(stackedOrder);
+        }
+      }
+    } else if (skipDelta > 0) {
+      if (prevActiveOrderIdx !== -1) {
+        // Order Skipped (Unticked in history with tag)
+        const prevOrder = previousDeliveries[prevActiveOrderIdx];
+        prevOrder.isSkipped = true;
+        prevOrder.completed = false;
+        prevOrder.checked = false;
+        prevOrder.completedAt = Date.now();
+        prevOrder.completedDate = new Date().toISOString().split('T')[0];
+        prevOrder.weekId = currentWeekMonday;
+
+        const uniqueKey = `skip_${prevOrder.id || prevOrder.from}_${prevOrder.completedAt}`;
+        if (!vault.archiveDeliveries.some(a => a.archiveKey === uniqueKey)) {
+          vault.archiveDeliveries.push({ ...prevOrder, archiveKey: uniqueKey });
+        }
+      }
+    }
+
+    // Update snapshot baseline
+    vault.npcSnapshots[npcClean] = {
+      deliveryCount: currStat.deliveryCount,
+      skippedCount: currStat.skippedCount,
+      deliveryCompletedAt: currStat.deliveryCompletedAt
+    };
+  });
+
+  // Refresh live deliveries board
+  const existingManualDeliveries = previousDeliveries.filter(d => d.isManual);
+  vault.deliveries = [...parsedDeliveryList, ...existingManualDeliveries];
 }
 
 export default async function handler(req, res) {
@@ -33,10 +139,39 @@ export default async function handler(req, res) {
   const rawUsername = (req.query.username || '').trim();
   const username = rawUsername && rawUsername !== ':' ? rawUsername.toLowerCase().replace(/[^a-z0-9_]/g, '') : '';
 
+  const sflHeaders = {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Referer': 'https://sunflower-land.com/',
+    'Origin': 'https://sunflower-land.com'
+  };
+  if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
+
+  // RAW SFL API PROXY
+  if (action === 'rawSfl') {
+    try {
+      const response = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders });
+      const data = await response.json().catch(() => ({}));
+      return res.status(response.status).json(data);
+    } catch (err) {
+      return res.status(500).json({ error: `Raw Proxy Error: ${err.message}` });
+    }
+  }
+
+  // RAW PRICES PROXY
+  if (action === 'rawPrices') {
+    try {
+      const response = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const data = await response.json().catch(() => ({}));
+      return res.status(response.status).json(data);
+    } catch (err) {
+      return res.status(500).json({ error: `Prices Proxy Error: ${err.message}` });
+    }
+  }
+
   try {
     if (action === 'getVault') {
       if (!username) return res.status(200).json({ success: true, vaultData: null });
-
       let client;
       try {
         client = await pool.connect();
@@ -84,7 +219,8 @@ export default async function handler(req, res) {
           deliveries: [],
           bounties: [],
           chores: [],
-          milestones: {}
+          milestones: {},
+          npcSnapshots: {}
         };
 
         await client.query(
@@ -146,7 +282,8 @@ export default async function handler(req, res) {
           trackCost: 0,
           dailyLoginTickets: 0,
           lastDailyLoginDate: null,
-          milestones: {}
+          milestones: {},
+          npcSnapshots: {}
         };
 
         if (body.farmId) existingData.farmId = body.farmId;
@@ -163,6 +300,7 @@ export default async function handler(req, res) {
         if (body.bounties) existingData.bounties = body.bounties;
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
+        if (body.npcSnapshots) existingData.npcSnapshots = body.npcSnapshots;
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), saveUsername]);
         return res.status(200).json({ success: true, vaultData: existingData });
@@ -170,14 +308,6 @@ export default async function handler(req, res) {
         client.release();
       }
     }
-
-    const sflHeaders = {
-      'Accept': 'application/json, text/plain, */*',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Referer': 'https://sunflower-land.com/',
-      'Origin': 'https://sunflower-land.com'
-    };
-    if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
 
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => null),
@@ -212,9 +342,8 @@ export default async function handler(req, res) {
           const currentWeekMonday = getMondayBasedWeekId();
           currentVault.farmId = farmId;
 
-          // Keep live deliveries fresh from API + manual entries
-          const existingManualDeliveries = (currentVault.deliveries || []).filter(d => d.isManual);
-          currentVault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
+          // Reconcile stacked/completed/skipped deliveries with NPC counts
+          reconcileDeliveriesWithNpcs(currentVault, parsed.deliveryList, parsed.npcsData);
 
           const existingManualBounties = (currentVault.bounties || []).filter(b => b.isManual);
           currentVault.bounties = [...parsed.activeBounties, ...existingManualBounties];
@@ -254,6 +383,7 @@ export default async function handler(req, res) {
       milestones: parsed.liveMilestones,
       pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: currentVault ? currentVault.deliveries : parsed.deliveryList,
+      archiveDeliveries: currentVault ? currentVault.archiveDeliveries : [],
       bounties: currentVault ? currentVault.bounties : parsed.activeBounties,
       chores: currentVault ? currentVault.chores : parsed.choresList,
       vaultData: currentVault
