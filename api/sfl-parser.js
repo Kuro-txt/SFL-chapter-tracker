@@ -1,6 +1,5 @@
 import { SFL_RECIPES } from '../recipes.js';
 
-// The ONLY Chapter NPCs that reward Shiny Feathers & their exact base ticket yields
 export const CHAPTER_NPC_TICKETS = {
   "pumpkin pete": 1,
   "pumpkin' pete": 1,
@@ -20,17 +19,14 @@ export const CHAPTER_NPC_TICKETS = {
   "tywin": 10
 };
 
-// Strict helper to inspect all nested structures for Shiny Feathers
 export function extractRewardTickets(rewardObj) {
   if (!rewardObj || typeof rewardObj !== 'object') return 0;
-  
   let count = 0;
 
   function scan(obj) {
     if (!obj || typeof obj !== 'object') return;
     for (const [key, val] of Object.entries(obj)) {
       const cleanKey = key.toLowerCase().trim();
-
       if (
         cleanKey === 'shiny feather' ||
         cleanKey === 'shiny_feather' ||
@@ -45,7 +41,6 @@ export function extractRewardTickets(rewardObj) {
           count += parseInt(val, 10);
         }
       }
-
       if (val && typeof val === 'object' && !Array.isArray(val) && cleanKey !== 'coins' && cleanKey !== 'sfl') {
         scan(val);
       }
@@ -138,7 +133,6 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
   return 0;
 }
 
-// Week 2 anchor: August 17, 2026 onwards
 export function getMondayBasedWeekId(d) {
   let date;
   try {
@@ -174,16 +168,26 @@ export function getMondayBasedWeekId(d) {
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-  // 1. Deliveries: ONLY the 11 Chapter NPCs that reward Shiny Feathers
-  const deliveryList = [];
-  const validTicketNpcs = new Set();
+  // 1. Parse NPC Stats (Delivery, Skipped, CompletedAt, Chores)
+  const rawNpcs = farm.npcs || {};
+  const npcsData = {};
+  Object.entries(rawNpcs).forEach(([npcKey, npcVal]) => {
+    if (!npcVal || typeof npcVal !== 'object') return;
+    const cleanKey = npcKey.toLowerCase().trim();
+    npcsData[cleanKey] = {
+      deliveryCount: typeof npcVal.deliveryCount === 'number' ? npcVal.deliveryCount : 0,
+      skippedCount: typeof npcVal.skippedCount === 'number' ? npcVal.skippedCount : 0,
+      deliveryCompletedAt: typeof npcVal.deliveryCompletedAt === 'number' ? npcVal.deliveryCompletedAt : null,
+      choreCount: typeof npcVal.choreCount === 'number' ? npcVal.choreCount : 0
+    };
+  });
 
+  // 2. Deliveries: Chapter NPCs that reward Shiny Feathers
+  const deliveryList = [];
   (farm.delivery?.orders || []).forEach(order => {
     const npcClean = (order.from || '').toLowerCase().trim();
 
     if (CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
-      validTicketNpcs.add(npcClean);
-
       let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.rewardItems);
       if (totalTickets === 0) {
         totalTickets = CHAPTER_NPC_TICKETS[npcClean];
@@ -199,6 +203,7 @@ export function parseFarmData(farm, priceMap) {
       });
 
       const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
+      const npcStat = npcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
 
       deliveryList.push({
         id: order.id,
@@ -214,12 +219,15 @@ export function parseFarmData(farm, priceMap) {
         completed: isCompleted,
         checked: isCompleted,
         completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
-        isStacked: false
+        isStacked: false,
+        deliveryCountAtCreation: npcStat.deliveryCount,
+        skippedCountAtCreation: npcStat.skippedCount,
+        npcKey: npcClean
       });
     }
   });
 
-  // Milestones: ONLY for the valid Chapter NPCs
+  // Milestones
   const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
   const liveMilestones = {};
   Object.entries(rawMilestones).forEach(([npc, count]) => {
@@ -229,7 +237,7 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // Calendar Events (2x Double Delivery)
+  // Double Delivery
   const nowMs = Date.now();
   const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
   let isDoubleDeliveryActive = false;
@@ -243,7 +251,7 @@ export function parseFarmData(farm, priceMap) {
     });
   }
 
-  // 2. Bounties (Shiny Feathers only)
+  // 3. Bounties
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -276,16 +284,13 @@ export function parseFarmData(farm, priceMap) {
 
     items.forEach(b => {
       if (!b || typeof b !== 'object') return;
-
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
       let featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items);
-      
       if (featherCount === 0 && b.level !== undefined) {
         featherCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
       }
-
       if (featherCount <= 0) return;
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
@@ -296,13 +301,9 @@ export function parseFarmData(farm, priceMap) {
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
 
       let completionTime = null;
-      if (typeof b.completedAt === 'number') {
-        completionTime = b.completedAt;
-      } else if (typeof b.claimedAt === 'number') {
-        completionTime = b.claimedAt;
-      } else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) {
-        completionTime = completedMap[String(b.id)];
-      }
+      if (typeof b.completedAt === 'number') completionTime = b.completedAt;
+      else if (typeof b.claimedAt === 'number') completionTime = b.claimedAt;
+      else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) completionTime = completedMap[String(b.id)];
 
       activeBounties.push({
         id: b.id || uniqueKey,
@@ -320,7 +321,7 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 3. Chores (Shiny Feathers only)
+  // 4. Chores
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
 
@@ -360,6 +361,7 @@ export function parseFarmData(farm, priceMap) {
     liveMilestones,
     deliveryList,
     activeBounties,
-    choresList
+    choresList,
+    npcsData
   };
 }
