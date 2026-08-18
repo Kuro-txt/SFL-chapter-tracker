@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state, checkAndAutoClaimDailyLogin } from './state.js';
 import { recalculateAll } from './render.js';
 import { loadTrackerData } from './api.js';
 
@@ -91,6 +91,7 @@ export async function userLogin() {
       if (data.vaultData?.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
     }
 
+    await checkAndAutoClaimDailyLogin();
     recalculateAll();
     loadTrackerData();
   } catch (err) {
@@ -143,6 +144,8 @@ export async function checkSavedAuth() {
         if (data.vaultData.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
         if (data.vaultData.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
       }
+
+      await checkAndAutoClaimDailyLogin();
       recalculateAll();
     }
   } catch (e) {
