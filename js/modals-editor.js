@@ -154,6 +154,7 @@ export function renderColumnHistoryModalList() {
       if (item.hasDoubleBonus && !item.isManual) finalTix *= 2;
 
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
+      const isSkipped = Boolean(item.isSkipped);
 
       records.push({
         source: 'live',
@@ -163,10 +164,11 @@ export function renderColumnHistoryModalList() {
         name: itemName,
         requestedItems: formatRequestedItems(item.itemDetails || item.items),
         cost: item.cost || item.itemsCost || 0,
-        displayTickets: finalTix,
-        checked: isChecked,
-        status: isChecked ? '✨ Done' : '⏳ Active',
+        displayTickets: isSkipped ? 0 : finalTix,
+        checked: isChecked && !isSkipped,
+        status: isSkipped ? '✕ Skipped' : (isChecked ? '✨ Done' : '⏳ Active'),
         isStacked: item.isStacked || false,
+        isSkipped,
         isManual: Boolean(item.isManual)
       });
     });
@@ -188,6 +190,7 @@ export function renderColumnHistoryModalList() {
       const isManual = Boolean(item.isManual);
       const finalTix = computeYield(baseTix, true, isManual);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
+      const isSkipped = Boolean(item.isSkipped);
 
       records.push({
         source: 'archive',
@@ -197,10 +200,11 @@ export function renderColumnHistoryModalList() {
         name: itemName,
         requestedItems: formatRequestedItems(item.itemDetails || item.items),
         cost: item.cost || item.itemsCost || 0,
-        displayTickets: finalTix,
-        checked: isChecked,
-        status: isChecked ? '✨ Done' : '⏳ Active',
+        displayTickets: isSkipped ? 0 : finalTix,
+        checked: isChecked && !isSkipped,
+        status: isSkipped ? '✕ Skipped' : (isChecked ? '✨ Done' : '⏳ Active'),
         isStacked: item.isStacked || false,
+        isSkipped,
         isManual
       });
     });
@@ -301,6 +305,10 @@ export function renderColumnHistoryModalList() {
         ? `<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>`
         : '';
 
+      const skippedTag = r.isSkipped
+        ? `<span style="background:#FFEBEE; color:#C62828; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFCDD2; margin-left:4px;">✕ SKIPPED</span>`
+        : '';
+
       const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
       const itemsRow = (type === 'delivery' && r.requestedItems) 
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
@@ -311,7 +319,7 @@ export function renderColumnHistoryModalList() {
           <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
           <div>
             <span style="font-weight:bold; color:#8B4513;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
-            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}
+            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}${skippedTag}
             ${itemsRow}
           </div>
         </label>
@@ -354,6 +362,7 @@ export async function addNewItemFromModal() {
       itemsCost: costInput,
       checked: true,
       completed: true,
+      isSkipped: false,
       completedAt: targetWeekTimestamp,
       completedDate: targetWeekId,
       isManual: true,
@@ -426,8 +435,9 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
     const newStatus = !(target.checked !== undefined ? target.checked : Boolean(target.completed));
     target.checked = newStatus;
     target.completed = newStatus;
-    if (newStatus && !target.completedDate) {
-      target.completedDate = target.weekId || new Date().toISOString().split('T')[0];
+    if (newStatus) {
+      target.isSkipped = false;
+      if (!target.completedDate) target.completedDate = target.weekId || new Date().toISOString().split('T')[0];
     }
     renderColumnHistoryModalList();
     recalculateAll();
