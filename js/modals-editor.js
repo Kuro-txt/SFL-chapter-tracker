@@ -131,20 +131,24 @@ export function renderColumnHistoryModalList() {
 
   if (type === 'delivery') {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
+    const seenDeliveries = new Set();
 
-    // 1. Live Deliveries
+    // 1. Live active deliveries
     (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
-      if (item.isManual) return;
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
       const itemWeekNum = getWeekNumber(dateDisplay);
+      const dedupeKey = `${(item.id || itemName).toLowerCase()}_${item.completedAt || dateDisplay}_${item.isManual ? 'man' : 'live'}`;
+
+      if (seenDeliveries.has(dedupeKey)) return;
+      seenDeliveries.add(dedupeKey);
 
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-      let finalTix = computeYield(baseTix, true, false);
-      if (item.hasDoubleBonus) finalTix *= 2;
+      let finalTix = computeYield(baseTix, true, Boolean(item.isManual));
+      if (item.hasDoubleBonus && !item.isManual) finalTix *= 2;
 
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
@@ -160,15 +164,19 @@ export function renderColumnHistoryModalList() {
         checked: isChecked,
         status: isChecked ? '✨ Done' : '⏳ Active',
         isStacked: item.isStacked || false,
-        isManual: false
+        isManual: Boolean(item.isManual)
       });
     });
 
-    // 2. Archived Deliveries
+    // 2. Archived deliveries (only if not already listed in live)
     (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
       const dateDisplay = resolveItemDate(item);
       const itemWeekNum = getWeekNumber(dateDisplay);
+      const dedupeKey = `${(item.id || itemName).toLowerCase()}_${item.completedAt || dateDisplay}_${item.isManual ? 'man' : 'live'}`;
+
+      if (seenDeliveries.has(dedupeKey)) return;
+      seenDeliveries.add(dedupeKey);
 
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
@@ -198,41 +206,50 @@ export function renderColumnHistoryModalList() {
     const isAnimal = type === 'animalBounty';
 
     const allItemsMap = new Map();
-    const weeks = state.globalData?.cloudHistory?.weeks || {};
+    const currentWeekId = getMondayBasedWeekId();
 
-    // 1. Process items in weekly historical buckets
+    // 1. Live array takes top priority
+    const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
+    liveArr.forEach((item, idx) => {
+      if (!isChore && isAnimalBounty(item) !== isAnimal) return;
+      const dedupeKey = isChore
+        ? `${currentWeekId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
+        : `${currentWeekId}_${item.id ? String(item.id) : (item.name || '').toLowerCase()}_${item.level || 0}`;
+      
+      allItemsMap.set(dedupeKey, { item, weekId: currentWeekId, idx, source: 'current' });
+    });
+
+    // 2. Weekly buckets (add only if not already in live for this week)
+    const weeks = state.globalData?.cloudHistory?.weeks || {};
     Object.entries(weeks).forEach(([wkId, wk]) => {
       const targetArr = isChore ? (wk.chores || []) : (wk.bounties || []);
       targetArr.forEach((item, idx) => {
         if (!isChore && isAnimalBounty(item) !== isAnimal) return;
-        const dedupeKey = `${wkId}_${idx}_${item.id || (item.name || item.task || '').toLowerCase()}`;
-        allItemsMap.set(dedupeKey, { item, weekId: wkId, idx, source: 'week' });
+        const dedupeKey = isChore
+          ? `${wkId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
+          : `${wkId}_${item.id ? String(item.id) : (item.name || '').toLowerCase()}_${item.level || 0}`;
+        
+        if (!allItemsMap.has(dedupeKey)) {
+          allItemsMap.set(dedupeKey, { item, weekId: wkId, idx, source: 'week' });
+        }
       });
     });
 
-    // 2. Process archive list for this type
+    // 3. Archives (add only if not already matched)
     const archiveArr = isChore ? (state.globalData?.archiveChores || []) : (state.globalData?.archiveBounties || []);
     archiveArr.forEach((item, idx) => {
       if (!isChore && isAnimalBounty(item) !== isAnimal) return;
       const wkId = item.weekId || getMondayBasedWeekId(resolveItemDate(item));
-      const dedupeKey = `archived_${wkId}_${idx}_${item.id || (item.name || item.task || '').toLowerCase()}`;
+      const dedupeKey = isChore
+        ? `${wkId}_${(item.npc || '').toLowerCase()}_${(item.task || item.name || '').toLowerCase()}`
+        : `${wkId}_${item.id ? String(item.id) : (item.name || '').toLowerCase()}_${item.level || 0}`;
+      
       if (!allItemsMap.has(dedupeKey)) {
         allItemsMap.set(dedupeKey, { item, weekId: wkId, idx, source: 'archive' });
       }
     });
 
-    // 3. Process live array
-    const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
-    const currentWeekId = getMondayBasedWeekId();
-    liveArr.forEach((item, idx) => {
-      if (!isChore && isAnimalBounty(item) !== isAnimal) return;
-      const dedupeKey = `${currentWeekId}_live_${idx}_${item.id || (item.name || item.task || '').toLowerCase()}`;
-      if (!allItemsMap.has(dedupeKey)) {
-        allItemsMap.set(dedupeKey, { item, weekId: currentWeekId, idx, source: 'current' });
-      }
-    });
-
-    Array.from(allItemsMap.entries()).forEach(([mapKey, { item, weekId, idx, source }]) => {
+    Array.from(allItemsMap.values()).forEach(({ item, weekId, idx, source }) => {
       const dateDisplay = resolveItemDate(item);
       const itemWeekNum = getWeekNumber(weekId || dateDisplay);
 
@@ -550,7 +567,8 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
       const archiveArr = type === 'chore' ? state.globalData?.archiveChores : state.globalData?.archiveBounties;
       target = archiveArr?.[idx];
     } else if (source === 'current') {
-      target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+      const target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+      if (target) { target.cost = costVal; target.itemsCost = costVal; }
     }
 
     if (target) {
