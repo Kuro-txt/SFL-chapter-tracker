@@ -1,11 +1,9 @@
 import { pool } from './db.js';
 import { extractPricesRecursive, getMondayBasedWeekId, parseFarmData } from './sfl-parser.js';
 
-// Helper function to pause execution for a given number of milliseconds
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default async function handler(req, res) {
-  // Verify Vercel cron secret authorization header for security
   const authHeader = req.headers['authorization'];
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized cron request.' });
@@ -16,13 +14,15 @@ export default async function handler(req, res) {
   let errors = [];
 
   try {
-    // Fetch all user vaults from the database
     const vaultsRes = await client.query('SELECT username, vault_data FROM user_vaults');
     
-    // Fetch latest global SFL prices once for efficiency
+    // Fetch prices with timeout safeguard
     let priceMap = {};
     try {
-      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        signal: AbortSignal.timeout(8000)
+      });
       if (pricesRes.ok) {
         const rawPricesData = await pricesRes.json();
         if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
@@ -46,67 +46,69 @@ export default async function handler(req, res) {
 
       let success = false;
       let lastError = null;
+      const retryGaps = [4000, 6000];
 
-      // 3 Tries with 8s, 10s, and 12s gaps between attempts
-      const retryGaps = [8000, 10000, 12000];
-
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders });
-          if (!sflRes.ok) {
-            throw new Error(`SFL API error status: ${sflRes.status}`);
-          }
+          const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
+            headers: sflHeaders,
+            signal: AbortSignal.timeout(9000)
+          });
+          
+          if (!sflRes.ok) throw new Error(`SFL API error status: ${sflRes.status}`);
 
           const payload = await sflRes.json();
           const farm = payload.farm || {};
           const parsed = parseFarmData(farm, priceMap);
           const currentWeekMonday = getMondayBasedWeekId();
 
-          // 1. Archive completed deliveries
+          // 1. Archive Completed Deliveries
           if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
           if (vault.deliveries) {
             vault.deliveries.forEach(d => {
               const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
               if (isTicked) {
-                const exists = vault.archiveDeliveries.some(ar => ar.id === d.id && ar.completedDate === d.completedDate);
-                if (!exists) vault.archiveDeliveries.push(d);
+                const uniqueKey = `${d.id || d.from || d.name}_${d.completedAt || d.completedDate || ''}`;
+                const exists = vault.archiveDeliveries.some(ar => {
+                  const arKey = `${ar.id || ar.from || ar.name}_${ar.completedAt || ar.completedDate || ''}`;
+                  return arKey === uniqueKey;
+                });
+                if (!exists) vault.archiveDeliveries.push({ ...d, archiveKey: uniqueKey });
               }
             });
           }
 
-          // 2. Refresh active items while preserving manual entries
-          const existingManualDeliveries = (vault.deliveries || []).filter(d => d.isManual);
-          vault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
-
-          const existingManualBounties = (vault.bounties || []).filter(b => b.isManual);
-          vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
-
-          const existingManualChores = (vault.chores || []).filter(c => c.isManual);
-          vault.chores = [...parsed.choresList, ...existingManualChores];
-
-          vault.milestones = parsed.liveMilestones;
-
-          // 3. Update weekly storage
+          // 2. Archive Completed Bounties & Chores into their respective week bucket
           if (!vault.weeks) vault.weeks = {};
           if (!vault.weeks[currentWeekMonday]) {
             vault.weeks[currentWeekMonday] = {
               weekId: currentWeekMonday,
-              bounties: vault.bounties,
-              chores: vault.chores
+              bounties: [],
+              chores: []
             };
           }
 
-          // 4. Update database vault
+          const existingManualChores = (vault.weeks[currentWeekMonday].chores || []).filter(c => c.isManual);
+          const existingManualBounties = (vault.weeks[currentWeekMonday].bounties || []).filter(b => b.isManual);
+          
+          vault.weeks[currentWeekMonday].chores = [...parsed.choresList, ...existingManualChores];
+          vault.weeks[currentWeekMonday].bounties = [...parsed.activeBounties, ...existingManualBounties];
+
+          // 3. Refresh live arrays
+          const existingManualDeliveries = (vault.deliveries || []).filter(d => d.isManual);
+          vault.deliveries = [...parsed.deliveryList, ...existingManualDeliveries];
+          vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
+          vault.chores = [...parsed.choresList, ...existingManualChores];
+          vault.milestones = parsed.liveMilestones;
+
           await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vault), username]);
           
           success = true;
           processedCount++;
-          break; // Exit retry loop on success
+          break;
         } catch (attemptErr) {
           lastError = attemptErr.message;
-          if (attempt < 2) {
-            await sleep(retryGaps[attempt]);
-          }
+          if (attempt < 1) await sleep(retryGaps[attempt]);
         }
       }
 
@@ -117,7 +119,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       success: true, 
-      message: `Cron executed successfully at 23:00 UTC with retry logic.`, 
+      message: `Cron executed successfully at 23:00 UTC.`, 
       processedUsers: processedCount,
       errors: errors.length > 0 ? errors : undefined 
     });
