@@ -23,7 +23,7 @@ export async function userRegister() {
       body: JSON.stringify({ username, password, farmId })
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Registration failed.');
 
     localStorage.setItem('sfl_farmId', farmId);
@@ -55,7 +55,7 @@ export async function userLogin() {
       body: JSON.stringify({ username, password, farmId })
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) throw new Error(data.error || 'Login failed.');
 
     state.currentUser = data.username;
@@ -86,6 +86,9 @@ export async function userLogin() {
 
     if (state.globalData) {
       state.globalData.cloudHistory = data.vaultData;
+      if (data.vaultData?.archiveDeliveries) state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
+      if (data.vaultData?.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
+      if (data.vaultData?.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
     }
 
     recalculateAll();
@@ -113,8 +116,10 @@ export async function checkSavedAuth() {
 
   try {
     const res = await fetch(`/api/chapter?action=getVault&username=${encodeURIComponent(savedUser)}`);
-    const data = await res.json();
-    if (data.vaultData) {
+    if (!res.ok) return;
+
+    const data = await res.json().catch(() => ({}));
+    if (data && data.vaultData) {
       state.currentUser = savedUser;
       state.currentVaultData = data.vaultData;
 
@@ -134,10 +139,15 @@ export async function checkSavedAuth() {
 
       if (state.globalData) {
         state.globalData.cloudHistory = data.vaultData;
+        if (data.vaultData.archiveDeliveries) state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
+        if (data.vaultData.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
+        if (data.vaultData.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
       }
       recalculateAll();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Silent auth check warning:', e.message);
+  }
 }
 
 function updateAuthUI(isLoggedIn, username) {
