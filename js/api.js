@@ -78,9 +78,10 @@ export async function loadTrackerData() {
 
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      if (data.vaultData.archiveDeliveries) {
-        state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
-      }
+      if (data.vaultData.archiveDeliveries) state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
+      if (data.vaultData.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
+      if (data.vaultData.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
+      
       state.globalData.cloudHistory = {
         logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {},
@@ -145,7 +146,7 @@ export async function saveProgressToCloudKV(silent = false) {
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
 
-  // Gather completed live deliveries
+  // Live Deliveries
   (state.globalData?.deliveries || []).forEach(d => {
     const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
     if (isTicked) {
@@ -173,7 +174,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // Gather archived / manually added deliveries
+  // Archive Deliveries
   (state.globalData?.archiveDeliveries || []).forEach(d => {
     const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
     if (isTicked) {
@@ -194,7 +195,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // Gather bounties and chores
+  // Live & Archive Bounties
   (state.globalData?.bounties || []).forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
     if (isTicked) {
@@ -203,12 +204,25 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
-
       totalEarnedTix += yieldAmt;
       totalEarnedCost += lineCost;
     }
   });
 
+  (state.globalData?.archiveBounties || []).forEach(b => {
+    const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
+    if (isTicked) {
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const lineCost = (b.itemsCost || b.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+    }
+  });
+
+  // Live & Archive Chores
   (state.globalData?.chores || []).forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
     if (isTicked) {
@@ -217,7 +231,19 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (c.itemsCost || c.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+    }
+  });
 
+  (state.globalData?.archiveChores || []).forEach(c => {
+    const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
+    if (isTicked) {
+      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
+      const lineCost = (c.itemsCost || c.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
       totalEarnedTix += yieldAmt;
       totalEarnedCost += lineCost;
     }
@@ -252,7 +278,9 @@ export async function saveProgressToCloudKV(silent = false) {
     deliveries: state.globalData?.deliveries || [],
     archiveDeliveries: state.globalData?.archiveDeliveries || [],
     bounties: state.globalData?.bounties || [],
+    archiveBounties: state.globalData?.archiveBounties || [],
     chores: state.globalData?.chores || [],
+    archiveChores: state.globalData?.archiveChores || [],
     milestones: state.globalData?.milestones || {}
   };
 
@@ -272,9 +300,9 @@ export async function saveProgressToCloudKV(silent = false) {
         logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {}
       };
-      if (data.vaultData.archiveDeliveries) {
-        state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
-      }
+      if (data.vaultData.archiveDeliveries) state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries;
+      if (data.vaultData.archiveBounties) state.globalData.archiveBounties = data.vaultData.archiveBounties;
+      if (data.vaultData.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
     }
 
     recalculateAll();
