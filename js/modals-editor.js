@@ -35,8 +35,8 @@ function formatRequestedItems(items) {
 }
 
 function resolveItemDate(item) {
-  if (item.weekId) return item.weekId;
   if (item.completedDate) return item.completedDate;
+  if (item.weekId) return item.weekId;
   if (item.completedAt) {
     const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
     if (!isNaN(ts) && ts > 0) {
@@ -56,6 +56,13 @@ function getWeekNumber(dateOrWeekStr) {
   const targetTime = new Date(`${dateOrWeekStr.includes('T') ? dateOrWeekStr : dateOrWeekStr + 'T00:00:00.000Z'}`).getTime();
   const diffWeeks = Math.floor((targetTime - baseW1) / (7 * 24 * 60 * 60 * 1000)) + 1;
   return Math.max(1, Math.min(12, diffWeeks));
+}
+
+function getDeliveryDedupeKey(item) {
+  if (item.id) return String(item.id).toLowerCase();
+  const npcName = (item.from || item.name || '').toLowerCase().trim();
+  const compTime = item.completedAt || item.completedDate || 'active';
+  return `${npcName}_${compTime}`;
 }
 
 export function openColumnHistoryModal(type) {
@@ -136,17 +143,53 @@ export function renderColumnHistoryModalList() {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
     const seenDeliveries = new Set();
 
-    // 1. Live Deliveries
-    (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
+    // 1. Process Archived first (Primary ground truth for completed/skipped)
+    (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-      const dateDisplay = resolveItemDate(item);
-      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
-      const key = `${(item.id || itemName).toLowerCase()}_${item.weekId || item.completedAt || ''}_${item.isManual ? 'm' : 'l'}`;
-
-      if (seenDeliveries.has(key)) return;
-      seenDeliveries.add(key);
+      const dedupeKey = getDeliveryDedupeKey(item);
+      if (seenDeliveries.has(dedupeKey)) return;
+      seenDeliveries.add(dedupeKey);
 
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
+      
+      const dateDisplay = resolveItemDate(item);
+      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
+      if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
+
+      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
+      const isManual = Boolean(item.isManual);
+      const finalTix = computeYield(baseTix, true, isManual);
+      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
+      const isSkipped = Boolean(item.isSkipped);
+
+      records.push({
+        source: 'archive',
+        itemIdx,
+        date: dateDisplay,
+        weekNum: itemWeekNum,
+        name: itemName,
+        requestedItems: formatRequestedItems(item.itemDetails || item.items),
+        cost: item.cost || item.itemsCost || 0,
+        displayTickets: isSkipped ? 0 : finalTix,
+        checked: isChecked && !isSkipped,
+        status: isSkipped ? '✕ Skipped' : (isChecked ? '✨ Done' : '⏳ Active'),
+        isStacked: item.isStacked || false,
+        isSkipped,
+        isManual
+      });
+    });
+
+    // 2. Process Live Deliveries (Only add if not already in Archive)
+    (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
+      const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
+      const dedupeKey = getDeliveryDedupeKey(item);
+      if (seenDeliveries.has(dedupeKey)) return;
+      seenDeliveries.add(dedupeKey);
+
+      if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
+
+      const dateDisplay = resolveItemDate(item);
+      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
@@ -172,42 +215,6 @@ export function renderColumnHistoryModalList() {
         isManual: Boolean(item.isManual)
       });
     });
-
-    // 2. Archived / Past Deliveries
-    (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
-      const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-      const dateDisplay = resolveItemDate(item);
-      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
-      const key = `${(item.id || itemName).toLowerCase()}_${item.weekId || item.completedAt || ''}_${item.isManual ? 'm' : 'l'}`;
-
-      if (seenDeliveries.has(key)) return;
-      seenDeliveries.add(key);
-
-      if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
-      if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
-
-      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-      const isManual = Boolean(item.isManual);
-      const finalTix = computeYield(baseTix, true, isManual);
-      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-      const isSkipped = Boolean(item.isSkipped);
-
-      records.push({
-        source: 'archive',
-        itemIdx,
-        date: dateDisplay,
-        weekNum: itemWeekNum,
-        name: itemName,
-        requestedItems: formatRequestedItems(item.itemDetails || item.items),
-        cost: item.cost || item.itemsCost || 0,
-        displayTickets: isSkipped ? 0 : finalTix,
-        checked: isChecked && !isSkipped,
-        status: isSkipped ? '✕ Skipped' : (isChecked ? '✨ Done' : '⏳ Active'),
-        isStacked: item.isStacked || false,
-        isSkipped,
-        isManual
-      });
-    });
   } else {
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
@@ -215,7 +222,7 @@ export function renderColumnHistoryModalList() {
     const allItemsMap = new Map();
     const currentWeekId = getMondayBasedWeekId();
 
-    // 1. Live array
+    // Live array
     const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
     liveArr.forEach((item, idx) => {
       if (!isChore && isAnimalBounty(item) !== isAnimal) return;
@@ -226,7 +233,7 @@ export function renderColumnHistoryModalList() {
       allItemsMap.set(dedupeKey, { item, weekId: currentWeekId, idx, source: 'current' });
     });
 
-    // 2. Weekly storage (for past weeks)
+    // Weekly storage
     const weeks = state.globalData?.cloudHistory?.weeks || {};
     Object.entries(weeks).forEach(([wkId, wk]) => {
       const targetArr = isChore ? (wk.chores || []) : (wk.bounties || []);
