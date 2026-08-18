@@ -93,10 +93,9 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // STRICT "Done Today": must be non-manual, completed, belonging to current week, and completed today
   const isDoneToday = (item, itemWeekMonday) => {
     if (!isTicked(item)) return false;
-    if (item.isManual) return false; // Exclude manually added/edited historical items from Done Today
+    if (item.isManual) return false;
     if (itemWeekMonday && itemWeekMonday !== currentWeekMonday) return false;
     
     if (item.completedAt) {
@@ -328,11 +327,11 @@ export function recalculateAll() {
 
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
-  setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.00"} SFL / Ticket`);
+  setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.000"} SFL / Ticket`);
 
   setElemText('statWeekTickets', `${weekTicketsAll} Tickets`);
   setElemText('statWeekCost', `${formatSFL(weekCostAll)} SFL`);
-  setElemText('statWeekRatio', `${weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.00"} SFL / Ticket`);
+  setElemText('statWeekRatio', `${weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.000"} SFL / Ticket`);
 
   setElemText('statEarnedTickets', `${todayTicketsAll} Tickets`);
   setElemText('statEarnedCost', `${formatSFL(todayCostAll)} SFL`);
@@ -356,10 +355,11 @@ export function recalculateAll() {
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
   setElemText('tipTodayChore', `🧹 Chores: ${todayChoreTix} Tix`);
 
+  // Target Goal Calculation: Total Goal / Total Weeks
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
-  const targetPerWeek = targetWeeks > 0 ? Math.ceil(remainingNeeded / targetWeeks) : 0;
+  const targetPerWeek = targetWeeks > 0 ? Math.ceil(targetGoal / targetWeeks) : 0;
 
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
@@ -463,7 +463,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     barsSvg += `
       <g class="chart-bar-group" style="cursor: pointer;">
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
-          <title>${item.label} (Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.00 SFL'}</title>
+          <title>${item.label} (Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.000 SFL'}</title>
         </rect>
         <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${strokeColor}" text-anchor="middle">${tixLabel}</text>
         <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="#5C4033" text-anchor="middle">${item.label}</text>
