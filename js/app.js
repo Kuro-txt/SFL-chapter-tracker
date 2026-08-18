@@ -6,16 +6,14 @@ import {
   closeCategorySummaryModal, 
   openColumnHistoryModal, 
   closeColumnHistoryModal, 
-  renderColumnHistoryModalList,
-  addNewItemFromModal,
+  renderColumnHistoryModalList, 
+  addNewItemFromModal, 
   toggleDeliveryLogCheck, 
   deleteDeliveryLogItem, 
   toggleWeeklyItemCheck, 
   updateHistoryItemTickets, 
   updateHistoryItemCost, 
-  deleteWeeklyItem, 
-  deleteMasterLog, 
-  toggleHistoryModal 
+  deleteWeeklyItem 
 } from './modals.js';
 import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
@@ -39,8 +37,6 @@ window.toggleWeeklyItemCheck = toggleWeeklyItemCheck;
 window.updateHistoryItemTickets = updateHistoryItemTickets;
 window.updateHistoryItemCost = updateHistoryItemCost;
 window.deleteWeeklyItem = deleteWeeklyItem;
-window.deleteMasterLog = deleteMasterLog;
-window.toggleHistoryModal = toggleHistoryModal;
 
 window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
@@ -64,7 +60,6 @@ window.saveGoalAndRecalculate = () => {
 
 window.toggleDailyLogin = () => {
   handleDailyLoginToggle();
-  recalculateAll();
 };
 
 window.saveLoginCountAndRecalculate = () => {
@@ -75,7 +70,7 @@ window.saveLoginCountAndRecalculate = () => {
 
 // Focused Gameplay Tips Rotation
 const FARMER_TIPS = [
-  '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? The tracker automatically detects milestone increases!',
+  '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? Use the EDIT modal to view or add extra orders!',
   '⚡ <strong>DOUBLE DELIVERIES:</strong> 2x event automatically doubles total tickets on your 1st completed order of the day!',
   '🛤️ <strong>MANUAL ADJUSTMENT:</strong> Have missed tickets, special events, or price mismatches? Add them to the <em>🛤️ TRACK</em> input anytime!',
   '☁️ <strong>SAVE PROGRESS:</strong> Always click <em>"SAVE IN CLOUD"</em> before closing your tab to write your daily snapshot into your vault.'
@@ -109,7 +104,7 @@ function startTipRotation() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const savedFarmId = localStorage.getItem('sfl_farmId');
   if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
 
@@ -135,8 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedWeeks = localStorage.getItem('sfl_target_weeks');
   if (savedWeeks) document.getElementById('targetWeeksInput').value = savedWeeks;
 
-  checkAndAutoClaimDailyLogin();
-  checkSavedAuth();
+  await checkSavedAuth();
+  await checkAndAutoClaimDailyLogin();
   startTipRotation();
   recalculateAll();
 });
