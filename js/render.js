@@ -93,15 +93,21 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
+  // STRICT "Done Today": must be non-manual, completed, belonging to current week, and completed today
   const isDoneToday = (item, itemWeekMonday) => {
     if (!isTicked(item)) return false;
+    if (item.isManual) return false; // Exclude manually added/edited historical items from Done Today
     if (itemWeekMonday && itemWeekMonday !== currentWeekMonday) return false;
+    
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
         const ms = ts < 1e11 ? ts * 1000 : ts;
         return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
       }
+    }
+    if (item.completedDate) {
+      return item.completedDate === todayUtcStr;
     }
     return false;
   };
@@ -159,7 +165,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Archived Deliveries
+  // 2. Archived / Manual Deliveries
   (state.globalData.archiveDeliveries || []).forEach((d, idx) => {
     if (isTicked(d)) {
       const uniqueKey = `archive_${d.id || d.from || d.name}_${idx}`;
@@ -173,7 +179,7 @@ export function recalculateAll() {
       const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
 
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
-      const isToday = d.completedDate === todayUtcStr || isDoneToday(d, itemWeekMonday);
+      const isToday = isDoneToday(d, itemWeekMonday);
 
       if (isToday) {
         todayDelivTix += calculatedYield;
@@ -261,7 +267,7 @@ export function recalculateAll() {
   // 5. Past Weeks Storage
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
-    if (pastMonday === currentWeekMonday) return; // Skip current week as it is already processed in live
+    if (pastMonday === currentWeekMonday) return;
 
     (wk.bounties || []).forEach((b, idx) => {
       if (isTicked(b)) {
@@ -308,7 +314,6 @@ export function recalculateAll() {
     });
   });
 
-  // Calculate distinct aggregates
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
