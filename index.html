@@ -10,24 +10,24 @@
     body {
       background-color: #3b5323;
       background-image: radial-gradient(#4d6b2c 15%, transparent 16%), radial-gradient(#2d401a 15%, transparent 16%);
-      background-size: 24px 24px;
-      background-position: 0 0, 12px 12px;
+      background-size: 26px 26px;
+      background-position: 0 0, 13px 13px;
       color: #3e2723;
       font-family: 'Courier New', Courier, monospace, sans-serif;
-      padding: clamp(10px, 2vw, 20px);
+      padding: clamp(10px, 2vw, 24px);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      font-size: 14px;
+      font-size: clamp(13px, 1.2vw, 15px);
       -webkit-text-size-adjust: 100%;
     }
     .wrapper { 
-      max-width: 1200px; 
+      max-width: 1080px; 
       width: 100%; 
       display: flex; 
       flex-direction: column; 
-      gap: 14px; 
+      gap: clamp(10px, 1.4vw, 16px); 
     }
     
     header {
@@ -35,11 +35,11 @@
       border: 3px solid #3E2723;
       border-radius: 12px;
       text-align: center;
-      padding: 14px 12px;
+      padding: clamp(12px, 1.8vw, 18px);
       box-shadow: 0 5px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
     }
     h1 { 
-      font-size: clamp(18px, 2.8vw, 24px); 
+      font-size: clamp(20px, 2.8vw, 28px); 
       font-weight: 900; 
       color: #FFF8DC; 
       text-shadow: 2px 2px #271813; 
@@ -47,7 +47,7 @@
       letter-spacing: 1.2px; 
     }
     p { 
-      font-size: clamp(11px, 1.6vw, 13px); 
+      font-size: clamp(12px, 1.4vw, 14px); 
       color: #EEDC82; 
       font-weight: bold; 
       text-shadow: 1px 1px #271813; 
@@ -56,66 +56,66 @@
     .tip-banner {
       background: #FFF8DC;
       border: 2px dashed #D2691E;
-      border-radius: 8px;
-      padding: 8px 14px;
+      border-radius: 10px;
+      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 1.6vw, 18px);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      min-height: 38px;
-      font-size: 12px;
+      min-height: 40px;
+      font-size: clamp(12px, 1.2vw, 13.5px);
       font-weight: 900;
       color: #8B4513;
       cursor: pointer;
       user-select: none;
-      gap: 8px;
+      gap: 10px;
       box-shadow: 0 3px 0px #5C4033;
     }
     #rotatingTipText {
       transition: opacity 0.3s ease;
       opacity: 1;
-      line-height: 1.35;
+      line-height: 1.4;
     }
     #rotatingTipText.fade-out { opacity: 0; }
 
     .event-banner {
       background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
       border: 2px solid #FF9800;
-      border-radius: 8px;
-      padding: 8px 14px;
+      border-radius: 10px;
+      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 1.6vw, 18px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       box-shadow: 0 3px 6px rgba(255, 152, 0, 0.25);
-      font-size: 12px;
-      gap: 8px;
+      font-size: clamp(12px, 1.2vw, 13.5px);
+      gap: 10px;
     }
 
     .panel {
       background-color: #FDF5E6;
       border: 3px solid #8B5A2B;
       border-radius: 12px;
-      padding: 14px;
+      padding: clamp(12px, 1.6vw, 18px);
       box-shadow: 0 5px 0px #5C4033;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: clamp(10px, 1.4vw, 14px);
     }
     .controls-row { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 10px; 
+      gap: 12px; 
       align-items: center; 
       justify-content: space-between; 
     }
     .input-group { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 8px; 
+      gap: 10px; 
       align-items: center; 
     }
     
     label { 
-      font-size: 12px; 
+      font-size: clamp(12px, 1.2vw, 13.5px); 
       font-weight: 900; 
       color: #5C4033; 
     }
@@ -123,10 +123,10 @@
       background-color: #FFF8DC;
       border: 2px solid #8B5A2B;
       color: #3E2723;
-      padding: 6px 10px;
-      font-size: 12px;
+      padding: clamp(6px, 0.9vw, 9px) clamp(8px, 1.1vw, 12px);
+      font-size: clamp(12px, 1.2vw, 13.5px);
       font-weight: bold;
-      border-radius: 6px;
+      border-radius: 8px;
       outline: none;
       font-family: inherit;
     }
@@ -138,13 +138,13 @@
     .checkbox-label {
       background-color: #FFFACD;
       border: 2px solid #D2691E;
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: clamp(6px, 0.9vw, 8px) clamp(10px, 1.2vw, 12px);
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
+      font-size: clamp(12px, 1.2vw, 13.5px);
       color: #8B4513;
       font-weight: 900;
     }
@@ -152,10 +152,10 @@
     .btn {
       font-family: inherit;
       font-weight: 900;
-      font-size: 12px;
+      font-size: clamp(11.5px, 1.1vw, 13px);
       text-transform: uppercase;
-      padding: 8px 14px;
-      border-radius: 6px;
+      padding: clamp(8px, 1vw, 10px) clamp(12px, 1.4vw, 16px);
+      border-radius: 8px;
       border: 2px solid #3E2723;
       cursor: pointer;
       box-shadow: 0 3px 0px #3E2723;
@@ -180,25 +180,25 @@
     .btn-indigo { background-color: #6D4C41; color: #FFF8DC; border-color: #3E2723; box-shadow: 0 3px 0px #2E1B17; }
     .btn-guide { background-color: #2980B9; color: #FFF8DC; border-color: #1B4F72; box-shadow: 0 3px 0px #154360; text-shadow: 1px 1px 0px #0E2F44; }
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 3px 0px #5B2C6F; }
-    .btn-sm { padding: 5px 10px; font-size: 11px; box-shadow: 0 2px 0px #2E1B17; }
+    .btn-sm { padding: clamp(5px, 0.8vw, 7px) clamp(8px, 1.1vw, 12px); font-size: clamp(11px, 1vw, 12px); }
 
-    /* 🎯 Balanced 4-in-a-row / 2x2 Grid Systems */
+    /* 🎯 Exact 2x2 Grid Layout for Desktop */
     .stats-grid { 
       display: grid; 
-      grid-template-columns: repeat(4, 1fr); 
-      gap: 12px; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: clamp(12px, 1.6vw, 16px); 
     }
     
     .stat-box {
       position: relative;
       background-color: #FFF8DC;
       border: 3px solid #8B5A2B;
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 16px);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 6px;
+      gap: 8px;
       box-shadow: 0 4px 0px #5C4033;
       cursor: help;
       transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -208,23 +208,24 @@
       box-shadow: 0 6px 0px #5C4033;
     }
     .stat-title { 
-      font-size: 11px; 
+      font-size: clamp(12px, 1.2vw, 13.5px); 
       font-weight: 900; 
       color: #8B5A2B; 
       text-transform: uppercase; 
     }
     .stat-val { 
-      font-size: clamp(18px, 2.2vw, 23px); 
+      font-size: clamp(22px, 2.4vw, 28px); 
       font-weight: 900; 
       color: #D2691E; 
+      line-height: 1.15;
     }
     .stat-footer { 
       border-top: 2px dashed #D2B48C; 
-      padding-top: 6px; 
+      padding-top: 8px; 
       display: flex; 
       flex-direction: column; 
       gap: 4px; 
-      font-size: 11px; 
+      font-size: clamp(12px, 1.2vw, 13.5px); 
       font-weight: bold; 
       color: #5C4033; 
     }
@@ -232,54 +233,45 @@
     .stat-box .tooltip {
       visibility: hidden;
       opacity: 0;
-      width: 260px;
+      width: 270px;
       background-color: #3E2723;
       color: #FFF8DC;
       text-align: left;
       border: 2px solid #D2691E;
-      border-radius: 6px;
-      padding: 8px 12px;
+      border-radius: 8px;
+      padding: 10px 14px;
       position: absolute;
       z-index: 20;
       bottom: 105%;
       left: 50%;
       transform: translateX(-50%);
       transition: opacity 0.2s ease, visibility 0.2s ease;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 900;
       line-height: 1.45;
       box-shadow: 0 6px 14px rgba(0,0,0,0.35);
       pointer-events: none;
-    }
-    .stat-box .tooltip::after {
-      content: "";
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      margin-left: -6px;
-      border-width: 6px;
-      border-style: solid;
-      border-color: #3E2723 transparent transparent transparent;
     }
     .stat-box:hover .tooltip {
       visibility: visible;
       opacity: 1;
     }
 
+    /* 🎯 Exact 2x2 Overview Actions Grid for Desktop */
     .overview-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: clamp(12px, 1.6vw, 16px); 
     }
     .overview-card {
       background: #FFFDF7;
       border: 3px solid #8B5A2B;
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 16px);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
       box-shadow: 0 4px 0px #5C4033;
       transition: transform 0.15s ease;
     }
@@ -289,34 +281,34 @@
       justify-content: space-between;
       align-items: center;
       font-weight: 900;
-      font-size: 12px;
+      font-size: clamp(13px, 1.3vw, 14.5px);
       color: #4E342E;
       border-bottom: 2px dashed #D7CCC8;
-      padding-bottom: 6px;
+      padding-bottom: 8px;
     }
     .overview-count {
       background: #EFEBE9;
       color: #4E342E;
-      padding: 2px 8px;
+      padding: 4px 10px;
       border: 1px solid #A1887F;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: 6px;
+      font-size: clamp(11px, 1.1vw, 12.5px);
       font-weight: 900;
     }
     .overview-actions {
       display: flex;
-      gap: 6px;
+      gap: 8px;
     }
 
     .chart-panel {
       background: #FFFDF7;
       border: 3px solid #8B5A2B;
       border-radius: 12px;
-      padding: 14px;
+      padding: clamp(12px, 1.6vw, 18px);
       box-shadow: 0 5px 0px #5C4033;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
     .chart-header {
       display: flex;
@@ -328,7 +320,7 @@
       padding-bottom: 8px;
     }
     .chart-title {
-      font-size: 14px;
+      font-size: clamp(13.5px, 1.4vw, 15px);
       font-weight: 900;
       color: #5C4033;
       display: flex;
@@ -339,18 +331,18 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 11px;
+      font-size: clamp(11px, 1.1vw, 12px);
       font-weight: 900;
     }
     .legend-item { display: flex; align-items: center; gap: 4px; }
     .legend-box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); }
-    .chart-container { width: 100%; overflow-x: auto; padding-bottom: 6px; }
+    .chart-container { width: 100%; overflow-x: auto; padding-bottom: 4px; }
 
     .badge {
-      padding: 2px 8px;
-      font-size: 10px;
+      padding: 3px 8px;
+      font-size: clamp(10px, 1vw, 11.5px);
       font-weight: 900;
-      border-radius: 4px;
+      border-radius: 5px;
       text-transform: uppercase;
       border: 1px solid rgba(0,0,0,0.2);
     }
@@ -365,7 +357,7 @@
       z-index: 100;
       justify-content: center;
       align-items: center;
-      padding: 16px;
+      padding: 14px;
     }
     .modal.show { display: flex; }
     .modal-content {
@@ -395,18 +387,18 @@
       overflow-y: auto; 
       display: flex; 
       flex-direction: column; 
-      gap: 12px; 
+      gap: 10px; 
     }
 
     .guide-card {
       background: #FFF8DC;
       border: 2px solid #8B5A2B;
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      font-size: 12px;
+      gap: 5px;
+      font-size: clamp(12px, 1.1vw, 13px);
     }
     .guide-card-title {
       font-weight: 900;
@@ -416,7 +408,7 @@
       gap: 6px;
       border-bottom: 1px dashed #D2B48C;
       padding-bottom: 4px;
-      font-size: 13px;
+      font-size: clamp(13px, 1.2vw, 14px);
     }
     .guide-card-text {
       color: #5C4033;
@@ -424,13 +416,7 @@
       font-weight: bold;
     }
 
-    /* 📱 Responsive Screen Adjustments */
-    @media (max-width: 900px) {
-      .stats-grid, .overview-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    @media (max-width: 600px) {
+    @media (max-width: 560px) {
       .controls-row { flex-direction: column; align-items: stretch; }
       .input-group { width: 100%; justify-content: space-between; }
       .stats-grid, .overview-grid {
@@ -449,7 +435,7 @@
 
     <div class="tip-banner" id="tipBanner">
       <span id="rotatingTipText">📦 <strong>WEEK-BY-WEEK LOGGING:</strong> Click the EDIT button on any card to view and filter all items by week!</span>
-      <span style="font-size: 10px; opacity: 0.7;">(Hover to Pause)</span>
+      <span style="font-size: 11px; opacity: 0.7;">(Hover to Pause)</span>
     </div>
 
     <div id="doubleDeliveryBanner" class="event-banner" style="display: none;">
@@ -457,21 +443,21 @@
         <span style="font-size: 16px;">⚡</span>
         <span>DOUBLE DELIVERY EVENT ACTIVE! First completed delivery of today receives 2x Total Tickets [(Base + VIP + Boosts) × 2]</span>
       </div>
-      <span style="background: #E65100; color: #FFF; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px;">2X ACTIVE</span>
+      <span style="background: #E65100; color: #FFF; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 5px;">2X ACTIVE</span>
     </div>
 
     <div class="panel" style="padding: 10px 14px; background: #FFFACD;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
-          <span style="font-size: 11px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
-          <input type="text" id="authUsername" placeholder="Username" style="width: 110px;" autocomplete="username" />
-          <input type="password" id="authPassword" placeholder="Password" style="width: 110px;" autocomplete="current-password" />
+          <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
+          <input type="text" id="authUsername" placeholder="Username" style="width: 120px;" autocomplete="username" />
+          <input type="password" id="authPassword" placeholder="Password" style="width: 120px;" autocomplete="current-password" />
           <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
           <button type="button" onclick="userRegister()" class="btn btn-sm btn-wood">REGISTER</button>
         </form>
 
         <div id="authLoggedIn" style="display: none; align-items: center; gap: 10px;">
-          <span style="font-size: 12px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
+          <span style="font-size: 13px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
           <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; box-shadow:0 2px 0px #78281F;">LOGOUT</button>
         </div>
       </div>
@@ -481,39 +467,39 @@
       <div class="controls-row">
         <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <label for="farmId">FARM ID:</label>
-          <input type="text" id="farmId" value="8472883706403914" style="width: 135px;" />
+          <input type="text" id="farmId" value="8472883706403914" style="width: 145px;" />
           
           <label for="apiKey">API KEY:</label>
           <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 110px;" />
 
           <label class="checkbox-label">
-            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 15px; height: 15px;" />
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 16px; height: 16px;" />
             👑 VIP (+2)
           </label>
-          <span id="priceBadge" style="display:none; font-size:10px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
+          <span id="priceBadge" style="display:none; font-size:11px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
-        <div class="input-group" style="background:#FFFACD; padding:6px 10px; border:2px solid #D2691E; border-radius:6px;">
+        <div class="input-group" style="background:#FFFACD; padding:6px 10px; border:2px solid #D2691E; border-radius:8px;">
           <label style="color:#8B4513;">+1 BOOSTS:</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:14px; height:14px;" /> #1</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:14px; height:14px;" /> #2</label>
-          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:14px; height:14px;" /> #3</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #3</label>
           
           <div style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
-            <label class="checkbox-label" style="padding: 3px 6px; font-size: 11px;" title="Auto-increments +1 ticket every calendar day">
-              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 14px; height: 14px;" />
+            <label class="checkbox-label" style="padding: 4px 8px; font-size: 11.5px;" title="Auto-increments +1 ticket every calendar day">
+              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 15px; height: 15px;" />
               🎁 LOGIN
             </label>
-            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 48px; padding: 3px 5px; font-size: 11px; text-align: center;" title="Total Daily Login Tickets Collected" />
+            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 52px; padding: 3px 6px; font-size: 12px; text-align: center;" title="Total Daily Login Tickets Collected" />
           </div>
         </div>
 
-        <div class="input-group" style="background:#E8F5E9; padding:6px 10px; border:2px solid #2E7D32; border-radius:6px; display:flex; align-items:center; gap:6px;">
-          <span style="color:#1B5E20; font-weight:900; font-size:11px;">🛤️ TRACK:</span>
-          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">Tix:</label>
-          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 55px; padding: 3px 5px; font-size: 11px;" title="Total Track Tickets" />
-          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:11px;">SFL:</label>
-          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 65px; padding: 3px 5px; font-size: 11px;" title="Total Track SFL Cost" />
+        <div class="input-group" style="background:#E8F5E9; padding:6px 10px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:6px;">
+          <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
+          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
+          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 58px; padding: 3px 6px; font-size: 12px;" title="Total Track Tickets" />
+          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
+          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 3px 6px; font-size: 12px;" title="Total Track SFL Cost" />
         </div>
 
         <div class="input-group">
@@ -524,7 +510,7 @@
       </div>
     </div>
 
-    <!-- 🎯 Balanced 4 Stat Boxes -->
+    <!-- 🎯 2x2 Stats Grid -->
     <div class="stats-grid">
       <div id="boxTotalTickets" class="stat-box">
         <div class="tooltip" id="tooltipTotal">
@@ -582,10 +568,10 @@
       <div class="stat-box" style="border-color: #8E44AD; cursor: default;">
         <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER TARGET</div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 65px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
-          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Tix /</span>
-          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 45px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
-          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Wks</span>
+          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 70px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
+          <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Tix /</span>
+          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 48px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
+          <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Wks</span>
         </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Remaining:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
@@ -594,7 +580,7 @@
       </div>
     </div>
 
-    <!-- 🎯 Balanced 4 Overview Action Cards -->
+    <!-- 🎯 2x2 Overview Actions Grid -->
     <div class="overview-grid">
       <div class="overview-card">
         <div class="overview-header">
@@ -602,7 +588,7 @@
           <span id="deliveriesCount" class="overview-count">0 Orders</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1; padding: 6px;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
           <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
@@ -613,7 +599,7 @@
           <span id="bountiesCount" class="overview-count">0 Items</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1; padding: 6px;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
           <button onclick="openColumnHistoryModal('bounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
@@ -624,7 +610,7 @@
           <span id="animalBountiesCount" class="overview-count">0 Animals</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1; padding: 6px;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
           <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
@@ -635,7 +621,7 @@
           <span id="choresCount" class="overview-count">0 Tasks</span>
         </div>
         <div class="overview-actions">
-          <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1; padding: 6px;">📋 VIEW</button>
+          <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
           <button onclick="openColumnHistoryModal('chore')" class="btn btn-indigo btn-sm">📜 EDIT</button>
         </div>
       </div>
@@ -654,12 +640,11 @@
         </div>
       </div>
       <div class="chart-container" id="weeklyChartContainer">
-        <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 14px 0;">Loading weekly chart data...</p>
+        <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading weekly chart data...</p>
       </div>
     </div>
   </div>
 
-  <!-- Guide Modal -->
   <div id="guideModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
