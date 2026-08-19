@@ -6,7 +6,7 @@ import {
   getActiveVipBonus, 
   getMondayBasedWeekId, 
   isAnimalBounty,
-  getDeduplicatedDeliveries 
+  getDeliveryRecords 
 } from './state.js';
 
 export function recalculateAll() {
@@ -120,10 +120,9 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 1. Process Deliveries strictly from the deduplicated Master History
+  // 🎯 STRICT SINGLE SOURCE: Only count deliveries from getDeliveryRecords()
   let doubleDeliveryAppliedToday = false;
-  const rawList = state.globalData.archiveDeliveries || state.globalData.deliveries || [];
-  const masterDeliveries = getDeduplicatedDeliveries(rawList);
+  const masterDeliveries = getDeliveryRecords();
 
   masterDeliveries.forEach(d => {
     if (isTicked(d)) {
@@ -265,7 +264,8 @@ export function recalculateAll() {
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
-  setElemText('deliveriesCount', `${(state.globalData.deliveries || []).length} Orders`);
+  const activeDeliveriesCount = masterDeliveries.filter(d => !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped).length;
+  setElemText('deliveriesCount', `${activeDeliveriesCount} Orders`);
   setElemText('bountiesCount', `${regularBounties.length} Items`);
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${(state.globalData.chores || []).length} Tasks`);
