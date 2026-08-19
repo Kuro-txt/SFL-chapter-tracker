@@ -179,13 +179,11 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// 🎯 Master Deduplicator: Collapses any duplicate entries by NPC / Completion state
-export function getDeduplicatedDeliveries(deliveries) {
+// 🎯 Canonical Delivery Deduplicator & Sanitizer
+export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-  const seen = new Set();
-  const result = [];
+  const seen = new Map();
 
-  // Sort so completed/manual items with timestamps come first
   const sorted = [...deliveries].sort((a, b) => {
     const aDone = Boolean(a.checked || a.completed);
     const bDone = Boolean(b.checked || b.completed);
@@ -198,39 +196,58 @@ export function getDeduplicatedDeliveries(deliveries) {
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-    const isSkip = Boolean(d.isSkipped);
     const isMan = Boolean(d.isManual);
+    const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
+    const isSkip = Boolean(d.isSkipped);
 
-    let dedupeKey = '';
+    let canonicalId = d.id || '';
+
     if (isMan) {
-      dedupeKey = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || d.weekId || ''}`;
+      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
     } else if (isDone) {
-      const countKey = d.deliveryCountAtCreation !== undefined ? `_cnt${d.deliveryCountAtCreation}` : '';
-      const stackKey = d.isStacked ? `_stack_${d.id || ''}` : '';
-      const timeKey = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
-      dedupeKey = `done_${npc}_${timeKey}${countKey}${stackKey}`;
+      const count = d.deliveryCountAtCreation;
+      const compTime = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
+      canonicalId = (count !== undefined && count !== null && count !== '') 
+        ? `npc_deliv_${npc}_d${count}` 
+        : `npc_deliv_${npc}_${compTime}`;
     } else if (isSkip) {
-      const skipCountKey = d.skippedCountAtCreation !== undefined ? `_skcnt${d.skippedCountAtCreation}` : '';
-      const timeKey = d.completedDate || d.weekId || 'skip';
-      dedupeKey = `skip_${npc}_${timeKey}${skipCountKey}`;
+      const skipCount = d.skippedCountAtCreation;
+      const compTime = d.completedDate || d.weekId || 'skip';
+      canonicalId = (skipCount !== undefined && skipCount !== null && skipCount !== '') 
+        ? `npc_deliv_${npc}_skip_${skipCount}` 
+        : `npc_deliv_${npc}_skip_${compTime}`;
     } else {
-      // Exactly ONE active uncompleted order per NPC
-      dedupeKey = `active_${npc}`;
+      canonicalId = `npc_deliv_${npc}_active`;
     }
 
-    if (!seen.has(dedupeKey)) {
-      seen.add(dedupeKey);
-      result.push(d);
+    d.id = canonicalId;
+
+    if (!seen.has(canonicalId)) {
+      seen.set(canonicalId, d);
+    } else {
+      const existing = seen.get(canonicalId);
+      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+        existing.itemDetails = d.itemDetails;
+        existing.items = d.items;
+        existing.itemsCost = d.itemsCost;
+        existing.cost = d.cost;
+      }
+      if (d.completed && !existing.completed) {
+        existing.completed = true;
+        existing.checked = true;
+        existing.status = 'completed';
+        existing.completedAt = d.completedAt || existing.completedAt;
+      }
     }
   }
-  return result;
+
+  return Array.from(seen.values());
 }
 
-// 🎯 Single Ground Truth Getter: Always returns clean records
+// 🎯 Single Ground Truth Getter for All Deliveries
 export function getDeliveryRecords() {
   const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
-  const cleanList = getDeduplicatedDeliveries(rawList);
+  const cleanList = sanitizeDeliveries(rawList);
   if (state.globalData) {
     state.globalData.archiveDeliveries = cleanList;
   }
