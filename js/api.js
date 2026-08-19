@@ -77,7 +77,6 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // Load master delivery records through single deduplication pipeline
     state.globalData.archiveDeliveries = getDeliveryRecords();
 
     if (data.vaultData) {
@@ -156,10 +155,14 @@ export async function saveProgressToCloudKV(silent = false) {
     const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     if (isTicked) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const isManual = Boolean(d.isManual);
+      const itemWeekMonday = getMondayBasedWeekId(d.weekId || d.completedDate || currentWeekMonday);
+      const isToday = isTicked && !isManual && (d.completedDate === todayDate || (d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayDate));
+
       let yieldAmt = base;
-      if (!d.isManual) {
+      if (!isManual) {
         yieldAmt += (vipBonus + boostCount);
-        if (isDoubleDeliveryActive && !doubleDeliveryApplied) {
+        if (isDoubleDeliveryActive && isToday && !doubleDeliveryApplied) {
           yieldAmt *= 2;
           doubleDeliveryApplied = true;
         }
