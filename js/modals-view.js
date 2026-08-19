@@ -79,7 +79,7 @@ export function openCategorySummaryModal(cat) {
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
           <span>Yield: 🎟️ ${finalTickets} Tickets</span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
-          <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-size:10px;">
+          <span style="background:#E8F5E9; color:#2E7D32; padding:2px 7px; border-radius:4px; border:1px solid #A5D6A7; font-size:10px;">
             📊 ${itemRatio} SFL / Ticket
           </span>
         </div>
@@ -115,7 +115,7 @@ export function openCategorySummaryModal(cat) {
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#8B4513; font-weight:bold;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
+            <span style="background:#E8F5E9; color:#2E7D32; padding:2px 7px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
               📊 ${itemRatio} SFL / Tix
             </span>
           </div>
@@ -151,7 +151,7 @@ export function openCategorySummaryModal(cat) {
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#2E7D32; font-weight:900;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
+            <span style="background:#E8F5E9; color:#2E7D32; padding:2px 7px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
               📊 ${itemRatio} SFL / Tix
             </span>
           </div>
