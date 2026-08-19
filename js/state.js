@@ -179,6 +179,7 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
+// 🎯 Master Deduplicator: Collapses any duplicate entries by NPC / Completion state
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
 
@@ -200,9 +201,7 @@ export function sanitizeDeliveries(deliveries) {
 
     if (d.isManual) {
       const manKey = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || d.weekId || ""}`;
-      if (!initialMap.has(manKey)) {
-        initialMap.set(manKey, d);
-      }
+      if (!initialMap.has(manKey)) initialMap.set(manKey, d);
       continue;
     }
 
@@ -216,9 +215,7 @@ export function sanitizeDeliveries(deliveries) {
         dateStr = new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split("T")[0];
       }
     }
-    if (!dateStr) {
-      dateStr = d.weekId || new Date().toISOString().split("T")[0];
-    }
+    if (!dateStr) dateStr = d.weekId || new Date().toISOString().split("T")[0];
     d.completedDate = dateStr;
 
     let dedupeKey = "";
@@ -254,6 +251,7 @@ export function sanitizeDeliveries(deliveries) {
     }
   }
 
+  // Deduplicate single daily deliveries per NPC
   const finalMap = new Map();
   for (const [key, item] of initialMap.entries()) {
     const npc = (item.from || item.name || "").toLowerCase().trim();
