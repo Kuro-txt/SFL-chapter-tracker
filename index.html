@@ -3,200 +3,202 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SFL Client-Side API & Storage Inspector</title>
+  <title>Modern Calculator</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
     body {
-      background-color: #0d1117;
-      color: #c9d1d9;
-      font-family: 'Consolas', 'Courier New', Courier, monospace;
-      padding: 14px;
       display: flex;
-      flex-direction: column;
-      height: 100vh;
-      gap: 10px;
-    }
-    .panel {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      justify-content: center;
       align-items: center;
+      min-height: 100vh;
+      background: #0f172a;
     }
-    label {
-      font-size: 11px;
-      font-weight: bold;
-      color: #8b949e;
-      text-transform: uppercase;
+
+    .calculator {
+      background: #1e293b;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      width: 100%;
+      max-width: 320px;
     }
-    select, input, button {
-      background: #21262d;
-      border: 1px solid #30363d;
-      color: #e6edf3;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 12px;
-      outline: none;
-    }
-    input:focus, select:focus {
-      border-color: #58a6ff;
-    }
-    button {
-      background: #238636;
-      border-color: #2ea043;
-      font-weight: bold;
-      cursor: pointer;
-      text-transform: uppercase;
-      padding: 6px 14px;
-    }
-    button:hover { background: #2ea043; }
-    .btn-copy { background: #30363d; border-color: #8b949e; }
-    .btn-copy:hover { background: #484f58; }
-    .status-bar {
-      font-size: 11px;
-      color: #8b949e;
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      padding: 0 4px;
-    }
-    .status-bar strong { color: #3fb950; }
-    pre {
-      flex: 1;
-      background: #090d12;
-      border: 1px solid #30363d;
+
+    .display {
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 2rem;
+      text-align: right;
+      padding: 16px;
       border-radius: 8px;
-      padding: 14px;
-      overflow: auto;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #7ee787;
-      white-space: pre-wrap;
-      word-break: break-word;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: nowrap;
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    button {
+      padding: 16px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #334155;
+      color: #f8fafc;
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+
+    button:hover {
+      background: #475569;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    button.operator {
+      background: #3b82f6;
+    }
+
+    button.operator:hover {
+      background: #2563eb;
+    }
+
+    button.action {
+      background: #ef4444;
+    }
+
+    button.action:hover {
+      background: #dc2626;
+    }
+
+    button.equals {
+      grid-column: span 2;
+      background: #10b981;
+    }
+
+    button.equals:hover {
+      background: #059669;
     }
   </style>
 </head>
 <body>
 
-  <div class="panel">
-    <div class="row">
-      <label for="farmId">🌾 Farm ID:</label>
-      <input type="text" id="farmId" value="8472883706403914" style="width: 150px;" />
+  <div class="calculator">
+    <div id="display" class="display">0</div>
+    <div class="buttons">
+      <button class="action" onclick="clearDisplay()">AC</button>
+      <button class="action" onclick="deleteLast()">DEL</button>
+      <button class="operator" onclick="appendValue('/')">÷</button>
+      <button class="operator" onclick="appendValue('*')">×</button>
 
-      <label for="apiKey">🔑 API Key:</label>
-      <input type="password" id="apiKey" placeholder="Optional SFL Key" style="width: 140px;" />
+      <button onclick="appendValue('7')">7</button>
+      <button onclick="appendValue('8')">8</button>
+      <button onclick="appendValue('9')">9</button>
+      <button class="operator" onclick="appendValue('-')">−</button>
 
-      <label for="dataSource">🎯 Source:</label>
-      <select id="dataSource" style="flex: 1; min-width: 180px;">
-        <option value="rawSfl">⚡ Raw SFL Farm Data (api.sunflower-land.com)</option>
-        <option value="rawPrices">💰 SFL.world Market Prices</option>
-        <option value="localStorage">📦 Local Browser Storage (Cache & Vault)</option>
-      </select>
+      <button onclick="appendValue('4')">4</button>
+      <button onclick="appendValue('5')">5</button>
+      <button onclick="appendValue('6')">6</button>
+      <button class="operator" onclick="appendValue('+')">+</button>
 
-      <button onclick="fetchClientData()">⚡ Fetch Data</button>
-      <button onclick="copyOutput()" class="btn-copy">📋 Copy JSON</button>
+      <button onclick="appendValue('1')">1</button>
+      <button onclick="appendValue('2')">2</button>
+      <button onclick="appendValue('3')">3</button>
+      <button onclick="appendValue('.')">.</button>
+
+      <button onclick="appendValue('0')">0</button>
+      <button class="equals" onclick="calculate()">=</button>
     </div>
   </div>
 
-  <div class="status-bar">
-    <span>Status: <strong id="statusDisplay">—</strong></span>
-    <span>Time: <strong id="timeDisplay">—</strong></span>
-    <span>Size: <strong id="sizeDisplay">—</strong></span>
-  </div>
-
-  <pre id="output">// Click "Fetch Data" to inspect payload directly in the browser...</pre>
-
   <script>
-    let rawData = null;
+    const display = document.getElementById('display');
+    let currentInput = '0';
+    let shouldResetDisplay = false;
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const savedFarm = localStorage.getItem('sfl_farmId');
-      if (savedFarm) document.getElementById('farmId').value = savedFarm;
+    function updateDisplay() {
+      display.innerText = currentInput;
+    }
 
-      const savedKey = localStorage.getItem('sfl_apiKey');
-      if (savedKey) document.getElementById('apiKey').value = savedKey;
-    });
-
-    async function fetchClientData() {
-      const source = document.getElementById('dataSource').value;
-      const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
-      const apiKey = document.getElementById('apiKey').value.trim();
-      const out = document.getElementById('output');
-
-      localStorage.setItem('sfl_farmId', farmId);
-      if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
-
-      const t0 = performance.now();
-      document.getElementById('statusDisplay').textContent = 'Fetching...';
-
-      try {
-        if (source === 'localStorage') {
-          // Inspect browser local storage items
-          const storageData = {};
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            try {
-              storageData[key] = JSON.parse(localStorage.getItem(key));
-            } catch (e) {
-              storageData[key] = localStorage.getItem(key);
-            }
-          }
-          rawData = storageData;
-          const elapsed = (performance.now() - t0).toFixed(0);
-          document.getElementById('statusDisplay').textContent = '200 OK (Local)';
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+    function appendValue(val) {
+      if (currentInput === '0' && !isNaN(val)) {
+        currentInput = val;
+      } else if (shouldResetDisplay && !isNaN(val)) {
+        currentInput = val;
+        shouldResetDisplay = false;
+      } else {
+        // Prevent consecutive operators
+        const lastChar = currentInput.slice(-1);
+        if (['+', '-', '*', '/'].includes(lastChar) && ['+', '-', '*', '/'].includes(val)) {
+          currentInput = currentInput.slice(0, -1) + val;
         } else {
-          const targetUrl = source === 'rawSfl'
-            ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
-            : `https://sfl.world/api/v1/prices`;
-
-          out.textContent = `Fetching via CORS proxy:\n${targetUrl}...`;
-
-          // Route through reliable CORS proxy for static GitHub Pages
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
-          const headers = { 'Accept': 'application/json' };
-          if (apiKey) headers['x-api-key'] = apiKey;
-
-          const res = await fetch(proxyUrl, { headers });
-          const elapsed = (performance.now() - t0).toFixed(0);
-
-          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
-
-          if (!res.ok) {
-            if (res.status === 401) {
-              throw new Error('401 Unauthorized: Sunflower Land requires an API Key for this farm. Enter your in-game API Key in the API Key box.');
-            }
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-          }
-
-          rawData = await res.json();
+          currentInput += val;
         }
-
-        const str = JSON.stringify(rawData, null, 2);
-        document.getElementById('sizeDisplay').textContent = `${(new Blob([str]).size / 1024).toFixed(1)} KB`;
-        out.textContent = str;
-      } catch (err) {
-        document.getElementById('statusDisplay').textContent = 'Error';
-        out.textContent = `❌ Fetch Failed: ${err.message}`;
       }
+      updateDisplay();
     }
 
-    function copyOutput() {
-      const out = document.getElementById('output');
-      navigator.clipboard.writeText(out.textContent).then(() => {
-        alert('Copied JSON to clipboard!');
-      });
+    function clearDisplay() {
+      currentInput = '0';
+      shouldResetDisplay = false;
+      updateDisplay();
     }
+
+    function deleteLast() {
+      if (currentInput.length === 1 || currentInput === 'Error') {
+        currentInput = '0';
+      } else {
+        currentInput = currentInput.slice(0, -1);
+      }
+      updateDisplay();
+    }
+
+    function calculate() {
+      try {
+        // Safe evaluation without raw eval
+        const sanitizedExpression = currentInput.replace(/[^0-9+\-*/.]/g, '');
+        const result = Function(`'use strict'; return (${sanitizedExpression})`)();
+        
+        if (!isFinite(result) || isNaN(result)) {
+          currentInput = 'Error';
+        } else {
+          currentInput = parseFloat(result.toFixed(8)).toString();
+        }
+        shouldResetDisplay = true;
+      } catch (err) {
+        currentInput = 'Error';
+      }
+      updateDisplay();
+    }
+
+    // Keyboard support
+    window.addEventListener('keydown', (e) => {
+      if (!isNaN(e.key) || ['+', '-', '*', '/', '.'].includes(e.key)) {
+        appendValue(e.key);
+      } else if (e.key === 'Enter' || e.key === '=') {
+        calculate();
+      } else if (e.key === 'Backspace') {
+        deleteLast();
+      } else if (e.key === 'Escape') {
+        clearDisplay();
+      }
+    });
   </script>
 </body>
 </html>
