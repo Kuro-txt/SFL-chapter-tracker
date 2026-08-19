@@ -111,8 +111,6 @@ export function recalculateAll() {
     return false;
   };
 
-  const globallyProcessedItems = new Set();
-
   const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false, isManual = false) => {
     const rawBase = Number(baseTickets) || 0;
     if (rawBase <= 0) return 0;
@@ -121,61 +119,26 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 1. Live Deliveries
+  // 1. Process Master Deliveries (archiveDeliveries)
   let doubleDeliveryAppliedToday = false;
-  (state.globalData.deliveries || []).forEach(d => {
+  const masterDeliveries = state.globalData.archiveDeliveries || state.globalData.deliveries || [];
+
+  masterDeliveries.forEach(d => {
     if (isTicked(d)) {
-      const uniqueKey = `deliv_${d.id || (d.name || d.from)}`;
-      if (!globallyProcessedItems.has(uniqueKey)) {
-        globallyProcessedItems.add(uniqueKey);
-
-        const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-        const isManual = Boolean(d.isManual);
-        let applyDouble = false;
-        if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !isManual) {
-          applyDouble = true;
-          doubleDeliveryAppliedToday = true;
-          d.hasDoubleBonus = true;
-        } else {
-          d.hasDoubleBonus = false;
-        }
-
-        const calculatedYield = calculateItemYield(baseTix, true, true, applyDouble, isManual);
-        const dCost = d.itemsCost || d.cost || 0;
-        const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
-
-        const isThisWeek = (itemWeekMonday === currentWeekMonday);
-        const isToday = isDoneToday(d, itemWeekMonday);
-
-        if (isToday) {
-          todayDelivTix += calculatedYield;
-          todayCostAll += dCost;
-        }
-
-        totalDelivTix += calculatedYield;
-        totalSflCostAll += dCost;
-        addWeeklyStat(itemWeekMonday, calculatedYield, dCost);
-
-        if (isThisWeek) {
-          weekDelivTix += calculatedYield;
-          weekCostAll += dCost;
-        }
-      }
-    }
-  });
-
-  // 2. Archived / Manual Deliveries
-  (state.globalData.archiveDeliveries || []).forEach((d, idx) => {
-    if (isTicked(d)) {
-      const uniqueKey = `archive_${d.id || d.from || d.name}_${d.completedAt || idx}`;
-      if (globallyProcessedItems.has(uniqueKey)) return;
-      globallyProcessedItems.add(uniqueKey);
-
       const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const calculatedYield = isManual ? baseTix : calculateItemYield(baseTix, true, false, false, false);
+      let applyDouble = false;
+      if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !isManual) {
+        applyDouble = true;
+        doubleDeliveryAppliedToday = true;
+        d.hasDoubleBonus = true;
+      } else {
+        d.hasDoubleBonus = false;
+      }
+
+      const calculatedYield = isManual ? baseTix : calculateItemYield(baseTix, true, true, applyDouble, false);
       const dCost = d.itemsCost || d.cost || 0;
-      const itemWeekMonday = getMondayBasedWeekId(d.weekId || currentWeekMonday);
+      const itemWeekMonday = getMondayBasedWeekId(d.weekId || d.completedDate || currentWeekMonday);
 
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
       const isToday = isDoneToday(d, itemWeekMonday);
@@ -196,13 +159,9 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Live Bounties
+  // 2. Live Bounties
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
-      const key = b.id ? `bounty_${b.id}` : `bounty_${(b.name || '').toLowerCase()}_${b.level || 0}`;
-      if (globallyProcessedItems.has(key)) return;
-      globallyProcessedItems.add(key);
-
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const isManual = Boolean(b.isManual);
       const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
@@ -233,13 +192,9 @@ export function recalculateAll() {
     }
   });
 
-  // 4. Live Chores
+  // 3. Live Chores
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
-      const key = `chore_${(c.npc || '').toLowerCase()}_${(c.task || c.name || '').toLowerCase()}`;
-      if (globallyProcessedItems.has(key)) return;
-      globallyProcessedItems.add(key);
-
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const isManual = Boolean(c.isManual);
       const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
@@ -263,17 +218,13 @@ export function recalculateAll() {
     }
   });
 
-  // 5. Past Weeks Storage
+  // 4. Past Weeks Storage
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     if (pastMonday === currentWeekMonday) return;
 
-    (wk.bounties || []).forEach((b, idx) => {
+    (wk.bounties || []).forEach((b) => {
       if (isTicked(b)) {
-        const key = b.id ? `wk_bounty_${wkKey}_${b.id}` : `wk_bounty_${wkKey}_${idx}_${(b.name || '').toLowerCase()}`;
-        if (globallyProcessedItems.has(key)) return;
-        globallyProcessedItems.add(key);
-
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
         const isManual = Boolean(b.isManual);
         const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
@@ -282,30 +233,22 @@ export function recalculateAll() {
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
         const isAnimal = isAnimalBounty(b);
 
-        if (isAnimal) {
-          totalAnimalBountyTix += finalTix;
-        } else {
-          totalBountyTix += finalTix;
-        }
+        if (isAnimal) totalAnimalBountyTix += finalTix;
+        else totalBountyTix += finalTix;
 
         totalSflCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
       }
     });
 
-    (wk.chores || []).forEach((c, idx) => {
+    (wk.chores || []).forEach((c) => {
       if (isTicked(c)) {
-        const key = `wk_chore_${wkKey}_${idx}_${(c.npc || '').toLowerCase()}`;
-        if (globallyProcessedItems.has(key)) return;
-        globallyProcessedItems.add(key);
-
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
         const isManual = Boolean(c.isManual);
         const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
         if (finalTix <= 0) return;
 
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
-
         totalChoreTix += finalTix;
         totalSflCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
