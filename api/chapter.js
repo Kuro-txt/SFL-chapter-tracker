@@ -16,6 +16,37 @@ async function ensureTableExists(client) {
   `);
 }
 
+function sanitizeArchiveDeliveries(archiveDeliveries) {
+  if (!Array.isArray(archiveDeliveries)) return [];
+  const seen = new Set();
+  const cleanList = [];
+
+  for (const d of archiveDeliveries) {
+    if (!d) continue;
+    const npc = (d.from || d.name || '').toLowerCase().trim();
+    const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+    const isSkip = Boolean(d.isSkipped);
+    const isMan = Boolean(d.isManual);
+
+    let key = '';
+    if (isMan) {
+      key = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || ''}`;
+    } else if (isDone) {
+      key = d.id ? `done_${String(d.id).toLowerCase()}` : `done_${npc}_${d.completedAt || d.completedDate || ''}`;
+    } else if (isSkip) {
+      key = d.id ? `skip_${String(d.id).toLowerCase()}` : `skip_${npc}_${d.completedAt || d.completedDate || ''}`;
+    } else {
+      key = `active_${npc}`;
+    }
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      cleanList.push(d);
+    }
+  }
+  return cleanList;
+}
+
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
   if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
   if (!vault.npcSnapshots) vault.npcSnapshots = {};
@@ -24,17 +55,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // Clean any legacy duplicate items in archiveDeliveries first
-  const seenKeys = new Set();
-  vault.archiveDeliveries = vault.archiveDeliveries.filter(d => {
-    if (!d) return false;
-    const key = d.id ? String(d.id).toLowerCase() : `${(d.from || d.name || '').toLowerCase()}_${d.completedAt || d.completedDate || 'active'}_${d.isManual ? 'm' : 'a'}`;
-    if (seenKeys.has(key)) return false;
-    seenKeys.add(key);
-    return true;
-  });
+  // 1. Sanitize any duplicate entries accumulated in past database saves
+  vault.archiveDeliveries = sanitizeArchiveDeliveries(vault.archiveDeliveries);
 
-  // 1. Reconcile NPC counters and state transitions
+  // 2. Reconcile Deltas using NPC Lifetime Counters
   Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
     const npcClean = npcName.toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
@@ -44,63 +68,68 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       const delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
       const skipDelta = currStat.skippedCount - prevStat.skippedCount;
 
-      const activeOrders = vault.archiveDeliveries.filter(d => {
-        const dNpc = (d.from || d.name || '').toLowerCase().trim();
-        const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-        return dNpc === npcClean && isPending;
-      });
-
       if (delivDelta > 0) {
         const completionTime = currStat.deliveryCompletedAt || nowMs;
         const compDate = new Date(completionTime).toISOString().split('T')[0];
         const compWeek = getMondayBasedWeekId(completionTime);
 
-        // Mark active order as Completed in-place
-        if (activeOrders.length > 0) {
-          const orderToComplete = activeOrders[0];
-          orderToComplete.completed = true;
-          orderToComplete.checked = true;
-          orderToComplete.isSkipped = false;
-          orderToComplete.status = 'completed';
-          orderToComplete.completedAt = completionTime;
-          orderToComplete.completedDate = compDate;
-          orderToComplete.weekId = compWeek;
-        }
+        for (let k = 1; k <= delivDelta; k++) {
+          const completedCountIndex = prevStat.deliveryCount + k;
+          const targetOrderId = `deliv_${npcClean}_${completedCountIndex}`;
+          const isStacked = k > 1;
 
-        // Handle stacked orders (Delta >= 2)
-        if (delivDelta >= 2) {
-          for (let s = 1; s < delivDelta; s++) {
-            const stackedId = `deliv_${npcClean}_stacked_d${prevStat.deliveryCount + s}`;
-            const exists = vault.archiveDeliveries.some(d => d.id === stackedId);
-            if (!exists) {
-              vault.archiveDeliveries.push({
-                id: stackedId,
-                from: npcName,
-                name: npcName,
-                baseTickets: defaultTix,
-                tickets: defaultTix,
-                cost: 0,
-                itemsCost: 0,
-                itemDetails: [],
-                items: {},
-                completed: true,
-                checked: true,
-                isSkipped: false,
-                isStacked: true,
-                status: 'completed',
-                completedAt: completionTime,
-                completedDate: compDate,
-                weekId: compWeek,
-                isManual: false
-              });
-            }
+          // Find pending active order or matching order
+          const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
+            const dNpc = (d.from || d.name || '').toLowerCase().trim();
+            const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+            return dNpc === npcClean && (isPending || d.id === targetOrderId);
+          });
+
+          if (existingPendingIdx !== -1) {
+            const orderToComplete = vault.archiveDeliveries[existingPendingIdx];
+            orderToComplete.id = targetOrderId;
+            orderToComplete.completed = true;
+            orderToComplete.checked = true;
+            orderToComplete.isSkipped = false;
+            orderToComplete.status = 'completed';
+            orderToComplete.completedAt = completionTime;
+            orderToComplete.completedDate = compDate;
+            orderToComplete.weekId = compWeek;
+          } else {
+            vault.archiveDeliveries.push({
+              id: targetOrderId,
+              from: npcName,
+              name: npcName,
+              baseTickets: defaultTix,
+              tickets: defaultTix,
+              cost: 0,
+              itemsCost: 0,
+              itemDetails: [],
+              items: {},
+              completed: true,
+              checked: true,
+              isSkipped: false,
+              isStacked,
+              status: 'completed',
+              completedAt: completionTime,
+              completedDate: compDate,
+              weekId: compWeek,
+              isManual: false
+            });
           }
         }
       }
 
       if (skipDelta > 0) {
-        if (activeOrders.length > 0) {
-          const orderToSkip = activeOrders[0];
+        const pendingIdx = vault.archiveDeliveries.findIndex(d => {
+          const dNpc = (d.from || d.name || '').toLowerCase().trim();
+          const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+          return dNpc === npcClean && isPending;
+        });
+
+        if (pendingIdx !== -1) {
+          const orderToSkip = vault.archiveDeliveries[pendingIdx];
+          orderToSkip.id = `deliv_${npcClean}_skip_${prevStat.skippedCount + 1}`;
           orderToSkip.isSkipped = true;
           orderToSkip.completed = false;
           orderToSkip.checked = false;
@@ -112,7 +141,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       }
     }
 
-    // Update snapshot baseline
+    // Save baseline snapshot
     vault.npcSnapshots[npcClean] = {
       deliveryCount: currStat.deliveryCount,
       skippedCount: currStat.skippedCount,
@@ -120,50 +149,33 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     };
   });
 
-  // 2. Add or update currently active board orders into vault.archiveDeliveries
+  // 3. Register or update the currently active order from board
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
+    const nextTargetCount = currStat.deliveryCount + 1;
+    const activeOrderId = `deliv_${npcClean}_${nextTargetCount}`;
 
-    const orderUniqueId = order.id 
-      ? `deliv_${order.id}` 
-      : `deliv_${npcClean}_d${currStat.deliveryCount}_s${currStat.skippedCount}`;
-
-    const isCompleted = order.completed || (typeof order.completedAt === 'number' && order.completedAt > 0);
-    const compTime = order.completedAt || (isCompleted ? nowMs : null);
-    const compDate = compTime ? new Date(compTime).toISOString().split('T')[0] : todayDateStr;
-    const compWeek = compTime ? getMondayBasedWeekId(compTime) : currentWeekMonday;
-
-    const existingIdx = vault.archiveDeliveries.findIndex(d => 
-      d.id === orderUniqueId || 
-      (order.id && d.id === `deliv_${order.id}`) ||
-      ((d.from || d.name || '').toLowerCase().trim() === npcClean && 
-       d.deliveryCountAtCreation === currStat.deliveryCount && 
-       d.skippedCountAtCreation === currStat.skippedCount)
-    );
+    const existingIdx = vault.archiveDeliveries.findIndex(d => {
+      const dNpc = (d.from || d.name || '').toLowerCase().trim();
+      const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+      return dNpc === npcClean && (isPending || d.id === activeOrderId);
+    });
 
     if (existingIdx !== -1) {
       const target = vault.archiveDeliveries[existingIdx];
-      if (!target.isManual) {
+      if (!target.isManual && !target.completed) {
+        target.id = activeOrderId;
         target.items = order.items || target.items;
         target.itemsCost = order.itemsCost || target.itemsCost;
         target.cost = order.itemsCost || target.cost;
         target.itemDetails = order.itemDetails || target.itemDetails;
         target.baseTickets = order.baseTickets || target.baseTickets;
         target.tickets = order.baseTickets || target.tickets;
-        if (isCompleted && !target.completed) {
-          target.completed = true;
-          target.checked = true;
-          target.isSkipped = false;
-          target.status = 'completed';
-          target.completedAt = compTime;
-          target.completedDate = compDate;
-          target.weekId = compWeek;
-        }
       }
     } else {
       vault.archiveDeliveries.push({
-        id: orderUniqueId,
+        id: activeOrderId,
         from: order.from,
         name: order.from,
         items: order.items || {},
@@ -173,21 +185,20 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         baseTickets: order.baseTickets || 2,
         tickets: order.baseTickets || 2,
         isChapterNpc: true,
-        completed: isCompleted,
-        checked: isCompleted,
+        completed: false,
+        checked: false,
         isSkipped: false,
         isStacked: false,
-        status: isCompleted ? 'completed' : 'active',
-        completedAt: isCompleted ? compTime : null,
-        completedDate: compDate,
-        weekId: compWeek,
-        deliveryCountAtCreation: currStat.deliveryCount,
-        skippedCountAtCreation: currStat.skippedCount,
+        status: 'active',
+        completedAt: null,
+        completedDate: todayDateStr,
+        weekId: currentWeekMonday,
         isManual: false
       });
     }
   });
 
+  vault.archiveDeliveries = sanitizeArchiveDeliveries(vault.archiveDeliveries);
   vault.deliveries = parsedDeliveryList;
 }
 
@@ -366,7 +377,7 @@ export default async function handler(req, res) {
 
         if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
         if (body.deliveries) existingData.deliveries = body.deliveries;
-        if (body.archiveDeliveries) existingData.archiveDeliveries = body.archiveDeliveries;
+        if (body.archiveDeliveries) existingData.archiveDeliveries = sanitizeArchiveDeliveries(body.archiveDeliveries);
         if (body.bounties) existingData.bounties = body.bounties;
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
