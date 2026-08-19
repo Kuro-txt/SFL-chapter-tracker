@@ -1,5 +1,5 @@
 import { 
-  state, 
+  state,  
   formatSFL, 
   resolveAnimalLevel, 
   isAnimalBounty,
