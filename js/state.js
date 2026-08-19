@@ -179,10 +179,11 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// Master Deduplicator: Collapses all duplicates into 1 single record per delivery
+// 🎯 CANONICAL DEDUPLICATOR: Collapses all duplicates into 1 single record per delivery
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-
+  
+  const manualList = [];
   const initialMap = new Map();
 
   const sorted = [...deliveries].sort((a, b) => {
@@ -281,7 +282,7 @@ export function sanitizeDeliveries(deliveries) {
   return Array.from(finalMap.values());
 }
 
-// Single ground-truth getter
+// 🎯 SINGLE GROUND TRUTH GETTER: Always used by Render, Editor, Overview, and Cloud Sync
 export function getDeliveryRecords() {
   const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
   const cleanList = sanitizeDeliveries(rawList);
