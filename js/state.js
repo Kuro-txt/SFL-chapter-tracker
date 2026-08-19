@@ -179,34 +179,60 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// Strict In-Memory Delivery Deduplicator
+// 🎯 Master Deduplicator: Collapses any duplicate entries by NPC / Completion state
 export function getDeduplicatedDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
   const seen = new Set();
   const result = [];
 
-  for (const d of deliveries) {
+  // Sort so completed/manual items with timestamps come first
+  const sorted = [...deliveries].sort((a, b) => {
+    const aDone = Boolean(a.checked || a.completed);
+    const bDone = Boolean(b.checked || b.completed);
+    if (aDone !== bDone) return aDone ? -1 : 1;
+    return (b.completedAt || 0) - (a.completedAt || 0);
+  });
+
+  for (const d of sorted) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
+    if (!npc) continue;
+
     const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
     const isMan = Boolean(d.isManual);
 
-    let key = '';
+    let dedupeKey = '';
     if (isMan) {
-      key = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || ''}`;
+      dedupeKey = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || d.weekId || ''}`;
     } else if (isDone) {
-      key = d.id ? `done_${String(d.id).toLowerCase()}` : `done_${npc}_${d.completedAt || d.completedDate || ''}`;
+      const countKey = d.deliveryCountAtCreation !== undefined ? `_cnt${d.deliveryCountAtCreation}` : '';
+      const stackKey = d.isStacked ? `_stack_${d.id || ''}` : '';
+      const timeKey = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
+      dedupeKey = `done_${npc}_${timeKey}${countKey}${stackKey}`;
     } else if (isSkip) {
-      key = d.id ? `skip_${String(d.id).toLowerCase()}` : `skip_${npc}_${d.completedAt || d.completedDate || ''}`;
+      const skipCountKey = d.skippedCountAtCreation !== undefined ? `_skcnt${d.skippedCountAtCreation}` : '';
+      const timeKey = d.completedDate || d.weekId || 'skip';
+      dedupeKey = `skip_${npc}_${timeKey}${skipCountKey}`;
     } else {
-      key = `active_${npc}`;
+      // Exactly ONE active uncompleted order per NPC
+      dedupeKey = `active_${npc}`;
     }
 
-    if (!seen.has(key)) {
-      seen.add(key);
+    if (!seen.has(dedupeKey)) {
+      seen.add(dedupeKey);
       result.push(d);
     }
   }
   return result;
+}
+
+// 🎯 Single Ground Truth Getter: Always returns clean records
+export function getDeliveryRecords() {
+  const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const cleanList = getDeduplicatedDeliveries(rawList);
+  if (state.globalData) {
+    state.globalData.archiveDeliveries = cleanList;
+  }
+  return cleanList;
 }
