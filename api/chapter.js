@@ -16,12 +16,11 @@ async function ensureTableExists(client) {
   `);
 }
 
-function sanitizeArchiveDeliveries(archiveDeliveries) {
-  if (!Array.isArray(archiveDeliveries)) return [];
-  const seen = new Set();
-  const cleanList = [];
+function sanitizeDeliveriesList(deliveries) {
+  if (!Array.isArray(deliveries)) return [];
+  const seen = new Map();
 
-  const sorted = [...archiveDeliveries].sort((a, b) => {
+  const sorted = [...deliveries].sort((a, b) => {
     const aDone = Boolean(a.checked || a.completed);
     const bDone = Boolean(b.checked || b.completed);
     if (aDone !== bDone) return aDone ? -1 : 1;
@@ -33,32 +32,52 @@ function sanitizeArchiveDeliveries(archiveDeliveries) {
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-    const isSkip = Boolean(d.isSkipped);
     const isMan = Boolean(d.isManual);
+    const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
+    const isSkip = Boolean(d.isSkipped);
 
-    let key = '';
+    let canonicalId = d.id || '';
+
     if (isMan) {
-      key = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || ''}`;
+      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
     } else if (isDone) {
-      const countKey = d.deliveryCountAtCreation !== undefined ? `_cnt${d.deliveryCountAtCreation}` : '';
-      const stackKey = d.isStacked ? `_stack_${d.id || ''}` : '';
-      const timeKey = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
-      key = `done_${npc}_${timeKey}${countKey}${stackKey}`;
+      const count = d.deliveryCountAtCreation;
+      const compTime = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
+      canonicalId = (count !== undefined && count !== null && count !== '') 
+        ? `npc_deliv_${npc}_d${count}` 
+        : `npc_deliv_${npc}_${compTime}`;
     } else if (isSkip) {
-      const skipCountKey = d.skippedCountAtCreation !== undefined ? `_skcnt${d.skippedCountAtCreation}` : '';
-      const timeKey = d.completedDate || d.weekId || 'skip';
-      key = `skip_${npc}_${timeKey}${skipCountKey}`;
+      const skipCount = d.skippedCountAtCreation;
+      const compTime = d.completedDate || d.weekId || 'skip';
+      canonicalId = (skipCount !== undefined && skipCount !== null && skipCount !== '') 
+        ? `npc_deliv_${npc}_skip_${skipCount}` 
+        : `npc_deliv_${npc}_skip_${compTime}`;
     } else {
-      key = `active_${npc}`;
+      canonicalId = `npc_deliv_${npc}_active`;
     }
 
-    if (!seen.has(key)) {
-      seen.add(key);
-      cleanList.push(d);
+    d.id = canonicalId;
+
+    if (!seen.has(canonicalId)) {
+      seen.set(canonicalId, d);
+    } else {
+      const existing = seen.get(canonicalId);
+      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+        existing.itemDetails = d.itemDetails;
+        existing.items = d.items;
+        existing.itemsCost = d.itemsCost;
+        existing.cost = d.cost;
+      }
+      if (d.completed && !existing.completed) {
+        existing.completed = true;
+        existing.checked = true;
+        existing.status = 'completed';
+        existing.completedAt = d.completedAt || existing.completedAt;
+      }
     }
   }
-  return cleanList;
+
+  return Array.from(seen.values());
 }
 
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
@@ -69,8 +88,8 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // 1. Sanitize any legacy duplicates from database
-  vault.archiveDeliveries = sanitizeArchiveDeliveries(vault.archiveDeliveries);
+  // 1. Sanitize past database records to eliminate any legacy duplicates
+  vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
 
   // 2. Reconcile Deltas using NPC Lifetime Counters
   Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
@@ -89,14 +108,14 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
         for (let k = 1; k <= delivDelta; k++) {
           const completedCountIndex = prevStat.deliveryCount + k;
-          const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
+          const targetOrderId = `npc_deliv_${npcClean}_d${completedCountIndex}`;
           const isStacked = k > 1;
 
-          // Find pending active order or matching order
+          // Find active pending order to mark complete
           const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
             const dNpc = (d.from || d.name || '').toLowerCase().trim();
             const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-            return dNpc === npcClean && (isPending || d.id === targetOrderId);
+            return dNpc === npcClean && (isPending || d.id === targetOrderId || d.id === `npc_deliv_${npcClean}_active`);
           });
 
           if (existingPendingIdx !== -1) {
@@ -140,12 +159,12 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         const pendingIdx = vault.archiveDeliveries.findIndex(d => {
           const dNpc = (d.from || d.name || '').toLowerCase().trim();
           const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-          return dNpc === npcClean && isPending;
+          return dNpc === npcClean && (isPending || d.id === `npc_deliv_${npcClean}_active`);
         });
 
         if (pendingIdx !== -1) {
           const orderToSkip = vault.archiveDeliveries[pendingIdx];
-          orderToSkip.id = `deliv_${npcClean}_skip_${prevStat.skippedCount + 1}`;
+          orderToSkip.id = `npc_deliv_${npcClean}_skip_${prevStat.skippedCount + 1}`;
           orderToSkip.isSkipped = true;
           orderToSkip.completed = false;
           orderToSkip.checked = false;
@@ -166,23 +185,18 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     };
   });
 
-  // 3. Register or update the currently active order from board
+  // 3. Register or update the currently active order from board (1 active order per NPC)
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
     const nextTargetCount = currStat.deliveryCount + 1;
-    const activeOrderId = `deliv_${npcClean}_d${nextTargetCount}`;
+    const activeOrderId = `npc_deliv_${npcClean}_active`;
 
-    const existingIdx = vault.archiveDeliveries.findIndex(d => {
-      const dNpc = (d.from || d.name || '').toLowerCase().trim();
-      const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-      return dNpc === npcClean && (isPending || d.id === activeOrderId);
-    });
+    const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId);
 
     if (existingIdx !== -1) {
       const target = vault.archiveDeliveries[existingIdx];
       if (!target.isManual && !target.completed) {
-        target.id = activeOrderId;
         target.items = order.items || target.items;
         target.itemsCost = order.itemsCost || target.itemsCost;
         target.cost = order.itemsCost || target.cost;
@@ -219,7 +233,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     }
   });
 
-  vault.archiveDeliveries = sanitizeArchiveDeliveries(vault.archiveDeliveries);
+  vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
   vault.deliveries = parsedDeliveryList;
 }
 
@@ -282,6 +296,9 @@ export default async function handler(req, res) {
         if (queryRes.rows.length > 0) {
           const vaultData = queryRes.rows[0].vault_data || {};
           delete vaultData.apiKey;
+          if (vaultData.archiveDeliveries) {
+            vaultData.archiveDeliveries = sanitizeDeliveriesList(vaultData.archiveDeliveries);
+          }
           return res.status(200).json({ success: true, vaultData });
         }
         return res.status(200).json({ success: true, vaultData: null });
@@ -360,6 +377,9 @@ export default async function handler(req, res) {
         }
 
         delete vaultData.apiKey;
+        if (vaultData.archiveDeliveries) {
+          vaultData.archiveDeliveries = sanitizeDeliveriesList(vaultData.archiveDeliveries);
+        }
         return res.status(200).json({ success: true, username: loginUsername, vaultData });
       } finally {
         client.release();
@@ -398,7 +418,7 @@ export default async function handler(req, res) {
 
         if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
         if (body.deliveries) existingData.deliveries = body.deliveries;
-        if (body.archiveDeliveries) existingData.archiveDeliveries = sanitizeArchiveDeliveries(body.archiveDeliveries);
+        if (body.archiveDeliveries) existingData.archiveDeliveries = sanitizeDeliveriesList(body.archiveDeliveries);
         if (body.bounties) existingData.bounties = body.bounties;
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
@@ -478,14 +498,16 @@ export default async function handler(req, res) {
       }
     }
 
+    const cleanArchive = sanitizeDeliveriesList(currentVault ? currentVault.archiveDeliveries : parsed.deliveryList);
+
     return res.status(200).json({
       farmId,
       isVipActive: parsed.isVipActive,
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       milestones: parsed.liveMilestones,
       pricesLoadedCount: Object.keys(priceMap).length,
-      deliveries: currentVault ? currentVault.deliveries : parsed.deliveryList,
-      archiveDeliveries: currentVault ? currentVault.archiveDeliveries : parsed.deliveryList,
+      deliveries: parsed.deliveryList,
+      archiveDeliveries: cleanArchive,
       bounties: currentVault ? currentVault.bounties : parsed.activeBounties,
       chores: currentVault ? currentVault.chores : parsed.choresList,
       vaultData: currentVault
