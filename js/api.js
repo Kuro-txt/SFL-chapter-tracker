@@ -2,9 +2,10 @@ import {
   state, 
   getActiveBoostCount, 
   getActiveVipBonus, 
-  getMondayBasedWeekId, 
+  getMondayBasedWeekId,
   isLoginClaimedToday,
-  getDeliveryRecords
+  getDeliveryRecords,
+  getApiBaseUrl
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -68,7 +69,10 @@ export async function loadTrackerData() {
     });
     if (apiKey) queryParams.set('apiKey', apiKey);
 
-    const res = await fetch(`/api/chapter?${queryParams.toString()}`);
+    const baseUrl = getApiBaseUrl();
+    const endpointUrl = `${baseUrl}/api/chapter?${queryParams.toString()}`;
+
+    const res = await fetch(endpointUrl);
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `Server error (${res.status})`);
@@ -77,7 +81,6 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // Load master delivery records through single deduplication pipeline
     state.globalData.archiveDeliveries = getDeliveryRecords();
 
     if (data.vaultData) {
@@ -247,7 +250,8 @@ export async function saveProgressToCloudKV(silent = false) {
   };
 
   try {
-    const res = await fetch('/api/chapter?action=saveVault', {
+    const baseUrl = getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/api/chapter?action=saveVault`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
