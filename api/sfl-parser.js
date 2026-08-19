@@ -3,7 +3,7 @@ import { SFL_RECIPES } from '../recipes.js';
 export const CHAPTER_NPC_TICKETS = {
   "pumpkin pete": 1,
   "pumpkin' pete": 1,
-  "pete": 1,
+  "pete": 1, 
   "bert": 2,
   "finley": 2,
   "findlay": 2,
