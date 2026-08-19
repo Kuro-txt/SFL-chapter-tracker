@@ -2,272 +2,752 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SFL Chapter Tracker & Cloud Vault Inspector</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
+  <title>Sunflower Land Chapter Tracker</title>
+  
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #0f111a;
-      color: #e6edf3;
+      background-color: #3b5323;
+      background-image: radial-gradient(#4d6b2c 15%, transparent 16%), radial-gradient(#2d401a 15%, transparent 16%);
+      background-size: 26px 26px;
+      background-position: 0 0, 13px 13px;
+      color: #3e2723;
       font-family: 'Courier New', Courier, monospace, sans-serif;
-      padding: 14px;
+      padding: clamp(10px, 2vw, 24px);
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      align-items: center;
+      min-height: 100vh;
+      font-size: clamp(13px, 1.2vw, 15px);
+      -webkit-text-size-adjust: 100%;
+    }
+    .wrapper { 
+      max-width: 1080px; 
+      width: 100%; 
+      display: flex; 
+      flex-direction: column; 
+      gap: clamp(10px, 1.4vw, 16px); 
+    }
+    
+    header {
+      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
+      border: 3px solid #3E2723;
+      border-radius: 12px;
+      text-align: center;
+      padding: clamp(12px, 1.8vw, 18px);
+      box-shadow: 0 5px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
+    }
+    h1 { 
+      font-size: clamp(20px, 2.8vw, 28px); 
+      font-weight: 900; 
+      color: #FFF8DC; 
+      text-shadow: 2px 2px #271813; 
+      margin-bottom: 4px; 
+      letter-spacing: 1.2px; 
+    }
+    p { 
+      font-size: clamp(12px, 1.4vw, 14px); 
+      color: #EEDC82; 
+      font-weight: bold; 
+      text-shadow: 1px 1px #271813; 
+    }
+    
+    .tip-banner {
+      background: #FFF8DC;
+      border: 2px dashed #D2691E;
+      border-radius: 10px;
+      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 1.6vw, 18px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 40px;
+      font-size: clamp(12px, 1.2vw, 13.5px);
+      font-weight: 900;
+      color: #8B4513;
+      cursor: pointer;
+      user-select: none;
+      gap: 10px;
+      box-shadow: 0 3px 0px #5C4033;
+    }
+    #rotatingTipText {
+      transition: opacity 0.3s ease;
+      opacity: 1;
+      line-height: 1.4;
+    }
+    #rotatingTipText.fade-out { opacity: 0; }
+
+    .event-banner {
+      background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+      border: 2px solid #FF9800;
+      border-radius: 10px;
+      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 1.6vw, 18px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 3px 6px rgba(255, 152, 0, 0.25);
+      font-size: clamp(12px, 1.2vw, 13.5px);
       gap: 10px;
     }
+
     .panel {
-      background: #161b22;
-      border: 1px solid #30363d;
+      background-color: #FDF5E6;
+      border: 3px solid #8B5A2B;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 18px);
+      box-shadow: 0 5px 0px #5C4033;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.4vw, 14px);
+    }
+    .controls-row { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 12px; 
+      align-items: center; 
+      justify-content: space-between; 
+    }
+    .input-group { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 10px; 
+      align-items: center; 
+    }
+    
+    label { 
+      font-size: clamp(12px, 1.2vw, 13.5px); 
+      font-weight: 900; 
+      color: #5C4033; 
+    }
+    input[type="text"], input[type="password"], input[type="number"], select {
+      background-color: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      color: #3E2723;
+      padding: clamp(6px, 0.9vw, 9px) clamp(8px, 1.1vw, 12px);
+      font-size: clamp(12px, 1.2vw, 13.5px);
+      font-weight: bold;
+      border-radius: 8px;
+      outline: none;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus { 
+      border-color: #D2691E; 
+      background-color: #fff; 
+    }
+    
+    .checkbox-label {
+      background-color: #FFFACD;
+      border: 2px solid #D2691E;
+      padding: clamp(6px, 0.9vw, 8px) clamp(10px, 1.2vw, 12px);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: clamp(12px, 1.2vw, 13.5px);
+      color: #8B4513;
+      font-weight: 900;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-weight: 900;
+      font-size: clamp(11.5px, 1.1vw, 13px);
+      text-transform: uppercase;
+      padding: clamp(8px, 1vw, 10px) clamp(12px, 1.4vw, 16px);
+      border-radius: 8px;
+      border: 2px solid #3E2723;
+      cursor: pointer;
+      box-shadow: 0 3px 0px #3E2723;
+      transition: all 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      touch-action: manipulation;
+    }
+    .btn:hover { filter: brightness(1.06); }
+    .btn:active { transform: translateY(2px); box-shadow: 0 1px 0px #3E2723; }
+
+    .btn-wood {
+      background: linear-gradient(180deg, #C27B38 0%, #8B4E1D 100%);
+      color: #FFF8DC;
+      border-color: #4A280E;
+      box-shadow: 0 3px 0px #341B07;
+      text-shadow: 1px 1px 0px #241103;
+    }
+    .btn-emerald { background-color: #388E3C; color: #FFF8DC; border-color: #1B5E20; box-shadow: 0 3px 0px #1B5E20; text-shadow: 1px 1px 0px #0F3812; }
+    .btn-indigo { background-color: #6D4C41; color: #FFF8DC; border-color: #3E2723; box-shadow: 0 3px 0px #2E1B17; }
+    .btn-guide { background-color: #2980B9; color: #FFF8DC; border-color: #1B4F72; box-shadow: 0 3px 0px #154360; text-shadow: 1px 1px 0px #0E2F44; }
+    .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 3px 0px #5B2C6F; }
+    .btn-sm { padding: clamp(5px, 0.8vw, 7px) clamp(8px, 1.1vw, 12px); font-size: clamp(11px, 1vw, 12px); }
+
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: clamp(12px, 1.6vw, 16px); 
+    }
+    
+    .stat-box {
+      position: relative;
+      background-color: #FFF8DC;
+      border: 3px solid #8B5A2B;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 16px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+      box-shadow: 0 4px 0px #5C4033;
+      cursor: help;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    .stat-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 0px #5C4033;
+    }
+    .stat-title { 
+      font-size: clamp(12px, 1.2vw, 13.5px); 
+      font-weight: 900; 
+      color: #8B5A2B; 
+      text-transform: uppercase; 
+    }
+    .stat-val { 
+      font-size: clamp(22px, 2.4vw, 28px); 
+      font-weight: 900; 
+      color: #D2691E; 
+      line-height: 1.15;
+    }
+    .stat-footer { 
+      border-top: 2px dashed #D2B48C; 
+      padding-top: 8px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 4px; 
+      font-size: clamp(12px, 1.2vw, 13.5px); 
+      font-weight: bold; 
+      color: #5C4033; 
+    }
+
+    .stat-box .tooltip {
+      visibility: hidden;
+      opacity: 0;
+      width: 270px;
+      background-color: #3E2723;
+      color: #FFF8DC;
+      text-align: left;
+      border: 2px solid #D2691E;
+      border-radius: 8px;
+      padding: 10px 14px;
+      position: absolute;
+      z-index: 20;
+      bottom: 105%;
+      left: 50%;
+      transform: translateX(-50%);
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.45;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+      pointer-events: none;
+    }
+    .stat-box:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .overview-grid {
+      display: grid; 
+      grid-template-columns: repeat(2, minmax(0, 1fr)); 
+      gap: clamp(12px, 1.6vw, 16px); 
+    }
+    .overview-card {
+      background: #FFFDF7;
+      border: 3px solid #8B5A2B;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 16px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 4px 0px #5C4033;
+      transition: transform 0.15s ease;
+    }
+    .overview-card:hover { transform: translateY(-2px); }
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+      font-size: clamp(13px, 1.3vw, 14.5px);
+      color: #4E342E;
+      border-bottom: 2px dashed #D7CCC8;
+      padding-bottom: 8px;
+    }
+    .overview-count {
+      background: #EFEBE9;
+      color: #4E342E;
+      padding: 4px 10px;
+      border: 1px solid #A1887F;
+      border-radius: 6px;
+      font-size: clamp(11px, 1.1vw, 12.5px);
+      font-weight: 900;
+    }
+    .overview-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chart-panel {
+      background: #FFFDF7;
+      border: 3px solid #8B5A2B;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 18px);
+      box-shadow: 0 5px 0px #5C4033;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 2px dashed #D2B48C;
+      padding-bottom: 8px;
+    }
+    .chart-title {
+      font-size: clamp(13.5px, 1.4vw, 15px);
+      font-weight: 900;
+      color: #5C4033;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chart-legend {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: clamp(11px, 1.1vw, 12px);
+      font-weight: 900;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); }
+    .chart-container { width: 100%; overflow-x: auto; padding-bottom: 4px; }
+
+    .badge {
+      padding: 3px 8px;
+      font-size: clamp(10px, 1vw, 11.5px);
+      font-weight: 900;
+      border-radius: 5px;
+      text-transform: uppercase;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .badge-done { background-color: #C8E6C9; color: #2E7D32; }
+    .badge-active { background-color: #FFE0B2; color: #E65100; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(45, 64, 26, 0.85);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 14px;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background-color: #FDF5E6;
+      border: 3px solid #8B5A2B;
+      width: 100%;
+      max-width: 640px;
+      max-height: 85vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 0px #5C4033;
+    }
+    .modal-header { 
+      padding: 12px 16px; 
+      border-bottom: 3px solid #8B5A2B; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: #8B5A2B; 
+      color: #FFF8DC; 
+      border-top-left-radius: 8px; 
+      border-top-right-radius: 8px; 
+    }
+    .modal-body { 
+      padding: 14px 16px; 
+      overflow-y: auto; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 10px; 
+    }
+
+    .guide-card {
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
       border-radius: 8px;
       padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 5px;
+      font-size: clamp(12px, 1.1vw, 13px);
     }
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-    label {
-      font-size: 11px;
-      font-weight: bold;
-      color: #8b949e;
-      text-transform: uppercase;
-    }
-    select, input, button {
-      background: #21262d;
-      border: 1px solid #30363d;
-      color: #e6edf3;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 12px;
-      outline: none;
-    }
-    input:focus, select:focus {
-      border-color: #58a6ff;
-    }
-    button {
-      background: #238636;
-      border-color: #2ea043;
+    .guide-card-title {
       font-weight: 900;
-      cursor: pointer;
-      text-transform: uppercase;
-      padding: 6px 14px;
-    }
-    button:hover { background: #2ea043; }
-    .status-bar {
-      font-size: 11px;
-      color: #8b949e;
+      color: #8B4513;
       display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px dashed #D2B48C;
+      padding-bottom: 4px;
+      font-size: clamp(13px, 1.2vw, 14px);
     }
-    .status-bar strong { color: #3fb950; }
-    pre {
-      flex: 1;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 14px;
-      overflow: auto;
-      font-size: 12px;
+    .guide-card-text {
+      color: #5C4033;
       line-height: 1.45;
-      color: #c9d1d9;
-      white-space: pre-wrap;
-      word-break: break-word;
+      font-weight: bold;
+    }
+
+    @media (max-width: 560px) {
+      .controls-row { flex-direction: column; align-items: stretch; }
+      .input-group { width: 100%; justify-content: space-between; }
+      .stats-grid, .overview-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
 
-  <div class="panel">
-    <div class="row">
-      <label for="endpointSelect">🎯 Target:</label>
-      <select id="endpointSelect" onchange="handleTargetChange()">
-        <option value="vault">🔐 Cloud Vault Database (/api/chapter?action=getVault)</option>
-        <option value="parsed">🌾 Backend Parsed Output (/api/chapter)</option>
-        <option value="rawSfl">⚡ Raw SFL Farm API (Direct/Proxied)</option>
-        <option value="rawPrices">💰 SFL.world Prices API</option>
-      </select>
+  <div class="wrapper">
+    <header>
+      <h1>🌻 SUNFLOWER LAND CHAPTER TRACKER</h1>
+      <p>Harvest Tickets & Chapter End Goal Calculator</p>
+    </header>
 
-      <label for="sectionSelect">📦 Filter:</label>
-      <select id="sectionSelect" onchange="filterSection()">
-        <option value="ALL">ALL DATA</option>
-        <option value="archiveDeliveries">archiveDeliveries (Vault)</option>
-        <option value="deliveries">deliveries (Active)</option>
-        <option value="npcSnapshots">npcSnapshots (Counters)</option>
-        <option value="weeks">weeks (History)</option>
-        <option value="bounties">bounties</option>
-        <option value="chores">chores</option>
-        <option value="milestones">milestones</option>
-        <option value="inventory">inventory</option>
-      </select>
-
-      <button onclick="fetchData()">⚡ Query Target</button>
+    <div class="tip-banner" id="tipBanner">
+      <span id="rotatingTipText">📦 <strong>WEEK-BY-WEEK LOGGING:</strong> Click the EDIT button on any card to view and filter all items by week!</span>
+      <span style="font-size: 11px; opacity: 0.7;">(Hover to Pause)</span>
     </div>
 
-    <div class="row">
-      <label for="backendUrlInput">Backend URL:</label>
-      <input type="text" id="backendUrlInput" placeholder="e.g. https://your-app.vercel.app" style="flex: 1; min-width: 200px;" />
+    <div id="doubleDeliveryBanner" class="event-banner" style="display: none;">
+      <div style="display: flex; align-items: center; gap: 8px; color: #E65100; font-weight: 900;">
+        <span style="font-size: 16px;">⚡</span>
+        <span>DOUBLE DELIVERY EVENT ACTIVE! First completed delivery of today receives 2x Total Tickets [(Base + VIP + Boosts) × 2]</span>
+      </div>
+      <span style="background: #E65100; color: #FFF; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 5px;">2X ACTIVE</span>
+    </div>
 
-      <label for="farmIdInput">Farm ID:</label>
-      <input type="text" id="farmIdInput" value="8472883706403914" style="width: 140px;" />
+    <div class="panel" style="padding: 10px 14px; background: #FFFACD;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
+          <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
+          <input type="text" id="authUsername" placeholder="Username" style="width: 120px;" autocomplete="username" />
+          <input type="password" id="authPassword" placeholder="Password" style="width: 120px;" autocomplete="current-password" />
+          <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
+          <button type="button" onclick="userRegister()" class="btn btn-sm btn-wood">REGISTER</button>
+        </form>
 
-      <label for="usernameInput">User:</label>
-      <input type="text" id="usernameInput" placeholder="Username" style="width: 110px;" />
+        <div id="authLoggedIn" style="display: none; align-items: center; gap: 10px;">
+          <span style="font-size: 13px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
+          <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; box-shadow:0 2px 0px #78281F;">LOGOUT</button>
+        </div>
+      </div>
+    </div>
 
-      <label for="apiKeyInput">API Key:</label>
-      <input type="password" id="apiKeyInput" placeholder="Optional Key" style="width: 110px;" />
+    <div class="panel">
+      <div class="controls-row">
+        <form onsubmit="return false;" class="input-group" style="margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <label for="farmId">FARM ID:</label>
+          <input type="text" id="farmId" value="8472883706403914" style="width: 145px;" />
+          
+          <label for="apiKey">API KEY:</label>
+          <input type="password" id="apiKey" placeholder="Optional Key" autocomplete="off" style="width: 110px;" />
+
+          <label class="checkbox-label">
+            <input type="checkbox" id="vipToggle" onchange="saveAndRecalculate()" style="accent-color: #D2691E; width: 16px; height: 16px;" />
+            👑 VIP (+2)
+          </label>
+          <span id="priceBadge" style="display:none; font-size:11px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
+        </form>
+
+        <div class="input-group" style="background:#FFFACD; padding:6px 10px; border:2px solid #D2691E; border-radius:8px;">
+          <label style="color:#8B4513;">+1 BOOSTS:</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #3</label>
+          
+          <div style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
+            <label class="checkbox-label" style="padding: 4px 8px; font-size: 11.5px;" title="Auto-increments +1 ticket every calendar day">
+              <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 15px; height: 15px;" />
+              🎁 LOGIN
+            </label>
+            <input type="number" id="dailyLoginCount" value="0" min="0" onchange="saveLoginCountAndRecalculate()" style="width: 52px; padding: 3px 6px; font-size: 12px; text-align: center;" title="Total Daily Login Tickets Collected" />
+          </div>
+        </div>
+
+        <div class="input-group" style="background:#E8F5E9; padding:6px 10px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:6px;">
+          <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
+          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
+          <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 58px; padding: 3px 6px; font-size: 12px;" title="Total Track Tickets" />
+          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
+          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 3px 6px; font-size: 12px;" title="Total Track SFL Cost" />
+        </div>
+
+        <div class="input-group">
+          <button onclick="loadTrackerData()" class="btn btn-wood">🌾 FETCH DATA</button>
+          <button onclick="saveProgressToCloudKV()" class="btn btn-emerald">☁️ SAVE IN CLOUD</button>
+          <button onclick="toggleGuideModal()" class="btn btn-guide">📖 GUIDE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🎯 2x2 Stats Grid -->
+    <div class="stats-grid">
+      <div id="boxTotalTickets" class="stat-box">
+        <div class="tooltip" id="tooltipTotal">
+          <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
+          <div id="tipTotalDeliv">📦 Deliveries: 0 Tix</div>
+          <div id="tipTotalBounty">📜 Bounties: 0 Tix</div>
+          <div id="tipTotalAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
+          <div id="tipTotalChore">🧹 Chores: 0 Tix</div>
+          <div id="tipTotalTrack">🛤️ Track: 0 Tix</div>
+          <div id="tipTotalLogin">🎁 Daily Login: 0 Tix</div>
+        </div>
+        <div class="stat-title">🏆 TOTAL TICKETS</div>
+        <div id="statTotalTickets" class="stat-val">0</div>
+        <div class="stat-footer">
+          <div style="display:flex; justify-content:space-between;"><span>Vault Cost:</span><strong id="statTotalCost" style="color:#8B4513;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Avg / Tix:</span><strong id="statTotalRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
+        </div>
+      </div>
+
+      <div id="boxWeekTickets" class="stat-box" style="border-color: #D2691E;">
+        <div class="tooltip" id="tooltipWeek">
+          <div>📅 <strong>WEEK BREAKDOWN:</strong></div>
+          <div id="tipWeekDeliv">📦 Deliveries: 0 Tix</div>
+          <div id="tipWeekBounty">📜 Bounties: 0 Tix</div>
+          <div id="tipWeekAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
+          <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
+          <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
+          <div id="tipWeekLogin">🎁 Daily Login: 0 Tix</div>
+        </div>
+        <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK</div>
+        <div id="statWeekTickets" class="stat-val" style="color: #D2691E;">0 Tickets</div>
+        <div class="stat-footer">
+          <div style="display:flex; justify-content:space-between;"><span>Week Cost:</span><strong id="statWeekCost" style="color:#8B4513;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Efficiency:</span><strong id="statWeekRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
+        </div>
+      </div>
+
+      <div id="boxTodayTickets" class="stat-box" style="border-color: #4CAF50;">
+        <div class="tooltip" id="tooltipToday">
+          <div>✨ <strong>TODAY'S BREAKDOWN:</strong></div>
+          <div id="tipTodayDeliv">📦 Deliveries: 0 Tix</div>
+          <div id="tipTodayBounty">📜 Bounties: 0 Tix</div>
+          <div id="tipTodayAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
+          <div id="tipTodayChore">🧹 Chores: 0 Tix</div>
+          <div id="tipTodayLogin">🎁 Daily Login: 0 Tix</div>
+        </div>
+        <div class="stat-title" style="color: #2E7D32;">✨ DONE TODAY</div>
+        <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0 Tickets</div>
+        <div class="stat-footer">
+          <div style="display:flex; justify-content:space-between;"><span>Today Cost:</span><strong id="statEarnedCost" style="color:#2E7D32;">0.000 SFL</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Ratio:</span><strong id="statEarnedRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
+        </div>
+      </div>
+
+      <div class="stat-box" style="border-color: #8E44AD; cursor: default;">
+        <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER TARGET</div>
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 70px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
+          <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Tix /</span>
+          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 48px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
+          <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Wks</span>
+        </div>
+        <div class="stat-footer">
+          <div style="display:flex; justify-content:space-between;"><span>Remaining:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>Target / Wk:</span><strong id="statGoalPerWeek" style="color:#8E44AD;">0 Tix/Wk</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🎯 2x2 Overview Actions Grid -->
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>📦 DELIVERIES</span>
+          <span id="deliveriesCount" class="overview-count">0 Orders</span>
+        </div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
+          <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo btn-sm">📜 EDIT</button>
+        </div>
+      </div>
+
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>📜 BOUNTIES</span>
+          <span id="bountiesCount" class="overview-count">0 Items</span>
+        </div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
+          <button onclick="openColumnHistoryModal('bounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
+        </div>
+      </div>
+
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>🐄 ANIMAL BOUNTIES</span>
+          <span id="animalBountiesCount" class="overview-count">0 Animals</span>
+        </div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
+          <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
+        </div>
+      </div>
+
+      <div class="overview-card">
+        <div class="overview-header">
+          <span>🧹 CHORES</span>
+          <span id="choresCount" class="overview-count">0 Tasks</span>
+        </div>
+        <div class="overview-actions">
+          <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
+          <button onclick="openColumnHistoryModal('chore')" class="btn btn-indigo btn-sm">📜 EDIT</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-panel">
+      <div class="chart-header">
+        <div class="chart-title">
+          <span>📈 WEEKLY TICKETS PROGRESSION</span>
+          <span id="chartSummaryBadge" class="badge" style="background:#E8F5E9; color:#2E7D32; font-size:11px;">0 WEEKS RECORDED</span>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-box" style="background:#4CAF50;"></div><span>Completed</span></div>
+          <div class="legend-item"><div class="legend-box" style="background:#D2691E;"></div><span>Current Week</span></div>
+          <div class="legend-item"><div class="legend-box" style="background:#E0E0E0; border:1px dashed #9E9E9E;"></div><span>Target Pace</span></div>
+        </div>
+      </div>
+      <div class="chart-container" id="weeklyChartContainer">
+        <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading weekly chart data...</p>
+      </div>
     </div>
   </div>
 
-  <div class="status-bar">
-    <span>Status: <strong id="statusDisplay">—</strong></span>
-    <span>Source: <strong id="sourceDisplay">—</strong></span>
-    <span>Time: <strong id="timeDisplay">—</strong></span>
-    <span>Payload Size: <strong id="sizeDisplay">—</strong></span>
+  <div id="guideModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📖 CHAPTER TRACKER GUIDE</h3>
+        <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+      </div>
+      <div class="modal-body">
+        <div class="guide-card" style="background:#E8F5E9; border-color:#2E7D32;">
+          <div class="guide-card-title" style="color:#1B5E20;">💾 1. SAVE IN CLOUD VAULT</div>
+          <div class="guide-card-text">
+            • Click <strong>☁️ SAVE IN CLOUD</strong> anytime you make changes to securely sync your completed deliveries, chores, bounties, and tickets to your database vault.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">📅 2. WEEK-BY-WEEK LOGGING & EDITING</div>
+          <div class="guide-card-text">
+            • Click <strong>📜 EDIT</strong> on any category card to view full item history, filter by specific weeks (Week 1 through Week 12), or manually add custom deliveries, chores, or bounties for any week.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">⚡ 3. 2x DOUBLE DELIVERY EVENTS</div>
+          <div class="guide-card-text">
+            • When a Double Delivery event is active, the first live delivery completed today automatically calculates with 2x total tickets: <code>[(Base + VIP + Boosts) × 2]</code>.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">🎁 4. DAILY LOGIN & TRACK ADJUSTMENTS</div>
+          <div class="guide-card-text">
+            • <strong>🎁 LOGIN:</strong> Automatically records +1 ticket per calendar day into your total ticket counter.<br/>
+            • <strong>🛤️ TRACK:</strong> Use the Track inputs to log chapter reward milestones, adjustments, or manual SFL costs.
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="guide-card-title">👑 5. VIP & BOOST MULTIPLIERS</div>
+          <div class="guide-card-text">
+            • <strong>VIP (+2):</strong> Adds +2 bonus tickets to NPC Deliveries and Chores.<br/>
+            • <strong>+1 Boosts (#1–#3):</strong> Adds +1 ticket per active booster across your activities.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <pre id="output">// Select a target and click "Query Target" to inspect payload...</pre>
+  <div id="categorySummaryModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="categorySummaryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📋 SUMMARY OVERVIEW</h3>
+        <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
+        </div>
+        <div id="categorySummaryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">Loading summary...</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <script>
-    let rawData = null;
+  <div id="columnHistoryModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
+        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
+          <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
+        </div>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const savedFarm = localStorage.getItem('sfl_farmId');
-      if (savedFarm) document.getElementById('farmIdInput').value = savedFarm;
+        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 6px;">
+          <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 130px;">
+            <option value="">👤 ALL NPCS</option>
+          </select>
+          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 130px; background:#FFF8DC; border:2px solid #8B5A2B;">
+            <option value="">📅 ALL WEEKS</option>
+            <option value="w1">Week 1 (Aug 10 - Aug 16)</option>
+            <option value="w2">Week 2 (Aug 17 - Aug 23)</option>
+            <option value="w3">Week 3 (Aug 24 - Aug 30)</option>
+            <option value="w4">Week 4 (Aug 31 - Sep 06)</option>
+            <option value="w5">Week 5</option>
+            <option value="w6">Week 6</option>
+            <option value="w7">Week 7</option>
+            <option value="w8">Week 8</option>
+            <option value="w9">Week 9</option>
+            <option value="w10">Week 10</option>
+            <option value="w11">Week 11</option>
+            <option value="w12">Week 12</option>
+          </select>
+        </div>
 
-      const savedUser = localStorage.getItem('sfl_auth_user');
-      if (savedUser) document.getElementById('usernameInput').value = savedUser;
+        <div id="columnHistoryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+          <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-      const savedKey = localStorage.getItem('sfl_apiKey');
-      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
-
-      const savedBackend = localStorage.getItem('sfl_backend_url') || (window.location.origin.includes('github.io') ? '' : window.location.origin);
-      document.getElementById('backendUrlInput').value = savedBackend;
-    });
-
-    function handleTargetChange() {
-      const ep = document.getElementById('endpointSelect').value;
-      const sec = document.getElementById('sectionSelect');
-      if (ep === 'rawPrices') {
-        sec.value = 'ALL';
-      }
-    }
-
-    async function fetchData() {
-      const ep = document.getElementById('endpointSelect').value;
-      const farmId = document.getElementById('farmIdInput').value.trim() || '8472883706403914';
-      const username = document.getElementById('usernameInput').value.trim();
-      const apiKey = document.getElementById('apiKeyInput').value.trim();
-      let backendUrl = document.getElementById('backendUrlInput').value.trim().replace(/\/+$/, '');
-      const out = document.getElementById('output');
-
-      localStorage.setItem('sfl_farmId', farmId);
-      if (username) localStorage.setItem('sfl_auth_user', username);
-      if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
-      if (backendUrl) localStorage.setItem('sfl_backend_url', backendUrl);
-
-      const t0 = performance.now();
-      document.getElementById('statusDisplay').textContent = 'Fetching...';
-
-      try {
-        if (ep === 'vault' || ep === 'parsed') {
-          if (!backendUrl && window.location.origin.includes('github.io')) {
-            throw new Error('On GitHub Pages, enter your deployed Vercel URL (e.g. https://your-project.vercel.app) in "Backend URL" to read your PostgreSQL Cloud Vault.');
-          }
-
-          const base = backendUrl || window.location.origin;
-          const actionParam = ep === 'vault' ? '&action=getVault' : '';
-          const userParam = username ? `&username=${encodeURIComponent(username)}` : '';
-          const keyParam = apiKey ? `&apiKey=${encodeURIComponent(apiKey)}` : '';
-          const url = `${base}/api/chapter?farmId=${encodeURIComponent(farmId)}${actionParam}${userParam}${keyParam}`;
-
-          out.textContent = `Connecting to Backend: ${url}...`;
-          const res = await fetch(url);
-          const elapsed = (performance.now() - t0).toFixed(0);
-
-          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
-          document.getElementById('sourceDisplay').textContent = 'PostgreSQL / Vercel API';
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
-
-          if (!res.ok) {
-            const errJson = await res.json().catch(() => ({}));
-            throw new Error(errJson.error || `HTTP ${res.status}`);
-          }
-
-          rawData = await res.json();
-        } else if (ep === 'rawPrices') {
-          const url = 'https://sfl.world/api/v1/prices';
-          out.textContent = `Connecting to ${url}...`;
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-          const res = await fetch(proxyUrl);
-          const elapsed = (performance.now() - t0).toFixed(0);
-
-          document.getElementById('statusDisplay').textContent = `${res.status} OK`;
-          document.getElementById('sourceDisplay').textContent = 'sfl.world';
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
-
-          rawData = await res.json();
-        } else if (ep === 'rawSfl') {
-          const directUrl = `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`;
-          out.textContent = `Connecting to ${directUrl}...`;
-
-          const headers = { 'Accept': 'application/json' };
-          if (apiKey) headers['x-api-key'] = apiKey;
-
-          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
-          const res = await fetch(proxyUrl, { headers });
-          const elapsed = (performance.now() - t0).toFixed(0);
-
-          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
-          document.getElementById('sourceDisplay').textContent = 'api.sunflower-land.com';
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
-
-          if (!res.ok) {
-            if (res.status === 401) {
-              throw new Error('401 Unauthorized: SFL API rejected the request. Please enter your in-game API Key in the API Key box.');
-            }
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-          }
-
-          rawData = await res.json();
-        }
-
-        const str = JSON.stringify(rawData, null, 2);
-        document.getElementById('sizeDisplay').textContent = `${(new Blob([str]).size / 1024).toFixed(1)} KB`;
-        filterSection();
-      } catch (err) {
-        document.getElementById('statusDisplay').textContent = 'Error';
-        out.textContent = `❌ ${err.message}`;
-      }
-    }
-
-    function filterSection() {
-      if (!rawData) return;
-      const sec = document.getElementById('sectionSelect').value;
-      const out = document.getElementById('output');
-
-      if (sec === 'ALL') {
-        out.textContent = JSON.stringify(rawData, null, 2);
-        return;
-      }
-
-      const root = rawData.vaultData || rawData.farm || rawData;
-      let target = root[sec];
-
-      if (target === undefined && sec === 'chores') {
-        target = root.choreBoard || root.chores;
-      }
-
-      out.textContent = target !== undefined 
-        ? JSON.stringify(target, null, 2) 
-        : JSON.stringify({ message: `Field "${sec}" not found in current payload state.` }, null, 2);
-    }
-  </script>
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>
