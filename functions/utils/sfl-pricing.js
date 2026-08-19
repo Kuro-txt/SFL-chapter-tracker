@@ -48,24 +48,36 @@ export function extractPricesRecursive(obj, map = {}) {
   return map;
 }
 
+export function cleanItemName(name) {
+  if (!name) return '';
+  return name.toLowerCase()
+    .replace(/\b(spring|summer|autumn|winter)\b/g, '')
+    .replace(/\s+[ab]$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
   const clean = name.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
   if (clean === 'coins' || clean === 'coin') return 0.001;
 
-  let searchNames = [
-    clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
-    clean + 's', clean + 'es',
+  const baseClean = cleanItemName(clean);
+
+  const searchNames = [
+    clean, 
+    stripped, 
+    baseClean,
+    baseClean.replace(/[^a-z0-9]/g, ''),
+    clean.replace(/\s+/g, '-'), 
+    clean.replace(/\s+/g, '_'),
+    clean + 's', 
+    clean + 'es',
     clean.endsWith('s') ? clean.slice(0, -1) : clean,
     clean.endsWith('es') ? clean.slice(0, -2) : clean,
     clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean
   ];
-
-  if (clean.endsWith(' a') || clean.endsWith(' b')) {
-    const baseName = clean.slice(0, -2).trim();
-    searchNames.push(baseName, baseName + ' a', baseName + ' b');
-  }
 
   let lowestPrice = 0;
   for (const v of searchNames) {
@@ -79,13 +91,16 @@ export function getDirectMarketPrice(name, priceMap) {
 }
 
 export function getItemUnitPrice(itemName, priceMap, depth = 0) {
-  if (depth > 5 || !itemName) return 0;
+  if (depth > 6 || !itemName) return 0;
   const clean = itemName.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
+  const baseName = cleanItemName(clean);
+  const baseStripped = baseName.replace(/[^a-z0-9]/g, '');
+
   const directPrice = getDirectMarketPrice(clean, priceMap);
   if (directPrice > 0) return directPrice;
 
-  const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
+  const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
     let recipeTotal = 0;
     Object.entries(recipe).forEach(([ingName, ingQty]) => {
