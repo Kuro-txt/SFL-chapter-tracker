@@ -3,7 +3,7 @@ import { SFL_RECIPES } from '../recipes.js';
 export const CHAPTER_NPC_TICKETS = {
   "pumpkin pete": 1,
   "pumpkin' pete": 1,
-  "pete": 1, 
+  "pete": 1,
   "bert": 2,
   "finley": 2,
   "findlay": 2,
@@ -85,24 +85,36 @@ export function extractPricesRecursive(obj, map = {}) {
   return map;
 }
 
+export function cleanItemName(name) {
+  if (!name) return '';
+  return name.toLowerCase()
+    .replace(/\b(spring|summer|autumn|winter)\b/g, '')
+    .replace(/\s+[ab]$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
   const clean = name.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
   if (clean === 'coins' || clean === 'coin') return 0.001;
 
+  const baseClean = cleanItemName(clean);
+
   const searchNames = [
-    clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
-    clean + 's', clean + 'es',
+    clean, 
+    stripped, 
+    baseClean,
+    baseClean.replace(/[^a-z0-9]/g, ''),
+    clean.replace(/\s+/g, '-'), 
+    clean.replace(/\s+/g, '_'),
+    clean + 's', 
+    clean + 'es',
     clean.endsWith('s') ? clean.slice(0, -1) : clean,
     clean.endsWith('es') ? clean.slice(0, -2) : clean,
     clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean
   ];
-
-  if (clean.endsWith(' a') || clean.endsWith(' b')) {
-    const baseName = clean.slice(0, -2).trim();
-    searchNames.push(baseName, baseName + ' a', baseName + ' b');
-  }
 
   let lowestPrice = 0;
   for (const v of searchNames) {
@@ -116,13 +128,18 @@ export function getDirectMarketPrice(name, priceMap) {
 }
 
 export function getItemUnitPrice(itemName, priceMap, depth = 0) {
-  if (depth > 5 || !itemName) return 0;
+  if (depth > 6 || !itemName) return 0;
   const clean = itemName.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
+  const baseName = cleanItemName(clean);
+  const baseStripped = baseName.replace(/[^a-z0-9]/g, '');
+
+  // 1. Direct Market Price Check
   const directPrice = getDirectMarketPrice(clean, priceMap);
   if (directPrice > 0) return directPrice;
 
-  const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
+  // 2. Exact Recipe Match
+  const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
     let recipeTotal = 0;
     Object.entries(recipe).forEach(([ingName, ingQty]) => {
@@ -168,7 +185,7 @@ export function getMondayBasedWeekId(d) {
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
-  // 1. NPC Stats (Counts & Timestamps)
+  // 1. NPC Lifetime Stats
   const rawNpcs = farm.npcs || {};
   const npcsData = {};
   Object.entries(rawNpcs).forEach(([npcKey, npcVal]) => {
@@ -241,7 +258,7 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // Calendar Events (Double Delivery)
+  // Double Delivery Event
   const nowMs = Date.now();
   const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
   let isDoubleDeliveryActive = false;
