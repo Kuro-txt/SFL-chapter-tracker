@@ -206,7 +206,7 @@ export function parseFarmData(farm, priceMap) {
       const npcStat = npcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
       
       const canonicalId = isCompleted 
-        ? `deliv_${npcClean}_${npcStat.deliveryCount}` 
+        ? `deliv_${npcClean}_d${npcStat.deliveryCount}` 
         : `deliv_${npcClean}_active`;
 
       deliveryList.push({
