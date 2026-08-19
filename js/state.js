@@ -179,7 +179,7 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// Global Unique Deduplicator for Deliveries
+// Strict In-Memory Delivery Deduplicator
 export function getDeduplicatedDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
   const seen = new Set();
@@ -188,17 +188,23 @@ export function getDeduplicatedDeliveries(deliveries) {
   for (const d of deliveries) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
-    const idKey = d.id ? String(d.id).toLowerCase().trim() : '';
-    const compTime = d.completedAt ? String(d.completedAt) : (d.completedDate || 'active');
-    const manualKey = d.isManual ? 'm' : 'a';
+    const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+    const isSkip = Boolean(d.isSkipped);
+    const isMan = Boolean(d.isManual);
 
-    let uniqueKey = idKey;
-    if (!uniqueKey || uniqueKey.startsWith('deliv_')) {
-      uniqueKey = `deliv_${npc}_${compTime}_${d.deliveryCountAtCreation ?? ''}_${d.skippedCountAtCreation ?? ''}_${manualKey}`;
+    let key = '';
+    if (isMan) {
+      key = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || ''}`;
+    } else if (isDone) {
+      key = d.id ? `done_${String(d.id).toLowerCase()}` : `done_${npc}_${d.completedAt || d.completedDate || ''}`;
+    } else if (isSkip) {
+      key = d.id ? `skip_${String(d.id).toLowerCase()}` : `skip_${npc}_${d.completedAt || d.completedDate || ''}`;
+    } else {
+      key = `active_${npc}`;
     }
 
-    if (!seen.has(uniqueKey)) {
-      seen.add(uniqueKey);
+    if (!seen.has(key)) {
+      seen.add(key);
       result.push(d);
     }
   }
