@@ -227,7 +227,6 @@ export function renderColumnHistoryModalList() {
     });
   }
 
-  // Sort: Active first, then Done/Skipped
   records.sort((a, b) => (a.checked === b.checked ? 0 : a.checked ? 1 : -1));
 
   let totalTickedTickets = 0;
