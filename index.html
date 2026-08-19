@@ -14,7 +14,7 @@
       background-position: 0 0, 13px 13px;
       color: #3e2723;
       font-family: 'Courier New', Courier, monospace, sans-serif;
-      padding: clamp(10px, 2vw, 24px);
+      padding: clamp(8px, 2vw, 24px);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -39,7 +39,7 @@
       box-shadow: 0 5px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
     }
     h1 { 
-      font-size: clamp(20px, 2.8vw, 28px); 
+      font-size: clamp(18px, 2.8vw, 28px); 
       font-weight: 900; 
       color: #FFF8DC; 
       text-shadow: 2px 2px #271813; 
@@ -47,7 +47,7 @@
       letter-spacing: 1.2px; 
     }
     p { 
-      font-size: clamp(12px, 1.4vw, 14px); 
+      font-size: clamp(11.5px, 1.4vw, 14px); 
       color: #EEDC82; 
       font-weight: bold; 
       text-shadow: 1px 1px #271813; 
@@ -57,12 +57,12 @@
       background: #FFF8DC;
       border: 2px dashed #D2691E;
       border-radius: 10px;
-      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 1.6vw, 18px);
+      padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.6vw, 18px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       min-height: 40px;
-      font-size: clamp(12px, 1.2vw, 13.5px);
+      font-size: clamp(11.5px, 1.2vw, 13.5px);
       font-weight: 900;
       color: #8B4513;
       cursor: pointer;
@@ -81,12 +81,12 @@
       background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
       border: 2px solid #FF9800;
       border-radius: 10px;
-      padding: clamp(8px, 1.2vw, 12px) clamp(12px, 1.6vw, 18px);
+      padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.6vw, 18px);
       display: flex;
       align-items: center;
       justify-content: space-between;
       box-shadow: 0 3px 6px rgba(255, 152, 0, 0.25);
-      font-size: clamp(12px, 1.2vw, 13.5px);
+      font-size: clamp(11.5px, 1.2vw, 13.5px);
       gap: 10px;
     }
 
@@ -94,7 +94,7 @@
       background-color: #FDF5E6;
       border: 3px solid #8B5A2B;
       border-radius: 12px;
-      padding: clamp(12px, 1.6vw, 18px);
+      padding: clamp(10px, 1.6vw, 18px);
       box-shadow: 0 5px 0px #5C4033;
       display: flex;
       flex-direction: column;
@@ -103,19 +103,19 @@
     .controls-row { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 12px; 
+      gap: 10px; 
       align-items: center; 
       justify-content: space-between; 
     }
     .input-group { 
       display: flex; 
       flex-wrap: wrap; 
-      gap: 10px; 
+      gap: 8px; 
       align-items: center; 
     }
     
     label { 
-      font-size: clamp(12px, 1.2vw, 13.5px); 
+      font-size: clamp(11.5px, 1.2vw, 13.5px); 
       font-weight: 900; 
       color: #5C4033; 
     }
@@ -138,13 +138,13 @@
     .checkbox-label {
       background-color: #FFFACD;
       border: 2px solid #D2691E;
-      padding: clamp(6px, 0.9vw, 8px) clamp(10px, 1.2vw, 12px);
+      padding: clamp(5px, 0.9vw, 8px) clamp(8px, 1.2vw, 12px);
       border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: clamp(12px, 1.2vw, 13.5px);
+      font-size: clamp(11.5px, 1.2vw, 13.5px);
       color: #8B4513;
       font-weight: 900;
     }
@@ -152,9 +152,9 @@
     .btn {
       font-family: inherit;
       font-weight: 900;
-      font-size: clamp(11.5px, 1.1vw, 13px);
+      font-size: clamp(11px, 1.1vw, 13px);
       text-transform: uppercase;
-      padding: clamp(8px, 1vw, 10px) clamp(12px, 1.4vw, 16px);
+      padding: clamp(7px, 1vw, 10px) clamp(10px, 1.4vw, 16px);
       border-radius: 8px;
       border: 2px solid #3E2723;
       cursor: pointer;
@@ -182,11 +182,10 @@
     .btn-purple { background-color: #8E44AD; color: #FFF8DC; border-color: #5B2C6F; box-shadow: 0 3px 0px #5B2C6F; }
     .btn-sm { padding: clamp(5px, 0.8vw, 7px) clamp(8px, 1.1vw, 12px); font-size: clamp(11px, 1vw, 12px); }
 
-    /* 🎯 Exact 2x2 Grid Layout for Desktop */
     .stats-grid { 
       display: grid; 
       grid-template-columns: repeat(2, minmax(0, 1fr)); 
-      gap: clamp(12px, 1.6vw, 16px); 
+      gap: clamp(10px, 1.6vw, 16px); 
     }
     
     .stat-box {
@@ -194,7 +193,7 @@
       background-color: #FFF8DC;
       border: 3px solid #8B5A2B;
       border-radius: 12px;
-      padding: clamp(12px, 1.6vw, 16px);
+      padding: clamp(10px, 1.6vw, 16px);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -208,24 +207,24 @@
       box-shadow: 0 6px 0px #5C4033;
     }
     .stat-title { 
-      font-size: clamp(12px, 1.2vw, 13.5px); 
+      font-size: clamp(11.5px, 1.2vw, 13.5px); 
       font-weight: 900; 
       color: #8B5A2B; 
       text-transform: uppercase; 
     }
     .stat-val { 
-      font-size: clamp(22px, 2.4vw, 28px); 
+      font-size: clamp(20px, 2.4vw, 28px); 
       font-weight: 900; 
       color: #D2691E; 
       line-height: 1.15;
     }
     .stat-footer { 
       border-top: 2px dashed #D2B48C; 
-      padding-top: 8px; 
+      padding-top: 6px; 
       display: flex; 
       flex-direction: column; 
       gap: 4px; 
-      font-size: clamp(12px, 1.2vw, 13.5px); 
+      font-size: clamp(11.5px, 1.2vw, 13.5px); 
       font-weight: bold; 
       color: #5C4033; 
     }
@@ -257,21 +256,20 @@
       opacity: 1;
     }
 
-    /* 🎯 Exact 2x2 Overview Actions Grid for Desktop */
     .overview-grid {
       display: grid; 
       grid-template-columns: repeat(2, minmax(0, 1fr)); 
-      gap: clamp(12px, 1.6vw, 16px); 
+      gap: clamp(10px, 1.6vw, 16px); 
     }
     .overview-card {
       background: #FFFDF7;
       border: 3px solid #8B5A2B;
       border-radius: 12px;
-      padding: clamp(12px, 1.6vw, 16px);
+      padding: clamp(10px, 1.6vw, 16px);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       box-shadow: 0 4px 0px #5C4033;
       transition: transform 0.15s ease;
     }
@@ -281,30 +279,30 @@
       justify-content: space-between;
       align-items: center;
       font-weight: 900;
-      font-size: clamp(13px, 1.3vw, 14.5px);
+      font-size: clamp(12.5px, 1.3vw, 14.5px);
       color: #4E342E;
       border-bottom: 2px dashed #D7CCC8;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
     }
     .overview-count {
       background: #EFEBE9;
       color: #4E342E;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border: 1px solid #A1887F;
       border-radius: 6px;
-      font-size: clamp(11px, 1.1vw, 12.5px);
+      font-size: clamp(10.5px, 1.1vw, 12px);
       font-weight: 900;
     }
     .overview-actions {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
 
     .chart-panel {
       background: #FFFDF7;
       border: 3px solid #8B5A2B;
       border-radius: 12px;
-      padding: clamp(12px, 1.6vw, 18px);
+      padding: clamp(10px, 1.6vw, 18px);
       box-shadow: 0 5px 0px #5C4033;
       display: flex;
       flex-direction: column;
@@ -317,10 +315,10 @@
       flex-wrap: wrap;
       gap: 8px;
       border-bottom: 2px dashed #D2B48C;
-      padding-bottom: 8px;
+      padding-bottom: 6px;
     }
     .chart-title {
-      font-size: clamp(13.5px, 1.4vw, 15px);
+      font-size: clamp(13px, 1.4vw, 15px);
       font-weight: 900;
       color: #5C4033;
       display: flex;
@@ -331,16 +329,73 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: clamp(11px, 1.1vw, 12px);
+      font-size: clamp(10.5px, 1.1vw, 12px);
       font-weight: 900;
     }
     .legend-item { display: flex; align-items: center; gap: 4px; }
     .legend-box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); }
     .chart-container { width: 100%; overflow-x: auto; padding-bottom: 4px; }
 
+    /* 12-Week Schedule Panel */
+    .schedule-panel {
+      background: #FFFDF7;
+      border: 3px solid #8B5A2B;
+      border-radius: 12px;
+      padding: clamp(12px, 1.6vw, 18px);
+      box-shadow: 0 5px 0px #5C4033;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .schedule-card {
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: all 0.15s ease;
+    }
+    .schedule-card:hover {
+      transform: translateY(-2px);
+      border-color: #D2691E;
+    }
+    .schedule-card.current {
+      background: #FFF3E0;
+      border: 2px solid #E65100;
+      box-shadow: 0 0 0 1px #E65100;
+    }
+    .schedule-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 900;
+      font-size: 11.5px;
+      color: #5C4033;
+    }
+    .schedule-card.current .schedule-card-header {
+      color: #E65100;
+    }
+    .schedule-card-dates {
+      font-size: 10.5px;
+      font-weight: bold;
+      color: #8C7853;
+      line-height: 1.3;
+    }
+    .schedule-card.current .schedule-card-dates {
+      color: #8B4513;
+      font-weight: 900;
+    }
+
     .badge {
-      padding: 3px 8px;
-      font-size: clamp(10px, 1vw, 11.5px);
+      padding: 3px 7px;
+      font-size: clamp(9.5px, 1vw, 11px);
       font-weight: 900;
       border-radius: 5px;
       text-transform: uppercase;
@@ -349,6 +404,7 @@
     .badge-done { background-color: #C8E6C9; color: #2E7D32; }
     .badge-active { background-color: #FFE0B2; color: #E65100; }
 
+    /* Modals & Scaffolding */
     .modal {
       display: none;
       position: fixed;
@@ -357,48 +413,91 @@
       z-index: 100;
       justify-content: center;
       align-items: center;
-      padding: 14px;
+      padding: 12px;
     }
     .modal.show { display: flex; }
     .modal-content {
       background-color: #FDF5E6;
       border: 3px solid #8B5A2B;
       width: 100%;
-      max-width: 640px;
-      max-height: 85vh;
+      max-width: 650px;
+      max-height: 88vh;
       border-radius: 12px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 8px 0px #5C4033;
+      overflow: hidden;
     }
     .modal-header { 
-      padding: 12px 16px; 
+      padding: 10px 14px; 
       border-bottom: 3px solid #8B5A2B; 
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
       background: #8B5A2B; 
       color: #FFF8DC; 
-      border-top-left-radius: 8px; 
-      border-top-right-radius: 8px; 
     }
     .modal-body { 
-      padding: 14px 16px; 
+      padding: 12px 14px; 
       overflow-y: auto; 
       display: flex; 
       flex-direction: column; 
-      gap: 10px; 
+      gap: 8px; 
+    }
+
+    .history-card {
+      background: #FFF8DC;
+      padding: 8px 10px;
+      border: 2px solid #8B5A2B;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+    .history-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .history-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .history-input-group {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .add-form-container {
+      background: #EFEBE9;
+      border: 2px dashed #8B5A2B;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .add-form-fields {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .guide-card {
       background: #FFF8DC;
       border: 2px solid #8B5A2B;
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
-      font-size: clamp(12px, 1.1vw, 13px);
+      gap: 4px;
+      font-size: clamp(11.5px, 1.1vw, 13px);
     }
     .guide-card-title {
       font-weight: 900;
@@ -408,7 +507,7 @@
       gap: 6px;
       border-bottom: 1px dashed #D2B48C;
       padding-bottom: 4px;
-      font-size: clamp(13px, 1.2vw, 14px);
+      font-size: clamp(12.5px, 1.2vw, 14px);
     }
     .guide-card-text {
       color: #5C4033;
@@ -416,10 +515,40 @@
       font-weight: bold;
     }
 
-    @media (max-width: 560px) {
+    /* Mobile Adaptations */
+    @media (max-width: 800px) {
+      .schedule-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 600px) {
+      .modal { padding: 6px; }
+      .modal-content { max-height: 94vh; border-radius: 8px; }
+      .modal-body { padding: 10px 8px; }
+      .history-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .history-controls {
+        justify-content: flex-end;
+        border-top: 1px dashed #D2B48C;
+        padding-top: 6px;
+      }
+      .add-form-fields {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .add-form-fields input, .add-form-fields select, .add-form-fields button {
+        width: 100% !important;
+      }
       .controls-row { flex-direction: column; align-items: stretch; }
       .input-group { width: 100%; justify-content: space-between; }
       .stats-grid, .overview-grid {
+        grid-template-columns: 1fr;
+      }
+      .schedule-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -510,7 +639,6 @@
       </div>
     </div>
 
-    <!-- 🎯 2x2 Stats Grid -->
     <div class="stats-grid">
       <div id="boxTotalTickets" class="stat-box">
         <div class="tooltip" id="tooltipTotal">
@@ -580,7 +708,6 @@
       </div>
     </div>
 
-    <!-- 🎯 2x2 Overview Actions Grid -->
     <div class="overview-grid">
       <div class="overview-card">
         <div class="overview-header">
@@ -641,6 +768,114 @@
       </div>
       <div class="chart-container" id="weeklyChartContainer">
         <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading weekly chart data...</p>
+      </div>
+    </div>
+
+    <!-- 🗓️ 12-WEEK CHAPTER SEASON SCHEDULE -->
+    <div class="schedule-panel">
+      <div class="chart-header">
+        <div class="chart-title">
+          <span>🗓️ 12-WEEK CHAPTER SCHEDULE (UTC)</span>
+        </div>
+        <span class="badge" style="background:#FFF3E0; color:#E65100; border-color:#FF9800; font-size:11px;">12 WEEKS TOTAL</span>
+      </div>
+
+      <div class="schedule-grid">
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 1</span>
+            <span style="font-size:10px; color:#6D4C41;">W1</span>
+          </div>
+          <div class="schedule-card-dates">Aug 10 – Aug 16, 2026</div>
+        </div>
+
+        <div class="schedule-card current">
+          <div class="schedule-card-header">
+            <span>WEEK 2</span>
+            <span class="badge badge-active" style="padding:1px 5px; font-size:9px;">CURRENT</span>
+          </div>
+          <div class="schedule-card-dates">Aug 17 – Aug 23, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 3</span>
+            <span style="font-size:10px; color:#6D4C41;">W3</span>
+          </div>
+          <div class="schedule-card-dates">Aug 24 – Aug 30, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 4</span>
+            <span style="font-size:10px; color:#6D4C41;">W4</span>
+          </div>
+          <div class="schedule-card-dates">Aug 31 – Sep 06, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 5</span>
+            <span style="font-size:10px; color:#6D4C41;">W5</span>
+          </div>
+          <div class="schedule-card-dates">Sep 07 – Sep 13, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 6</span>
+            <span style="font-size:10px; color:#6D4C41;">W6</span>
+          </div>
+          <div class="schedule-card-dates">Sep 14 – Sep 20, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 7</span>
+            <span style="font-size:10px; color:#6D4C41;">W7</span>
+          </div>
+          <div class="schedule-card-dates">Sep 21 – Sep 27, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 8</span>
+            <span style="font-size:10px; color:#6D4C41;">W8</span>
+          </div>
+          <div class="schedule-card-dates">Sep 28 – Oct 04, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 9</span>
+            <span style="font-size:10px; color:#6D4C41;">W9</span>
+          </div>
+          <div class="schedule-card-dates">Oct 05 – Oct 11, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 10</span>
+            <span style="font-size:10px; color:#6D4C41;">W10</span>
+          </div>
+          <div class="schedule-card-dates">Oct 12 – Oct 18, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 11</span>
+            <span style="font-size:10px; color:#6D4C41;">W11</span>
+          </div>
+          <div class="schedule-card-dates">Oct 19 – Oct 25, 2026</div>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-card-header">
+            <span>WEEK 12</span>
+            <span style="font-size:10px; color:#6D4C41;">W12</span>
+          </div>
+          <div class="schedule-card-dates">Oct 26 – Nov 01, 2026</div>
+        </div>
       </div>
     </div>
   </div>
@@ -732,18 +967,18 @@
             <option value="w2">Week 2 (Aug 17 - Aug 23)</option>
             <option value="w3">Week 3 (Aug 24 - Aug 30)</option>
             <option value="w4">Week 4 (Aug 31 - Sep 06)</option>
-            <option value="w5">Week 5</option>
-            <option value="w6">Week 6</option>
-            <option value="w7">Week 7</option>
-            <option value="w8">Week 8</option>
-            <option value="w9">Week 9</option>
-            <option value="w10">Week 10</option>
-            <option value="w11">Week 11</option>
-            <option value="w12">Week 12</option>
+            <option value="w5">Week 5 (Sep 07 - Sep 13)</option>
+            <option value="w6">Week 6 (Sep 14 - Sep 20)</option>
+            <option value="w7">Week 7 (Sep 21 - Sep 27)</option>
+            <option value="w8">Week 8 (Sep 28 - Oct 04)</option>
+            <option value="w9">Week 9 (Oct 05 - Oct 11)</option>
+            <option value="w10">Week 10 (Oct 12 - Oct 18)</option>
+            <option value="w11">Week 11 (Oct 19 - Oct 25)</option>
+            <option value="w12">Week 12 (Oct 26 - Nov 01)</option>
           </select>
         </div>
 
-        <div id="columnHistoryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+        <div id="columnHistoryBody" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
           <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
         </div>
       </div>
