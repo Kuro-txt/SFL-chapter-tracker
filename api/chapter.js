@@ -18,85 +18,67 @@ async function ensureTableExists(client) {
 
 function sanitizeDeliveriesList(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-  const manualList = [];
-  const completedMap = new Map();
-  const activeMap = new Map();
-  const skippedMap = new Map();
+  const map = new Map();
 
-  for (const d of deliveries) {
+  const sorted = [...deliveries].sort((a, b) => {
+    const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
+    const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
+    if (aDone !== bDone) return aDone ? -1 : 1;
+    return (b.itemsCost || b.cost || 0) - (a.itemsCost || a.cost || 0);
+  });
+
+  for (const d of sorted) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    if (d.isManual) {
-      manualList.push(d);
-      continue;
-    }
-
+    const isMan = Boolean(d.isManual);
     const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
 
-    let dateStr = d.completedDate || '';
-    if (!dateStr && d.completedAt) {
-      const ts = typeof d.completedAt === 'number' ? d.completedAt : Number(d.completedAt);
-      if (!isNaN(ts) && ts > 0) {
-        dateStr = new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
-      }
-    }
-    if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
-    d.completedDate = dateStr;
-
-    if (isDone) {
+    let canonicalId = d.id || '';
+    if (isMan) {
+      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
+    } else if (isDone) {
       const count = d.deliveryCountAtCreation;
-      const stackSuffix = d.isStacked ? `_stacked_${d.id || ''}` : '';
-      const key = (count !== undefined && count !== null && count !== '')
-        ? `${npc}_cnt_${count}`
-        : `${npc}_date_${dateStr}${stackSuffix}`;
-
-      if (!completedMap.has(key)) {
-        d.completed = true;
-        d.checked = true;
-        d.isSkipped = false;
-        d.status = 'completed';
-        completedMap.set(key, d);
-      } else {
-        const existing = completedMap.get(key);
-        if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
-          existing.itemDetails = d.itemDetails;
-          existing.items = d.items;
-          existing.itemsCost = d.itemsCost;
-          existing.cost = d.cost;
-        }
-      }
+      canonicalId = (count !== undefined && count !== null && count !== '') 
+        ? `deliv_${npc}_d${count}` 
+        : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+      d.completed = true;
+      d.checked = true;
+      d.isSkipped = false;
+      d.status = 'completed';
     } else if (isSkip) {
       const skipCount = d.skippedCountAtCreation;
-      const key = (skipCount !== undefined && skipCount !== null && skipCount !== '')
-        ? `${npc}_skip_${skipCount}`
-        : `${npc}_skip_${dateStr}`;
-      if (!skippedMap.has(key)) {
-        d.completed = false;
-        d.checked = false;
-        d.isSkipped = true;
-        d.status = 'skipped';
-        skippedMap.set(key, d);
-      }
+      canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+      d.completed = false;
+      d.checked = false;
+      d.isSkipped = true;
+      d.status = 'skipped';
     } else {
-      if (!activeMap.has(npc)) {
-        d.completed = false;
-        d.checked = false;
-        d.isSkipped = false;
-        d.status = 'active';
-        activeMap.set(npc, d);
+      canonicalId = `deliv_${npc}_active`;
+      d.completed = false;
+      d.checked = false;
+      d.isSkipped = false;
+      d.status = 'active';
+    }
+
+    d.id = canonicalId;
+
+    if (!map.has(canonicalId)) {
+      map.set(canonicalId, d);
+    } else {
+      const existing = map.get(canonicalId);
+      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+        existing.itemDetails = d.itemDetails;
+        existing.items = d.items;
+        existing.itemsCost = d.itemsCost;
+        existing.cost = d.cost;
       }
     }
   }
 
-  return [
-    ...activeMap.values(),
-    ...completedMap.values(),
-    ...skippedMap.values(),
-    ...manualList
-  ];
+  return Array.from(map.values());
 }
 
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
@@ -107,8 +89,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
+  // 1. Sanitize database history records
   vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
 
+  // 2. Reconcile Deltas using NPC Lifetime Counters
   Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
     const npcClean = npcName.toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
@@ -203,18 +187,82 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     };
   });
 
+  // 3. Register or update the currently active order from board
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
 
     if (order.completed) {
-      const compId = `deliv_${npcClean}_d${currStat.deliveryCount}`;
-      const existingComp = vault.archiveDeliveries.find(d => d.id === compId);
-      if (existingComp && (!existingComp.itemDetails || existingComp.itemDetails.length === 0)) {
-        existingComp.items = order.items || existingComp.items;
-        existingComp.itemsCost = order.itemsCost || existingComp.itemsCost;
-        existingComp.cost = order.itemsCost || existingComp.cost;
-        existingComp.itemDetails = order.itemDetails || existingComp.itemDetails;
+      const targetDoneId = `deliv_${npcClean}_d${currStat.deliveryCount}`;
+      const compTime = order.completedAt || currStat.deliveryCompletedAt || nowMs;
+      const compDate = new Date(compTime).toISOString().split('T')[0];
+      const compWeek = getMondayBasedWeekId(compTime);
+
+      const activeIdx = vault.archiveDeliveries.findIndex(d => {
+        const dNpc = (d.from || d.name || '').toLowerCase().trim();
+        const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+        return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
+      });
+
+      if (activeIdx !== -1) {
+        const target = vault.archiveDeliveries[activeIdx];
+        target.id = targetDoneId;
+        target.completed = true;
+        target.checked = true;
+        target.isSkipped = false;
+        target.status = 'completed';
+        target.completedAt = compTime;
+        target.completedDate = compDate;
+        target.weekId = compWeek;
+        target.deliveryCountAtCreation = currStat.deliveryCount;
+        target.items = order.items || target.items;
+        target.itemsCost = order.itemsCost || target.itemsCost;
+        target.cost = order.itemsCost || target.cost;
+        target.itemDetails = order.itemDetails || target.itemDetails;
+        target.baseTickets = order.baseTickets || target.baseTickets;
+        target.tickets = order.baseTickets || target.tickets;
+      } else {
+        const doneIdx = vault.archiveDeliveries.findIndex(d => d.id === targetDoneId);
+        if (doneIdx !== -1) {
+          const target = vault.archiveDeliveries[doneIdx];
+          target.completed = true;
+          target.checked = true;
+          target.isSkipped = false;
+          target.status = 'completed';
+          target.completedAt = compTime;
+          target.completedDate = compDate;
+          target.weekId = compWeek;
+          target.items = order.items || target.items;
+          target.itemsCost = order.itemsCost || target.itemsCost;
+          target.cost = order.itemsCost || target.cost;
+          target.itemDetails = order.itemDetails || target.itemDetails;
+          target.baseTickets = order.baseTickets || target.baseTickets;
+          target.tickets = order.baseTickets || target.tickets;
+        } else {
+          vault.archiveDeliveries.push({
+            id: targetDoneId,
+            from: order.from,
+            name: order.from,
+            items: order.items || {},
+            itemsCost: order.itemsCost || 0,
+            cost: order.itemsCost || 0,
+            itemDetails: order.itemDetails || [],
+            baseTickets: order.baseTickets || 2,
+            tickets: order.baseTickets || 2,
+            isChapterNpc: true,
+            completed: true,
+            checked: true,
+            isSkipped: false,
+            isStacked: false,
+            status: 'completed',
+            completedAt: compTime,
+            completedDate: compDate,
+            weekId: compWeek,
+            deliveryCountAtCreation: currStat.deliveryCount,
+            skippedCountAtCreation: currStat.skippedCount,
+            isManual: false
+          });
+        }
       }
     } else {
       const activeOrderId = `deliv_${npcClean}_active`;
@@ -271,14 +319,12 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 }
 
 export default async function handler(req, res) {
-  // CORS Configuration: Allow GitHub Pages and Localhost origins
-  const origin = req.headers.origin || '*';
-  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-api-key, Authorization'
   );
 
   if (req.method === 'OPTIONS') return res.status(200).end();
