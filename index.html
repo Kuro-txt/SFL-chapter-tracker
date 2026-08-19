@@ -3,28 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SFL Direct API Inspector</title>
+  <title>SFL Chapter Tracker & Cloud Vault Inspector</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: #0f111a;
       color: #e6edf3;
-      font-family: monospace;
-      padding: 16px;
+      font-family: 'Courier New', Courier, monospace, sans-serif;
+      padding: 14px;
       display: flex;
       flex-direction: column;
       height: 100vh;
       gap: 10px;
     }
-    .controls {
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
-      background: #161b22;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #30363d;
+    }
+    label {
+      font-size: 11px;
+      font-weight: bold;
+      color: #8b949e;
+      text-transform: uppercase;
     }
     select, input, button {
       background: #21262d;
@@ -36,11 +47,16 @@
       font-size: 12px;
       outline: none;
     }
+    input:focus, select:focus {
+      border-color: #58a6ff;
+    }
     button {
       background: #238636;
       border-color: #2ea043;
-      font-weight: bold;
+      font-weight: 900;
       cursor: pointer;
+      text-transform: uppercase;
+      padding: 6px 14px;
     }
     button:hover { background: #2ea043; }
     .status-bar {
@@ -68,111 +84,166 @@
 </head>
 <body>
 
-  <div class="controls">
-    <label style="color:#58a6ff; font-weight:bold;">Source:</label>
-    <select id="endpointSelect">
-      <option value="rawSfl">Sunflower Land Farm API</option>
-      <option value="rawPrices">SFL.world Prices API</option>
-    </select>
+  <div class="panel">
+    <div class="row">
+      <label for="endpointSelect">🎯 Target:</label>
+      <select id="endpointSelect" onchange="handleTargetChange()">
+        <option value="vault">🔐 Cloud Vault Database (/api/chapter?action=getVault)</option>
+        <option value="parsed">🌾 Backend Parsed Output (/api/chapter)</option>
+        <option value="rawSfl">⚡ Raw SFL Farm API (Direct/Proxied)</option>
+        <option value="rawPrices">💰 SFL.world Prices API</option>
+      </select>
 
-    <label style="color:#7ee787; font-weight:bold;">Section:</label>
-    <select id="sectionSelect" onchange="filterSection()">
-      <option value="ALL">📦 ALL DATA</option>
-      <option value="delivery">📦 delivery</option>
-      <option value="npcs">👥 npcs</option>
-      <option value="bounties">📜 bounties</option>
-      <option value="chores">🧹 chores / choreBoard</option>
-      <option value="inventory">🎒 inventory</option>
-      <option value="vip">👑 vip</option>
-      <option value="calendar">📅 calendar</option>
-    </select>
+      <label for="sectionSelect">📦 Filter:</label>
+      <select id="sectionSelect" onchange="filterSection()">
+        <option value="ALL">ALL DATA</option>
+        <option value="archiveDeliveries">archiveDeliveries (Vault)</option>
+        <option value="deliveries">deliveries (Active)</option>
+        <option value="npcSnapshots">npcSnapshots (Counters)</option>
+        <option value="weeks">weeks (History)</option>
+        <option value="bounties">bounties</option>
+        <option value="chores">chores</option>
+        <option value="milestones">milestones</option>
+        <option value="inventory">inventory</option>
+      </select>
 
-    <input type="text" id="farmIdInput" value="8472883706403914" placeholder="Farm ID" style="width: 160px;" />
-    <button onclick="fetchData()">⚡ Fetch API</button>
+      <button onclick="fetchData()">⚡ Query Target</button>
+    </div>
+
+    <div class="row">
+      <label for="backendUrlInput">Backend URL:</label>
+      <input type="text" id="backendUrlInput" placeholder="e.g. https://your-app.vercel.app" style="flex: 1; min-width: 200px;" />
+
+      <label for="farmIdInput">Farm ID:</label>
+      <input type="text" id="farmIdInput" value="8472883706403914" style="width: 140px;" />
+
+      <label for="usernameInput">User:</label>
+      <input type="text" id="usernameInput" placeholder="Username" style="width: 110px;" />
+
+      <label for="apiKeyInput">API Key:</label>
+      <input type="password" id="apiKeyInput" placeholder="Optional Key" style="width: 110px;" />
+    </div>
   </div>
 
   <div class="status-bar">
     <span>Status: <strong id="statusDisplay">—</strong></span>
-    <span>Proxy: <strong id="proxyDisplay">—</strong></span>
+    <span>Source: <strong id="sourceDisplay">—</strong></span>
     <span>Time: <strong id="timeDisplay">—</strong></span>
-    <span>Size: <strong id="sizeDisplay">—</strong></span>
+    <span>Payload Size: <strong id="sizeDisplay">—</strong></span>
   </div>
 
-  <pre id="output">// Click "Fetch API" to query data...</pre>
+  <pre id="output">// Select a target and click "Query Target" to inspect payload...</pre>
 
   <script>
     let rawData = null;
 
-    async function fetchWithProxyWaterfall(targetUrl) {
-      const proxies = [
-        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-        (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-      ];
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedFarm = localStorage.getItem('sfl_farmId');
+      if (savedFarm) document.getElementById('farmIdInput').value = savedFarm;
 
-      let lastError = null;
+      const savedUser = localStorage.getItem('sfl_auth_user');
+      if (savedUser) document.getElementById('usernameInput').value = savedUser;
 
-      for (let i = 0; i < proxies.length; i++) {
-        const proxyUrl = proxies[i](targetUrl);
-        const proxyName = new URL(proxyUrl).hostname;
-        document.getElementById('proxyDisplay').textContent = proxyName;
+      const savedKey = localStorage.getItem('sfl_apiKey');
+      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
 
-        try {
-          const res = await fetch(proxyUrl, {
-            headers: { 'Accept': 'application/json' },
-            signal: AbortSignal.timeout(9000)
-          });
+      const savedBackend = localStorage.getItem('sfl_backend_url') || (window.location.origin.includes('github.io') ? '' : window.location.origin);
+      document.getElementById('backendUrlInput').value = savedBackend;
+    });
 
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-          let data;
-          if (proxyUrl.includes('allorigins.win/get')) {
-            const wrapper = await res.json();
-            data = JSON.parse(wrapper.contents);
-          } else {
-            data = await res.json();
-          }
-
-          if (data && typeof data === 'object') {
-            return { data, status: res.status, proxy: proxyName };
-          }
-        } catch (err) {
-          lastError = err;
-        }
+    function handleTargetChange() {
+      const ep = document.getElementById('endpointSelect').value;
+      const sec = document.getElementById('sectionSelect');
+      if (ep === 'rawPrices') {
+        sec.value = 'ALL';
       }
-
-      throw lastError || new Error('All CORS proxies failed to respond.');
     }
 
     async function fetchData() {
       const ep = document.getElementById('endpointSelect').value;
       const farmId = document.getElementById('farmIdInput').value.trim() || '8472883706403914';
+      const username = document.getElementById('usernameInput').value.trim();
+      const apiKey = document.getElementById('apiKeyInput').value.trim();
+      let backendUrl = document.getElementById('backendUrlInput').value.trim().replace(/\/+$/, '');
       const out = document.getElementById('output');
 
-      const targetUrl = ep === 'rawSfl'
-        ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
-        : `https://sfl.world/api/v1/prices`;
+      localStorage.setItem('sfl_farmId', farmId);
+      if (username) localStorage.setItem('sfl_auth_user', username);
+      if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
+      if (backendUrl) localStorage.setItem('sfl_backend_url', backendUrl);
 
-      out.textContent = `Connecting through proxy to:\n${targetUrl}...`;
       const t0 = performance.now();
+      document.getElementById('statusDisplay').textContent = 'Fetching...';
 
       try {
-        const result = await fetchWithProxyWaterfall(targetUrl);
-        const elapsed = (performance.now() - t0).toFixed(0);
+        if (ep === 'vault' || ep === 'parsed') {
+          if (!backendUrl && window.location.origin.includes('github.io')) {
+            throw new Error('On GitHub Pages, enter your deployed Vercel URL (e.g. https://your-project.vercel.app) in "Backend URL" to read your PostgreSQL Cloud Vault.');
+          }
 
-        document.getElementById('statusDisplay').textContent = `${result.status} OK`;
-        document.getElementById('proxyDisplay').textContent = result.proxy;
-        document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+          const base = backendUrl || window.location.origin;
+          const actionParam = ep === 'vault' ? '&action=getVault' : '';
+          const userParam = username ? `&username=${encodeURIComponent(username)}` : '';
+          const keyParam = apiKey ? `&apiKey=${encodeURIComponent(apiKey)}` : '';
+          const url = `${base}/api/chapter?farmId=${encodeURIComponent(farmId)}${actionParam}${userParam}${keyParam}`;
 
-        rawData = result.data;
+          out.textContent = `Connecting to Backend: ${url}...`;
+          const res = await fetch(url);
+          const elapsed = (performance.now() - t0).toFixed(0);
+
+          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
+          document.getElementById('sourceDisplay').textContent = 'PostgreSQL / Vercel API';
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+
+          if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.error || `HTTP ${res.status}`);
+          }
+
+          rawData = await res.json();
+        } else if (ep === 'rawPrices') {
+          const url = 'https://sfl.world/api/v1/prices';
+          out.textContent = `Connecting to ${url}...`;
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+          const res = await fetch(proxyUrl);
+          const elapsed = (performance.now() - t0).toFixed(0);
+
+          document.getElementById('statusDisplay').textContent = `${res.status} OK`;
+          document.getElementById('sourceDisplay').textContent = 'sfl.world';
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+
+          rawData = await res.json();
+        } else if (ep === 'rawSfl') {
+          const directUrl = `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`;
+          out.textContent = `Connecting to ${directUrl}...`;
+
+          const headers = { 'Accept': 'application/json' };
+          if (apiKey) headers['x-api-key'] = apiKey;
+
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(directUrl)}`;
+          const res = await fetch(proxyUrl, { headers });
+          const elapsed = (performance.now() - t0).toFixed(0);
+
+          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
+          document.getElementById('sourceDisplay').textContent = 'api.sunflower-land.com';
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+
+          if (!res.ok) {
+            if (res.status === 401) {
+              throw new Error('401 Unauthorized: SFL API rejected the request. Please enter your in-game API Key in the API Key box.');
+            }
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+
+          rawData = await res.json();
+        }
+
         const str = JSON.stringify(rawData, null, 2);
         document.getElementById('sizeDisplay').textContent = `${(new Blob([str]).size / 1024).toFixed(1)} KB`;
-
         filterSection();
       } catch (err) {
-        document.getElementById('statusDisplay').textContent = 'Failed';
-        document.getElementById('proxyDisplay').textContent = 'None';
-        out.textContent = `Fetch Failed: ${err.message}\n\nTarget URL:\n${targetUrl}\n\nTip: Check if the Farm ID is valid.`;
+        document.getElementById('statusDisplay').textContent = 'Error';
+        out.textContent = `❌ ${err.message}`;
       }
     }
 
@@ -186,16 +257,16 @@
         return;
       }
 
-      const farm = rawData.farm || rawData;
-      let target = farm[sec];
+      const root = rawData.vaultData || rawData.farm || rawData;
+      let target = root[sec];
 
       if (target === undefined && sec === 'chores') {
-        target = farm.choreBoard || farm.chores;
+        target = root.choreBoard || root.chores;
       }
 
       out.textContent = target !== undefined 
         ? JSON.stringify(target, null, 2) 
-        : JSON.stringify({ error: `Section '${sec}' not found in payload.` }, null, 2);
+        : JSON.stringify({ message: `Field "${sec}" not found in current payload state.` }, null, 2);
     }
   </script>
 </body>
