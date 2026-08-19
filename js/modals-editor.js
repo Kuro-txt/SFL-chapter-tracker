@@ -113,16 +113,18 @@ export function renderColumnHistoryModalList() {
     weekOptionsHtml += `<option value="w${w}" ${selectedAttr}>Week ${w}</option>`;
   }
 
-  let addFormHtml = `<div style="background:#EFEBE9; border:2px dashed #8B5A2B; padding:10px; border-radius:8px; margin-bottom:12px; display:flex; flex-direction:column; gap:6px;">
+  let addFormHtml = `<div class="add-form-container">
     <div style="font-weight:900; color:#5C4033; font-size:11px;">➕ ADD NEW ${type === 'delivery' ? 'DELIVERY' : type === 'chore' ? 'CHORE' : type === 'animalBounty' ? 'ANIMAL BOUNTY' : 'BOUNTY'}</div>
-    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-      <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task' : 'Item Name'}" style="flex:2; padding:4px; font-size:11px;" />
-      <select id="addModalWeekSelect" style="flex:1.5; padding:4px; font-size:11px; background:#fff; border:1px solid #8B5A2B; border-radius:4px;">
+    <div class="add-form-fields">
+      <input type="text" id="addModalName" placeholder="${type === 'delivery' ? 'NPC Name' : type === 'chore' ? 'NPC & Task' : 'Item Name'}" style="flex:2; min-width:140px; padding:6px; font-size:12px;" />
+      <select id="addModalWeekSelect" style="flex:1.2; min-width:110px; padding:6px; font-size:12px; background:#fff; border:2px solid #8B5A2B; border-radius:6px;">
         ${weekOptionsHtml}
       </select>
-      <input type="number" step="0.001" id="addModalCost" placeholder="Cost SFL" style="width:75px; padding:4px; font-size:11px;" />
-      <input type="number" id="addModalTickets" placeholder="Tickets" style="width:65px; padding:4px; font-size:11px;" />
-      <button onclick="addNewItemFromModal()" class="btn btn-sm btn-wood" style="background:#2E7D32; border-color:#1B5E20; color:#fff; padding:4px 10px; font-weight:bold;">Add</button>
+      <div style="display:flex; gap:6px; flex:1; min-width:140px;">
+        <input type="number" step="0.001" id="addModalCost" placeholder="Cost SFL" style="width:50%; padding:6px; font-size:12px;" />
+        <input type="number" id="addModalTickets" placeholder="Tickets" style="width:50%; padding:6px; font-size:12px;" />
+      </div>
+      <button onclick="addNewItemFromModal()" class="btn btn-sm btn-emerald" style="padding:6px 14px; font-weight:bold; white-space:nowrap;">Add</button>
     </div>
   </div>`;
 
@@ -227,7 +229,6 @@ export function renderColumnHistoryModalList() {
     });
   }
 
-  // Active items first, then completed and skipped
   records.sort((a, b) => (a.checked === b.checked ? 0 : a.checked ? 1 : -1));
 
   let totalTickedTickets = 0;
@@ -270,21 +271,27 @@ export function renderColumnHistoryModalList() {
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
         : '';
 
-      return `<div style="background:#FFF8DC; padding:8px 12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
-        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; padding-right:8px;">
-          <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:15px; height:15px;" />
-          <div>
-            <span style="font-weight:bold; color:#8B4513;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
-            ${npcHeader}<strong style="color:#3E2723;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}${skippedTag}
-            ${itemsRow}
+      return `<div class="history-card">
+        <div class="history-info">
+          <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; width:100%;">
+            <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0;" />
+            <div style="flex:1; min-width:0; word-break:break-word;">
+              <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
+              ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}${skippedTag}
+              ${itemsRow}
+            </div>
+          </label>
+        </div>
+        <div class="history-controls">
+          <div class="history-input-group">
+            <span style="font-size:10px; font-weight:bold; color:#5C4033;">SFL:</span>
+            <input type="number" step="0.001" value="${r.cost}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:65px; padding:3px 5px; font-size:11px;" />
           </div>
-        </label>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span>SFL:</span>
-          <input type="number" step="0.001" value="${r.cost}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:65px; padding:2px; font-size:10px;" />
-          <span>Tickets:</span>
-          <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:45px; padding:2px; font-size:10px;" title="Ticket Yield" />
-          <button onclick="${deleteHandler}" class="btn btn-sm btn-wood" style="background:#C0392B; border-color:#922B21; color:#fff; padding:2px 6px;">✕</button>
+          <div class="history-input-group">
+            <span style="font-size:10px; font-weight:bold; color:#5C4033;">Tix:</span>
+            <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />
+          </div>
+          <button onclick="${deleteHandler}" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; padding:3px 8px; font-weight:bold; border-radius:6px;">✕</button>
         </div>
       </div>`;
     }).join('');
