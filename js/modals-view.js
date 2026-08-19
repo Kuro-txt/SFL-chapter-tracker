@@ -37,7 +37,7 @@ export function openCategorySummaryModal(cat) {
 
   if (cat === 'delivery') {
     titleEl.textContent = '📦 LIVE BOARD DELIVERIES OVERVIEW';
-    // 🎯 STRICTLY LIVE: Only display current active board orders
+    // Strictly live board deliveries
     const liveDeliveries = state.globalData.deliveries || [];
     const sortedDeliv = [...liveDeliveries].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
