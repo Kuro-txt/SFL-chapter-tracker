@@ -7,7 +7,8 @@ import {
   resolveAnimalLevel, 
   syncCurrentVaultToCloud,
   getActiveBoostCount,
-  getActiveVipBonus
+  getActiveVipBonus,
+  getDeduplicatedDeliveries
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -78,7 +79,8 @@ export function openColumnHistoryModal(type) {
     if (npcDropdown) {
       npcDropdown.style.display = 'block';
       const npcSet = new Set();
-      (state.globalData?.archiveDeliveries || state.globalData?.deliveries || []).forEach(d => {
+      const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+      getDeduplicatedDeliveries(rawList).forEach(d => {
         const name = d.from || d.name;
         if (name) npcSet.add(name.trim());
       });
@@ -130,7 +132,11 @@ export function renderColumnHistoryModalList() {
 
   if (type === 'delivery') {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
-    const masterDeliveries = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+    const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+    
+    // Deduplicate and keep synchronized
+    const masterDeliveries = getDeduplicatedDeliveries(rawList);
+    if (state.globalData) state.globalData.archiveDeliveries = masterDeliveries;
 
     masterDeliveries.forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
@@ -226,7 +232,7 @@ export function renderColumnHistoryModalList() {
     });
   }
 
-  // Sort: Active orders on top, then completed/skipped
+  // Sort: Active first, then Done/Skipped
   records.sort((a, b) => (a.checked === b.checked ? 0 : a.checked ? 1 : -1));
 
   let totalTickedTickets = 0;
