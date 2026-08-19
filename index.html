@@ -48,6 +48,7 @@
       color: #8b949e;
       display: flex;
       gap: 16px;
+      flex-wrap: wrap;
     }
     .status-bar strong { color: #3fb950; }
     pre {
@@ -70,8 +71,8 @@
   <div class="controls">
     <label style="color:#58a6ff; font-weight:bold;">Source:</label>
     <select id="endpointSelect">
-      <option value="rawSfl">Direct SFL Farm API (api.sunflower-land.com)</option>
-      <option value="rawPrices">Direct SFL Prices (sfl.world)</option>
+      <option value="rawSfl">Sunflower Land Farm API</option>
+      <option value="rawPrices">SFL.world Prices API</option>
     </select>
 
     <label style="color:#7ee787; font-weight:bold;">Section:</label>
@@ -83,6 +84,7 @@
       <option value="chores">🧹 chores / choreBoard</option>
       <option value="inventory">🎒 inventory</option>
       <option value="vip">👑 vip</option>
+      <option value="calendar">📅 calendar</option>
     </select>
 
     <input type="text" id="farmIdInput" value="8472883706403914" placeholder="Farm ID" style="width: 160px;" />
@@ -91,51 +93,86 @@
 
   <div class="status-bar">
     <span>Status: <strong id="statusDisplay">—</strong></span>
+    <span>Proxy: <strong id="proxyDisplay">—</strong></span>
     <span>Time: <strong id="timeDisplay">—</strong></span>
     <span>Size: <strong id="sizeDisplay">—</strong></span>
   </div>
 
-  <pre id="output">// Click "Fetch API" to query directly from the browser...</pre>
+  <pre id="output">// Click "Fetch API" to query data...</pre>
 
   <script>
     let rawData = null;
+
+    async function fetchWithProxyWaterfall(targetUrl) {
+      const proxies = [
+        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+        (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+      ];
+
+      let lastError = null;
+
+      for (let i = 0; i < proxies.length; i++) {
+        const proxyUrl = proxies[i](targetUrl);
+        const proxyName = new URL(proxyUrl).hostname;
+        document.getElementById('proxyDisplay').textContent = proxyName;
+
+        try {
+          const res = await fetch(proxyUrl, {
+            headers: { 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(9000)
+          });
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+          let data;
+          if (proxyUrl.includes('allorigins.win/get')) {
+            const wrapper = await res.json();
+            data = JSON.parse(wrapper.contents);
+          } else {
+            data = await res.json();
+          }
+
+          if (data && typeof data === 'object') {
+            return { data, status: res.status, proxy: proxyName };
+          }
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      throw lastError || new Error('All CORS proxies failed to respond.');
+    }
 
     async function fetchData() {
       const ep = document.getElementById('endpointSelect').value;
       const farmId = document.getElementById('farmIdInput').value.trim() || '8472883706403914';
       const out = document.getElementById('output');
 
-      let targetUrl = ep === 'rawSfl'
+      const targetUrl = ep === 'rawSfl'
         ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
         : `https://sfl.world/api/v1/prices`;
 
-      out.textContent = `Fetching directly from ${targetUrl}...`;
+      out.textContent = `Connecting through proxy to:\n${targetUrl}...`;
       const t0 = performance.now();
 
       try {
-        let res;
-        try {
-          res = await fetch(targetUrl);
-        } catch (corsErr) {
-          // CORS fallback proxy if direct fetch is blocked by browser origin
-          targetUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-          res = await fetch(targetUrl);
-        }
-
+        const result = await fetchWithProxyWaterfall(targetUrl);
         const elapsed = (performance.now() - t0).toFixed(0);
-        document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
+
+        document.getElementById('statusDisplay').textContent = `${result.status} OK`;
+        document.getElementById('proxyDisplay').textContent = result.proxy;
         document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-
-        rawData = await res.json();
+        rawData = result.data;
         const str = JSON.stringify(rawData, null, 2);
         document.getElementById('sizeDisplay').textContent = `${(new Blob([str]).size / 1024).toFixed(1)} KB`;
 
         filterSection();
       } catch (err) {
-        document.getElementById('statusDisplay').textContent = 'Error';
-        out.textContent = `Fetch Failed: ${err.message}\n\nTarget URL: ${targetUrl}`;
+        document.getElementById('statusDisplay').textContent = 'Failed';
+        document.getElementById('proxyDisplay').textContent = 'None';
+        out.textContent = `Fetch Failed: ${err.message}\n\nTarget URL:\n${targetUrl}\n\nTip: Check if the Farm ID is valid.`;
       }
     }
 
@@ -152,7 +189,6 @@
       const farm = rawData.farm || rawData;
       let target = farm[sec];
 
-      // SFL alternative keys
       if (target === undefined && sec === 'chores') {
         target = farm.choreBoard || farm.chores;
       }
