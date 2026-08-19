@@ -179,7 +179,7 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// 🎯 Master Deduplicator: Collapses any duplicate entries by NPC / Completion state
+// 🎯 Master Deduplicator: Collapses any duplicate entries by NPC & Canonical State
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
 
@@ -251,7 +251,6 @@ export function sanitizeDeliveries(deliveries) {
     }
   }
 
-  // Deduplicate single daily deliveries per NPC
   const finalMap = new Map();
   for (const [key, item] of initialMap.entries()) {
     const npc = (item.from || item.name || "").toLowerCase().trim();
