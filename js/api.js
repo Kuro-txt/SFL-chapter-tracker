@@ -156,7 +156,6 @@ export async function saveProgressToCloudKV(silent = false) {
     if (isTicked) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const itemWeekMonday = getMondayBasedWeekId(d.weekId || d.completedDate || currentWeekMonday);
       const isToday = isTicked && !isManual && (d.completedDate === todayDate || (d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayDate));
 
       let yieldAmt = base;
