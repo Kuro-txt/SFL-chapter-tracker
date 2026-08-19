@@ -24,7 +24,17 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // 1. Reconcile NPC counters and state transitions for existing archive entries
+  // Clean any legacy duplicate items in archiveDeliveries first
+  const seenKeys = new Set();
+  vault.archiveDeliveries = vault.archiveDeliveries.filter(d => {
+    if (!d) return false;
+    const key = d.id ? String(d.id).toLowerCase() : `${(d.from || d.name || '').toLowerCase()}_${d.completedAt || d.completedDate || 'active'}_${d.isManual ? 'm' : 'a'}`;
+    if (seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
+
+  // 1. Reconcile NPC counters and state transitions
   Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
     const npcClean = npcName.toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
@@ -34,7 +44,6 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       const delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
       const skipDelta = currStat.skippedCount - prevStat.skippedCount;
 
-      // Find pending uncompleted/unskipped orders for this NPC in the persistent archive
       const activeOrders = vault.archiveDeliveries.filter(d => {
         const dNpc = (d.from || d.name || '').toLowerCase().trim();
         const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
@@ -46,7 +55,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         const compDate = new Date(completionTime).toISOString().split('T')[0];
         const compWeek = getMondayBasedWeekId(completionTime);
 
-        // Mark previously pending board order as Completed (Ticked)
+        // Mark active order as Completed in-place
         if (activeOrders.length > 0) {
           const orderToComplete = activeOrders[0];
           orderToComplete.completed = true;
@@ -58,7 +67,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           orderToComplete.weekId = compWeek;
         }
 
-        // If delivDelta >= 2, stacked orders were turned in back-to-back
+        // Handle stacked orders (Delta >= 2)
         if (delivDelta >= 2) {
           for (let s = 1; s < delivDelta; s++) {
             const stackedId = `deliv_${npcClean}_stacked_d${prevStat.deliveryCount + s}`;
@@ -111,7 +120,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     };
   });
 
-  // 2. Add / Update currently active board orders into vault.archiveDeliveries
+  // 2. Add or update currently active board orders into vault.archiveDeliveries
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
