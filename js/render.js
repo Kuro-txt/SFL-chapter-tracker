@@ -123,7 +123,7 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 1. Deliveries from Master Single Ground Truth
+  // 1. Process Deliveries strictly from single ground truth
   let doubleDeliveryAppliedToday = false;
   const masterDeliveries = getDeliveryRecords();
 
@@ -286,7 +286,7 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${(state.globalData.chores || []).length} Tasks`);
 
-  // 🎯 Update Overview Card Stats & Ratios
+  // 🎯 Update Overview Card Stats & SFL/Ticket Ratios
   const delivRatio = totalDelivTix > 0 ? formatSFL(totalDelivCost / totalDelivTix) : "0.000";
   setElemText('overviewDelivStats', `${totalDelivTix} Tix | ${formatSFL(totalDelivCost)} SFL`);
   setElemText('overviewDelivRatio', `📊 ${delivRatio} SFL/Tix`);
