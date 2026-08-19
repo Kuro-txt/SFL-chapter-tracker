@@ -62,7 +62,7 @@ export default async function handler(req, res) {
           const parsed = parseFarmData(farm, priceMap);
           const currentWeekMonday = getMondayBasedWeekId();
 
-          // 1. Reconcile Deliveries with NPC Counts & Stacks
+          // 1. Reconcile Deliveries with NPC Counts & Stacks into archiveDeliveries
           reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
 
           // 2. Archive Chores & Bounties
