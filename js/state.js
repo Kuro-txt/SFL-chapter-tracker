@@ -179,22 +179,17 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// 🎯 Master Deduplicator for Database & Memory Archives
+// 🎯 CANONICAL DEDUPLICATOR: Strict 1-per-order deduplication
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
 
-  const manualList = [];
-  const completedMap = new Map();
-  const activeMap = new Map();
-  const skippedMap = new Map();
+  const map = new Map();
 
   const sorted = [...deliveries].sort((a, b) => {
     const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
     const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
     if (aDone !== bDone) return aDone ? -1 : 1;
-    const aCost = (a.itemsCost || a.cost || 0);
-    const bCost = (b.itemsCost || b.cost || 0);
-    return bCost - aCost;
+    return (b.itemsCost || b.cost || 0) - (a.itemsCost || a.cost || 0);
   });
 
   for (const d of sorted) {
@@ -202,11 +197,7 @@ export function sanitizeDeliveries(deliveries) {
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    if (d.isManual) {
-      manualList.push(d);
-      continue;
-    }
-
+    const isMan = Boolean(d.isManual);
     const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
 
@@ -220,60 +211,52 @@ export function sanitizeDeliveries(deliveries) {
     if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
     d.completedDate = dateStr;
 
-    if (isDone) {
+    let canonicalId = d.id || '';
+    if (isMan) {
+      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
+    } else if (isDone) {
       const count = d.deliveryCountAtCreation;
-      const stackSuffix = d.isStacked ? `_stacked_${d.id || ''}` : '';
-      const key = (count !== undefined && count !== null && count !== '')
-        ? `${npc}_cnt_${count}`
-        : `${npc}_date_${dateStr}${stackSuffix}`;
-
-      if (!completedMap.has(key)) {
-        d.completed = true;
-        d.checked = true;
-        d.isSkipped = false;
-        d.status = 'completed';
-        completedMap.set(key, d);
-      } else {
-        const existing = completedMap.get(key);
-        if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
-          existing.itemDetails = d.itemDetails;
-          existing.items = d.items;
-          existing.itemsCost = d.itemsCost;
-          existing.cost = d.cost;
-        }
-      }
+      canonicalId = (count !== undefined && count !== null && count !== '') 
+        ? `deliv_${npc}_d${count}` 
+        : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+      d.completed = true;
+      d.checked = true;
+      d.isSkipped = false;
+      d.status = 'completed';
     } else if (isSkip) {
       const skipCount = d.skippedCountAtCreation;
-      const key = (skipCount !== undefined && skipCount !== null && skipCount !== '')
-        ? `${npc}_skip_${skipCount}`
-        : `${npc}_skip_${dateStr}`;
-      if (!skippedMap.has(key)) {
-        d.completed = false;
-        d.checked = false;
-        d.isSkipped = true;
-        d.status = 'skipped';
-        skippedMap.set(key, d);
-      }
+      canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+      d.completed = false;
+      d.checked = false;
+      d.isSkipped = true;
+      d.status = 'skipped';
     } else {
-      if (!activeMap.has(npc)) {
-        d.completed = false;
-        d.checked = false;
-        d.isSkipped = false;
-        d.status = 'active';
-        activeMap.set(npc, d);
+      canonicalId = `deliv_${npc}_active`;
+      d.completed = false;
+      d.checked = false;
+      d.isSkipped = false;
+      d.status = 'active';
+    }
+
+    d.id = canonicalId;
+
+    if (!map.has(canonicalId)) {
+      map.set(canonicalId, d);
+    } else {
+      const existing = map.get(canonicalId);
+      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+        existing.itemDetails = d.itemDetails;
+        existing.items = d.items;
+        existing.itemsCost = d.itemsCost;
+        existing.cost = d.cost;
       }
     }
   }
 
-  return [
-    ...activeMap.values(),
-    ...completedMap.values(),
-    ...skippedMap.values(),
-    ...manualList
-  ];
+  return Array.from(map.values());
 }
 
-// 🎯 SINGLE GROUND TRUTH GETTER for History & Calculations
+// 🎯 SINGLE GROUND TRUTH GETTER: Always used by Render, Editor, and Cloud Sync
 export function getDeliveryRecords() {
   const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
   const cleanList = sanitizeDeliveries(rawList);
