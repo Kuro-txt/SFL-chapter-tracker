@@ -5,7 +5,7 @@ import {
   parseFarmData,
   CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
-
+ 
 async function ensureTableExists(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS user_vaults (
