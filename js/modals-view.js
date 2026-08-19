@@ -5,7 +5,8 @@ import {
   syncCurrentVaultToCloud, 
   isAnimalBounty,
   getActiveBoostCount,
-  getActiveVipBonus
+  getActiveVipBonus,
+  getDeliveryRecords
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -39,33 +40,48 @@ export function openCategorySummaryModal(cat) {
 
   if (cat === 'delivery') {
     titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
-    const sortedDeliv = [...state.globalData.deliveries].sort((a, b) => {
+    const masterDeliveries = getDeliveryRecords();
+    const sortedDeliv = [...masterDeliveries].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
       const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
       return aDone === bDone ? 0 : aDone ? 1 : -1;
     });
 
     bodyEl.innerHTML = sortedDeliv.map(d => {
-      const isTicked = d.checked !== undefined ? d.checked : Boolean(d.completed);
+      const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       let finalTickets = computeYield(base, true, Boolean(d.isManual));
       if (d.hasDoubleBonus && !d.isManual) finalTickets *= 2;
 
+      const itemCost = d.itemsCost || d.cost || 0;
+      const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
+
       if (isTicked) {
         catTickets += finalTickets;
-        catCost += (d.itemsCost || d.cost || 0);
+        catCost += itemCost;
       }
+
       const isStackedBadge = d.isStacked ? '<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>' : '';
+      const isSkippedBadge = d.isSkipped ? '<span style="background:#FFEBEE; color:#C62828; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFCDD2; margin-left:4px;">✕ SKIPPED</span>' : '';
       const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:4px; font-size:11px;">
-        <div style="display:flex; justify-content:space-between; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}</span>
-          <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
+
+      let statusBadge = `<span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>`;
+      if (d.isSkipped) {
+        statusBadge = `<span class="badge" style="background:#FFCDD2; color:#B71C1C;">✕ SKIPPED</span>`;
+      }
+
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900;">
+          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}${isSkippedBadge}</span>
+          ${statusBadge}
         </div>
-        <div style="color:#5C4033; font-weight:bold;">${itemRows}</div>
-        <div style="display:flex; justify-content:space-between; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:4px;">
-          <span>Yield: ${finalTickets} Tickets</span>
-          <span>${formatSFL(d.itemsCost || d.cost)} SFL</span>
+        <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || 'No item recipe data'}</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
+          <span>Yield: 🎟️ ${finalTickets} Tickets</span>
+          <span>💰 ${formatSFL(itemCost)} SFL</span>
+          <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-size:10px;">
+            📊 ${itemRatio} SFL / Ticket
+          </span>
         </div>
       </div>`;
     }).join('');
@@ -84,16 +100,25 @@ export function openCategorySummaryModal(cat) {
       const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const finalTickets = computeYield(base, false, Boolean(b.isManual));
+      const itemCost = b.itemsCost || b.cost || 0;
+      const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
 
       if (isTicked) {
         catTickets += finalTickets;
-        catCost += (b.itemsCost || b.cost || 0);
+        catCost += itemCost;
       }
       const lvl = resolveAnimalLevel(b);
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-        <div>
+
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
+        <div style="flex:1;">
           <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
-          <span style="color:#8B4513; font-weight:bold;">Yield: ${finalTickets} Tickets | ${formatSFL(b.itemsCost || b.cost || 0)} SFL</span>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
+            <span style="color:#8B4513; font-weight:bold;">Yield: 🎟️ ${finalTickets} Tix</span>
+            <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
+            <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
+              📊 ${itemRatio} SFL / Tix
+            </span>
+          </div>
         </div>
         <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
@@ -111,23 +136,33 @@ export function openCategorySummaryModal(cat) {
       const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const finalTickets = computeYield(base, true, Boolean(c.isManual));
+      const itemCost = c.itemsCost || c.cost || 0;
+      const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
 
       if (isTicked) {
         catTickets += finalTickets;
-        catCost += (c.itemsCost || c.cost || 0);
+        catCost += itemCost;
       }
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-        <div>
+
+      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
+        <div style="flex:1;">
           <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong><br/>
           <span style="color:#5C4033; font-weight:bold;">${c.task || c.name}</span><br/>
-          <span style="color:#2E7D32; font-weight:900;">Yield: ${finalTickets} Tickets | ${formatSFL(c.itemsCost || c.cost || 0)} SFL</span>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
+            <span style="color:#2E7D32; font-weight:900;">Yield: 🎟️ ${finalTickets} Tix</span>
+            <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
+            <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
+              📊 ${itemRatio} SFL / Tix
+            </span>
+          </div>
         </div>
         <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
     }).join('');
   }
 
-  totalsEl.textContent = `${catTickets} Tickets | ${formatSFL(catCost)} SFL`;
+  const overallRatio = catTickets > 0 ? formatSFL(catCost / catTickets) : "0.000";
+  totalsEl.innerHTML = `<span>${catTickets} Tickets</span> | <span>${formatSFL(catCost)} SFL</span> | <span style="color:#1B5E20; background:#C8E6C9; padding:2px 6px; border-radius:4px; font-size:11px;">📊 Avg: ${overallRatio} SFL / Tix</span>`;
   modal.classList.add('show');
 }
 
@@ -157,7 +192,7 @@ export function renderHistoryModalList() {
 
     const logTickets = log.ticketsSaved || 0;
     const logCost = log.costSaved || 0;
-    const logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.00";
+    const logRatio = logTickets > 0 ? formatSFL(logCost / logTickets) : "0.000";
 
     return `<div style="background:#FFF8DC; padding:12px; border:2px solid #8B5A2B; border-radius:6px; display:flex; flex-direction:column; gap:6px; margin-bottom:8px;">
       <div style="display:flex; justify-content:space-between; align-items:center; color:#5C4033; font-size:11px; font-weight:900;">
