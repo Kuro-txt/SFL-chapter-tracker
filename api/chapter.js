@@ -18,25 +18,18 @@ async function ensureTableExists(client) {
 
 function sanitizeDeliveriesList(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-  const initialMap = new Map();
+  const manualList = [];
+  const completedMap = new Map();
+  const activeMap = new Map();
+  const skippedMap = new Map();
 
-  const sorted = [...deliveries].sort((a, b) => {
-    const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
-    const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
-    if (aDone !== bDone) return aDone ? -1 : 1;
-    const aCost = (a.itemsCost || a.cost || 0);
-    const bCost = (b.itemsCost || b.cost || 0);
-    return bCost - aCost;
-  });
-
-  for (const d of sorted) {
+  for (const d of deliveries) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
     if (d.isManual) {
-      const manKey = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || d.weekId || ''}`;
-      if (!initialMap.has(manKey)) initialMap.set(manKey, d);
+      manualList.push(d);
       continue;
     }
 
@@ -53,63 +46,57 @@ function sanitizeDeliveriesList(deliveries) {
     if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
     d.completedDate = dateStr;
 
-    let dedupeKey = '';
     if (isDone) {
-      if (d.isStacked) {
-        dedupeKey = `done_stacked_${npc}_${dateStr}_${d.id || d.deliveryCountAtCreation || '1'}`;
+      const count = d.deliveryCountAtCreation;
+      const stackSuffix = d.isStacked ? `_stacked_${d.id || ''}` : '';
+      const key = (count !== undefined && count !== null && count !== '')
+        ? `${npc}_cnt_${count}`
+        : `${npc}_date_${dateStr}${stackSuffix}`;
+
+      if (!completedMap.has(key)) {
+        d.completed = true;
+        d.checked = true;
+        d.isSkipped = false;
+        d.status = 'completed';
+        completedMap.set(key, d);
       } else {
-        const countPart = d.deliveryCountAtCreation ? `_c${d.deliveryCountAtCreation}` : '';
-        dedupeKey = countPart ? `done_${npc}${countPart}` : `done_${npc}_${dateStr}`;
-      }
-    } else if (isSkip) {
-      const skipCountPart = d.skippedCountAtCreation ? `_sc${d.skippedCountAtCreation}` : '';
-      dedupeKey = skipCountPart ? `skip_${npc}${skipCountPart}` : `skip_${npc}_${dateStr}`;
-    } else {
-      dedupeKey = `active_${npc}`;
-    }
-
-    if (!initialMap.has(dedupeKey)) {
-      initialMap.set(dedupeKey, d);
-    } else {
-      const existing = initialMap.get(dedupeKey);
-      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
-        existing.itemDetails = d.itemDetails;
-        existing.items = d.items;
-        existing.itemsCost = d.itemsCost;
-        existing.cost = d.cost;
-      }
-      if (d.completed && !existing.completed) {
-        existing.completed = true;
-        existing.checked = true;
-        existing.status = 'completed';
-      }
-    }
-  }
-
-  const finalMap = new Map();
-  for (const [key, item] of initialMap.entries()) {
-    const npc = (item.from || item.name || '').toLowerCase().trim();
-    const isDone = Boolean(item.checked !== undefined ? item.checked : item.completed) && !item.isSkipped;
-
-    if (isDone && !item.isManual && !item.isStacked) {
-      const unifiedDayKey = `done_single_${npc}_${item.completedDate}`;
-      if (!finalMap.has(unifiedDayKey)) {
-        finalMap.set(unifiedDayKey, item);
-      } else {
-        const ex = finalMap.get(unifiedDayKey);
-        if ((!ex.itemDetails || ex.itemDetails.length === 0) && item.itemDetails && item.itemDetails.length > 0) {
-          ex.itemDetails = item.itemDetails;
-          ex.items = item.items;
-          ex.itemsCost = item.itemsCost;
-          ex.cost = item.cost;
+        const existing = completedMap.get(key);
+        if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+          existing.itemDetails = d.itemDetails;
+          existing.items = d.items;
+          existing.itemsCost = d.itemsCost;
+          existing.cost = d.cost;
         }
       }
+    } else if (isSkip) {
+      const skipCount = d.skippedCountAtCreation;
+      const key = (skipCount !== undefined && skipCount !== null && skipCount !== '')
+        ? `${npc}_skip_${skipCount}`
+        : `${npc}_skip_${dateStr}`;
+      if (!skippedMap.has(key)) {
+        d.completed = false;
+        d.checked = false;
+        d.isSkipped = true;
+        d.status = 'skipped';
+        skippedMap.set(key, d);
+      }
     } else {
-      finalMap.set(key, item);
+      if (!activeMap.has(npc)) {
+        d.completed = false;
+        d.checked = false;
+        d.isSkipped = false;
+        d.status = 'active';
+        activeMap.set(npc, d);
+      }
     }
   }
 
-  return Array.from(finalMap.values());
+  return [
+    ...activeMap.values(),
+    ...completedMap.values(),
+    ...skippedMap.values(),
+    ...manualList
+  ];
 }
 
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
@@ -120,7 +107,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // 1. Sanitize past database records to eliminate any legacy duplicates
+  // 1. Sanitize past database records to eliminate duplicates
   vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
 
   // 2. Reconcile Deltas using NPC Lifetime Counters
@@ -140,10 +127,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
         for (let k = 1; k <= delivDelta; k++) {
           const completedCountIndex = prevStat.deliveryCount + k;
-          const targetOrderId = `deliv_${npcClean}_${completedCountIndex}`;
+          const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
           const isStacked = k > 1;
 
-          // Find active pending order to mark complete in-place
+          // Find the active pending order to mark complete
           const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
             const dNpc = (d.from || d.name || '').toLowerCase().trim();
             const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
@@ -209,6 +196,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       }
     }
 
+    // Update snapshot baseline
     vault.npcSnapshots[npcClean] = {
       deliveryCount: currStat.deliveryCount,
       skippedCount: currStat.skippedCount,
@@ -224,16 +212,13 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     const activeOrderId = `deliv_${npcClean}_active`;
 
     if (order.completed) {
-      // If SFL API already flagged this order as completed, merge into its completed slot
-      const compId = `deliv_${npcClean}_${currStat.deliveryCount}`;
+      const compId = `deliv_${npcClean}_d${currStat.deliveryCount}`;
       const existingComp = vault.archiveDeliveries.find(d => d.id === compId);
-      if (existingComp) {
-        if (!existingComp.itemDetails || existingComp.itemDetails.length === 0) {
-          existingComp.items = order.items || existingComp.items;
-          existingComp.itemsCost = order.itemsCost || existingComp.itemsCost;
-          existingComp.cost = order.itemsCost || existingComp.cost;
-          existingComp.itemDetails = order.itemDetails || existingComp.itemDetails;
-        }
+      if (existingComp && (!existingComp.itemDetails || existingComp.itemDetails.length === 0)) {
+        existingComp.items = order.items || existingComp.items;
+        existingComp.itemsCost = order.itemsCost || existingComp.itemsCost;
+        existingComp.cost = order.itemsCost || existingComp.cost;
+        existingComp.itemDetails = order.itemDetails || existingComp.itemDetails;
       }
     } else {
       const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId);
