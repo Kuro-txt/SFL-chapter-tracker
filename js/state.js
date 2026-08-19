@@ -1,9 +1,25 @@
 export const state = {
   globalData: null,
-  currentUser: null, 
+  currentUser: null,
   activeColumnType: null,
   currentVaultData: null
 };
+
+// 🎯 Set your deployed Vercel URL as default fallback for GitHub Pages
+export const DEFAULT_VERCEL_BACKEND = 'https://kuro-txt-sfl-chapter-tracker.vercel.app';
+
+export function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    const savedBackend = localStorage.getItem('sfl_backend_url');
+    if (savedBackend && savedBackend.trim() !== '') {
+      return savedBackend.trim().replace(/\/+$/, '');
+    }
+    if (window.location.hostname.includes('github.io')) {
+      return DEFAULT_VERCEL_BACKEND.replace(/\/+$/, '');
+    }
+  }
+  return '';
+}
 
 export const SFL_FLOWER_ITEMS = new Set([
   'red pansy', 'yellow pansy', 'purple pansy', 'white pansy', 'blue pansy',
@@ -179,17 +195,22 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// 🎯 CANONICAL DEDUPLICATOR: Strict 1-per-order deduplication
+// 🎯 Master Deduplicator for Database & Memory Archives
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
 
-  const map = new Map();
+  const manualList = [];
+  const completedMap = new Map();
+  const activeMap = new Map();
+  const skippedMap = new Map();
 
   const sorted = [...deliveries].sort((a, b) => {
     const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
     const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
     if (aDone !== bDone) return aDone ? -1 : 1;
-    return (b.itemsCost || b.cost || 0) - (a.itemsCost || a.cost || 0);
+    const aCost = (a.itemsCost || a.cost || 0);
+    const bCost = (b.itemsCost || b.cost || 0);
+    return bCost - aCost;
   });
 
   for (const d of sorted) {
@@ -197,7 +218,11 @@ export function sanitizeDeliveries(deliveries) {
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    const isMan = Boolean(d.isManual);
+    if (d.isManual) {
+      manualList.push(d);
+      continue;
+    }
+
     const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
 
@@ -211,52 +236,59 @@ export function sanitizeDeliveries(deliveries) {
     if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
     d.completedDate = dateStr;
 
-    let canonicalId = d.id || '';
-    if (isMan) {
-      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
-    } else if (isDone) {
+    if (isDone) {
       const count = d.deliveryCountAtCreation;
-      canonicalId = (count !== undefined && count !== null && count !== '') 
-        ? `deliv_${npc}_d${count}` 
-        : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
-      d.completed = true;
-      d.checked = true;
-      d.isSkipped = false;
-      d.status = 'completed';
+      const stackSuffix = d.isStacked ? `_stacked_${d.id || ''}` : '';
+      const key = (count !== undefined && count !== null && count !== '')
+        ? `${npc}_cnt_${count}`
+        : `${npc}_date_${dateStr}${stackSuffix}`;
+
+      if (!completedMap.has(key)) {
+        d.completed = true;
+        d.checked = true;
+        d.isSkipped = false;
+        d.status = 'completed';
+        completedMap.set(key, d);
+      } else {
+        const existing = completedMap.get(key);
+        if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+          existing.itemDetails = d.itemDetails;
+          existing.items = d.items;
+          existing.itemsCost = d.itemsCost;
+          existing.cost = d.cost;
+        }
+      }
     } else if (isSkip) {
       const skipCount = d.skippedCountAtCreation;
-      canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
-      d.completed = false;
-      d.checked = false;
-      d.isSkipped = true;
-      d.status = 'skipped';
+      const key = (skipCount !== undefined && skipCount !== null && skipCount !== '')
+        ? `${npc}_skip_${skipCount}`
+        : `${npc}_skip_${dateStr}`;
+      if (!skippedMap.has(key)) {
+        d.completed = false;
+        d.checked = false;
+        d.isSkipped = true;
+        d.status = 'skipped';
+        skippedMap.set(key, d);
+      }
     } else {
-      canonicalId = `deliv_${npc}_active`;
-      d.completed = false;
-      d.checked = false;
-      d.isSkipped = false;
-      d.status = 'active';
-    }
-
-    d.id = canonicalId;
-
-    if (!map.has(canonicalId)) {
-      map.set(canonicalId, d);
-    } else {
-      const existing = map.get(canonicalId);
-      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
-        existing.itemDetails = d.itemDetails;
-        existing.items = d.items;
-        existing.itemsCost = d.itemsCost;
-        existing.cost = d.cost;
+      if (!activeMap.has(npc)) {
+        d.completed = false;
+        d.checked = false;
+        d.isSkipped = false;
+        d.status = 'active';
+        activeMap.set(npc, d);
       }
     }
   }
 
-  return Array.from(map.values());
+  return [
+    ...activeMap.values(),
+    ...completedMap.values(),
+    ...skippedMap.values(),
+    ...manualList
+  ];
 }
 
-// 🎯 SINGLE GROUND TRUTH GETTER: Always used by Render, Editor, and Cloud Sync
 export function getDeliveryRecords() {
   const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
   const cleanList = sanitizeDeliveries(rawList);
