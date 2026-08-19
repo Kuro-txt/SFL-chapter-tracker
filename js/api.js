@@ -4,7 +4,7 @@ import {
   getActiveVipBonus, 
   getMondayBasedWeekId,
   isLoginClaimedToday,
-  getDeduplicatedDeliveries
+  getDeliveryRecords
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -77,8 +77,8 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    const rawList = data.archiveDeliveries || data.vaultData?.archiveDeliveries || data.deliveries || [];
-    state.globalData.archiveDeliveries = getDeduplicatedDeliveries(rawList);
+    // Load master delivery records through single deduplication pipeline
+    state.globalData.archiveDeliveries = getDeliveryRecords();
 
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
@@ -150,8 +150,7 @@ export async function saveProgressToCloudKV(silent = false) {
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
 
-  const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
-  const masterDeliveries = getDeduplicatedDeliveries(rawList);
+  const masterDeliveries = getDeliveryRecords();
 
   masterDeliveries.forEach(d => {
     const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
@@ -260,7 +259,7 @@ export async function saveProgressToCloudKV(silent = false) {
         logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {}
       };
-      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || masterDeliveries;
+      state.globalData.archiveDeliveries = getDeliveryRecords();
       state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
       state.globalData.archiveChores = data.vaultData.archiveChores || [];
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
