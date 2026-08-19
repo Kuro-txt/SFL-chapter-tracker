@@ -105,8 +105,7 @@ export function recalculateAll() {
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
-        const ms = ts < 1e11 ? ts * 1000 : ts;
-        return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
+        return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0] === todayUtcStr;
       }
     }
     return false;
@@ -120,7 +119,7 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 1. Process Deliveries strictly from single ground truth
+  // 🎯 STRICT SINGLE SOURCE: Calculate deliveries ONLY from getDeliveryRecords()
   let doubleDeliveryAppliedToday = false;
   const masterDeliveries = getDeliveryRecords();
 
