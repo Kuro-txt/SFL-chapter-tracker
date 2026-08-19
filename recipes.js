@@ -32,7 +32,7 @@ export const SFL_RECIPES = {
   "merino cushion": { "merino wool": 9 },
 
   // ==========================================
-  // FLOWER SEEDS & FLOWERS (Bounty & Cost Mappings)
+  // FLOWER SEEDS & FLOWERS
   // ==========================================
   "red cosmos": { "sunpetal seed / red pansy": 1 },
   "blue lotus": { "lily seed / blue lotus": 1 },
@@ -110,26 +110,26 @@ export const SFL_RECIPES = {
   "giant apple": { "coins": 1500 },
 
   // ==========================================
-  // FISH & CRUSTACEA (Cleaned Suffixes 'a'/'b')
+  // CRUSTACEA & FISH
   // ==========================================
   "blue crab": { "heart leaf": 3, "crab pot": 1 },
   "lobster": { "wild grass": 3, "crab pot": 1 },
   "hermit crab": { "grape": 5, "crab pot": 1 },
   "shrimp": { "crimstone": 2, "crab pot": 1 },
   "mussel": { "moonfur": 1, "crab pot": 1 },
-  "oyster spring": { "fish stick spring": 2, "crab pot": 1 },
-  "anemone spring": { "crab pot": 1, "fish oil spring": 2 },
   "isopod": { "crab pot": 1 },
   "sea slug": { "mariner pot": 1, "crimstone": 2 },
   "sea snail": { "mariner pot": 1, "chewed bone": 3 },
   "garden eel": { "mariner pot": 1, "dewberry": 3 },
   "sea grapes": { "mariner pot": 1, "lunara": 3 },
   "octopus": { "mariner pot": 1, "moonfur": 1 },
-  "sea urchin spring": { "mariner pot": 1, "fish stick spring": 2 },
-  "horseshoe crab spring": { "mariner pot": 1, "crab stick spring": 2 },
   "barnacle": { "mariner pot": 1 },
-  "sea urchin": { "mariner pot": 1 },
-  "horseshoe crab": { "mariner pot": 1 },
+  
+  // Direct base names for oyster, anemone, sea urchin, horseshoe crab
+  "oyster": { "fish stick": 2, "crab pot": 1 },
+  "anemone": { "crab pot": 1, "fish oil": 2 },
+  "sea urchin": { "mariner pot": 1, "fish stick": 2 },
+  "horseshoe crab": { "mariner pot": 1, "crab stick": 2 },
 
   "red snapper": { "rod": 1, "apple": 3 },
   "olive founder": { "rod": 1 },
@@ -173,24 +173,12 @@ export const SFL_RECIPES = {
   "treasurecrab": { "rod": 1 },
 
   // ==========================================
-  // FISH CHUM
+  // UNIFIED FISH CHUM & ESSENCE
   // ==========================================
-  "fish stick spring": { "red snapper": 6, "olive founder": 2, "zebra turkeyfish": 2 },
-  "crab stick spring": { "crab": 1, "blue crab": 1, "hermit crab": 1, "sea slug": 1 },
-  "fish oil spring": { "tuna": 8, "weakfish": 2, "oarfish": 2 },
-  "fish flake spring": { "anchovy": 4, "porgy": 2, "sea bass": 2 },
-  "fish flake summer": { "anchovy": 4, "butterflyfish": 2, "sea horse": 2 },
-  "fish flake autumn": { "anchovy": 4, "halibut": 2, "muskellunge": 2 },
-  "fish flake winter": { "anchovy": 4, "blowfish": 2, "clownfish": 2 },
-  "fish stick summer": { "red snapper": 6, "surgeonfish": 2, "tilapia": 2 },
-  "fish stick autumn": { "red snapper": 6, "moray eel": 2, "napoleanfish": 2 },
-  "fish stick winter": { "red snapper": 6, "walleye": 2, "angelfish": 2 },
-  "crab stick summer": { "crab": 1, "mussel": 1, "isopod": 1, "sea snail": 1 },
-  "crab stick autumn": { "crab": 1, "shrimp": 1, "lobster": 1, "barnacle": 1 },
-  "crab stick winter": { "crab": 1, "oyster spring": 1, "isopod": 1, "garden eel": 1 },
-  "fish oil summer": { "tuna": 8, "cobia": 2, "sunfish": 2 },
-  "fish oil autumn": { "tuna": 8, "mahi mahi": 4, "crab": 2 },
-  "fish oil winter": { "tuna": 8, "blue marlin": 2, "football fish": 2 },
+  "fish stick": { "red snapper": 6, "olive founder": 2, "zebra turkeyfish": 2 },
+  "crab stick": { "blue crab": 1, "hermit crab": 1, "sea slug": 1 },
+  "fish oil": { "tuna": 8, "weakfish": 2, "oarfish": 2 },
+  "fish flake": { "anchovy": 4, "porgy": 2, "sea bass": 2 },
 
   // ==========================================
   // COOKED FOODS & DELI
@@ -255,7 +243,7 @@ export const SFL_RECIPES = {
   "surimi rice bowl": { "rice": 1, "onion": 10 },
   "tofu scramble": { "soybean": 20, "egg": 20, "cauliflower": 10 },
   "beetroot blaze": { "beetroot": 500 },
-  "creamy crab bite": { "cheese": 30, "crab stick spring": 1 },
+  "creamy crab bite": { "cheese": 30, "crab stick": 1 },
   "crimstone infused fish oil": { "crimstone": 10 },
   "mushroom jacket potatoes": { "potato": 50 },
 
@@ -293,33 +281,14 @@ export const SFL_RECIPES = {
   "lunar doll": { "doll": 1, "celestine": 3, "lunara": 3, "duskberry": 2 },
   "moo doll": { "doll": 1, "leather": 8 },
   "bloom doll": { "doll": 1, "prism petal": 3, "celestial frostbloom": 2, "primula enigma": 3 },
-  
-  // ==========================================
-  // COMPOST & BAIT
-  // ==========================================
-  "earthworm spring": { "rhubarb": 2, "carrot": 1 },
-  "earthworm summer": { "zucchini": 2, "pepper": 0.4 },
-  "earthworm autumn": { "yam": 3 },
-  "earthworm winter": { "potato": 2, "cabbage": 0.6 },
-  "grub spring": { "soybean": 1, "corn": 0.6 },
-  "grub summer": { "cauliflower": 0.8, "eggplant": 0.6 },
-  "grub autumn": { "broccoli": 2, "artichoke": 0.4 },
-  "grub winter": { "onion": 1, "turnip": 0.4 },
-  "red wiggler spring": { "blueberry": 1.6, "egg": 1 },
-  "red wiggler summer": { "banana": 0.6, "eggplant": 1 },
-  "red wiggler autumn": { "apple": 0.8, "tomato": 1 },
-  "red wiggler winter": { "lemon": 0.6, "apple": 0.6 },
 
-  "sprout mix spring": { "rhubarb": 0.625, "carrot": 0.3125 },
-  "sprout mix summer": { "zucchini": 0.625, "pepper": 0.125 },
-  "sprout mix autumn": { "yam": 0.9375 },
-  "sprout mix winter": { "potato": 0.625, "cabbage": 0.1875 },
-  "fruitful blend spring": { "soybean": 0.5555555556, "corn": 0.3333333333 },
-  "fruitful blend summer": { "cauliflower": 0.4444444444, "eggplant": 0.3333333333 },
-  "fruitful blend autumn": { "broccoli": 1.111111111, "artichoke": 0.2222222222 },
-  "fruitful blend winter": { "onion": 0.5555555556, "turnip": 0.2222222222 },
-  "rapid root spring": { "blueberry": 0.380952381, "egg": 0.2380952381 },
-  "rapid root summer": { "banana": 0.1428571429, "eggplant": 0.2380952381 },
-  "rapid root autumn": { "apple": 0.1904761905, "tomato": 0.2380952381 },
-  "rapid root winter": { "lemon": 0.1428571429, "apple": 0.1428571429 }
+  // ==========================================
+  // UNIFIED COMPOST & BAIT (Single Recipe Fallbacks)
+  // ==========================================
+  "earthworm": { "rhubarb": 2, "carrot": 1 },
+  "grub": { "soybean": 1, "corn": 0.6 },
+  "red wiggler": { "blueberry": 1.6, "egg": 1 },
+  "sprout mix": { "rhubarb": 0.625, "carrot": 0.3125 },
+  "fruitful blend": { "soybean": 0.555, "corn": 0.333 },
+  "rapid root": { "blueberry": 0.381, "egg": 0.238 }
 };
