@@ -105,8 +105,7 @@ export function recalculateAll() {
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
-        const ms = ts < 1e11 ? ts * 1000 : ts;
-        return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
+        return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0] === todayUtcStr;
       }
     }
     return false;
