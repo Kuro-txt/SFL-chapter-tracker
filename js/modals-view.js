@@ -2,13 +2,10 @@ import {
   state, 
   formatSFL, 
   resolveAnimalLevel, 
-  syncCurrentVaultToCloud, 
   isAnimalBounty,
   getActiveBoostCount,
-  getActiveVipBonus,
-  getDeliveryRecords
+  getActiveVipBonus
 } from './state.js';
-import { recalculateAll } from './render.js';
 
 function computeYield(base, isVipEligible = true, isManual = false) {
   const raw = Number(base) || 0;
@@ -39,9 +36,10 @@ export function openCategorySummaryModal(cat) {
   let catCost = 0;
 
   if (cat === 'delivery') {
-    titleEl.textContent = '📦 NPC DELIVERIES OVERVIEW';
-    const masterDeliveries = getDeliveryRecords();
-    const sortedDeliv = [...masterDeliveries].sort((a, b) => {
+    titleEl.textContent = '📦 LIVE BOARD DELIVERIES OVERVIEW';
+    // 🎯 STRICTLY LIVE: Only display current active board orders
+    const liveDeliveries = state.globalData.deliveries || [];
+    const sortedDeliv = [...liveDeliveries].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
       const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
       return aDone === bDone ? 0 : aDone ? 1 : -1;
