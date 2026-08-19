@@ -99,15 +99,15 @@ export function recalculateAll() {
     if (item.isManual) return false;
     if (itemWeekMonday && itemWeekMonday !== currentWeekMonday) return false;
     
+    if (item.completedDate) {
+      return item.completedDate === todayUtcStr;
+    }
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
         const ms = ts < 1e11 ? ts * 1000 : ts;
         return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
       }
-    }
-    if (item.completedDate) {
-      return item.completedDate === todayUtcStr;
     }
     return false;
   };
@@ -128,8 +128,11 @@ export function recalculateAll() {
     if (isTicked(d)) {
       const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
+      const itemWeekMonday = getMondayBasedWeekId(d.weekId || d.completedDate || currentWeekMonday);
+      const isToday = isDoneToday(d, itemWeekMonday);
+
       let applyDouble = false;
-      if (isDoubleDeliveryActive && !doubleDeliveryAppliedToday && !isManual) {
+      if (isDoubleDeliveryActive && isToday && !doubleDeliveryAppliedToday && !isManual) {
         applyDouble = true;
         doubleDeliveryAppliedToday = true;
         d.hasDoubleBonus = true;
@@ -139,10 +142,8 @@ export function recalculateAll() {
 
       const calculatedYield = isManual ? baseTix : calculateItemYield(baseTix, true, true, applyDouble, false);
       const dCost = d.itemsCost || d.cost || 0;
-      const itemWeekMonday = getMondayBasedWeekId(d.weekId || d.completedDate || currentWeekMonday);
 
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
-      const isToday = isDoneToday(d, itemWeekMonday);
 
       if (isToday) {
         todayDelivTix += calculatedYield;
