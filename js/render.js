@@ -120,7 +120,7 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 🎯 STRICT SINGLE SOURCE: Only count deliveries from getDeliveryRecords()
+  // 🎯 STRICT SINGLE SOURCE: Calculate deliveries ONLY from getDeliveryRecords()
   let doubleDeliveryAppliedToday = false;
   const masterDeliveries = getDeliveryRecords();
 
