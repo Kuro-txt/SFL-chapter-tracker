@@ -58,13 +58,6 @@ function getWeekNumber(dateOrWeekStr) {
   return Math.max(1, Math.min(12, diffWeeks));
 }
 
-function getDeliveryDedupeKey(item) {
-  if (item.id) return String(item.id).toLowerCase();
-  const npcName = (item.from || item.name || '').toLowerCase().trim();
-  const compTime = item.completedAt || item.completedDate || 'active';
-  return `${npcName}_${compTime}`;
-}
-
 export function openColumnHistoryModal(type) {
   state.activeColumnType = type;
   let title = '📜 BOUNTIES EDIT / HISTORY';
@@ -85,11 +78,7 @@ export function openColumnHistoryModal(type) {
     if (npcDropdown) {
       npcDropdown.style.display = 'block';
       const npcSet = new Set();
-      (state.globalData?.deliveries || []).forEach(d => {
-        const name = d.from || d.name;
-        if (name) npcSet.add(name.trim());
-      });
-      (state.globalData?.archiveDeliveries || []).forEach(d => {
+      (state.globalData?.archiveDeliveries || state.globalData?.deliveries || []).forEach(d => {
         const name = d.from || d.name;
         if (name) npcSet.add(name.trim());
       });
@@ -141,24 +130,21 @@ export function renderColumnHistoryModalList() {
 
   if (type === 'delivery') {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
-    const seenDeliveries = new Set();
+    const masterDeliveries = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
 
-    // 1. Process Archived first (Primary ground truth for completed/skipped)
-    (state.globalData?.archiveDeliveries || []).forEach((item, itemIdx) => {
+    masterDeliveries.forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-      const dedupeKey = getDeliveryDedupeKey(item);
-      if (seenDeliveries.has(dedupeKey)) return;
-      seenDeliveries.add(dedupeKey);
-
       if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
-      
+
       const dateDisplay = resolveItemDate(item);
       const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
       const isManual = Boolean(item.isManual);
-      const finalTix = computeYield(baseTix, true, isManual);
+      let finalTix = computeYield(baseTix, true, isManual);
+      if (item.hasDoubleBonus && !isManual) finalTix *= 2;
+
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
       const isSkipped = Boolean(item.isSkipped);
 
@@ -178,43 +164,6 @@ export function renderColumnHistoryModalList() {
         isManual
       });
     });
-
-    // 2. Process Live Deliveries (Only add if not already in Archive)
-    (state.globalData?.deliveries || []).forEach((item, itemIdx) => {
-      const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
-      const dedupeKey = getDeliveryDedupeKey(item);
-      if (seenDeliveries.has(dedupeKey)) return;
-      seenDeliveries.add(dedupeKey);
-
-      if (npcFilter && !itemName.toLowerCase().includes(npcFilter)) return;
-
-      const dateDisplay = resolveItemDate(item);
-      const itemWeekNum = getWeekNumber(item.weekId || dateDisplay);
-      if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
-
-      const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-      let finalTix = computeYield(baseTix, true, Boolean(item.isManual));
-      if (item.hasDoubleBonus && !item.isManual) finalTix *= 2;
-
-      const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
-      const isSkipped = Boolean(item.isSkipped);
-
-      records.push({
-        source: 'live',
-        itemIdx,
-        date: dateDisplay,
-        weekNum: itemWeekNum,
-        name: itemName,
-        requestedItems: formatRequestedItems(item.itemDetails || item.items),
-        cost: item.cost || item.itemsCost || 0,
-        displayTickets: isSkipped ? 0 : finalTix,
-        checked: isChecked && !isSkipped,
-        status: isSkipped ? '✕ Skipped' : (isChecked ? '✨ Done' : '⏳ Active'),
-        isStacked: item.isStacked || false,
-        isSkipped,
-        isManual: Boolean(item.isManual)
-      });
-    });
   } else {
     const isChore = type === 'chore';
     const isAnimal = type === 'animalBounty';
@@ -222,7 +171,6 @@ export function renderColumnHistoryModalList() {
     const allItemsMap = new Map();
     const currentWeekId = getMondayBasedWeekId();
 
-    // Live array
     const liveArr = isChore ? (state.globalData?.chores || []) : (state.globalData?.bounties || []);
     liveArr.forEach((item, idx) => {
       if (!isChore && isAnimalBounty(item) !== isAnimal) return;
@@ -233,7 +181,6 @@ export function renderColumnHistoryModalList() {
       allItemsMap.set(dedupeKey, { item, weekId: currentWeekId, idx, source: 'current' });
     });
 
-    // Weekly storage
     const weeks = state.globalData?.cloudHistory?.weeks || {};
     Object.entries(weeks).forEach(([wkId, wk]) => {
       const targetArr = isChore ? (wk.chores || []) : (wk.bounties || []);
@@ -279,6 +226,7 @@ export function renderColumnHistoryModalList() {
     });
   }
 
+  // Sort: Active orders on top, then completed/skipped
   records.sort((a, b) => (a.checked === b.checked ? 0 : a.checked ? 1 : -1));
 
   let totalTickedTickets = 0;
@@ -361,6 +309,7 @@ export async function addNewItemFromModal() {
 
   if (type === 'delivery') {
     const newDeliv = {
+      id: `manual_${Date.now()}`,
       from: nameInput,
       name: nameInput,
       baseTickets: ticketsInput,
@@ -434,9 +383,8 @@ export async function addNewItemFromModal() {
 }
 
 export async function toggleDeliveryLogCheck(source, itemIdx) {
-  const target = source === 'live' 
-    ? state.globalData?.deliveries?.[itemIdx] 
-    : state.globalData?.archiveDeliveries?.[itemIdx];
+  const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const target = master[itemIdx];
 
   if (target) {
     const newStatus = !(target.checked !== undefined ? target.checked : Boolean(target.completed));
@@ -444,7 +392,10 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
     target.completed = newStatus;
     if (newStatus) {
       target.isSkipped = false;
+      target.status = 'completed';
       if (!target.completedDate) target.completedDate = target.weekId || new Date().toISOString().split('T')[0];
+    } else {
+      target.status = 'active';
     }
     renderColumnHistoryModalList();
     recalculateAll();
@@ -453,10 +404,9 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
 }
 
 export async function deleteDeliveryLogItem(source, itemIdx) {
-  if (source === 'live' && state.globalData?.deliveries?.[itemIdx]) {
-    state.globalData.deliveries.splice(itemIdx, 1);
-  } else if (source === 'archive' && state.globalData?.archiveDeliveries?.[itemIdx]) {
-    state.globalData.archiveDeliveries.splice(itemIdx, 1);
+  const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  if (master[itemIdx]) {
+    master.splice(itemIdx, 1);
   }
   renderColumnHistoryModalList();
   recalculateAll();
@@ -497,9 +447,8 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    const target = sourceOrWkId === 'live' 
-      ? state.globalData?.deliveries?.[itemIdx] 
-      : state.globalData?.archiveDeliveries?.[itemIdx];
+    const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+    const target = master[itemIdx];
 
     if (target) {
       const isManual = Boolean(target.isManual);
@@ -545,9 +494,8 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    const target = sourceOrWkId === 'live' 
-      ? state.globalData?.deliveries?.[itemIdx] 
-      : state.globalData?.archiveDeliveries?.[itemIdx];
+    const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+    const target = master[itemIdx];
 
     if (target) {
       target.cost = costVal;
