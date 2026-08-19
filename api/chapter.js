@@ -21,9 +21,18 @@ function sanitizeArchiveDeliveries(archiveDeliveries) {
   const seen = new Set();
   const cleanList = [];
 
-  for (const d of archiveDeliveries) {
+  const sorted = [...archiveDeliveries].sort((a, b) => {
+    const aDone = Boolean(a.checked || a.completed);
+    const bDone = Boolean(b.checked || b.completed);
+    if (aDone !== bDone) return aDone ? -1 : 1;
+    return (b.completedAt || 0) - (a.completedAt || 0);
+  });
+
+  for (const d of sorted) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
+    if (!npc) continue;
+
     const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
     const isMan = Boolean(d.isManual);
@@ -32,9 +41,14 @@ function sanitizeArchiveDeliveries(archiveDeliveries) {
     if (isMan) {
       key = `manual_${d.id || d.name}_${d.completedAt || d.completedDate || ''}`;
     } else if (isDone) {
-      key = d.id ? `done_${String(d.id).toLowerCase()}` : `done_${npc}_${d.completedAt || d.completedDate || ''}`;
+      const countKey = d.deliveryCountAtCreation !== undefined ? `_cnt${d.deliveryCountAtCreation}` : '';
+      const stackKey = d.isStacked ? `_stack_${d.id || ''}` : '';
+      const timeKey = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
+      key = `done_${npc}_${timeKey}${countKey}${stackKey}`;
     } else if (isSkip) {
-      key = d.id ? `skip_${String(d.id).toLowerCase()}` : `skip_${npc}_${d.completedAt || d.completedDate || ''}`;
+      const skipCountKey = d.skippedCountAtCreation !== undefined ? `_skcnt${d.skippedCountAtCreation}` : '';
+      const timeKey = d.completedDate || d.weekId || 'skip';
+      key = `skip_${npc}_${timeKey}${skipCountKey}`;
     } else {
       key = `active_${npc}`;
     }
@@ -55,7 +69,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // 1. Sanitize any duplicate entries accumulated in past database saves
+  // 1. Sanitize any legacy duplicates from database
   vault.archiveDeliveries = sanitizeArchiveDeliveries(vault.archiveDeliveries);
 
   // 2. Reconcile Deltas using NPC Lifetime Counters
@@ -75,7 +89,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
         for (let k = 1; k <= delivDelta; k++) {
           const completedCountIndex = prevStat.deliveryCount + k;
-          const targetOrderId = `deliv_${npcClean}_${completedCountIndex}`;
+          const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
           const isStacked = k > 1;
 
           // Find pending active order or matching order
@@ -95,6 +109,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             orderToComplete.completedAt = completionTime;
             orderToComplete.completedDate = compDate;
             orderToComplete.weekId = compWeek;
+            orderToComplete.deliveryCountAtCreation = completedCountIndex;
           } else {
             vault.archiveDeliveries.push({
               id: targetOrderId,
@@ -114,6 +129,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
               completedAt: completionTime,
               completedDate: compDate,
               weekId: compWeek,
+              deliveryCountAtCreation: completedCountIndex,
               isManual: false
             });
           }
@@ -137,6 +153,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           orderToSkip.completedAt = nowMs;
           orderToSkip.completedDate = todayDateStr;
           orderToSkip.weekId = currentWeekMonday;
+          orderToSkip.skippedCountAtCreation = prevStat.skippedCount + 1;
         }
       }
     }
@@ -154,7 +171,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
     const nextTargetCount = currStat.deliveryCount + 1;
-    const activeOrderId = `deliv_${npcClean}_${nextTargetCount}`;
+    const activeOrderId = `deliv_${npcClean}_d${nextTargetCount}`;
 
     const existingIdx = vault.archiveDeliveries.findIndex(d => {
       const dNpc = (d.from || d.name || '').toLowerCase().trim();
@@ -172,6 +189,8 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         target.itemDetails = order.itemDetails || target.itemDetails;
         target.baseTickets = order.baseTickets || target.baseTickets;
         target.tickets = order.baseTickets || target.tickets;
+        target.deliveryCountAtCreation = nextTargetCount;
+        target.skippedCountAtCreation = currStat.skippedCount;
       }
     } else {
       vault.archiveDeliveries.push({
@@ -193,6 +212,8 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         completedAt: null,
         completedDate: todayDateStr,
         weekId: currentWeekMonday,
+        deliveryCountAtCreation: nextTargetCount,
+        skippedCountAtCreation: currStat.skippedCount,
         isManual: false
       });
     }
