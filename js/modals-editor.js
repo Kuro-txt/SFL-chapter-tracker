@@ -134,7 +134,6 @@ export function renderColumnHistoryModalList() {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
     const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
     
-    // Deduplicate and keep synchronized
     const masterDeliveries = getDeduplicatedDeliveries(rawList);
     if (state.globalData) state.globalData.archiveDeliveries = masterDeliveries;
 
@@ -232,7 +231,7 @@ export function renderColumnHistoryModalList() {
     });
   }
 
-  // Sort: Active first, then Done/Skipped
+  // Active orders first, then completed and skipped
   records.sort((a, b) => (a.checked === b.checked ? 0 : a.checked ? 1 : -1));
 
   let totalTickedTickets = 0;
