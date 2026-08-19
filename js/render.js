@@ -71,13 +71,9 @@ export function recalculateAll() {
   };
 
   let totalDelivTix = 0;
-  let totalDelivCost = 0;
   let totalBountyTix = 0;
-  let totalBountyCost = 0;
   let totalAnimalBountyTix = 0;
-  let totalAnimalCost = 0;
   let totalChoreTix = 0;
-  let totalChoreCost = 0;
   let totalSflCostAll = trackCost;
 
   let weekDelivTix = 0;
@@ -109,7 +105,8 @@ export function recalculateAll() {
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
-        return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0] === todayUtcStr;
+        const ms = ts < 1e11 ? ts * 1000 : ts;
+        return new Date(ms).toISOString().split('T')[0] === todayUtcStr;
       }
     }
     return false;
@@ -154,7 +151,6 @@ export function recalculateAll() {
       }
 
       totalDelivTix += calculatedYield;
-      totalDelivCost += dCost;
       totalSflCostAll += dCost;
       addWeeklyStat(itemWeekMonday, calculatedYield, dCost);
 
@@ -180,11 +176,9 @@ export function recalculateAll() {
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
-        totalAnimalCost += bCost;
         if (isThisWeek) weekAnimalBountyTix += finalTix;
       } else {
         totalBountyTix += finalTix;
-        totalBountyCost += bCost;
         if (isThisWeek) weekBountyTix += finalTix;
       }
 
@@ -213,7 +207,6 @@ export function recalculateAll() {
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
 
       totalChoreTix += finalTix;
-      totalChoreCost += cCost;
       if (isThisWeek) weekChoreTix += finalTix;
 
       totalSflCostAll += cCost;
@@ -242,13 +235,8 @@ export function recalculateAll() {
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
         const isAnimal = isAnimalBounty(b);
 
-        if (isAnimal) {
-          totalAnimalBountyTix += finalTix;
-          totalAnimalCost += bCost;
-        } else {
-          totalBountyTix += finalTix;
-          totalBountyCost += bCost;
-        }
+        if (isAnimal) totalAnimalBountyTix += finalTix;
+        else totalBountyTix += finalTix;
 
         totalSflCostAll += bCost;
         addWeeklyStat(pastMonday, finalTix, bCost);
@@ -264,7 +252,6 @@ export function recalculateAll() {
 
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
         totalChoreTix += finalTix;
-        totalChoreCost += cCost;
         totalSflCostAll += cCost;
         addWeeklyStat(pastMonday, finalTix, cCost);
       }
@@ -279,31 +266,11 @@ export function recalculateAll() {
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
   const activeDeliveriesCount = masterDeliveries.filter(d => !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped).length;
-  
-  // Update Overview Card Counts
   setElemText('deliveriesCount', `${activeDeliveriesCount} Orders`);
   setElemText('bountiesCount', `${regularBounties.length} Items`);
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${(state.globalData.chores || []).length} Tasks`);
 
-  // 🎯 Update Overview Card Stats & SFL/Ticket Ratios
-  const delivRatio = totalDelivTix > 0 ? formatSFL(totalDelivCost / totalDelivTix) : "0.000";
-  setElemText('overviewDelivStats', `${totalDelivTix} Tix | ${formatSFL(totalDelivCost)} SFL`);
-  setElemText('overviewDelivRatio', `📊 ${delivRatio} SFL/Tix`);
-
-  const bountyRatio = totalBountyTix > 0 ? formatSFL(totalBountyCost / totalBountyTix) : "0.000";
-  setElemText('overviewBountyStats', `${totalBountyTix} Tix | ${formatSFL(totalBountyCost)} SFL`);
-  setElemText('overviewBountyRatio', `📊 ${bountyRatio} SFL/Tix`);
-
-  const animalRatio = totalAnimalBountyTix > 0 ? formatSFL(totalAnimalCost / totalAnimalBountyTix) : "0.000";
-  setElemText('overviewAnimalStats', `${totalAnimalBountyTix} Tix | ${formatSFL(totalAnimalCost)} SFL`);
-  setElemText('overviewAnimalRatio', `📊 ${animalRatio} SFL/Tix`);
-
-  const choreRatio = totalChoreTix > 0 ? formatSFL(totalChoreCost / totalChoreTix) : "0.000";
-  setElemText('overviewChoreStats', `${totalChoreTix} Tix | ${formatSFL(totalChoreCost)} SFL`);
-  setElemText('overviewChoreRatio', `📊 ${choreRatio} SFL/Tix`);
-
-  // Top Stats
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.000"} SFL / Ticket`);
