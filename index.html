@@ -336,63 +336,6 @@
     .legend-box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); }
     .chart-container { width: 100%; overflow-x: auto; padding-bottom: 4px; }
 
-    /* 12-Week Schedule Panel */
-    .schedule-panel {
-      background: #FFFDF7;
-      border: 3px solid #8B5A2B;
-      border-radius: 12px;
-      padding: clamp(12px, 1.6vw, 18px);
-      box-shadow: 0 5px 0px #5C4033;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .schedule-grid {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .schedule-card {
-      background: #FFF8DC;
-      border: 2px solid #8B5A2B;
-      border-radius: 8px;
-      padding: 8px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      transition: all 0.15s ease;
-    }
-    .schedule-card:hover {
-      transform: translateY(-2px);
-      border-color: #D2691E;
-    }
-    .schedule-card.current {
-      background: #FFF3E0;
-      border: 2px solid #E65100;
-      box-shadow: 0 0 0 1px #E65100;
-    }
-    .schedule-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 900;
-      font-size: 11.5px;
-      color: #5C4033;
-    }
-    .schedule-card.current .schedule-card-header {
-      color: #E65100;
-    }
-    .schedule-card-dates {
-      font-size: 10.5px;
-      font-weight: bold;
-      color: #8C7853;
-      line-height: 1.3;
-    }
-    .schedule-card.current .schedule-card-dates {
-      color: #8B4513;
-      font-weight: 900;
-    }
-
     .badge {
       padding: 3px 7px;
       font-size: clamp(9.5px, 1vw, 11px);
@@ -404,7 +347,7 @@
     .badge-done { background-color: #C8E6C9; color: #2E7D32; }
     .badge-active { background-color: #FFE0B2; color: #E65100; }
 
-    /* Modals & Scaffolding */
+    /* Modals & Mobile Scaffolding */
     .modal {
       display: none;
       position: fixed;
@@ -445,6 +388,7 @@
       gap: 8px; 
     }
 
+    /* History and Edit Items */
     .history-card {
       background: #FFF8DC;
       padding: 8px 10px;
@@ -516,16 +460,18 @@
     }
 
     /* Mobile Adaptations */
-    @media (max-width: 800px) {
-      .schedule-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-
     @media (max-width: 600px) {
-      .modal { padding: 6px; }
-      .modal-content { max-height: 94vh; border-radius: 8px; }
-      .modal-body { padding: 10px 8px; }
+      .modal {
+        padding: 6px;
+      }
+      .modal-content {
+        max-height: 94vh;
+        width: 100%;
+        border-radius: 8px;
+      }
+      .modal-body {
+        padding: 10px 8px;
+      }
       .history-card {
         flex-direction: column;
         align-items: stretch;
@@ -546,9 +492,6 @@
       .controls-row { flex-direction: column; align-items: stretch; }
       .input-group { width: 100%; justify-content: space-between; }
       .stats-grid, .overview-grid {
-        grid-template-columns: 1fr;
-      }
-      .schedule-grid {
         grid-template-columns: 1fr;
       }
     }
@@ -770,114 +713,6 @@
         <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading weekly chart data...</p>
       </div>
     </div>
-
-    <!-- 🗓️ 12-WEEK CHAPTER SEASON SCHEDULE -->
-    <div class="schedule-panel">
-      <div class="chart-header">
-        <div class="chart-title">
-          <span>🗓️ 12-WEEK CHAPTER SCHEDULE (UTC)</span>
-        </div>
-        <span class="badge" style="background:#FFF3E0; color:#E65100; border-color:#FF9800; font-size:11px;">12 WEEKS TOTAL</span>
-      </div>
-
-      <div class="schedule-grid">
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 1</span>
-            <span style="font-size:10px; color:#6D4C41;">W1</span>
-          </div>
-          <div class="schedule-card-dates">Aug 10 – Aug 16, 2026</div>
-        </div>
-
-        <div class="schedule-card current">
-          <div class="schedule-card-header">
-            <span>WEEK 2</span>
-            <span class="badge badge-active" style="padding:1px 5px; font-size:9px;">CURRENT</span>
-          </div>
-          <div class="schedule-card-dates">Aug 17 – Aug 23, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 3</span>
-            <span style="font-size:10px; color:#6D4C41;">W3</span>
-          </div>
-          <div class="schedule-card-dates">Aug 24 – Aug 30, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 4</span>
-            <span style="font-size:10px; color:#6D4C41;">W4</span>
-          </div>
-          <div class="schedule-card-dates">Aug 31 – Sep 06, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 5</span>
-            <span style="font-size:10px; color:#6D4C41;">W5</span>
-          </div>
-          <div class="schedule-card-dates">Sep 07 – Sep 13, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 6</span>
-            <span style="font-size:10px; color:#6D4C41;">W6</span>
-          </div>
-          <div class="schedule-card-dates">Sep 14 – Sep 20, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 7</span>
-            <span style="font-size:10px; color:#6D4C41;">W7</span>
-          </div>
-          <div class="schedule-card-dates">Sep 21 – Sep 27, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 8</span>
-            <span style="font-size:10px; color:#6D4C41;">W8</span>
-          </div>
-          <div class="schedule-card-dates">Sep 28 – Oct 04, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 9</span>
-            <span style="font-size:10px; color:#6D4C41;">W9</span>
-          </div>
-          <div class="schedule-card-dates">Oct 05 – Oct 11, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 10</span>
-            <span style="font-size:10px; color:#6D4C41;">W10</span>
-          </div>
-          <div class="schedule-card-dates">Oct 12 – Oct 18, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 11</span>
-            <span style="font-size:10px; color:#6D4C41;">W11</span>
-          </div>
-          <div class="schedule-card-dates">Oct 19 – Oct 25, 2026</div>
-        </div>
-
-        <div class="schedule-card">
-          <div class="schedule-card-header">
-            <span>WEEK 12</span>
-            <span style="font-size:10px; color:#6D4C41;">W12</span>
-          </div>
-          <div class="schedule-card-dates">Oct 26 – Nov 01, 2026</div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div id="guideModal" class="modal">
@@ -961,7 +796,7 @@
           <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 130px;">
             <option value="">👤 ALL NPCS</option>
           </select>
-          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 130px; background:#FFF8DC; border:2px solid #8B5A2B;">
+          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px; background:#FFF8DC; border:2px solid #8B5A2B;">
             <option value="">📅 ALL WEEKS</option>
             <option value="w1">Week 1 (Aug 10 - Aug 16)</option>
             <option value="w2">Week 2 (Aug 17 - Aug 23)</option>
