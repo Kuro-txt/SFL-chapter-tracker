@@ -8,7 +8,7 @@ import {
   syncCurrentVaultToCloud,
   getActiveBoostCount,
   getActiveVipBonus,
-  getDeduplicatedDeliveries
+  getDeliveryRecords
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -79,8 +79,7 @@ export function openColumnHistoryModal(type) {
     if (npcDropdown) {
       npcDropdown.style.display = 'block';
       const npcSet = new Set();
-      const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
-      getDeduplicatedDeliveries(rawList).forEach(d => {
+      getDeliveryRecords().forEach(d => {
         const name = d.from || d.name;
         if (name) npcSet.add(name.trim());
       });
@@ -132,10 +131,7 @@ export function renderColumnHistoryModalList() {
 
   if (type === 'delivery') {
     const npcFilter = (document.getElementById('editNpcDropdown')?.value || '').toLowerCase().trim();
-    const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
-    
-    const masterDeliveries = getDeduplicatedDeliveries(rawList);
-    if (state.globalData) state.globalData.archiveDeliveries = masterDeliveries;
+    const masterDeliveries = getDeliveryRecords();
 
     masterDeliveries.forEach((item, itemIdx) => {
       const itemName = typeof item === 'string' ? item : (item.name || item.from || 'NPC Delivery');
@@ -388,7 +384,7 @@ export async function addNewItemFromModal() {
 }
 
 export async function toggleDeliveryLogCheck(source, itemIdx) {
-  const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const master = getDeliveryRecords();
   const target = master[itemIdx];
 
   if (target) {
@@ -409,7 +405,7 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
 }
 
 export async function deleteDeliveryLogItem(source, itemIdx) {
-  const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const master = getDeliveryRecords();
   if (master[itemIdx]) {
     master.splice(itemIdx, 1);
   }
@@ -452,7 +448,7 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+    const master = getDeliveryRecords();
     const target = master[itemIdx];
 
     if (target) {
@@ -499,7 +495,7 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
-    const master = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+    const master = getDeliveryRecords();
     const target = master[itemIdx];
 
     if (target) {
