@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SFL API Inspector</title>
+  <title>SFL Client-Side API & Storage Inspector</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -57,13 +57,9 @@
       cursor: pointer;
       text-transform: uppercase;
       padding: 6px 14px;
-      transition: background 0.15s;
     }
     button:hover { background: #2ea043; }
-    .btn-copy {
-      background: #30363d;
-      border-color: #8b949e;
-    }
+    .btn-copy { background: #30363d; border-color: #8b949e; }
     .btn-copy:hover { background: #484f58; }
     .status-bar {
       font-size: 11px;
@@ -93,43 +89,20 @@
 
   <div class="panel">
     <div class="row">
-      <label for="backendUrl">🔗 Vercel URL:</label>
-      <input type="text" id="backendUrl" placeholder="https://your-project.vercel.app" style="flex: 2; min-width: 240px;" />
-
       <label for="farmId">🌾 Farm ID:</label>
-      <input type="text" id="farmId" value="8472883706403914" style="width: 140px;" />
+      <input type="text" id="farmId" value="8472883706403914" style="width: 150px;" />
 
       <label for="apiKey">🔑 API Key:</label>
-      <input type="password" id="apiKey" placeholder="Optional Key" style="width: 120px;" />
+      <input type="password" id="apiKey" placeholder="Optional SFL Key" style="width: 140px;" />
 
-      <label for="username">👤 User:</label>
-      <input type="text" id="username" placeholder="Username" style="width: 110px;" />
-    </div>
-
-    <div class="row">
-      <label for="endpointSelect">🎯 Target:</label>
-      <select id="endpointSelect" style="flex: 1; min-width: 200px;">
-        <option value="rawSfl">⚡ Raw SFL Farm API (/api/chapter?action=rawSfl)</option>
-        <option value="parsed">🌾 Parsed Tracker JSON (/api/chapter)</option>
-        <option value="rawPrices">💰 SFL.world Market Prices (/api/chapter?action=rawPrices)</option>
-        <option value="vault">🔐 PostgreSQL Cloud Vault (/api/chapter?action=getVault)</option>
+      <label for="dataSource">🎯 Source:</label>
+      <select id="dataSource" style="flex: 1; min-width: 180px;">
+        <option value="rawSfl">⚡ Raw SFL Farm Data (api.sunflower-land.com)</option>
+        <option value="rawPrices">💰 SFL.world Market Prices</option>
+        <option value="localStorage">📦 Local Browser Storage (Cache & Vault)</option>
       </select>
 
-      <label for="sectionSelect">📦 Filter Key:</label>
-      <select id="sectionSelect" onchange="filterSection()">
-        <option value="ALL">ALL DATA</option>
-        <option value="delivery">delivery (Board Orders)</option>
-        <option value="archiveDeliveries">archiveDeliveries (Vault)</option>
-        <option value="npcs">npcs (Lifetime Counts)</option>
-        <option value="npcSnapshots">npcSnapshots (Vault Baselines)</option>
-        <option value="bounties">bounties</option>
-        <option value="chores">chores / choreBoard</option>
-        <option value="milestones">milestones</option>
-        <option value="inventory">inventory</option>
-        <option value="vip">vip</option>
-      </select>
-
-      <button onclick="fetchApiData()">⚡ Fetch API</button>
+      <button onclick="fetchClientData()">⚡ Fetch Data</button>
       <button onclick="copyOutput()" class="btn-copy">📋 Copy JSON</button>
     </div>
   </div>
@@ -137,111 +110,85 @@
   <div class="status-bar">
     <span>Status: <strong id="statusDisplay">—</strong></span>
     <span>Time: <strong id="timeDisplay">—</strong></span>
-    <span>Payload Size: <strong id="sizeDisplay">—</strong></span>
+    <span>Size: <strong id="sizeDisplay">—</strong></span>
   </div>
 
-  <pre id="output">// Enter your Vercel URL and click "Fetch API"...</pre>
+  <pre id="output">// Click "Fetch Data" to inspect payload directly in the browser...</pre>
 
   <script>
     let rawData = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-      const savedBackend = localStorage.getItem('sfl_viewer_backend') || '';
-      if (savedBackend) document.getElementById('backendUrl').value = savedBackend;
+      const savedFarm = localStorage.getItem('sfl_farmId');
+      if (savedFarm) document.getElementById('farmId').value = savedFarm;
 
-      const savedFarm = localStorage.getItem('sfl_farmId') || '8472883706403914';
-      document.getElementById('farmId').value = savedFarm;
-
-      const savedKey = localStorage.getItem('sfl_apiKey') || '';
-      document.getElementById('apiKey').value = savedKey;
-
-      const savedUser = localStorage.getItem('sfl_auth_user') || '';
-      document.getElementById('username').value = savedUser;
+      const savedKey = localStorage.getItem('sfl_apiKey');
+      if (savedKey) document.getElementById('apiKey').value = savedKey;
     });
 
-    async function fetchApiData() {
-      let backend = document.getElementById('backendUrl').value.trim().replace(/\/+$/, '');
+    async function fetchClientData() {
+      const source = document.getElementById('dataSource').value;
       const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
       const apiKey = document.getElementById('apiKey').value.trim();
-      const username = document.getElementById('username').value.trim();
-      const ep = document.getElementById('endpointSelect').value;
       const out = document.getElementById('output');
 
-      if (!backend) {
-        alert('Please paste your deployed Vercel URL (e.g. https://your-project.vercel.app)');
-        document.getElementById('backendUrl').focus();
-        return;
-      }
-
-      if (!backend.startsWith('http://') && !backend.startsWith('https://')) {
-        backend = 'https://' + backend;
-        document.getElementById('backendUrl').value = backend;
-      }
-
-      localStorage.setItem('sfl_viewer_backend', backend);
       localStorage.setItem('sfl_farmId', farmId);
       if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
-      if (username) localStorage.setItem('sfl_auth_user', username);
 
-      const params = new URLSearchParams({ farmId });
-      if (ep === 'rawSfl') params.set('action', 'rawSfl');
-      if (ep === 'rawPrices') params.set('action', 'rawPrices');
-      if (ep === 'vault') {
-        params.set('action', 'getVault');
-        if (username) params.set('username', username);
-      }
-      if (apiKey) params.set('apiKey', apiKey);
-      if (username && ep === 'parsed') params.set('username', username);
-
-      const url = `${backend}/api/chapter?${params.toString()}`;
-      out.textContent = `Connecting to ${url}...`;
-      
       const t0 = performance.now();
       document.getElementById('statusDisplay').textContent = 'Fetching...';
 
       try {
-        const res = await fetch(url);
-        const elapsed = (performance.now() - t0).toFixed(0);
+        if (source === 'localStorage') {
+          // Inspect browser local storage items
+          const storageData = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            try {
+              storageData[key] = JSON.parse(localStorage.getItem(key));
+            } catch (e) {
+              storageData[key] = localStorage.getItem(key);
+            }
+          }
+          rawData = storageData;
+          const elapsed = (performance.now() - t0).toFixed(0);
+          document.getElementById('statusDisplay').textContent = '200 OK (Local)';
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+        } else {
+          const targetUrl = source === 'rawSfl'
+            ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
+            : `https://sfl.world/api/v1/prices`;
 
-        document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
-        document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+          out.textContent = `Fetching via CORS proxy:\n${targetUrl}...`;
 
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP ${res.status}: ${res.statusText}`);
+          // Route through reliable CORS proxy for static GitHub Pages
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+          const headers = { 'Accept': 'application/json' };
+          if (apiKey) headers['x-api-key'] = apiKey;
+
+          const res = await fetch(proxyUrl, { headers });
+          const elapsed = (performance.now() - t0).toFixed(0);
+
+          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+
+          if (!res.ok) {
+            if (res.status === 401) {
+              throw new Error('401 Unauthorized: Sunflower Land requires an API Key for this farm. Enter your in-game API Key in the API Key box.');
+            }
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+
+          rawData = await res.json();
         }
 
-        rawData = await res.json();
         const str = JSON.stringify(rawData, null, 2);
         document.getElementById('sizeDisplay').textContent = `${(new Blob([str]).size / 1024).toFixed(1)} KB`;
-
-        filterSection();
+        out.textContent = str;
       } catch (err) {
         document.getElementById('statusDisplay').textContent = 'Error';
-        out.textContent = `❌ Fetch Failed: ${err.message}\n\nURL: ${url}\n\nTip: Ensure your Vercel project is deployed with CORS enabled in /api/chapter.js.`;
+        out.textContent = `❌ Fetch Failed: ${err.message}`;
       }
-    }
-
-    function filterSection() {
-      if (!rawData) return;
-      const sec = document.getElementById('sectionSelect').value;
-      const out = document.getElementById('output');
-
-      if (sec === 'ALL') {
-        out.textContent = JSON.stringify(rawData, null, 2);
-        return;
-      }
-
-      const root = rawData.vaultData || rawData.farm || rawData;
-      let target = root[sec];
-
-      if (target === undefined && sec === 'chores') {
-        target = root.choreBoard || root.chores;
-      }
-
-      out.textContent = target !== undefined 
-        ? JSON.stringify(target, null, 2) 
-        : JSON.stringify({ message: `Key "${sec}" not found in current payload.` }, null, 2);
     }
 
     function copyOutput() {
