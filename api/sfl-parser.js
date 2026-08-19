@@ -134,11 +134,9 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
   const baseName = cleanItemName(clean);
   const baseStripped = baseName.replace(/[^a-z0-9]/g, '');
 
-  // 1. Direct Market Price Check
   const directPrice = getDirectMarketPrice(clean, priceMap);
   if (directPrice > 0) return directPrice;
 
-  // 2. Exact Recipe Match
   const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
     let recipeTotal = 0;
@@ -272,7 +270,7 @@ export function parseFarmData(farm, priceMap) {
     });
   }
 
-  // 3. Bounties
+  // 3. Bounties (Only include bounties with Shiny Feathers / Seasonal Tickets)
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -308,10 +306,10 @@ export function parseFarmData(farm, priceMap) {
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
-      let featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items);
-      if (featherCount === 0 && b.level !== undefined) {
-        featherCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
-      }
+      // Check for Shiny Feather / Seasonal Ticket reward in reward, items, or b root
+      const featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || extractRewardTickets(b);
+
+      // 🎯 STRICT: Skip coin-only animal/item bounties completely
       if (featherCount <= 0) return;
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
@@ -329,7 +327,7 @@ export function parseFarmData(farm, priceMap) {
       activeBounties.push({
         id: b.id || uniqueKey,
         name: bName || `Animal Bounty (Lvl ${b.level || 1})`,
-        level: b.level || (b.category === 'animal' ? 1 : null),
+        level: b.level !== undefined ? b.level : (b.category === 'animal' ? 1 : null),
         baseTickets: featherCount,
         tickets: featherCount,
         cost: unitPrice,
