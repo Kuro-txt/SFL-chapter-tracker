@@ -140,14 +140,14 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
         for (let k = 1; k <= delivDelta; k++) {
           const completedCountIndex = prevStat.deliveryCount + k;
-          const targetOrderId = `npc_deliv_${npcClean}_d${completedCountIndex}`;
+          const targetOrderId = `deliv_${npcClean}_${completedCountIndex}`;
           const isStacked = k > 1;
 
           // Find active pending order to mark complete in-place
           const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
             const dNpc = (d.from || d.name || '').toLowerCase().trim();
             const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-            return dNpc === npcClean && (isPending || d.id === targetOrderId || d.id === `npc_deliv_${npcClean}_active`);
+            return dNpc === npcClean && (isPending || d.id === targetOrderId || d.id === `deliv_${npcClean}_active`);
           });
 
           if (existingPendingIdx !== -1) {
@@ -191,12 +191,12 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         const pendingIdx = vault.archiveDeliveries.findIndex(d => {
           const dNpc = (d.from || d.name || '').toLowerCase().trim();
           const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-          return dNpc === npcClean && (isPending || d.id === `npc_deliv_${npcClean}_active`);
+          return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
         });
 
         if (pendingIdx !== -1) {
           const orderToSkip = vault.archiveDeliveries[pendingIdx];
-          orderToSkip.id = `npc_deliv_${npcClean}_skip_${prevStat.skippedCount + 1}`;
+          orderToSkip.id = `deliv_${npcClean}_skip_${prevStat.skippedCount + 1}`;
           orderToSkip.isSkipped = true;
           orderToSkip.completed = false;
           orderToSkip.checked = false;
@@ -209,7 +209,6 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       }
     }
 
-    // Save baseline snapshot
     vault.npcSnapshots[npcClean] = {
       deliveryCount: currStat.deliveryCount,
       skippedCount: currStat.skippedCount,
@@ -222,46 +221,59 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
     const nextTargetCount = currStat.deliveryCount + 1;
-    const activeOrderId = `npc_deliv_${npcClean}_active`;
+    const activeOrderId = `deliv_${npcClean}_active`;
 
-    const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId);
-
-    if (existingIdx !== -1) {
-      const target = vault.archiveDeliveries[existingIdx];
-      if (!target.isManual && !target.completed) {
-        target.items = order.items || target.items;
-        target.itemsCost = order.itemsCost || target.itemsCost;
-        target.cost = order.itemsCost || target.cost;
-        target.itemDetails = order.itemDetails || target.itemDetails;
-        target.baseTickets = order.baseTickets || target.baseTickets;
-        target.tickets = order.baseTickets || target.tickets;
-        target.deliveryCountAtCreation = nextTargetCount;
-        target.skippedCountAtCreation = currStat.skippedCount;
+    if (order.completed) {
+      // If SFL API already flagged this order as completed, merge into its completed slot
+      const compId = `deliv_${npcClean}_${currStat.deliveryCount}`;
+      const existingComp = vault.archiveDeliveries.find(d => d.id === compId);
+      if (existingComp) {
+        if (!existingComp.itemDetails || existingComp.itemDetails.length === 0) {
+          existingComp.items = order.items || existingComp.items;
+          existingComp.itemsCost = order.itemsCost || existingComp.itemsCost;
+          existingComp.cost = order.itemsCost || existingComp.cost;
+          existingComp.itemDetails = order.itemDetails || existingComp.itemDetails;
+        }
       }
     } else {
-      vault.archiveDeliveries.push({
-        id: activeOrderId,
-        from: order.from,
-        name: order.from,
-        items: order.items || {},
-        itemsCost: order.itemsCost || 0,
-        cost: order.itemsCost || 0,
-        itemDetails: order.itemDetails || [],
-        baseTickets: order.baseTickets || 2,
-        tickets: order.baseTickets || 2,
-        isChapterNpc: true,
-        completed: false,
-        checked: false,
-        isSkipped: false,
-        isStacked: false,
-        status: 'active',
-        completedAt: null,
-        completedDate: todayDateStr,
-        weekId: currentWeekMonday,
-        deliveryCountAtCreation: nextTargetCount,
-        skippedCountAtCreation: currStat.skippedCount,
-        isManual: false
-      });
+      const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId);
+      if (existingIdx !== -1) {
+        const target = vault.archiveDeliveries[existingIdx];
+        if (!target.isManual && !target.completed) {
+          target.items = order.items || target.items;
+          target.itemsCost = order.itemsCost || target.itemsCost;
+          target.cost = order.itemsCost || target.cost;
+          target.itemDetails = order.itemDetails || target.itemDetails;
+          target.baseTickets = order.baseTickets || target.baseTickets;
+          target.tickets = order.baseTickets || target.tickets;
+          target.deliveryCountAtCreation = nextTargetCount;
+          target.skippedCountAtCreation = currStat.skippedCount;
+        }
+      } else {
+        vault.archiveDeliveries.push({
+          id: activeOrderId,
+          from: order.from,
+          name: order.from,
+          items: order.items || {},
+          itemsCost: order.itemsCost || 0,
+          cost: order.itemsCost || 0,
+          itemDetails: order.itemDetails || [],
+          baseTickets: order.baseTickets || 2,
+          tickets: order.baseTickets || 2,
+          isChapterNpc: true,
+          completed: false,
+          checked: false,
+          isSkipped: false,
+          isStacked: false,
+          status: 'active',
+          completedAt: null,
+          completedDate: todayDateStr,
+          weekId: currentWeekMonday,
+          deliveryCountAtCreation: nextTargetCount,
+          skippedCountAtCreation: currStat.skippedCount,
+          isManual: false
+        });
+      }
     }
   });
 
