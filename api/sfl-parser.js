@@ -1,367 +1,279 @@
-import { SFL_RECIPES } from '../recipes.js';
+import { 
+  state, 
+  getActiveBoostCount, 
+  getActiveVipBonus, 
+  getMondayBasedWeekId,
+  isLoginClaimedToday,
+  getDeliveryRecords
+} from './state.js';
+import { recalculateAll } from './render.js';
 
-export const CHAPTER_NPC_TICKETS = {
-  "pumpkin pete": 1,
-  "pumpkin' pete": 1,
-  "pete": 1,
-  "bert": 2,
-  "finley": 2,
-  "findlay": 2,
-  "miranda": 2,
-  "cornwell": 3,
-  "corny": 3,
-  "raven": 4,
-  "jester": 4,
-  "finn": 5,
-  "timmy": 5,
-  "tyreless timmy": 5,
-  "pharaoh": 6,
-  "tywin": 10
-};
+let fetchCooldownTimer = null;
 
-export function extractRewardTickets(rewardObj) {
-  if (!rewardObj || typeof rewardObj !== 'object') return 0;
-  let count = 0;
-
-  function scan(obj) {
-    if (!obj || typeof obj !== 'object') return;
-    for (const [key, val] of Object.entries(obj)) {
-      const cleanKey = key.toLowerCase().trim();
-      if (
-        cleanKey === 'shiny feather' ||
-        cleanKey === 'shiny_feather' ||
-        cleanKey === 'feather' ||
-        cleanKey === 'chapter ticket' ||
-        cleanKey === 'seasonal ticket' ||
-        cleanKey.includes('feather')
-      ) {
-        if (typeof val === 'number' && val > 0) {
-          count += val;
-        } else if (typeof val === 'string' && !isNaN(parseInt(val, 10))) {
-          count += parseInt(val, 10);
-        }
-      }
-      if (val && typeof val === 'object' && !Array.isArray(val) && cleanKey !== 'coins' && cleanKey !== 'sfl') {
-        scan(val);
-      }
-    }
-  }
-
-  scan(rewardObj);
-  return count;
+function computeYield(base, isVipEligible = true, isManual = false) {
+  const raw = Number(base) || 0;
+  if (raw <= 0) return 0;
+  if (isManual) return raw;
+  const vip = isVipEligible ? getActiveVipBonus() : 0;
+  const boost = getActiveBoostCount();
+  return raw + vip + boost;
 }
 
-export function extractPricesRecursive(obj, map = {}) {
-  if (!obj || typeof obj !== 'object') return map;
-  if (Array.isArray(obj)) {
-    obj.forEach(item => extractPricesRecursive(item, map));
-    return map;
+export async function loadTrackerData() {
+  const farmIdInput = document.getElementById('farmId');
+  const apiKeyInput = document.getElementById('apiKey');
+  const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
+  const priceBadge = document.getElementById('priceBadge');
+
+  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  const apiKey = apiKeyInput?.value.trim() || '';
+  const currentUsername = state.currentUser || '';
+
+  localStorage.setItem('sfl_farmId', farmId);
+
+  if (fetchCooldownTimer) {
+    alert('⏳ Please wait for the cooldown before fetching again.');
+    return;
   }
 
-  for (const [key, val] of Object.entries(obj)) {
-    const cleanKey = key.toLowerCase().trim();
-    const strippedKey = cleanKey.replace(/[^a-z0-9]/g, '');
-
-    if (typeof val === 'number') {
-      map[cleanKey] = val;
-      map[strippedKey] = val;
-    } else if (val && typeof val === 'object') {
-      const priceVal = val.price ?? val.sfl ?? val.buy ?? val.cost ?? val.value ?? val.unitPrice;
-      if (typeof priceVal === 'number') {
-        map[cleanKey] = priceVal;
-        map[strippedKey] = priceVal;
-      }
-      if (val.name && typeof val.name === 'string') {
-        const itemClean = val.name.toLowerCase().trim();
-        const itemStripped = itemClean.replace(/[^a-z0-9]/g, '');
-        if (typeof priceVal === 'number') {
-          map[itemClean] = priceVal;
-          map[itemStripped] = priceVal;
-        }
-      }
-      extractPricesRecursive(val, map);
-    }
-  }
-  return map;
-}
-
-export function getDirectMarketPrice(name, priceMap) {
-  if (!name || !priceMap) return 0;
-  const clean = name.toLowerCase().trim();
-  const stripped = clean.replace(/[^a-z0-9]/g, '');
-  if (clean === 'coins' || clean === 'coin') return 0.001;
-
-  const searchNames = [
-    clean, stripped, clean.replace(/\s+/g, '-'), clean.replace(/\s+/g, '_'),
-    clean + 's', clean + 'es',
-    clean.endsWith('s') ? clean.slice(0, -1) : clean,
-    clean.endsWith('es') ? clean.slice(0, -2) : clean,
-    clean.endsWith('ies') ? clean.slice(0, -3) + 'y' : clean
-  ];
-
-  if (clean.endsWith(' a') || clean.endsWith(' b')) {
-    const baseName = clean.slice(0, -2).trim();
-    searchNames.push(baseName, baseName + ' a', baseName + ' b');
-  }
-
-  let lowestPrice = 0;
-  for (const v of searchNames) {
-    if (priceMap[v] !== undefined && priceMap[v] > 0) {
-      if (lowestPrice === 0 || priceMap[v] < lowestPrice) {
-        lowestPrice = priceMap[v];
-      }
-    }
-  }
-  return lowestPrice;
-}
-
-export function getItemUnitPrice(itemName, priceMap, depth = 0) {
-  if (depth > 5 || !itemName) return 0;
-  const clean = itemName.toLowerCase().trim();
-  const stripped = clean.replace(/[^a-z0-9]/g, '');
-  const directPrice = getDirectMarketPrice(clean, priceMap);
-  if (directPrice > 0) return directPrice;
-
-  const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped];
-  if (recipe) {
-    let recipeTotal = 0;
-    Object.entries(recipe).forEach(([ingName, ingQty]) => {
-      recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
-    });
-    return recipeTotal;
-  }
-  return 0;
-}
-
-export function getMondayBasedWeekId(d) {
-  let date;
-  try {
-    if (!d || d === 0 || d === '0') {
-      date = new Date();
-    } else if (typeof d === 'number') {
-      date = new Date(d < 1e11 ? d * 1000 : d);
-    } else if (typeof d === 'string') {
-      if (/^\d+$/.test(d)) {
-        const num = parseInt(d, 10);
-        date = new Date(num < 1e11 ? num * 1000 : num);
+  if (fetchBtn) {
+    fetchBtn.disabled = true;
+    let secondsLeft = 10;
+    fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+    fetchCooldownTimer = setInterval(() => {
+      secondsLeft--;
+      if (secondsLeft > 0) {
+        fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
       } else {
-        date = new Date(d.includes('T') ? d : `${d}T00:00:00.000Z`);
+        clearInterval(fetchCooldownTimer);
+        fetchCooldownTimer = null;
+        fetchBtn.disabled = false;
+        fetchBtn.textContent = '🌾 FETCH DATA';
       }
-    } else if (d instanceof Date) {
-      date = new Date(d.getTime());
+    }, 1000);
+  }
+
+  if (priceBadge) {
+    priceBadge.style.display = 'inline-block';
+    priceBadge.textContent = 'FETCHING SFL DATA...';
+    priceBadge.style.background = '#FFF9C4';
+    priceBadge.style.borderColor = '#FBC02D';
+    priceBadge.style.color = '#F57F17';
+  }
+
+  try {
+    const queryParams = new URLSearchParams({
+      farmId,
+      username: currentUsername
+    });
+    if (apiKey) queryParams.set('apiKey', apiKey);
+
+    const res = await fetch(`/api/chapter?${queryParams.toString()}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Server error (${res.status})`);
+    }
+
+    const data = await res.json();
+    state.globalData = data;
+
+    state.globalData.archiveDeliveries = getDeliveryRecords();
+
+    if (data.vaultData) {
+      state.currentVaultData = data.vaultData;
+      state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
+      state.globalData.archiveChores = data.vaultData.archiveChores || [];
+      state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
+      
+      state.globalData.cloudHistory = {
+        logs: data.vaultData.logs || [],
+        weeks: data.vaultData.weeks || {},
+        trackTickets: data.vaultData.trackTickets || 0,
+        trackCost: data.vaultData.trackCost || 0,
+        dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
+      };
     } else {
-      date = new Date();
+      state.globalData.cloudHistory = { logs: [], weeks: {} };
+    }
+
+    if (data.isVipActive !== undefined) {
+      const vipToggle = document.getElementById('vipToggle');
+      if (vipToggle) {
+        vipToggle.checked = Boolean(data.isVipActive);
+        localStorage.setItem('sfl_vip', vipToggle.checked);
+      }
+    }
+
+    if (priceBadge) {
+      priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED & SAVED`;
+      priceBadge.style.background = '#E8F5E9';
+      priceBadge.style.borderColor = '#4CAF50';
+      priceBadge.style.color = '#2E7D32';
+    }
+
+    recalculateAll();
+  } catch (err) {
+    if (priceBadge) {
+      priceBadge.textContent = `❌ ${err.message}`;
+      priceBadge.style.background = '#FFEBEE';
+      priceBadge.style.borderColor = '#E53935';
+      priceBadge.style.color = '#B71C1C';
+    }
+    alert(`Failed to fetch farm data: ${err.message}`);
+  }
+}
+
+export async function saveProgressToCloudKV(silent = false) {
+  if (!state.currentUser) {
+    if (!silent) alert('Please login to save your progress in your Cloud Vault.');
+    return;
+  }
+
+  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+  const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
+
+  const vipBonus = getActiveVipBonus();
+  const boostCount = getActiveBoostCount();
+  const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
+
+  const todayDate = new Date().toISOString().split('T')[0];
+  const currentWeekMonday = getMondayBasedWeekId();
+
+  let totalEarnedTix = isLoginClaimedToday() ? 1 : 0;
+  let totalEarnedCost = 0;
+  const allCompletedItems = [];
+
+  let calculatedTotalTickets = trackTickets + dailyLoginTickets;
+  let calculatedTotalCost = trackCost;
+  let doubleDeliveryApplied = false;
+
+  const masterDeliveries = getDeliveryRecords();
+
+  masterDeliveries.forEach(d => {
+    const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+    if (isTicked) {
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const isManual = Boolean(d.isManual);
+      const isToday = isTicked && !isManual && (d.completedDate === todayDate || (d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayDate));
+
+      let yieldAmt = base;
+      if (!isManual) {
+        yieldAmt += (vipBonus + boostCount);
+        if (isDoubleDeliveryActive && isToday && !doubleDeliveryApplied) {
+          yieldAmt *= 2;
+          doubleDeliveryApplied = true;
+        }
+      }
+      calculatedTotalTickets += yieldAmt;
+      const lineCost = (d.itemsCost || d.cost || 0);
+      calculatedTotalCost += lineCost;
+
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+      allCompletedItems.push({
+        name: d.name || d.from,
+        yield: yieldAmt,
+        cost: lineCost,
+        weekId: d.weekId || currentWeekMonday
+      });
+    }
+  });
+
+  // Bounties
+  (state.globalData?.bounties || []).forEach(b => {
+    const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
+    if (isTicked) {
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const lineCost = (b.itemsCost || b.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+    }
+  });
+
+  // Chores
+  (state.globalData?.chores || []).forEach(c => {
+    const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
+    if (isTicked) {
+      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
+      const lineCost = (c.itemsCost || c.cost || 0);
+      calculatedTotalTickets += yieldAmt;
+      calculatedTotalCost += lineCost;
+      totalEarnedTix += yieldAmt;
+      totalEarnedCost += lineCost;
+    }
+  });
+
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
+  
+  const logEntry = {
+    date: todayDate,
+    weekId: currentWeekMonday,
+    timestamp: new Date().toISOString(),
+    ticketsSaved: totalEarnedTix,
+    costSaved: totalEarnedCost,
+    deliveriesDone: allCompletedItems,
+    milestones: state.globalData?.milestones || {}
+  };
+
+  const logs = [logEntry];
+  state.globalData.cloudHistory.logs = logs;
+
+  const payload = {
+    username: state.currentUser,
+    farmId,
+    trackTickets,
+    trackCost,
+    dailyLoginTickets,
+    cumulativeTickets: calculatedTotalTickets,
+    cumulativeCost: calculatedTotalCost,
+    lastDailyLoginDate: localStorage.getItem('sfl_daily_login_last_date') || todayDate,
+    weeks: state.globalData.cloudHistory.weeks || {},
+    logs,
+    deliveries: state.globalData?.deliveries || [],
+    archiveDeliveries: masterDeliveries,
+    bounties: state.globalData?.bounties || [],
+    archiveBounties: state.globalData?.archiveBounties || [],
+    chores: state.globalData?.chores || [],
+    archiveChores: state.globalData?.archiveChores || [],
+    milestones: state.globalData?.milestones || {},
+    npcSnapshots: state.globalData?.npcSnapshots || state.currentVaultData?.npcSnapshots || {}
+  };
+
+  try {
+    const res = await fetch('/api/chapter?action=saveVault', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed to save.');
+
+    state.currentVaultData = data.vaultData;
+    if (state.globalData) {
+      state.globalData.cloudHistory = {
+        logs: data.vaultData.logs || [],
+        weeks: data.vaultData.weeks || {}
+      };
+      state.globalData.archiveDeliveries = getDeliveryRecords();
+      state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
+      state.globalData.archiveChores = data.vaultData.archiveChores || [];
+      state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
+    }
+
+    recalculateAll();
+
+    if (!silent) {
+      const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
+      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}`);
     }
   } catch (err) {
-    date = new Date();
+    if (!silent) alert(`Cloud Save Error: ${err.message}`);
   }
-
-  if (!date || isNaN(date.getTime())) date = new Date();
-
-  const day = date.getUTCDay();
-  const utcDate = date.getUTCDate();
-  const diffToMonday = (day === 0 ? -6 : 1 - day);
-  date.setUTCDate(utcDate + diffToMonday);
-  return date.toISOString().split('T')[0];
-}
-
-export function parseFarmData(farm, priceMap) {
-  const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
-
-  // 1. Parse NPC Stats (Delivery, Skipped, CompletedAt, Chores)
-  const rawNpcs = farm.npcs || {};
-  const npcsData = {};
-  Object.entries(rawNpcs).forEach(([npcKey, npcVal]) => {
-    if (!npcVal || typeof npcVal !== 'object') return;
-    const cleanKey = npcKey.toLowerCase().trim();
-    npcsData[cleanKey] = {
-      deliveryCount: typeof npcVal.deliveryCount === 'number' ? npcVal.deliveryCount : 0,
-      skippedCount: typeof npcVal.skippedCount === 'number' ? npcVal.skippedCount : 0,
-      deliveryCompletedAt: typeof npcVal.deliveryCompletedAt === 'number' ? npcVal.deliveryCompletedAt : null,
-      choreCount: typeof npcVal.choreCount === 'number' ? npcVal.choreCount : 0
-    };
-  });
-
-  // 2. Deliveries: Chapter NPCs that reward Shiny Feathers
-  const deliveryList = [];
-  (farm.delivery?.orders || []).forEach(order => {
-    const npcClean = (order.from || '').toLowerCase().trim();
-
-    if (CHAPTER_NPC_TICKETS[npcClean] !== undefined) {
-      let totalTickets = extractRewardTickets(order.reward) || extractRewardTickets(order.rewardItems);
-      if (totalTickets === 0) {
-        totalTickets = CHAPTER_NPC_TICKETS[npcClean];
-      }
-
-      let itemsCost = 0;
-      const itemDetails = [];
-      Object.entries(order.items || {}).forEach(([itemName, qty]) => {
-        const unitPrice = getItemUnitPrice(itemName, priceMap);
-        const lineCost = unitPrice * qty;
-        itemsCost += lineCost;
-        itemDetails.push({ name: itemName, qty, unitPrice, lineCost });
-      });
-
-      const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
-      const npcStat = npcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
-
-      deliveryList.push({
-        id: order.id,
-        from: order.from,
-        name: order.from,
-        items: order.items || {},
-        itemsCost,
-        cost: itemsCost,
-        itemDetails,
-        baseTickets: totalTickets,
-        tickets: totalTickets,
-        isChapterNpc: true,
-        completed: isCompleted,
-        checked: isCompleted,
-        completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
-        isStacked: false,
-        deliveryCountAtCreation: npcStat.deliveryCount,
-        skippedCountAtCreation: npcStat.skippedCount,
-        npcKey: npcClean
-      });
-    }
-  });
-
-  // Milestones
-  const rawMilestones = farm.delivery?.milestones || farm.milestones || {};
-  const liveMilestones = {};
-  Object.entries(rawMilestones).forEach(([npc, count]) => {
-    const cleanName = npc.toLowerCase().trim();
-    if (CHAPTER_NPC_TICKETS[cleanName] !== undefined) {
-      liveMilestones[cleanName] = count;
-    }
-  });
-
-  // Double Delivery
-  const nowMs = Date.now();
-  const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
-  let isDoubleDeliveryActive = false;
-  if (Array.isArray(calendarEvents)) {
-    isDoubleDeliveryActive = calendarEvents.some(evt => {
-      const title = (evt.name || evt.title || evt.type || '').toLowerCase();
-      const matchesName = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
-      const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
-      const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
-      return matchesName && started && notEnded;
-    });
-  }
-
-  // 3. Bounties
-  const activeBounties = [];
-  const seenBountyKeys = new Set();
-  const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
-  const completedMap = {};
-
-  if (Array.isArray(completedBountiesRaw)) {
-    completedBountiesRaw.forEach(b => {
-      if (typeof b === 'object' && b.id) {
-        const t = typeof b.completedAt === 'number' ? b.completedAt : (typeof b.claimedAt === 'number' ? b.claimedAt : null);
-        completedMap[String(b.id)] = t;
-      } else if (b) {
-        completedMap[String(b)] = null;
-      }
-    });
-  }
-
-  const rawBountySources = [
-    farm.bounties?.requests,
-    farm.bounties?.board,
-    farm.bounties?.active,
-    farm.bounties,
-    farm.seasonBounties,
-    farm.flowerBounties,
-    farm.animalBounties
-  ];
-
-  rawBountySources.forEach(source => {
-    if (!source) return;
-    const items = Array.isArray(source) ? source : (typeof source === 'object' ? Object.values(source) : []);
-
-    items.forEach(b => {
-      if (!b || typeof b !== 'object') return;
-      const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
-      if (!bName && !b.id && b.level === undefined) return;
-
-      let featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items);
-      if (featherCount === 0 && b.level !== undefined) {
-        featherCount = b.level >= 3 ? 6 : (b.level === 2 ? 4 : 2);
-      }
-      if (featherCount <= 0) return;
-
-      const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
-      if (seenBountyKeys.has(uniqueKey)) return;
-      seenBountyKeys.add(uniqueKey);
-
-      const unitPrice = bName ? getItemUnitPrice(bName, priceMap) : 0;
-      const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
-
-      let completionTime = null;
-      if (typeof b.completedAt === 'number') completionTime = b.completedAt;
-      else if (typeof b.claimedAt === 'number') completionTime = b.claimedAt;
-      else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) completionTime = completedMap[String(b.id)];
-
-      activeBounties.push({
-        id: b.id || uniqueKey,
-        name: bName || `Animal Bounty (Lvl ${b.level || 1})`,
-        level: b.level || (b.category === 'animal' ? 1 : null),
-        baseTickets: featherCount,
-        tickets: featherCount,
-        cost: unitPrice,
-        itemsCost: unitPrice,
-        completed: isCompleted,
-        checked: isCompleted,
-        completedAt: completionTime,
-        checkedToday: false
-      });
-    });
-  });
-
-  // 4. Chores
-  const choreObj = farm.choreBoard?.chores || farm.chores || {};
-  const choresList = [];
-
-  Object.entries(choreObj).forEach(([key, details]) => {
-    let featherCount = extractRewardTickets(details.reward);
-    if (featherCount === 0 && typeof details.tickets === 'number') featherCount = details.tickets;
-    if (featherCount === 0 && details.baseTickets) featherCount = details.baseTickets;
-
-    if (featherCount > 0) {
-      const currentProgress = details.initialProgress ?? details.progress ?? 0;
-      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
-      const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      const completionTime = typeof details.completedAt === 'number' ? details.completedAt : null;
-      const taskLabel = details.name || details.description || key;
-
-      choresList.push({
-        npc: details.npc || details.from || 'Chore NPC',
-        name: taskLabel,
-        task: taskLabel,
-        baseTickets: featherCount,
-        tickets: featherCount,
-        cost: 0,
-        itemsCost: 0,
-        progress: currentProgress,
-        requirement,
-        completed: isCompleted,
-        checked: isCompleted,
-        completedAt: completionTime,
-        checkedToday: false
-      });
-    }
-  });
-
-  return {
-    isVipActive,
-    isDoubleDeliveryActive,
-    liveMilestones,
-    deliveryList,
-    activeBounties,
-    choresList,
-    npcsData
-  };
 }
