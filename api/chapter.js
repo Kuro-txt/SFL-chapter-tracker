@@ -20,7 +20,6 @@ function sanitizeDeliveriesList(deliveries) {
   if (!Array.isArray(deliveries)) return [];
   const map = new Map();
 
-  // Prioritize completed records with real cost data
   const sorted = [...deliveries].sort((a, b) => {
     const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
     const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
@@ -116,7 +115,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           // Find the active pending order in vault to convert to done
           const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
             const dNpc = (d.from || d.name || '').toLowerCase().trim();
-            const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+            const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
             return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active` || d.id === targetOrderId);
           });
 
@@ -132,27 +131,30 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             orderToComplete.weekId = compWeek;
             orderToComplete.deliveryCountAtCreation = completedCountIndex;
           } else {
-            vault.archiveDeliveries.push({
-              id: targetOrderId,
-              from: npcName,
-              name: npcName,
-              baseTickets: defaultTix,
-              tickets: defaultTix,
-              cost: 0,
-              itemsCost: 0,
-              itemDetails: [],
-              items: {},
-              completed: true,
-              checked: true,
-              isSkipped: false,
-              isStacked,
-              status: 'completed',
-              completedAt: completionTime,
-              completedDate: compDate,
-              weekId: compWeek,
-              deliveryCountAtCreation: completedCountIndex,
-              isManual: false
-            });
+            const alreadyExists = vault.archiveDeliveries.some(d => d.id === targetOrderId);
+            if (!alreadyExists) {
+              vault.archiveDeliveries.push({
+                id: targetOrderId,
+                from: npcName,
+                name: npcName,
+                baseTickets: defaultTix,
+                tickets: defaultTix,
+                cost: 0,
+                itemsCost: 0,
+                itemDetails: [],
+                items: {},
+                completed: true,
+                checked: true,
+                isSkipped: false,
+                isStacked,
+                status: 'completed',
+                completedAt: completionTime,
+                completedDate: compDate,
+                weekId: compWeek,
+                deliveryCountAtCreation: completedCountIndex,
+                isManual: false
+              });
+            }
           }
         }
       }
@@ -160,7 +162,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       if (skipDelta > 0) {
         const pendingIdx = vault.archiveDeliveries.findIndex(d => {
           const dNpc = (d.from || d.name || '').toLowerCase().trim();
-          const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+          const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
           return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
         });
 
@@ -190,23 +192,88 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
-    const nextTargetCount = currStat.deliveryCount + 1;
-    const activeOrderId = `deliv_${npcClean}_active`;
 
     if (order.completed) {
-      const compId = `deliv_${npcClean}_d${currStat.deliveryCount}`;
-      const existingComp = vault.archiveDeliveries.find(d => d.id === compId);
-      if (existingComp && (!existingComp.itemDetails || existingComp.itemDetails.length === 0)) {
-        existingComp.items = order.items || existingComp.items;
-        existingComp.itemsCost = order.itemsCost || existingComp.itemsCost;
-        existingComp.cost = order.itemsCost || existingComp.cost;
-        existingComp.itemDetails = order.itemDetails || existingComp.itemDetails;
+      const targetDoneId = `deliv_${npcClean}_d${currStat.deliveryCount}`;
+      const compTime = order.completedAt || currStat.deliveryCompletedAt || nowMs;
+      const compDate = new Date(compTime).toISOString().split('T')[0];
+      const compWeek = getMondayBasedWeekId(compTime);
+
+      const activeIdx = vault.archiveDeliveries.findIndex(d => {
+        const dNpc = (d.from || d.name || '').toLowerCase().trim();
+        const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+        return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
+      });
+
+      if (activeIdx !== -1) {
+        const target = vault.archiveDeliveries[activeIdx];
+        target.id = targetDoneId;
+        target.completed = true;
+        target.checked = true;
+        target.isSkipped = false;
+        target.status = 'completed';
+        target.completedAt = compTime;
+        target.completedDate = compDate;
+        target.weekId = compWeek;
+        target.deliveryCountAtCreation = currStat.deliveryCount;
+        target.items = order.items || target.items;
+        target.itemsCost = order.itemsCost || target.itemsCost;
+        target.cost = order.itemsCost || target.cost;
+        target.itemDetails = order.itemDetails || target.itemDetails;
+        target.baseTickets = order.baseTickets || target.baseTickets;
+        target.tickets = order.baseTickets || target.tickets;
+      } else {
+        const doneIdx = vault.archiveDeliveries.findIndex(d => d.id === targetDoneId);
+        if (doneIdx !== -1) {
+          const target = vault.archiveDeliveries[doneIdx];
+          target.completed = true;
+          target.checked = true;
+          target.isSkipped = false;
+          target.status = 'completed';
+          target.completedAt = compTime;
+          target.completedDate = compDate;
+          target.weekId = compWeek;
+          target.items = order.items || target.items;
+          target.itemsCost = order.itemsCost || target.itemsCost;
+          target.cost = order.itemsCost || target.cost;
+          target.itemDetails = order.itemDetails || target.itemDetails;
+          target.baseTickets = order.baseTickets || target.baseTickets;
+          target.tickets = order.baseTickets || target.tickets;
+        } else {
+          vault.archiveDeliveries.push({
+            id: targetDoneId,
+            from: order.from,
+            name: order.from,
+            items: order.items || {},
+            itemsCost: order.itemsCost || 0,
+            cost: order.itemsCost || 0,
+            itemDetails: order.itemDetails || [],
+            baseTickets: order.baseTickets || 2,
+            tickets: order.baseTickets || 2,
+            isChapterNpc: true,
+            completed: true,
+            checked: true,
+            isSkipped: false,
+            isStacked: false,
+            status: 'completed',
+            completedAt: compTime,
+            completedDate: compDate,
+            weekId: compWeek,
+            deliveryCountAtCreation: currStat.deliveryCount,
+            skippedCountAtCreation: currStat.skippedCount,
+            isManual: false
+          });
+        }
       }
     } else {
-      const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId);
+      const activeOrderId = `deliv_${npcClean}_active`;
+      const nextTargetCount = currStat.deliveryCount + 1;
+
+      const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId && !d.isManual);
+
       if (existingIdx !== -1) {
         const target = vault.archiveDeliveries[existingIdx];
-        if (!target.isManual && !target.completed) {
+        if (!target.completed) {
           target.items = order.items || target.items;
           target.itemsCost = order.itemsCost || target.itemsCost;
           target.cost = order.itemsCost || target.cost;
@@ -215,6 +282,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           target.tickets = order.baseTickets || target.tickets;
           target.deliveryCountAtCreation = nextTargetCount;
           target.skippedCountAtCreation = currStat.skippedCount;
+          target.completed = false;
+          target.checked = false;
+          target.isSkipped = false;
+          target.status = 'active';
         }
       } else {
         vault.archiveDeliveries.push({
@@ -506,7 +577,12 @@ export default async function handler(req, res) {
       }
     }
 
-    const cleanArchive = sanitizeDeliveriesList(currentVault ? currentVault.archiveDeliveries : parsed.deliveryList);
+    const guestVault = { archiveDeliveries: [], npcSnapshots: {} };
+    if (!currentVault) {
+      reconcileDeliveriesWithNpcs(guestVault, parsed.deliveryList, parsed.npcsData);
+    }
+
+    const cleanArchive = sanitizeDeliveriesList(currentVault ? currentVault.archiveDeliveries : guestVault.archiveDeliveries);
 
     return res.status(200).json({
       farmId,
