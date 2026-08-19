@@ -269,7 +269,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
       box-shadow: 0 4px 0px #5C4033;
       transition: transform 0.15s ease;
     }
@@ -282,7 +282,7 @@
       font-size: clamp(13px, 1.3vw, 14.5px);
       color: #4E342E;
       border-bottom: 2px dashed #D7CCC8;
-      padding-bottom: 6px;
+      padding-bottom: 8px;
     }
     .overview-count {
       background: #EFEBE9;
@@ -292,23 +292,6 @@
       border-radius: 6px;
       font-size: clamp(11px, 1.1vw, 12.5px);
       font-weight: 900;
-    }
-    .overview-stats-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11.5px;
-      font-weight: bold;
-      color: #5C4033;
-    }
-    .overview-ratio-badge {
-      background: #E8F5E9;
-      color: #2E7D32;
-      padding: 2px 7px;
-      border-radius: 5px;
-      border: 1px solid #A5D6A7;
-      font-weight: 900;
-      font-size: 10.5px;
     }
     .overview-actions {
       display: flex;
@@ -602,10 +585,6 @@
           <span>📦 DELIVERIES</span>
           <span id="deliveriesCount" class="overview-count">0 Orders</span>
         </div>
-        <div class="overview-stats-row">
-          <span id="overviewDelivStats">0 Tix | 0.000 SFL</span>
-          <span id="overviewDelivRatio" class="overview-ratio-badge">0.000 SFL/Tix</span>
-        </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
           <button onclick="openColumnHistoryModal('delivery')" class="btn btn-indigo btn-sm">📜 EDIT</button>
@@ -616,10 +595,6 @@
         <div class="overview-header">
           <span>📜 BOUNTIES</span>
           <span id="bountiesCount" class="overview-count">0 Items</span>
-        </div>
-        <div class="overview-stats-row">
-          <span id="overviewBountyStats">0 Tix | 0.000 SFL</span>
-          <span id="overviewBountyRatio" class="overview-ratio-badge">0.000 SFL/Tix</span>
         </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
@@ -632,10 +607,6 @@
           <span>🐄 ANIMAL BOUNTIES</span>
           <span id="animalBountiesCount" class="overview-count">0 Animals</span>
         </div>
-        <div class="overview-stats-row">
-          <span id="overviewAnimalStats">0 Tix | 0.000 SFL</span>
-          <span id="overviewAnimalRatio" class="overview-ratio-badge">0.000 SFL/Tix</span>
-        </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
           <button onclick="openColumnHistoryModal('animalBounty')" class="btn btn-indigo btn-sm">📜 EDIT</button>
@@ -646,10 +617,6 @@
         <div class="overview-header">
           <span>🧹 CHORES</span>
           <span id="choresCount" class="overview-count">0 Tasks</span>
-        </div>
-        <div class="overview-stats-row">
-          <span id="overviewChoreStats">0 Tix | 0.000 SFL</span>
-          <span id="overviewChoreRatio" class="overview-ratio-badge">0.000 SFL/Tix</span>
         </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
