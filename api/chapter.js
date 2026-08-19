@@ -18,85 +18,68 @@ async function ensureTableExists(client) {
 
 function sanitizeDeliveriesList(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-  const manualList = [];
-  const completedMap = new Map();
-  const activeMap = new Map();
-  const skippedMap = new Map();
+  const map = new Map();
 
-  for (const d of deliveries) {
+  // Prioritize completed records with real cost data
+  const sorted = [...deliveries].sort((a, b) => {
+    const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
+    const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
+    if (aDone !== bDone) return aDone ? -1 : 1;
+    return (b.itemsCost || b.cost || 0) - (a.itemsCost || a.cost || 0);
+  });
+
+  for (const d of sorted) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    if (d.isManual) {
-      manualList.push(d);
-      continue;
-    }
-
+    const isMan = Boolean(d.isManual);
     const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
 
-    let dateStr = d.completedDate || '';
-    if (!dateStr && d.completedAt) {
-      const ts = typeof d.completedAt === 'number' ? d.completedAt : Number(d.completedAt);
-      if (!isNaN(ts) && ts > 0) {
-        dateStr = new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
-      }
-    }
-    if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
-    d.completedDate = dateStr;
-
-    if (isDone) {
+    let canonicalId = d.id || '';
+    if (isMan) {
+      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
+    } else if (isDone) {
       const count = d.deliveryCountAtCreation;
-      const stackSuffix = d.isStacked ? `_stacked_${d.id || ''}` : '';
-      const key = (count !== undefined && count !== null && count !== '')
-        ? `${npc}_cnt_${count}`
-        : `${npc}_date_${dateStr}${stackSuffix}`;
-
-      if (!completedMap.has(key)) {
-        d.completed = true;
-        d.checked = true;
-        d.isSkipped = false;
-        d.status = 'completed';
-        completedMap.set(key, d);
-      } else {
-        const existing = completedMap.get(key);
-        if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
-          existing.itemDetails = d.itemDetails;
-          existing.items = d.items;
-          existing.itemsCost = d.itemsCost;
-          existing.cost = d.cost;
-        }
-      }
+      canonicalId = (count !== undefined && count !== null && count !== '') 
+        ? `deliv_${npc}_d${count}` 
+        : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+      d.completed = true;
+      d.checked = true;
+      d.isSkipped = false;
+      d.status = 'completed';
     } else if (isSkip) {
       const skipCount = d.skippedCountAtCreation;
-      const key = (skipCount !== undefined && skipCount !== null && skipCount !== '')
-        ? `${npc}_skip_${skipCount}`
-        : `${npc}_skip_${dateStr}`;
-      if (!skippedMap.has(key)) {
-        d.completed = false;
-        d.checked = false;
-        d.isSkipped = true;
-        d.status = 'skipped';
-        skippedMap.set(key, d);
-      }
+      canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+      d.completed = false;
+      d.checked = false;
+      d.isSkipped = true;
+      d.status = 'skipped';
     } else {
-      if (!activeMap.has(npc)) {
-        d.completed = false;
-        d.checked = false;
-        d.isSkipped = false;
-        d.status = 'active';
-        activeMap.set(npc, d);
+      canonicalId = `deliv_${npc}_active`;
+      d.completed = false;
+      d.checked = false;
+      d.isSkipped = false;
+      d.status = 'active';
+    }
+
+    d.id = canonicalId;
+
+    if (!map.has(canonicalId)) {
+      map.set(canonicalId, d);
+    } else {
+      const existing = map.get(canonicalId);
+      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+        existing.itemDetails = d.itemDetails;
+        existing.items = d.items;
+        existing.itemsCost = d.itemsCost;
+        existing.cost = d.cost;
       }
     }
   }
 
-  return [
-    ...activeMap.values(),
-    ...completedMap.values(),
-    ...skippedMap.values(),
-    ...manualList
-  ];
+  return Array.from(map.values());
 }
 
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
@@ -107,7 +90,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   const nowMs = Date.now();
   const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // 1. Sanitize past database records to eliminate duplicates
+  // 1. Sanitize past database records
   vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
 
   // 2. Reconcile Deltas using NPC Lifetime Counters
@@ -130,11 +113,11 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
           const isStacked = k > 1;
 
-          // Find the active pending order to mark complete
+          // Find the active pending order in vault to convert to done
           const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
             const dNpc = (d.from || d.name || '').toLowerCase().trim();
             const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-            return dNpc === npcClean && (isPending || d.id === targetOrderId || d.id === `deliv_${npcClean}_active`);
+            return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active` || d.id === targetOrderId);
           });
 
           if (existingPendingIdx !== -1) {
@@ -196,7 +179,6 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       }
     }
 
-    // Update snapshot baseline
     vault.npcSnapshots[npcClean] = {
       deliveryCount: currStat.deliveryCount,
       skippedCount: currStat.skippedCount,
