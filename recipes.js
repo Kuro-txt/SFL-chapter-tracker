@@ -176,7 +176,7 @@ export const SFL_RECIPES = {
   // UNIFIED FISH CHUM & ESSENCE
   // ==========================================
   "fish stick": { "red snapper": 6, "olive founder": 2, "zebra turkeyfish": 2 },
-  "crab stick": { "blue crab": 1, "hermit crab": 1, "sea slug": 1 },
+  "crab stick": { "shrimp": 1, "barnacle": 1, "lobster": 1 },
   "fish oil": { "tuna": 8, "weakfish": 2, "oarfish": 2 },
   "fish flake": { "anchovy": 4, "porgy": 2, "sea bass": 2 },
 
