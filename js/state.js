@@ -178,3 +178,29 @@ export async function syncCurrentVaultToCloud() {
     console.error('Auto-sync to Cloud failed:', err);
   }
 }
+
+// Global Unique Deduplicator for Deliveries
+export function getDeduplicatedDeliveries(deliveries) {
+  if (!Array.isArray(deliveries)) return [];
+  const seen = new Set();
+  const result = [];
+
+  for (const d of deliveries) {
+    if (!d) continue;
+    const npc = (d.from || d.name || '').toLowerCase().trim();
+    const idKey = d.id ? String(d.id).toLowerCase().trim() : '';
+    const compTime = d.completedAt ? String(d.completedAt) : (d.completedDate || 'active');
+    const manualKey = d.isManual ? 'm' : 'a';
+
+    let uniqueKey = idKey;
+    if (!uniqueKey || uniqueKey.startsWith('deliv_')) {
+      uniqueKey = `deliv_${npc}_${compTime}_${d.deliveryCountAtCreation ?? ''}_${d.skippedCountAtCreation ?? ''}_${manualKey}`;
+    }
+
+    if (!seen.has(uniqueKey)) {
+      seen.add(uniqueKey);
+      result.push(d);
+    }
+  }
+  return result;
+}
