@@ -179,69 +179,102 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// 🎯 Canonical Delivery Deduplicator & Sanitizer
+// 🎯 Master Deduplicator: Collapses past duplicate entries by NPC & Canonical State
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-  const seen = new Map();
+  
+  const manualList = [];
+  const completedMap = new Map();
+  const activeMap = new Map();
+  const skippedMap = new Map();
 
-  const sorted = [...deliveries].sort((a, b) => {
-    const aDone = Boolean(a.checked || a.completed);
-    const bDone = Boolean(b.checked || b.completed);
-    if (aDone !== bDone) return aDone ? -1 : 1;
-    return (b.completedAt || 0) - (a.completedAt || 0);
-  });
-
-  for (const d of sorted) {
+  for (const d of deliveries) {
     if (!d) continue;
     const npc = (d.from || d.name || '').toLowerCase().trim();
     if (!npc) continue;
 
-    const isMan = Boolean(d.isManual);
+    if (d.isManual) {
+      manualList.push(d);
+      continue;
+    }
+
     const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
 
-    let canonicalId = d.id || '';
-
-    if (isMan) {
-      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
-    } else if (isDone) {
-      const count = d.deliveryCountAtCreation;
-      const compTime = d.completedAt ? Math.floor(Number(d.completedAt) / 60000) : (d.completedDate || d.weekId || 'done');
-      canonicalId = (count !== undefined && count !== null && count !== '') 
-        ? `npc_deliv_${npc}_d${count}` 
-        : `npc_deliv_${npc}_${compTime}`;
-    } else if (isSkip) {
-      const skipCount = d.skippedCountAtCreation;
-      const compTime = d.completedDate || d.weekId || 'skip';
-      canonicalId = (skipCount !== undefined && skipCount !== null && skipCount !== '') 
-        ? `npc_deliv_${npc}_skip_${skipCount}` 
-        : `npc_deliv_${npc}_skip_${compTime}`;
-    } else {
-      canonicalId = `npc_deliv_${npc}_active`;
+    let dateStr = '';
+    if (d.completedDate) {
+      dateStr = d.completedDate;
+    } else if (d.completedAt) {
+      const ts = typeof d.completedAt === 'number' ? d.completedAt : Number(d.completedAt);
+      if (!isNaN(ts) && ts > 0) {
+        dateStr = new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
+      }
+    }
+    if (!dateStr) {
+      dateStr = d.weekId || new Date().toISOString().split('T')[0];
     }
 
-    d.id = canonicalId;
+    if (isDone) {
+      const count = d.deliveryCountAtCreation;
+      const stackSuffix = d.isStacked ? `_stacked_${d.id || ''}` : '';
+      const key = (count !== undefined && count !== null && count !== '')
+        ? `${npc}_cnt_${count}`
+        : `${npc}_date_${dateStr}${stackSuffix}`;
 
-    if (!seen.has(canonicalId)) {
-      seen.set(canonicalId, d);
-    } else {
-      const existing = seen.get(canonicalId);
-      if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
-        existing.itemDetails = d.itemDetails;
-        existing.items = d.items;
-        existing.itemsCost = d.itemsCost;
-        existing.cost = d.cost;
+      if (!completedMap.has(key)) {
+        d.completed = true;
+        d.checked = true;
+        d.isSkipped = false;
+        d.status = 'completed';
+        d.completedDate = dateStr;
+        completedMap.set(key, d);
+      } else {
+        const existing = completedMap.get(key);
+        if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
+          existing.itemDetails = d.itemDetails;
+          existing.items = d.items;
+          existing.itemsCost = d.itemsCost;
+          existing.cost = d.cost;
+        }
       }
-      if (d.completed && !existing.completed) {
-        existing.completed = true;
-        existing.checked = true;
-        existing.status = 'completed';
-        existing.completedAt = d.completedAt || existing.completedAt;
+    } else if (isSkip) {
+      const skipCount = d.skippedCountAtCreation;
+      const key = (skipCount !== undefined && skipCount !== null && skipCount !== '')
+        ? `${npc}_skip_${skipCount}`
+        : `${npc}_skip_${dateStr}`;
+      if (!skippedMap.has(key)) {
+        d.completed = false;
+        d.checked = false;
+        d.isSkipped = true;
+        d.status = 'skipped';
+        d.completedDate = dateStr;
+        skippedMap.set(key, d);
+      }
+    } else {
+      if (!activeMap.has(npc)) {
+        d.completed = false;
+        d.checked = false;
+        d.isSkipped = false;
+        d.status = 'active';
+        activeMap.set(npc, d);
+      } else {
+        const existing = activeMap.get(npc);
+        if (d.itemDetails && d.itemDetails.length > 0) {
+          existing.itemDetails = d.itemDetails;
+          existing.items = d.items;
+          existing.itemsCost = d.itemsCost;
+          existing.cost = d.cost;
+        }
       }
     }
   }
 
-  return Array.from(seen.values());
+  return [
+    ...activeMap.values(),
+    ...completedMap.values(),
+    ...skippedMap.values(),
+    ...manualList
+  ];
 }
 
 // 🎯 Single Ground Truth Getter for All Deliveries
