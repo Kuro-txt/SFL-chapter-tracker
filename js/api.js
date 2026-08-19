@@ -76,9 +76,11 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
+    // Load full historical archiveDeliveries from database vault
+    state.globalData.archiveDeliveries = data.archiveDeliveries || data.vaultData?.archiveDeliveries || data.deliveries || [];
+
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
-      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
       state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
       state.globalData.archiveChores = data.vaultData.archiveChores || [];
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
@@ -147,8 +149,9 @@ export async function saveProgressToCloudKV(silent = false) {
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
 
-  // Live Deliveries
-  (state.globalData?.deliveries || []).forEach(d => {
+  const masterDeliveries = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+
+  masterDeliveries.forEach(d => {
     const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     if (isTicked) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
@@ -160,27 +163,6 @@ export async function saveProgressToCloudKV(silent = false) {
           doubleDeliveryApplied = true;
         }
       }
-      calculatedTotalTickets += yieldAmt;
-      const lineCost = (d.itemsCost || d.cost || 0);
-      calculatedTotalCost += lineCost;
-
-      totalEarnedTix += yieldAmt;
-      totalEarnedCost += lineCost;
-      allCompletedItems.push({
-        name: d.name || d.from,
-        yield: yieldAmt,
-        cost: lineCost,
-        weekId: d.weekId || currentWeekMonday
-      });
-    }
-  });
-
-  // Archive Deliveries
-  (state.globalData?.archiveDeliveries || []).forEach(d => {
-    const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-    if (isTicked) {
-      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      const yieldAmt = d.isManual ? base : computeYield(base, true, false);
       calculatedTotalTickets += yieldAmt;
       const lineCost = (d.itemsCost || d.cost || 0);
       calculatedTotalCost += lineCost;
@@ -251,7 +233,7 @@ export async function saveProgressToCloudKV(silent = false) {
     weeks: state.globalData.cloudHistory.weeks || {},
     logs,
     deliveries: state.globalData?.deliveries || [],
-    archiveDeliveries: state.globalData?.archiveDeliveries || [],
+    archiveDeliveries: masterDeliveries,
     bounties: state.globalData?.bounties || [],
     archiveBounties: state.globalData?.archiveBounties || [],
     chores: state.globalData?.chores || [],
@@ -276,7 +258,7 @@ export async function saveProgressToCloudKV(silent = false) {
         logs: data.vaultData.logs || [],
         weeks: data.vaultData.weeks || {}
       };
-      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
+      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || masterDeliveries;
       state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
       state.globalData.archiveChores = data.vaultData.archiveChores || [];
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
