@@ -77,6 +77,7 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
+    // Load master delivery records through single deduplication pipeline
     state.globalData.archiveDeliveries = getDeliveryRecords();
 
     if (data.vaultData) {
