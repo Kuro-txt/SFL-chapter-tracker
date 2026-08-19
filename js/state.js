@@ -1,6 +1,6 @@
 export const state = {
   globalData: null,
-  currentUser: null,
+  currentUser: null, 
   activeColumnType: null,
   currentVaultData: null
 };
