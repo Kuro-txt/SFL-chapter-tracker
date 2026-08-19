@@ -3,7 +3,8 @@ import {
   getActiveBoostCount, 
   getActiveVipBonus, 
   getMondayBasedWeekId,
-  isLoginClaimedToday
+  isLoginClaimedToday,
+  getDeduplicatedDeliveries
 } from './state.js';
 import { recalculateAll } from './render.js';
 
@@ -76,8 +77,8 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // Load full historical archiveDeliveries from database vault
-    state.globalData.archiveDeliveries = data.archiveDeliveries || data.vaultData?.archiveDeliveries || data.deliveries || [];
+    const rawList = data.archiveDeliveries || data.vaultData?.archiveDeliveries || data.deliveries || [];
+    state.globalData.archiveDeliveries = getDeduplicatedDeliveries(rawList);
 
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
@@ -149,7 +150,8 @@ export async function saveProgressToCloudKV(silent = false) {
   let calculatedTotalCost = trackCost;
   let doubleDeliveryApplied = false;
 
-  const masterDeliveries = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const masterDeliveries = getDeduplicatedDeliveries(rawList);
 
   masterDeliveries.forEach(d => {
     const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
