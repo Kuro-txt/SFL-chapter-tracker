@@ -5,7 +5,8 @@ import {
   getActiveBoostCount, 
   getActiveVipBonus, 
   getMondayBasedWeekId, 
-  isAnimalBounty 
+  isAnimalBounty,
+  getDeduplicatedDeliveries 
 } from './state.js';
 
 export function recalculateAll() {
@@ -119,9 +120,10 @@ export function recalculateAll() {
     return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
   };
 
-  // 1. Process Master Deliveries (archiveDeliveries)
+  // 1. Process Deliveries strictly from the deduplicated Master History
   let doubleDeliveryAppliedToday = false;
-  const masterDeliveries = state.globalData.archiveDeliveries || state.globalData.deliveries || [];
+  const rawList = state.globalData.archiveDeliveries || state.globalData.deliveries || [];
+  const masterDeliveries = getDeduplicatedDeliveries(rawList);
 
   masterDeliveries.forEach(d => {
     if (isTicked(d)) {
