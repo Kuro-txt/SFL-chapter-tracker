@@ -32,23 +32,20 @@ export const SFL_RECIPES = {
   "merino cushion": { "merino wool": 9 },
 
   // ==========================================
-  // FLOWER SEEDS & FLOWERS
+  // PANSIES & COSMOS
   // ==========================================
-  "red cosmos": { "sunpetal seed / red pansy": 1 },
-  "blue lotus": { "lily seed / blue lotus": 1 },
-  "red daffodil": { "bloom seed / red daffodil": 1 },
-  "blue clover": { "clover seed / blue clover": 1 },
-  "white pansy": { "sunpetal seed / yellow pansy": 1 },
-  "purple cosmos": { "sunpetal seed / purple cosmos": 1 },
-  "blue cosmos": { "sunpetal seed / blue cosmos": 1 },
-
   "yellow pansy": { "sunflower": 50, "coins": 16 },
+  "white pansy": { "yellow pansy": 1, "coins": 16 },
   "purple cosmos": { "beetroot": 10, "coins": 16 },
   "blue cosmos": { "cauliflower": 5, "coins": 16 },
   "red pansy": { "radish": 5, "coins": 16 },
-  
+  "red cosmos": { "red pansy": 1, "coins": 16 },
+
+  // ==========================================
+  // LOTUS & CARNATIONS
+  // ==========================================
   "yellow carnation": { "sunflower": 50, "coins": 48 },
-  "lotus": { "beetroot": 10, "coins": 48 },
+  "red lotus": { "beetroot": 10, "coins": 48 },
   "white lotus": { "cauliflower": 5, "coins": 48 },
   "purple carnation": { "eggplant": 5, "coins": 48 },
   "purple lotus": { "blue carnation": 1, "coins": 48 },
@@ -57,32 +54,47 @@ export const SFL_RECIPES = {
   "blue carnation": { "purple daffodil": 1, "coins": 48 },
   "red carnation": { "purple pansy": 1, "coins": 48 },
   "yellow lotus": { "red pansy": 1, "coins": 48 },
-  "lily seed": { "yellow pansy": 1, "coins": 48 },
+  "white carnation": { "yellow pansy": 1, "coins": 48 },
 
+  // ==========================================
+  // LAVENDER FLOWERS
+  // ==========================================
   "white lavender": { "rhubarb": 25, "coins": 96 },
   "red lavender": { "pepper": 15, "coins": 96 },
   "blue lavender": { "blue clover": 1, "coins": 96 },
   "purple lavender": { "purple gladiolus": 1, "coins": 96 },
   "yellow lavender": { "yellow gladiolus": 1, "coins": 96 },
 
+  // ==========================================
+  // GLADIOLUS FLOWERS
+  // ==========================================
   "blue gladiolus": { "rhubarb": 30, "coins": 96 },
   "yellow gladiolus": { "pepper": 5, "coins": 96 },
   "purple gladiolus": { "artichoke": 5, "coins": 96 },
   "white gladiolus": { "white edelweiss": 1, "coins": 96 },
   "red gladiolus": { "yellow gladiolus": 1, "coins": 96 },
 
+  // ==========================================
+  // EDELWEISS FLOWERS
+  // ==========================================
   "purple edelweiss": { "rhubarb": 30, "coins": 96 },
   "red edelweiss": { "artichoke": 5, "coins": 96 },
   "yellow edelweiss": { "onion": 5, "coins": 96 },
   "white edelweiss": { "blue edelweiss": 1, "coins": 96 },
   "blue edelweiss": { "purple edelweiss": 1, "coins": 96 },
 
+  // ==========================================
+  // CLOVER FLOWERS
+  // ==========================================
   "blue clover": { "rhubarb": 30, "coins": 96 },
   "yellow clover": { "pepper": 5, "coins": 96 },
   "white clover": { "blue edelweiss": 1, "coins": 96 },
   "red clover": { "red edelweiss": 1, "coins": 96 },
   "purple clover": { "red lavender": 1, "coins": 96 },
 
+  // ==========================================
+  // DAFFODIL & BALLOON FLOWERS
+  // ==========================================
   "red balloon flower": { "sunflower": 50, "coins": 32 },
   "blue balloon flower": { "cauliflower": 5, "coins": 32 },
   "purple daffodil": { "radish": 5, "coins": 32 },
@@ -125,7 +137,6 @@ export const SFL_RECIPES = {
   "octopus": { "mariner pot": 1, "moonfur": 1 },
   "barnacle": { "mariner pot": 1 },
   
-  // Direct base names for oyster, anemone, sea urchin, horseshoe crab
   "oyster": { "fish stick": 2, "crab pot": 1 },
   "anemone": { "crab pot": 1, "fish oil": 2 },
   "sea urchin": { "mariner pot": 1, "fish stick": 2 },
@@ -283,7 +294,7 @@ export const SFL_RECIPES = {
   "bloom doll": { "doll": 1, "prism petal": 3, "celestial frostbloom": 2, "primula enigma": 3 },
 
   // ==========================================
-  // UNIFIED COMPOST & BAIT (Single Recipe Fallbacks)
+  // UNIFIED COMPOST & BAIT
   // ==========================================
   "earthworm": { "rhubarb": 2, "carrot": 1 },
   "grub": { "soybean": 1, "corn": 0.6 },
