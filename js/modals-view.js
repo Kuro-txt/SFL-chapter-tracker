@@ -1,5 +1,5 @@
 import { 
-  state,  
+  state, 
   formatSFL, 
   resolveAnimalLevel, 
   isAnimalBounty,
@@ -35,9 +35,10 @@ export function openCategorySummaryModal(cat) {
   let catTickets = 0;
   let catCost = 0;
 
+  const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+
   if (cat === 'delivery') {
     titleEl.textContent = '📦 LIVE BOARD DELIVERIES OVERVIEW';
-    // Strictly live board deliveries
     const liveDeliveries = state.globalData.deliveries || [];
     const sortedDeliv = [...liveDeliveries].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
@@ -48,8 +49,12 @@ export function openCategorySummaryModal(cat) {
     bodyEl.innerHTML = sortedDeliv.map(d => {
       const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      let finalTickets = computeYield(base, true, Boolean(d.isManual));
-      if (d.hasDoubleBonus && !d.isManual) finalTickets *= 2;
+      const isManual = Boolean(d.isManual);
+      
+      let finalTickets = computeYield(base, true, isManual);
+      if (isDoubleDeliveryActive && !isManual) {
+        finalTickets *= 2;
+      }
 
       const itemCost = d.itemsCost || d.cost || 0;
       const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
@@ -59,6 +64,9 @@ export function openCategorySummaryModal(cat) {
         catCost += itemCost;
       }
 
+      const doubleBadge = (isDoubleDeliveryActive && !isManual) 
+        ? '<span style="background:#FFE0B2; color:#E65100; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFB74D; margin-left:4px;">⚡ 2X EVENT</span>' 
+        : '';
       const isStackedBadge = d.isStacked ? '<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>' : '';
       const isSkippedBadge = d.isSkipped ? '<span style="background:#FFEBEE; color:#C62828; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFCDD2; margin-left:4px;">✕ SKIPPED</span>' : '';
       const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
@@ -70,7 +78,7 @@ export function openCategorySummaryModal(cat) {
 
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${isStackedBadge}${isSkippedBadge}</span>
+          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}</span>
           ${statusBadge}
         </div>
         <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || 'No item recipe data'}</div>

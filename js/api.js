@@ -2,22 +2,13 @@ import {
   state, 
   getActiveBoostCount, 
   getActiveVipBonus, 
-  getMondayBasedWeekId, 
+  getMondayBasedWeekId,
   isLoginClaimedToday,
   getDeliveryRecords
 } from './state.js';
 import { recalculateAll } from './render.js';
 
 let fetchCooldownTimer = null;
-
-function computeYield(base, isVipEligible = true, isManual = false) {
-  const raw = Number(base) || 0;
-  if (raw <= 0) return 0;
-  if (isManual) return raw;
-  const vip = isVipEligible ? getActiveVipBonus() : 0;
-  const boost = getActiveBoostCount();
-  return raw + vip + boost;
-}
 
 export async function loadTrackerData() {
   const farmIdInput = document.getElementById('farmId');
@@ -77,7 +68,6 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // Load master delivery records through single deduplication pipeline
     state.globalData.archiveDeliveries = getDeliveryRecords();
 
     if (data.vaultData) {
@@ -138,6 +128,7 @@ export async function saveProgressToCloudKV(silent = false) {
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
+  const doubleDeliveryDates = new Set(state.globalData?.doubleDeliveryDates || []);
 
   const todayDate = new Date().toISOString().split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId();
@@ -148,31 +139,44 @@ export async function saveProgressToCloudKV(silent = false) {
 
   let calculatedTotalTickets = trackTickets + dailyLoginTickets;
   let calculatedTotalCost = trackCost;
-  let doubleDeliveryApplied = false;
 
   const masterDeliveries = getDeliveryRecords();
+  const npcDoubleClaimedInSave = new Set();
 
-  masterDeliveries.forEach(d => {
+  const sortedDeliveries = [...masterDeliveries].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
+
+  sortedDeliveries.forEach(d => {
     const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     if (isTicked) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const isToday = isTicked && !isManual && (d.completedDate === todayDate || (d.completedAt && new Date(d.completedAt).toISOString().split('T')[0] === todayDate));
+      const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDate);
+      const isToday = isTicked && !isManual && (compDate === todayDate);
+
+      const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayDate);
+      const npcClean = (d.from || d.name || '').toLowerCase().trim();
+      const doubleKey = `${npcClean}_${compDate}`;
 
       let yieldAmt = base;
       if (!isManual) {
-        yieldAmt += (vipBonus + boostCount);
-        if (isDoubleDeliveryActive && isToday && !doubleDeliveryApplied) {
-          yieldAmt *= 2;
-          doubleDeliveryApplied = true;
+        const withBonuses = base + vipBonus + boostCount;
+        if (isDoubleDay && !npcDoubleClaimedInSave.has(doubleKey)) {
+          yieldAmt = withBonuses * 2;
+          npcDoubleClaimedInSave.add(doubleKey);
+        } else {
+          yieldAmt = withBonuses;
         }
       }
+
       calculatedTotalTickets += yieldAmt;
       const lineCost = (d.itemsCost || d.cost || 0);
       calculatedTotalCost += lineCost;
 
-      totalEarnedTix += yieldAmt;
-      totalEarnedCost += lineCost;
+      if (isToday) {
+        totalEarnedTix += yieldAmt;
+        totalEarnedCost += lineCost;
+      }
+
       allCompletedItems.push({
         name: d.name || d.from,
         yield: yieldAmt,
@@ -182,7 +186,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // Bounties
+  // Bounties (Only include in Today's Log if completedAt is explicitly today)
   (state.globalData?.bounties || []).forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
     if (isTicked) {
@@ -191,12 +195,22 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
-      totalEarnedTix += yieldAmt;
-      totalEarnedCost += lineCost;
+
+      let bCompDate = null;
+      if (b.completedAt) {
+        bCompDate = new Date(b.completedAt < 1e11 ? b.completedAt * 1000 : b.completedAt).toISOString().split('T')[0];
+      } else if (b.completedDate) {
+        bCompDate = b.completedDate;
+      }
+
+      if ((bCompDate === todayDate || Boolean(b.checkedToday)) && !b.isManual) {
+        totalEarnedTix += yieldAmt;
+        totalEarnedCost += lineCost;
+      }
     }
   });
 
-  // Chores
+  // Chores (Only include in Today's Log if completedAt is explicitly today)
   (state.globalData?.chores || []).forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
     if (isTicked) {
@@ -205,8 +219,18 @@ export async function saveProgressToCloudKV(silent = false) {
       const lineCost = (c.itemsCost || c.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
-      totalEarnedTix += yieldAmt;
-      totalEarnedCost += lineCost;
+
+      let cCompDate = null;
+      if (c.completedAt) {
+        cCompDate = new Date(c.completedAt < 1e11 ? c.completedAt * 1000 : c.completedAt).toISOString().split('T')[0];
+      } else if (c.completedDate) {
+        cCompDate = c.completedDate;
+      }
+
+      if ((cCompDate === todayDate || Boolean(c.checkedToday)) && !c.isManual) {
+        totalEarnedTix += yieldAmt;
+        totalEarnedCost += lineCost;
+      }
     }
   });
 
