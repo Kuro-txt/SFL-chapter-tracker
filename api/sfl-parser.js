@@ -256,21 +256,39 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // Double Delivery Event
+  // 3. Double Delivery Calendar Event Detection
   const nowMs = Date.now();
+  const todayUtcStr = new Date(nowMs).toISOString().split('T')[0];
   const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
-  let isDoubleDeliveryActive = false;
+  const doubleDeliveryDates = new Set();
+
   if (Array.isArray(calendarEvents)) {
-    isDoubleDeliveryActive = calendarEvents.some(evt => {
-      const title = (evt.name || evt.title || evt.type || '').toLowerCase();
-      const matchesName = title.includes('double delivery') || title.includes('double_delivery') || title.includes('2x delivery');
-      const started = typeof evt.startDate === 'number' ? evt.startDate <= nowMs : true;
-      const notEnded = typeof evt.endDate === 'number' ? evt.endDate >= nowMs : true;
-      return matchesName && started && notEnded;
+    calendarEvents.forEach(evt => {
+      if (!evt || typeof evt !== 'object') return;
+      const name = (evt.name || evt.title || evt.type || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (name.includes('doubledelivery') || name.includes('2xdelivery')) {
+        if (evt.date) {
+          doubleDeliveryDates.add(evt.date);
+        }
+        if (typeof evt.startDate === 'number' && typeof evt.endDate === 'number') {
+          let cur = new Date(evt.startDate);
+          const end = new Date(evt.endDate);
+          while (cur <= end) {
+            doubleDeliveryDates.add(cur.toISOString().split('T')[0]);
+            cur.setUTCDate(cur.getUTCDate() + 1);
+          }
+        } else if (typeof evt.startDate === 'number') {
+          if (evt.startDate <= nowMs && (!evt.endDate || evt.endDate >= nowMs)) {
+            doubleDeliveryDates.add(todayUtcStr);
+          }
+        }
+      }
     });
   }
 
-  // 3. Bounties (Only include bounties with Shiny Feathers / Seasonal Tickets)
+  const isDoubleDeliveryActive = doubleDeliveryDates.has(todayUtcStr);
+
+  // 4. Bounties (Only Shiny Feathers / Tickets)
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -306,10 +324,7 @@ export function parseFarmData(farm, priceMap) {
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
       if (!bName && !b.id && b.level === undefined) return;
 
-      // Check for Shiny Feather / Seasonal Ticket reward in reward, items, or b root
       const featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || extractRewardTickets(b);
-
-      // 🎯 STRICT: Skip coin-only animal/item bounties completely
       if (featherCount <= 0) return;
 
       const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
@@ -340,7 +355,7 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 4. Chores
+  // 5. Chores
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
 
@@ -377,6 +392,7 @@ export function parseFarmData(farm, priceMap) {
   return {
     isVipActive,
     isDoubleDeliveryActive,
+    doubleDeliveryDates: Array.from(doubleDeliveryDates),
     liveMilestones,
     deliveryList,
     activeBounties,
