@@ -95,6 +95,7 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
+  // Safe resolver that returns null if timestamp is absent
   const resolveDateStr = (item) => {
     if (item.completedDate) return item.completedDate;
     if (item.completedAt) {
@@ -103,14 +104,13 @@ export function recalculateAll() {
         return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
       }
     }
-    return todayUtcStr;
+    return null;
   };
 
   // 1. Deliveries Calculation (Per NPC Per Day Double Delivery Rule)
   const masterDeliveries = getDeliveryRecords();
   const npcDoubleDeliveryClaimed = new Set(); // Key: `${npcClean}_${compDate}`
 
-  // Sort chronologically so the first completed delivery of an NPC on that day gets the 2x bonus
   const sortedDeliveries = [...masterDeliveries].sort((a, b) => {
     const aTime = a.completedAt || 0;
     const bTime = b.completedAt || 0;
@@ -121,7 +121,7 @@ export function recalculateAll() {
     if (isTicked(d)) {
       const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const compDate = resolveDateStr(d);
+      const compDate = resolveDateStr(d) || todayUtcStr;
       const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
       const isToday = (compDate === todayUtcStr) && !isManual;
 
@@ -161,7 +161,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Bounties Calculation
+  // 2. Bounties Calculation (Only counts in Done Today if timestamp === today)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -172,9 +172,9 @@ export function recalculateAll() {
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
       const compDate = resolveDateStr(b);
-      const itemWeekMonday = getMondayBasedWeekId(b.weekId || compDate);
+      const itemWeekMonday = getMondayBasedWeekId(b.weekId || compDate || currentWeekMonday);
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
-      const isToday = (compDate === todayUtcStr) && !isManual;
+      const isToday = (compDate === todayUtcStr || Boolean(b.checkedToday)) && !isManual;
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
@@ -196,7 +196,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Chores Calculation
+  // 3. Chores Calculation (Only counts in Done Today if timestamp === today)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -206,9 +206,9 @@ export function recalculateAll() {
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
       const compDate = resolveDateStr(c);
-      const itemWeekMonday = getMondayBasedWeekId(c.weekId || compDate);
+      const itemWeekMonday = getMondayBasedWeekId(c.weekId || compDate || currentWeekMonday);
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
-      const isToday = (compDate === todayUtcStr) && !isManual;
+      const isToday = (compDate === todayUtcStr || Boolean(c.checkedToday)) && !isManual;
 
       totalChoreTix += finalTix;
       if (isThisWeek) weekChoreTix += finalTix;
