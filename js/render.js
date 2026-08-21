@@ -15,6 +15,7 @@ export function recalculateAll() {
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
+  const doubleDeliveryDates = new Set(state.globalData.doubleDeliveryDates || []);
 
   const dblBanner = document.getElementById('doubleDeliveryBanner');
   if (dblBanner) {
@@ -94,54 +95,54 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  const isDoneToday = (item, itemWeekMonday) => {
-    if (!isTicked(item)) return false;
-    if (item.isManual) return false;
-    if (itemWeekMonday && itemWeekMonday !== currentWeekMonday) return false;
-    
-    if (item.completedDate) {
-      return item.completedDate === todayUtcStr;
-    }
+  const resolveDateStr = (item) => {
+    if (item.completedDate) return item.completedDate;
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
-        return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0] === todayUtcStr;
+        return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
       }
     }
-    return false;
+    return todayUtcStr;
   };
 
-  const calculateItemYield = (baseTickets, isVipEligible = true, isDelivery = false, hasDouble = false, isManual = false) => {
-    const rawBase = Number(baseTickets) || 0;
-    if (rawBase <= 0) return 0;
-    if (isManual) return rawBase;
-    const withBonuses = rawBase + (isVipEligible ? vipBonus : 0) + boostCount;
-    return (isDelivery && hasDouble) ? (withBonuses * 2) : withBonuses;
-  };
-
-  // 🎯 STRICT SINGLE SOURCE: Calculate deliveries ONLY from getDeliveryRecords()
-  let doubleDeliveryAppliedToday = false;
+  // 1. Deliveries Calculation (Per NPC Per Day Double Delivery Rule)
   const masterDeliveries = getDeliveryRecords();
+  const npcDoubleDeliveryClaimed = new Set(); // Key: `${npcClean}_${compDate}`
 
-  masterDeliveries.forEach(d => {
+  // Sort chronologically so the first completed delivery of an NPC on that day gets the 2x bonus
+  const sortedDeliveries = [...masterDeliveries].sort((a, b) => {
+    const aTime = a.completedAt || 0;
+    const bTime = b.completedAt || 0;
+    return aTime - bTime;
+  });
+
+  sortedDeliveries.forEach(d => {
     if (isTicked(d)) {
       const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const itemWeekMonday = getMondayBasedWeekId(d.weekId || d.completedDate || currentWeekMonday);
-      const isToday = isDoneToday(d, itemWeekMonday);
+      const compDate = resolveDateStr(d);
+      const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
+      const isToday = (compDate === todayUtcStr) && !isManual;
+
+      const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayUtcStr);
+      const npcClean = (d.from || d.name || '').toLowerCase().trim();
+      const doubleClaimKey = `${npcClean}_${compDate}`;
 
       let applyDouble = false;
-      if (isDoubleDeliveryActive && isToday && !doubleDeliveryAppliedToday && !isManual) {
+      if (isDoubleDay && !isManual && !npcDoubleDeliveryClaimed.has(doubleClaimKey)) {
         applyDouble = true;
-        doubleDeliveryAppliedToday = true;
+        npcDoubleDeliveryClaimed.add(doubleClaimKey);
         d.hasDoubleBonus = true;
       } else {
         d.hasDoubleBonus = false;
       }
 
-      const calculatedYield = isManual ? baseTix : calculateItemYield(baseTix, true, true, applyDouble, false);
-      const dCost = d.itemsCost || d.cost || 0;
+      const calculatedYield = isManual 
+        ? baseTix 
+        : (applyDouble ? (baseTix + vipBonus + boostCount) * 2 : (baseTix + vipBonus + boostCount));
 
+      const dCost = d.itemsCost || d.cost || 0;
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
 
       if (isToday) {
@@ -160,18 +161,20 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Live Bounties
+  // 2. Bounties Calculation
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const isManual = Boolean(b.isManual);
-      const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
+      const finalTix = isManual ? baseTix : (baseTix + boostCount);
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
-      const itemWeekMonday = getMondayBasedWeekId(b.weekId || currentWeekMonday);
+      const compDate = resolveDateStr(b);
+      const itemWeekMonday = getMondayBasedWeekId(b.weekId || compDate);
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
+      const isToday = (compDate === todayUtcStr) && !isManual;
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
@@ -185,7 +188,7 @@ export function recalculateAll() {
       if (isThisWeek) weekCostAll += bCost;
       addWeeklyStat(itemWeekMonday, finalTix, bCost);
 
-      if (isDoneToday(b, itemWeekMonday)) {
+      if (isToday) {
         if (isAnimal) todayAnimalBountyTix += finalTix;
         else todayBountyTix += finalTix;
         todayCostAll += bCost;
@@ -193,17 +196,19 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Live Chores
+  // 3. Chores Calculation
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const isManual = Boolean(c.isManual);
-      const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
+      const finalTix = isManual ? baseTix : (baseTix + vipBonus + boostCount);
       if (finalTix <= 0) return;
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
-      const itemWeekMonday = getMondayBasedWeekId(c.weekId || currentWeekMonday);
+      const compDate = resolveDateStr(c);
+      const itemWeekMonday = getMondayBasedWeekId(c.weekId || compDate);
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
+      const isToday = (compDate === todayUtcStr) && !isManual;
 
       totalChoreTix += finalTix;
       if (isThisWeek) weekChoreTix += finalTix;
@@ -212,23 +217,22 @@ export function recalculateAll() {
       if (isThisWeek) weekCostAll += cCost;
       addWeeklyStat(itemWeekMonday, finalTix, cCost);
 
-      if (isDoneToday(c, itemWeekMonday)) {
+      if (isToday) {
         todayChoreTix += finalTix;
         todayCostAll += cCost;
       }
     }
   });
 
-  // 4. Past Weeks Storage
+  // 4. Past Weeks Storage History
   Object.entries(weeks).forEach(([wkKey, wk]) => {
     const pastMonday = getMondayBasedWeekId(wk.weekId || wkKey);
     if (pastMonday === currentWeekMonday) return;
 
-    (wk.bounties || []).forEach((b) => {
+    (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
-        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets !== undefined ? b.tickets : 0);
-        const isManual = Boolean(b.isManual);
-        const finalTix = calculateItemYield(baseTix, false, false, false, isManual);
+        const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+        const finalTix = b.isManual ? baseTix : (baseTix + boostCount);
         if (finalTix <= 0) return;
 
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -242,11 +246,10 @@ export function recalculateAll() {
       }
     });
 
-    (wk.chores || []).forEach((c) => {
+    (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
-        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets !== undefined ? c.tickets : 1);
-        const isManual = Boolean(c.isManual);
-        const finalTix = calculateItemYield(baseTix, true, false, false, isManual);
+        const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+        const finalTix = c.isManual ? baseTix : (baseTix + vipBonus + boostCount);
         if (finalTix <= 0) return;
 
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
