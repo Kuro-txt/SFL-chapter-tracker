@@ -180,6 +180,66 @@ export function getMondayBasedWeekId(d) {
   return date.toISOString().split('T')[0];
 }
 
+export function extractDoubleDeliveryDates(farm) {
+  const dates = new Set();
+  if (!farm || typeof farm !== 'object') return dates;
+
+  const sources = [
+    farm.calendar?.events,
+    farm.calendar,
+    farm.specialEvents,
+    farm.events
+  ];
+
+  function scan(node, keyContext = '') {
+    if (!node || typeof node !== 'object') return;
+
+    if (Array.isArray(node)) {
+      node.forEach(it => scan(it, keyContext));
+      return;
+    }
+
+    const nameStr = String(node.name || node.title || node.type || node.event || keyContext || '').toLowerCase();
+    const clean = nameStr.replace(/[^a-z0-9]/g, '');
+
+    if (clean.includes('doubledelivery') || clean.includes('2xdelivery')) {
+      if (node.date && typeof node.date === 'string') {
+        dates.add(node.date.split('T')[0]);
+      }
+      if (typeof node.startDate === 'number' && typeof node.endDate === 'number') {
+        let cur = new Date(node.startDate < 1e11 ? node.startDate * 1000 : node.startDate);
+        const end = new Date(node.endDate < 1e11 ? node.endDate * 1000 : node.endDate);
+        while (cur <= end) {
+          dates.add(cur.toISOString().split('T')[0]);
+          cur.setUTCDate(cur.getUTCDate() + 1);
+        }
+      } else if (typeof node.startDate === 'number') {
+        const dStr = new Date(node.startDate < 1e11 ? node.startDate * 1000 : node.startDate).toISOString().split('T')[0];
+        dates.add(dStr);
+      }
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(keyContext)) {
+      const jsonStr = JSON.stringify(node).toLowerCase();
+      if (jsonStr.includes('doubledelivery') || jsonStr.includes('2xdelivery')) {
+        dates.add(keyContext);
+      }
+    }
+
+    for (const [k, v] of Object.entries(node)) {
+      if (v && typeof v === 'object') {
+        scan(v, k);
+      }
+    }
+  }
+
+  sources.forEach(src => {
+    if (src) scan(src);
+  });
+
+  return dates;
+}
+
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
 
@@ -256,37 +316,11 @@ export function parseFarmData(farm, priceMap) {
     }
   });
 
-  // 3. Double Delivery Calendar Event Detection
+  // 3. Double Delivery Detection
+  const doubleDeliveryDatesSet = extractDoubleDeliveryDates(farm);
   const nowMs = Date.now();
   const todayUtcStr = new Date(nowMs).toISOString().split('T')[0];
-  const calendarEvents = farm.calendar?.events || farm.calendar || farm.specialEvents || [];
-  const doubleDeliveryDates = new Set();
-
-  if (Array.isArray(calendarEvents)) {
-    calendarEvents.forEach(evt => {
-      if (!evt || typeof evt !== 'object') return;
-      const name = (evt.name || evt.title || evt.type || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (name.includes('doubledelivery') || name.includes('2xdelivery')) {
-        if (evt.date) {
-          doubleDeliveryDates.add(evt.date);
-        }
-        if (typeof evt.startDate === 'number' && typeof evt.endDate === 'number') {
-          let cur = new Date(evt.startDate);
-          const end = new Date(evt.endDate);
-          while (cur <= end) {
-            doubleDeliveryDates.add(cur.toISOString().split('T')[0]);
-            cur.setUTCDate(cur.getUTCDate() + 1);
-          }
-        } else if (typeof evt.startDate === 'number') {
-          if (evt.startDate <= nowMs && (!evt.endDate || evt.endDate >= nowMs)) {
-            doubleDeliveryDates.add(todayUtcStr);
-          }
-        }
-      }
-    });
-  }
-
-  const isDoubleDeliveryActive = doubleDeliveryDates.has(todayUtcStr);
+  const isDoubleDeliveryActive = doubleDeliveryDatesSet.has(todayUtcStr);
 
   // 4. Bounties (Only Shiny Feathers / Tickets)
   const activeBounties = [];
@@ -392,7 +426,7 @@ export function parseFarmData(farm, priceMap) {
   return {
     isVipActive,
     isDoubleDeliveryActive,
-    doubleDeliveryDates: Array.from(doubleDeliveryDates),
+    doubleDeliveryDates: Array.from(doubleDeliveryDatesSet),
     liveMilestones,
     deliveryList,
     activeBounties,
