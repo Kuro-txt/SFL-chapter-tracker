@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SFL Client-Side API & Storage Inspector</title>
+  <title>SFL Farm Inspector & Data Viewer</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -70,6 +70,12 @@
       padding: 0 4px;
     }
     .status-bar strong { color: #3fb950; }
+    .viewer-container {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+      min-height: 0;
+    }
     pre {
       flex: 1;
       background: #090d12;
@@ -88,35 +94,67 @@
 <body>
 
   <div class="panel">
+    <!-- Top Row: Fetch / Sources -->
     <div class="row">
       <label for="farmId">🌾 Farm ID:</label>
       <input type="text" id="farmId" value="8472883706403914" style="width: 150px;" />
 
       <label for="apiKey">🔑 API Key:</label>
-      <input type="password" id="apiKey" placeholder="Optional SFL Key" style="width: 140px;" />
+      <input type="password" id="apiKey" placeholder="Optional SFL Key" style="width: 130px;" />
 
-      <label for="dataSource">🎯 Source:</label>
-      <select id="dataSource" style="flex: 1; min-width: 180px;">
-        <option value="rawSfl">⚡ Raw SFL Farm Data (api.sunflower-land.com)</option>
+      <label for="dataSource">🎯 Fetch Source:</label>
+      <select id="dataSource" style="min-width: 170px;">
+        <option value="rawSfl">⚡ Live SFL Farm API</option>
         <option value="rawPrices">💰 SFL.world Market Prices</option>
-        <option value="localStorage">📦 Local Browser Storage (Cache & Vault)</option>
+        <option value="localStorage">📦 Local Browser Storage</option>
       </select>
 
-      <button onclick="fetchClientData()">⚡ Fetch Data</button>
-      <button onclick="copyOutput()" class="btn-copy">📋 Copy JSON</button>
+      <button onclick="fetchClientData()">⚡ Fetch</button>
+      <button onclick="copyOutput()" class="btn-copy">📋 Copy</button>
+    </div>
+
+    <!-- Bottom Row: Filter Dropdowns -->
+    <div class="row" style="border-top: 1px dashed #30363d; padding-top: 8px;">
+      <label for="viewCategory">📂 Section:</label>
+      <select id="viewCategory" onchange="handleCategoryChange()" style="font-weight: bold; color: #58a6ff;">
+        <option value="all">🌐 Full Raw Payload</option>
+        <option value="npcs">👤 NPCs & Friendship</option>
+        <option value="skills">🧠 Bumpkin Skills & XP</option>
+        <option value="deliveries">📦 Active Orders & Deliveries</option>
+        <option value="chores">🧹 Chores Board</option>
+        <option value="bounties">📜 Bounties (Requests & Completed)</option>
+        <option value="inventory">🎒 Inventory & Balances</option>
+        <option value="animals">🐄 Animals (Barn & Hen House)</option>
+        <option value="buildings">🏛️ Buildings & Facilities</option>
+        <option value="trades">⚖️ Trades & Market Listings</option>
+      </select>
+
+      <!-- Dynamic Sub-Filter (e.g. Specific NPC selection) -->
+      <div id="subFilterGroup" style="display: flex; gap: 6px; align-items: center;">
+        <label for="subFilter" id="subFilterLabel">🔎 Filter:</label>
+        <select id="subFilter" onchange="applyViewFilter()" style="min-width: 150px;">
+          <option value="all">-- All --</option>
+        </select>
+      </div>
+
+      <span id="itemCountBadge" style="font-size: 11px; color: #8b949e; margin-left: auto;"></span>
     </div>
   </div>
 
   <div class="status-bar">
     <span>Status: <strong id="statusDisplay">—</strong></span>
     <span>Time: <strong id="timeDisplay">—</strong></span>
-    <span>Size: <strong id="sizeDisplay">—</strong></span>
+    <span>Payload Size: <strong id="sizeDisplay">—</strong></span>
+    <span>Active Section: <strong id="sectionDisplay" style="color: #58a6ff;">Full Raw Payload</strong></span>
   </div>
 
-  <pre id="output">// Click "Fetch Data" to inspect payload directly in the browser...</pre>
+  <div class="viewer-container">
+    <pre id="output">// Click "Fetch" to load farm state into inspector...</pre>
+  </div>
 
   <script>
-    let rawData = null;
+    let fullPayload = null;
+    let displayedData = null;
 
     document.addEventListener('DOMContentLoaded', () => {
       const savedFarm = localStorage.getItem('sfl_farmId');
@@ -140,7 +178,6 @@
 
       try {
         if (source === 'localStorage') {
-          // Inspect browser local storage items
           const storageData = {};
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
@@ -150,51 +187,195 @@
               storageData[key] = localStorage.getItem(key);
             }
           }
-          rawData = storageData;
-          const elapsed = (performance.now() - t0).toFixed(0);
+          fullPayload = storageData;
           document.getElementById('statusDisplay').textContent = '200 OK (Local)';
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
         } else {
           const targetUrl = source === 'rawSfl'
             ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
             : `https://sfl.world/api/v1/prices`;
 
-          out.textContent = `Fetching via CORS proxy:\n${targetUrl}...`;
+          out.textContent = `Fetching:\n${targetUrl}...`;
 
-          // Route through reliable CORS proxy for static GitHub Pages
           const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
           const headers = { 'Accept': 'application/json' };
           if (apiKey) headers['x-api-key'] = apiKey;
 
           const res = await fetch(proxyUrl, { headers });
-          const elapsed = (performance.now() - t0).toFixed(0);
+          if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-          document.getElementById('statusDisplay').textContent = `${res.status} ${res.statusText}`;
-          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
-
-          if (!res.ok) {
-            if (res.status === 401) {
-              throw new Error('401 Unauthorized: Sunflower Land requires an API Key for this farm. Enter your in-game API Key in the API Key box.');
-            }
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-          }
-
-          rawData = await res.json();
+          fullPayload = await res.json();
+          document.getElementById('statusDisplay').textContent = `${res.status} OK`;
         }
 
-        const str = JSON.stringify(rawData, null, 2);
-        document.getElementById('sizeDisplay').textContent = `${(new Blob([str]).size / 1024).toFixed(1)} KB`;
-        out.textContent = str;
+        const elapsed = (performance.now() - t0).toFixed(0);
+        document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+
+        populateSubFilterDropdown();
+        applyViewFilter();
+
       } catch (err) {
         document.getElementById('statusDisplay').textContent = 'Error';
         out.textContent = `❌ Fetch Failed: ${err.message}`;
       }
     }
 
+    function handleCategoryChange() {
+      populateSubFilterDropdown();
+      applyViewFilter();
+    }
+
+    function populateSubFilterDropdown() {
+      const category = document.getElementById('viewCategory').value;
+      const subSelect = document.getElementById('subFilter');
+      const subGroup = document.getElementById('subFilterGroup');
+      const subLabel = document.getElementById('subFilterLabel');
+
+      if (!fullPayload || !fullPayload.farm) {
+        subGroup.style.display = 'none';
+        return;
+      }
+
+      const farm = fullPayload.farm;
+      subSelect.innerHTML = '<option value="all">-- All --</option>';
+
+      if (category === 'npcs') {
+        subGroup.style.display = 'flex';
+        subLabel.textContent = '👤 NPC:';
+        const npcs = Object.keys(farm.npcs || {}).sort();
+        npcs.forEach(npc => {
+          subSelect.innerHTML += `<option value="${npc}">${npc.toUpperCase()}</option>`;
+        });
+      } else if (category === 'inventory') {
+        subGroup.style.display = 'flex';
+        subLabel.textContent = '📦 Filter Item:';
+        const items = Object.keys(farm.inventory || {}).sort();
+        items.forEach(item => {
+          subSelect.innerHTML += `<option value="${item}">${item}</option>`;
+        });
+      } else {
+        subGroup.style.display = 'none';
+      }
+    }
+
+    function applyViewFilter() {
+      if (!fullPayload) return;
+
+      const category = document.getElementById('viewCategory').value;
+      const subVal = document.getElementById('subFilter').value;
+      const farm = fullPayload.farm || fullPayload;
+      const badge = document.getElementById('itemCountBadge');
+
+      badge.textContent = '';
+
+      switch (category) {
+        case 'npcs':
+          if (subVal !== 'all' && farm.npcs?.[subVal]) {
+            displayedData = {
+              npc: subVal,
+              stats: farm.npcs[subVal],
+              liveOrders: (farm.delivery?.orders || []).filter(o => (o.from || '').toLowerCase() === subVal.toLowerCase())
+            };
+          } else {
+            displayedData = farm.npcs || {};
+          }
+          badge.textContent = `${Object.keys(farm.npcs || {}).length} NPCs`;
+          break;
+
+        case 'skills':
+          displayedData = {
+            experience: farm.bumpkin?.experience || 0,
+            equipped: farm.bumpkin?.equipped || {},
+            skillsCount: Object.keys(farm.bumpkin?.skills || {}).length,
+            skills: farm.bumpkin?.skills || {},
+            achievements: farm.bumpkin?.achievements || {},
+            previousPowerUseAt: farm.bumpkin?.previousPowerUseAt || {}
+          };
+          badge.textContent = `${displayedData.skillsCount} Skills Active`;
+          break;
+
+        case 'deliveries':
+          displayedData = {
+            fulfilledCount: farm.delivery?.fulfilledCount || 0,
+            activeOrdersCount: (farm.delivery?.orders || []).length,
+            orders: farm.delivery?.orders || [],
+            milestone: farm.delivery?.milestone || {}
+          };
+          badge.textContent = `${displayedData.activeOrdersCount} Orders Active`;
+          break;
+
+        case 'chores':
+          displayedData = {
+            choreBoard: farm.choreBoard?.chores || {},
+            kingdomChores: farm.kingdomChores || {}
+          };
+          badge.textContent = `${Object.keys(farm.choreBoard?.chores || {}).length} Chores`;
+          break;
+
+        case 'bounties':
+          displayedData = {
+            totalRequests: (farm.bounties?.requests || []).length,
+            totalCompleted: (farm.bounties?.completed || []).length,
+            requests: farm.bounties?.requests || [],
+            completed: farm.bounties?.completed || []
+          };
+          badge.textContent = `${displayedData.totalRequests} Requests`;
+          break;
+
+        case 'inventory':
+          if (subVal !== 'all' && farm.inventory?.[subVal] !== undefined) {
+            displayedData = { [subVal]: farm.inventory[subVal] };
+          } else {
+            displayedData = {
+              coins: farm.coins,
+              balanceSFL: farm.balance,
+              inventory: farm.inventory || {},
+              wardrobe: farm.wardrobe || {}
+            };
+          }
+          badge.textContent = `${Object.keys(farm.inventory || {}).length} Items`;
+          break;
+
+        case 'animals':
+          displayedData = {
+            henHouse: farm.henHouse || {},
+            barn: farm.barn || {}
+          };
+          break;
+
+        case 'buildings':
+          displayedData = {
+            buildings: farm.buildings || {},
+            collectibles: farm.collectibles || {},
+            interior: farm.interior?.ground?.collectibles || {}
+          };
+          break;
+
+        case 'trades':
+          displayedData = {
+            tradePoints: farm.trades?.tradePoints || 0,
+            soldCount: farm.trades?.soldCount || 0,
+            listings: farm.trades?.listings || {},
+            offers: farm.trades?.offers || {}
+          };
+          badge.textContent = `${Object.keys(farm.trades?.listings || {}).length} Active Listings`;
+          break;
+
+        case 'all':
+        default:
+          displayedData = fullPayload;
+          break;
+      }
+
+      const jsonStr = JSON.stringify(displayedData, null, 2);
+      document.getElementById('output').textContent = jsonStr;
+      document.getElementById('sizeDisplay').textContent = `${(new Blob([jsonStr]).size / 1024).toFixed(1)} KB`;
+      document.getElementById('sectionDisplay').textContent = document.getElementById('viewCategory').selectedOptions[0].text;
+    }
+
     function copyOutput() {
       const out = document.getElementById('output');
       navigator.clipboard.writeText(out.textContent).then(() => {
-        alert('Copied JSON to clipboard!');
+        alert('Copied section JSON to clipboard!');
       });
     }
   </script>
