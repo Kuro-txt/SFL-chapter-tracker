@@ -124,15 +124,16 @@
         <option value="chores">🧹 Chores Board</option>
         <option value="bounties">📜 Bounties (Requests & Completed)</option>
         <option value="inventory">🎒 Inventory & Balances</option>
+        <option value="farmActivity">📊 Farm Activity Tracker</option>
         <option value="animals">🐄 Animals (Barn & Hen House)</option>
         <option value="buildings">🏛️ Buildings & Facilities</option>
         <option value="trades">⚖️ Trades & Market Listings</option>
       </select>
 
-      <!-- Dynamic Sub-Filter (e.g. Specific NPC selection) -->
+      <!-- Dynamic Sub-Filter -->
       <div id="subFilterGroup" style="display: flex; gap: 6px; align-items: center;">
         <label for="subFilter" id="subFilterLabel">🔎 Filter:</label>
-        <select id="subFilter" onchange="applyViewFilter()" style="min-width: 150px;">
+        <select id="subFilter" onchange="applyViewFilter()" style="min-width: 180px;">
           <option value="all">-- All --</option>
         </select>
       </div>
@@ -252,6 +253,13 @@
         items.forEach(item => {
           subSelect.innerHTML += `<option value="${item}">${item}</option>`;
         });
+      } else if (category === 'farmActivity') {
+        subGroup.style.display = 'flex';
+        subLabel.textContent = '📊 Filter Action:';
+        const activities = Object.keys(farm.farmActivity || {}).sort();
+        activities.forEach(act => {
+          subSelect.innerHTML += `<option value="${act}">${act}</option>`;
+        });
       } else {
         subGroup.style.display = 'none';
       }
@@ -333,6 +341,15 @@
             };
           }
           badge.textContent = `${Object.keys(farm.inventory || {}).length} Items`;
+          break;
+
+        case 'farmActivity':
+          if (subVal !== 'all' && farm.farmActivity?.[subVal] !== undefined) {
+            displayedData = { [subVal]: farm.farmActivity[subVal] };
+          } else {
+            displayedData = farm.farmActivity || {};
+          }
+          badge.textContent = `${Object.keys(farm.farmActivity || {}).length} Tracked Activities`;
           break;
 
         case 'animals':
