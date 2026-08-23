@@ -21,6 +21,7 @@
       min-height: 100vh;
       font-size: clamp(13px, 1.2vw, 15px);
       -webkit-text-size-adjust: 100%;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
     .wrapper { 
       max-width: 1080px; 
@@ -37,6 +38,15 @@
       text-align: center;
       padding: clamp(12px, 1.8vw, 18px);
       box-shadow: 0 5px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header-title-group {
+      flex: 1;
+      text-align: center;
     }
     h1 { 
       font-size: clamp(18px, 2.8vw, 28px); 
@@ -256,7 +266,7 @@
       opacity: 1;
     }
 
-    .overview-grid {
+    .overview-grid { 
       display: grid; 
       grid-template-columns: repeat(2, minmax(0, 1fr)); 
       gap: clamp(10px, 1.6vw, 16px); 
@@ -347,7 +357,7 @@
     .badge-done { background-color: #C8E6C9; color: #2E7D32; }
     .badge-active { background-color: #FFE0B2; color: #E65100; }
 
-    /* Modals & Mobile Scaffolding */
+    /* Modals */
     .modal {
       display: none;
       position: fixed;
@@ -388,7 +398,6 @@
       gap: 8px; 
     }
 
-    /* History and Edit Items */
     .history-card {
       background: #FFF8DC;
       padding: 8px 10px;
@@ -401,21 +410,9 @@
       font-size: 11px;
       margin-bottom: 6px;
     }
-    .history-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .history-controls {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    .history-input-group {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
+    .history-info { flex: 1; min-width: 0; }
+    .history-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .history-input-group { display: flex; align-items: center; gap: 3px; }
     .add-form-container {
       background: #EFEBE9;
       border: 2px dashed #8B5A2B;
@@ -459,41 +456,100 @@
       font-weight: bold;
     }
 
+    /* ==========================================
+       DARK MODE THEME (Cozy Night Farm)
+       ========================================== */
+    body.dark-mode {
+      background-color: #12180e;
+      background-image: radial-gradient(#1c2714 15%, transparent 16%), radial-gradient(#0c1109 15%, transparent 16%);
+      color: #ede0d4;
+    }
+    body.dark-mode header {
+      background: linear-gradient(to bottom, #4a2f18, #2e1d10);
+      border-color: #1f1208;
+      box-shadow: 0 5px 0px #100a05, inset 0 2px 4px rgba(255,255,255,0.08);
+    }
+    body.dark-mode .panel {
+      background-color: #231a14;
+      border-color: #4e3524;
+      box-shadow: 0 5px 0px #120c08;
+    }
+    body.dark-mode label, 
+    body.dark-mode .stat-title, 
+    body.dark-mode .chart-title {
+      color: #d7ccc8;
+    }
+    body.dark-mode input[type="text"], 
+    body.dark-mode input[type="password"], 
+    body.dark-mode input[type="number"], 
+    body.dark-mode select {
+      background-color: #16110d;
+      border-color: #5d4037;
+      color: #f5ebe6;
+    }
+    body.dark-mode input:focus, body.dark-mode select:focus {
+      background-color: #1f1712;
+      border-color: #ff9800;
+    }
+    body.dark-mode .stat-box,
+    body.dark-mode .overview-card,
+    body.dark-mode .chart-panel,
+    body.dark-mode .modal-content,
+    body.dark-mode .history-card,
+    body.dark-mode .guide-card {
+      background-color: #291e17;
+      border-color: #5d4037;
+      box-shadow: 0 4px 0px #120c08;
+      color: #ede0d4;
+    }
+    body.dark-mode .stat-footer {
+      border-top-color: #4a3525;
+      color: #bcaaa4;
+    }
+    body.dark-mode .overview-header {
+      color: #f5ebe6;
+      border-bottom-color: #4a3525;
+    }
+    body.dark-mode .overview-count {
+      background-color: #1a130f;
+      color: #d7ccc8;
+      border-color: #4e3524;
+    }
+    body.dark-mode .tip-banner {
+      background-color: #2c1f15;
+      border-color: #a0522d;
+      color: #ffcc80;
+      box-shadow: 0 3px 0px #120c08;
+    }
+    body.dark-mode .checkbox-label {
+      background-color: #2d1f14;
+      border-color: #935116;
+      color: #ffcc80;
+    }
+    body.dark-mode .modal-header {
+      background: #1e1510;
+      border-bottom-color: #4e3524;
+    }
+    body.dark-mode .add-form-container {
+      background-color: #1a130f;
+      border-color: #5d4037;
+    }
+    body.dark-mode strong {
+      color: #f5ebe6 !important;
+    }
+
     /* Mobile Adaptations */
     @media (max-width: 600px) {
-      .modal {
-        padding: 6px;
-      }
-      .modal-content {
-        max-height: 94vh;
-        width: 100%;
-        border-radius: 8px;
-      }
-      .modal-body {
-        padding: 10px 8px;
-      }
-      .history-card {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-      }
-      .history-controls {
-        justify-content: flex-end;
-        border-top: 1px dashed #D2B48C;
-        padding-top: 6px;
-      }
-      .add-form-fields {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .add-form-fields input, .add-form-fields select, .add-form-fields button {
-        width: 100% !important;
-      }
+      .modal { padding: 6px; }
+      .modal-content { max-height: 94vh; width: 100%; border-radius: 8px; }
+      .modal-body { padding: 10px 8px; }
+      .history-card { flex-direction: column; align-items: stretch; gap: 8px; }
+      .history-controls { justify-content: flex-end; border-top: 1px dashed #D2B48C; padding-top: 6px; }
+      .add-form-fields { flex-direction: column; align-items: stretch; }
+      .add-form-fields input, .add-form-fields select, .add-form-fields button { width: 100% !important; }
       .controls-row { flex-direction: column; align-items: stretch; }
       .input-group { width: 100%; justify-content: space-between; }
-      .stats-grid, .overview-grid {
-        grid-template-columns: 1fr;
-      }
+      .stats-grid, .overview-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -501,8 +557,13 @@
 
   <div class="wrapper">
     <header>
-      <h1>🌻 SUNFLOWER LAND CHAPTER TRACKER</h1>
-      <p>Harvest Tickets & Chapter End Goal Calculator</p>
+      <div class="header-title-group">
+        <h1>🌻 SUNFLOWER LAND CHAPTER TRACKER</h1>
+        <p>Harvest Tickets & Chapter End Goal Calculator</p>
+      </div>
+      <button id="themeToggleBtn" onclick="toggleTheme()" class="btn btn-sm btn-wood" style="padding: 6px 12px; font-size: 11px;">
+        🌙 DARK
+      </button>
     </header>
 
     <div class="tip-banner" id="tipBanner">
@@ -513,12 +574,12 @@
     <div id="doubleDeliveryBanner" class="event-banner" style="display: none;">
       <div style="display: flex; align-items: center; gap: 8px; color: #E65100; font-weight: 900;">
         <span style="font-size: 16px;">⚡</span>
-        <span>DOUBLE DELIVERY EVENT ACTIVE! First completed delivery of today receives 2x Total Tickets [(Base + VIP + Boosts) × 2]</span>
+        <span>DOUBLE DELIVERY EVENT ACTIVE! First completed delivery of each NPC today receives 2x Total Tickets [(Base + VIP + Boosts) × 2]</span>
       </div>
       <span style="background: #E65100; color: #FFF; font-size: 11px; font-weight: 900; padding: 2px 6px; border-radius: 5px;">2X ACTIVE</span>
     </div>
 
-    <div class="panel" style="padding: 10px 14px; background: #FFFACD;">
+    <div class="panel" style="padding: 10px 14px;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
           <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
@@ -551,7 +612,7 @@
           <span id="priceBadge" style="display:none; font-size:11px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
-        <div class="input-group" style="background:#FFFACD; padding:6px 10px; border:2px solid #D2691E; border-radius:8px;">
+        <div class="input-group" style="padding:6px 10px; border:2px solid #D2691E; border-radius:8px;">
           <label style="color:#8B4513;">+1 BOOSTS:</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #1</label>
           <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #2</label>
@@ -566,7 +627,7 @@
           </div>
         </div>
 
-        <div class="input-group" style="background:#E8F5E9; padding:6px 10px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:6px;">
+        <div class="input-group" style="padding:6px 10px; border:2px solid #2E7D32; border-radius:8px; display:flex; align-items:center; gap:6px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
           <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
           <input type="number" id="trackTicketsInput" value="0" placeholder="0" onchange="saveTrackAndRecalculate()" style="width: 58px; padding: 3px 6px; font-size: 12px;" title="Total Track Tickets" />
@@ -739,7 +800,7 @@
         <div class="guide-card">
           <div class="guide-card-title">⚡ 3. 2x DOUBLE DELIVERY EVENTS</div>
           <div class="guide-card-text">
-            • When a Double Delivery event is active, the first live delivery completed today automatically calculates with 2x total tickets: <code>[(Base + VIP + Boosts) × 2]</code>.
+            • When a Double Delivery event is active, the first completed delivery of each NPC today receives 2x total tickets: <code>[(Base + VIP + Boosts) × 2]</code>.
           </div>
         </div>
 
@@ -769,7 +830,7 @@
         <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
           <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
         </div>
@@ -787,16 +848,16 @@
         <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="background:#FFFACD; padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
           <span id="columnHistoryStats" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
         </div>
 
-        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; background: #E8F5E9; padding: 10px; border: 2px solid #2E7D32; border-radius: 6px;">
+        <div id="editFilterContainer" style="display: none; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; border: 2px solid #2E7D32; border-radius: 6px;">
           <select id="editNpcDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 130px;">
             <option value="">👤 ALL NPCS</option>
           </select>
-          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px; background:#FFF8DC; border:2px solid #8B5A2B;">
+          <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px;">
             <option value="">📅 ALL WEEKS</option>
             <option value="w1">Week 1 (Aug 10 - Aug 16)</option>
             <option value="w2">Week 2 (Aug 17 - Aug 23)</option>
