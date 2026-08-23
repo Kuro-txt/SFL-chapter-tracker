@@ -18,7 +18,31 @@ import {
 import { recalculateAll } from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
+// ==========================================
+// THEME MANAGER (Dark / Light Mode)
+// ==========================================
+export function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  const toggleBtn = document.getElementById('themeToggleBtn');
+
+  if (isDark) {
+    document.body.classList.add('dark-mode');
+    if (toggleBtn) toggleBtn.innerHTML = '☀️ LIGHT';
+  } else {
+    document.body.classList.remove('dark-mode');
+    if (toggleBtn) toggleBtn.innerHTML = '🌙 DARK';
+  }
+
+  localStorage.setItem('sfl_theme', theme);
+}
+
+export function toggleTheme() {
+  const isCurrentlyDark = document.body.classList.contains('dark-mode');
+  applyTheme(isCurrentlyDark ? 'light' : 'dark');
+}
+
 // Expose handlers to window for inline HTML events
+window.toggleTheme = toggleTheme;
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
@@ -105,6 +129,12 @@ function startTipRotation() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Initialize Dark / Light Theme
+  const savedTheme = localStorage.getItem('sfl_theme') || 
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(savedTheme);
+
+  // 2. Load Local State Preferences
   const savedFarmId = localStorage.getItem('sfl_farmId');
   if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
 
