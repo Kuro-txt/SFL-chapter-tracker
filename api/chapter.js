@@ -374,7 +374,8 @@ export default async function handler(req, res) {
         await ensureTableExists(client);
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
         if (queryRes.rows.length > 0) {
-          const vaultData = queryRes.rows[0].vault_data || {};
+          const rawVault = queryRes.rows[0].vault_data;
+          const vaultData = typeof rawVault === 'string' ? JSON.parse(rawVault) : (rawVault || {});
           delete vaultData.apiKey;
           if (vaultData.archiveDeliveries) {
             vaultData.archiveDeliveries = sanitizeDeliveriesList(vaultData.archiveDeliveries);
@@ -447,10 +448,12 @@ export default async function handler(req, res) {
         const queryRes = await client.query('SELECT auth_data, vault_data FROM user_vaults WHERE username = $1', [loginUsername]);
         if (queryRes.rows.length === 0) return res.status(401).json({ error: 'Account not found.' });
 
-        const authData = queryRes.rows[0].auth_data;
+        const rawAuth = queryRes.rows[0].auth_data;
+        const authData = typeof rawAuth === 'string' ? JSON.parse(rawAuth) : (rawAuth || {});
         if (authData.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Incorrect password.' });
 
-        const vaultData = queryRes.rows[0].vault_data || {};
+        const rawVault = queryRes.rows[0].vault_data;
+        const vaultData = typeof rawVault === 'string' ? JSON.parse(rawVault) : (rawVault || {});
         if (userFarmId && !vaultData.farmId) {
           vaultData.farmId = userFarmId;
           await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), loginUsername]);
@@ -475,18 +478,24 @@ export default async function handler(req, res) {
       try {
         await ensureTableExists(client);
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [saveUsername]);
-        let existingData = queryRes.rows.length > 0 ? queryRes.rows[0].vault_data : {
-          archiveDeliveries: [],
-          cumulativeTickets: 0,
-          cumulativeCost: 0,
-          weeks: {},
-          trackTickets: 0,
-          trackCost: 0,
-          dailyLoginTickets: 0,
-          lastDailyLoginDate: null,
-          milestones: {},
-          npcSnapshots: {}
-        };
+        let existingData = {};
+        if (queryRes.rows.length > 0) {
+          const rawV = queryRes.rows[0].vault_data;
+          existingData = typeof rawV === 'string' ? JSON.parse(rawV) : (rawV || {});
+        } else {
+          existingData = {
+            archiveDeliveries: [],
+            cumulativeTickets: 0,
+            cumulativeCost: 0,
+            weeks: {},
+            trackTickets: 0,
+            trackCost: 0,
+            dailyLoginTickets: 0,
+            lastDailyLoginDate: null,
+            milestones: {},
+            npcSnapshots: {}
+          };
+        }
 
         if (body.farmId) existingData.farmId = body.farmId;
         if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets, 10) || 0;
@@ -503,9 +512,34 @@ export default async function handler(req, res) {
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
         if (body.npcSnapshots) existingData.npcSnapshots = body.npcSnapshots;
+        if (body.logs) existingData.logs = body.logs;
 
         await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), saveUsername]);
         return res.status(200).json({ success: true, vaultData: existingData });
+      } finally {
+        client.release();
+      }
+    }
+
+    if (req.method === 'POST' && action === 'deleteLog') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+      const logUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
+      const logIdx = parseInt(body.logIdx, 10);
+      if (!logUsername || isNaN(logIdx)) return res.status(400).json({ error: 'Valid username and log index required.' });
+
+      const client = await pool.connect();
+      try {
+        await ensureTableExists(client);
+        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [logUsername]);
+        if (queryRes.rows.length === 0) return res.status(404).json({ error: 'User vault not found.' });
+
+        const rawV = queryRes.rows[0].vault_data;
+        const vaultData = typeof rawV === 'string' ? JSON.parse(rawV) : (rawV || {});
+        if (Array.isArray(vaultData.logs)) {
+          vaultData.logs.splice(logIdx, 1);
+        }
+        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), logUsername]);
+        return res.status(200).json({ success: true, vaultData });
       } finally {
         client.release();
       }
@@ -540,7 +574,8 @@ export default async function handler(req, res) {
         await ensureTableExists(client);
         const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
         if (queryRes.rows.length > 0) {
-          currentVault = queryRes.rows[0].vault_data || {};
+          const rawV = queryRes.rows[0].vault_data;
+          currentVault = typeof rawV === 'string' ? JSON.parse(rawV) : (rawV || {});
           const currentWeekMonday = getMondayBasedWeekId();
           currentVault.farmId = farmId;
 
@@ -588,6 +623,7 @@ export default async function handler(req, res) {
       farmId,
       isVipActive: parsed.isVipActive,
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
+      doubleDeliveryDates: parsed.doubleDeliveryDates,
       milestones: parsed.liveMilestones,
       pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: parsed.deliveryList,
