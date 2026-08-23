@@ -357,7 +357,7 @@
     .badge-done { background-color: #C8E6C9; color: #2E7D32; }
     .badge-active { background-color: #FFE0B2; color: #E65100; }
 
-    /* Modals */
+    /* Modals Base */
     .modal {
       display: none;
       position: fixed;
@@ -492,10 +492,7 @@
       border-color: #ff9800;
     }
     body.dark-mode .stat-box,
-    body.dark-mode .overview-card,
     body.dark-mode .chart-panel,
-    body.dark-mode .modal-content,
-    body.dark-mode .history-card,
     body.dark-mode .guide-card {
       background-color: #291e17;
       border-color: #5d4037;
@@ -505,15 +502,6 @@
     body.dark-mode .stat-footer {
       border-top-color: #4a3525;
       color: #bcaaa4;
-    }
-    body.dark-mode .overview-header {
-      color: #f5ebe6;
-      border-bottom-color: #4a3525;
-    }
-    body.dark-mode .overview-count {
-      background-color: #1a130f;
-      color: #d7ccc8;
-      border-color: #4e3524;
     }
     body.dark-mode .tip-banner {
       background-color: #2c1f15;
@@ -526,16 +514,125 @@
       border-color: #935116;
       color: #ffcc80;
     }
-    body.dark-mode .modal-header {
-      background: #1e1510;
-      border-bottom-color: #4e3524;
-    }
-    body.dark-mode .add-form-container {
-      background-color: #1a130f;
-      border-color: #5d4037;
-    }
     body.dark-mode strong {
       color: #f5ebe6 !important;
+    }
+
+    /* --- OVERVIEW CARDS (Dark Mode) --- */
+    body.dark-mode .overview-card {
+      background-color: #241a13;
+      border-color: #5d4037;
+      box-shadow: 0 4px 0px #120c08;
+    }
+    body.dark-mode .overview-header {
+      color: #f5ebe6;
+      border-bottom-color: #4a3525;
+    }
+    body.dark-mode .overview-count {
+      background-color: #16110d;
+      color: #d7ccc8;
+      border-color: #4e3524;
+    }
+
+    /* --- MODALS (Dark Mode) --- */
+    body.dark-mode .modal {
+      background: rgba(12, 17, 9, 0.9);
+    }
+    body.dark-mode .modal-content {
+      background-color: #201711;
+      border-color: #5d4037;
+      box-shadow: 0 8px 0px #100a05;
+    }
+    body.dark-mode .modal-header {
+      background: #342115;
+      border-bottom-color: #5d4037;
+      color: #FFF8DC;
+    }
+
+    /* --- OVERVIEW SUMMARY MODAL (Dark Mode) --- */
+    body.dark-mode #categorySummaryModal .modal-body > div:first-child {
+      background-color: #1a120c !important;
+      border-color: #d2691e !important;
+    }
+    body.dark-mode #categorySummaryTotals {
+      color: #81c784 !important;
+    }
+    body.dark-mode #categorySummaryTotals span {
+      color: #81c784 !important;
+    }
+    body.dark-mode #categorySummaryBody > div {
+      background-color: #281d16 !important;
+      border-color: #5d4037 !important;
+      color: #ede0d4 !important;
+    }
+    body.dark-mode #categorySummaryBody span,
+    body.dark-mode #categorySummaryBody div {
+      color: #d7ccc8 !important;
+    }
+    body.dark-mode #categorySummaryBody strong {
+      color: #ffcc80 !important;
+    }
+    body.dark-mode #categorySummaryBody span[style*="background:#E8F5E9"] {
+      background-color: #1b381e !important;
+      border-color: #2e7d32 !important;
+      color: #81c784 !important;
+    }
+
+    /* --- EDIT / HISTORY MODAL (Dark Mode) --- */
+    body.dark-mode #columnHistoryModal .modal-body > div:first-child {
+      background-color: #1a120c !important;
+      border-color: #d2691e !important;
+    }
+    body.dark-mode #columnHistoryStats {
+      color: #81c784 !important;
+    }
+    body.dark-mode #editFilterContainer {
+      background-color: #1a120c !important;
+      border-color: #2e7d32 !important;
+    }
+    body.dark-mode #editNpcDropdown,
+    body.dark-mode #editWeekFilterDropdown,
+    body.dark-mode #addModalWeekSelect {
+      background-color: #16110d !important;
+      border-color: #5d4037 !important;
+      color: #f5ebe6 !important;
+    }
+    body.dark-mode .add-form-container {
+      background-color: #1a120c !important;
+      border-color: #5d4037 !important;
+    }
+    body.dark-mode .add-form-container div {
+      color: #ffcc80 !important;
+    }
+    body.dark-mode #addModalName,
+    body.dark-mode #addModalCost,
+    body.dark-mode #addModalTickets {
+      background-color: #16110d !important;
+      border-color: #5d4037 !important;
+      color: #f5ebe6 !important;
+    }
+    body.dark-mode .history-card {
+      background-color: #281d16 !important;
+      border-color: #5d4037 !important;
+      color: #ede0d4 !important;
+    }
+    body.dark-mode .history-info span,
+    body.dark-mode .history-info div {
+      color: #d7ccc8 !important;
+    }
+    body.dark-mode .history-info strong {
+      color: #ffcc80 !important;
+    }
+    body.dark-mode .history-controls span {
+      color: #bcaaa4 !important;
+    }
+    body.dark-mode .history-controls input {
+      background-color: #16110d !important;
+      border-color: #5d4037 !important;
+      color: #f5ebe6 !important;
+    }
+    body.dark-mode .history-controls input:focus {
+      border-color: #ff9800 !important;
     }
 
     /* Mobile Adaptations */
