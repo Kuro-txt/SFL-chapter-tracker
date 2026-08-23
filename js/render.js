@@ -107,9 +107,9 @@ export function recalculateAll() {
     return null;
   };
 
-  // 1. Deliveries Calculation (Per NPC Per Day Double Delivery Rule)
+  // 1. Deliveries Calculation
   const masterDeliveries = getDeliveryRecords();
-  const npcDoubleDeliveryClaimed = new Set(); // Key: `${npcClean}_${compDate}`
+  const npcDoubleDeliveryClaimed = new Set();
 
   const sortedDeliveries = [...masterDeliveries].sort((a, b) => {
     const aTime = a.completedAt || 0;
@@ -161,7 +161,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Bounties Calculation (Only counts in Done Today if timestamp === today)
+  // 2. Bounties Calculation
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -196,7 +196,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Chores Calculation (Only counts in Done Today if timestamp === today)
+  // 3. Chores Calculation
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -320,6 +320,37 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const badgeEl = document.getElementById('chartSummaryBadge');
   if (!chartContainer) return;
 
+  const isDark = document.body.classList.contains('dark-mode');
+
+  // Chart Dynamic Theme Colors
+  const colors = {
+    gridLine: isDark ? '#3d2b1f' : '#E0D5C1',
+    gridText: isDark ? '#bcaaa4' : '#8C7853',
+    targetLine: isDark ? '#90a4ae' : '#9E9E9E',
+    targetText: isDark ? '#cfd8dc' : '#757575',
+    axisLabel: isDark ? '#f5ebe6' : '#5C4033',
+    costLabel: isDark ? '#ffcc80' : '#8C7853',
+    
+    // Normal Completed Bar
+    barDoneFill: isDark ? '#2e7d32' : '#4CAF50',
+    barDoneStroke: isDark ? '#81c784' : '#2E7D32',
+    barDoneText: isDark ? '#a5d6a7' : '#1b5e20',
+
+    // Current Week Bar
+    barCurFill: isDark ? '#e65100' : '#D2691E',
+    barCurStroke: isDark ? '#ffb74d' : '#8B4513',
+    barCurText: isDark ? '#ffe082' : '#8B4513',
+
+    // Empty Bars
+    barEmptyFill: isDark ? '#1a120c' : '#EFEBE9',
+    barEmptyStroke: isDark ? '#4a3525' : '#BCAAA4',
+    barEmptyText: isDark ? '#756156' : '#9E9E9E',
+
+    // Current Week Empty Bar
+    barCurEmptyFill: isDark ? '#331f11' : '#FFE0B2',
+    barCurEmptyStroke: isDark ? '#ff9800' : '#8B4513'
+  };
+
   const weekMondays = [];
   const baseEpoch = new Date('2026-08-10T00:00:00.000Z');
   for (let w = 0; w < (totalPlannedWeeks || 12); w++) {
@@ -361,9 +392,9 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const leftPadding = 50;
   const rightPadding = 40;
   const topPadding = 40;
-  const bottomPadding = 50;
+  const bottomPadding = 52;
 
-  const chartHeight = 260;
+  const chartHeight = 265;
   const plotHeight = chartHeight - topPadding - bottomPadding;
   const chartWidth = leftPadding + (displayItems.length * (barWidth + barGap)) + rightPadding;
 
@@ -376,8 +407,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     const val = Math.round((yMax / gridCount) * i);
     const yPos = topPadding + plotHeight - (val / yMax) * plotHeight;
     gridLinesSvg += `
-      <line x1="${leftPadding}" y1="${yPos}" x2="${chartWidth - rightPadding}" y2="${yPos}" stroke="#E0D5C1" stroke-dasharray="3,3" stroke-width="1.5" />
-      <text x="${leftPadding - 8}" y="${yPos + 4}" font-size="11" font-weight="bold" fill="#8C7853" text-anchor="end">${val}</text>
+      <line x1="${leftPadding}" y1="${yPos}" x2="${chartWidth - rightPadding}" y2="${yPos}" stroke="${colors.gridLine}" stroke-dasharray="3,3" stroke-width="1.5" />
+      <text x="${leftPadding - 8}" y="${yPos + 4}" font-size="11" font-weight="bold" fill="${colors.gridText}" text-anchor="end">${val}</text>
     `;
   }
 
@@ -385,8 +416,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   if (targetPacePerWeek > 0) {
     const targetY = topPadding + plotHeight - (targetPacePerWeek / yMax) * plotHeight;
     targetLineSvg += `
-      <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="#9E9E9E" stroke-dasharray="5,5" stroke-width="2" />
-      <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="10" font-weight="900" fill="#757575">Pace: ${targetPacePerWeek}</text>
+      <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="${colors.targetLine}" stroke-dasharray="5,5" stroke-width="2" />
+      <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="10" font-weight="900" fill="${colors.targetText}">Pace: ${targetPacePerWeek}</text>
     `;
   }
 
@@ -396,12 +427,14 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     const barHeight = Math.max(4, (item.tickets / yMax) * plotHeight);
     const yPos = topPadding + plotHeight - barHeight;
 
-    let barFill = item.hasData ? '#4CAF50' : '#EFEBE9';
-    let strokeColor = item.hasData ? '#2E7D32' : '#BCAAA4';
+    let barFill = item.hasData ? colors.barDoneFill : colors.barEmptyFill;
+    let strokeColor = item.hasData ? colors.barDoneStroke : colors.barEmptyStroke;
+    let tixTextColor = item.hasData ? colors.barDoneText : colors.barEmptyText;
 
     if (item.isCurrent) {
-      barFill = item.hasData ? '#D2691E' : '#FFE0B2';
-      strokeColor = '#8B4513';
+      barFill = item.hasData ? colors.barCurFill : colors.barCurEmptyFill;
+      strokeColor = item.hasData ? colors.barCurStroke : colors.barCurEmptyStroke;
+      tixTextColor = item.hasData ? colors.barCurText : colors.barEmptyText;
     }
 
     const tixLabel = item.tickets > 0 ? `${item.tickets}` : '0';
@@ -412,9 +445,9 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
           <title>${item.label} (Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.000 SFL'}</title>
         </rect>
-        <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${strokeColor}" text-anchor="middle">${tixLabel}</text>
-        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="#5C4033" text-anchor="middle">${item.label}</text>
-        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 34}" font-size="9" font-weight="bold" fill="#8C7853" text-anchor="middle">${costText}</text>` : ''}
+        <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
+        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
+        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 35}" font-size="9" font-weight="bold" fill="${colors.costLabel}" text-anchor="middle">${costText}</text>` : ''}
       </g>
     `;
   });

@@ -85,7 +85,7 @@ export function openCategorySummaryModal(cat) {
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
           <span>Yield: 🎟️ ${finalTickets} Tickets</span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
-          <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-size:10px;">
+          <span class="ratio-pill">
             📊 ${itemRatio} SFL / Ticket
           </span>
         </div>
@@ -122,7 +122,7 @@ export function openCategorySummaryModal(cat) {
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#8B4513; font-weight:bold;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
+            <span class="ratio-pill">
               📊 ${itemRatio} SFL / Tix
             </span>
           </div>
@@ -158,7 +158,7 @@ export function openCategorySummaryModal(cat) {
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#2E7D32; font-weight:900;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span style="background:#E8F5E9; color:#2E7D32; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7; font-weight:900; font-size:10px;">
+            <span class="ratio-pill">
               📊 ${itemRatio} SFL / Tix
             </span>
           </div>
@@ -169,7 +169,7 @@ export function openCategorySummaryModal(cat) {
   }
 
   const overallRatio = catTickets > 0 ? formatSFL(catCost / catTickets) : "0.000";
-  totalsEl.innerHTML = `<span>${catTickets} Tickets</span> | <span>${formatSFL(catCost)} SFL</span> | <span style="color:#1B5E20; background:#C8E6C9; padding:2px 6px; border-radius:4px; font-size:11px;">📊 Avg: ${overallRatio} SFL / Tix</span>`;
+  totalsEl.innerHTML = `<span class="sum-stat">${catTickets} Tickets</span> | <span class="sum-stat">${formatSFL(catCost)} SFL</span> | <span class="avg-pill">📊 Avg: ${overallRatio} SFL / Tix</span>`;
   modal.classList.add('show');
 }
 
@@ -208,7 +208,7 @@ export function renderHistoryModalList() {
       </div>
       <div style="display:flex; justify-content:space-between; color:#2E7D32; font-weight:900; font-size:12px; border-bottom:1px dashed #D2B48C; padding-bottom:4px;">
         <span>Daily Yield: +${logTickets} Tickets | Cost: ${formatSFL(logCost)} SFL</span>
-        <span style="background:#E8F5E9; padding:1px 6px; border-radius:4px; border:1px solid #A5D6A7;">${logRatio} SFL / Ticket</span>
+        <span class="ratio-pill">${logRatio} SFL / Ticket</span>
       </div>
       <div style="display:flex; flex-direction:column; gap:3px;">${delivHtml}</div>
     </div>`;
