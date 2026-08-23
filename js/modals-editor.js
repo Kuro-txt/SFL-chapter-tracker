@@ -122,7 +122,6 @@ export function renderColumnHistoryModalList() {
   const bodyEl = document.getElementById('columnHistoryBody');
   let records = [];
 
-  // Generate week select options with full dates for all 12 weeks
   let weekOptionsHtml = CHAPTER_WEEKS.map(wk => {
     const selectedAttr = (wk.num === 2) ? 'selected' : '';
     return `<option value="${wk.id}" ${selectedAttr}>${wk.label}</option>`;
@@ -266,19 +265,19 @@ export function renderColumnHistoryModalList() {
         : `deleteWeeklyItem('${r.weekId}', '${r.mapKey}')`;
 
       const animalLevelTag = (type === 'animalBounty' && r.level) 
-        ? `<span style="background:#EBDEF0; color:#6C3483; font-size:10px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #D7BDE2; margin-left:4px;">Lvl ${r.level}</span>` 
+        ? `<span class="tag-pill tag-lvl">Lvl ${r.level}</span>` 
         : '';
 
       const manualTag = r.isManual
-        ? `<span style="background:#E0F2F1; color:#00796B; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #B2DFDB; margin-left:4px;">📌 MANUAL</span>`
+        ? `<span class="tag-pill tag-manual">📌 MANUAL</span>`
         : '';
 
       const stackedTag = r.isStacked
-        ? `<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>`
+        ? `<span class="tag-pill tag-stacked">🥞 STACKED</span>`
         : '';
 
       const skippedTag = r.isSkipped
-        ? `<span style="background:#FFEBEE; color:#C62828; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFCDD2; margin-left:4px;">✕ SKIPPED</span>`
+        ? `<span class="tag-pill tag-skipped">✕ SKIPPED</span>`
         : '';
 
       const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';

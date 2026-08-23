@@ -65,10 +65,10 @@ export function openCategorySummaryModal(cat) {
       }
 
       const doubleBadge = (isDoubleDeliveryActive && !isManual) 
-        ? '<span style="background:#FFE0B2; color:#E65100; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFB74D; margin-left:4px;">⚡ 2X EVENT</span>' 
+        ? '<span class="tag-pill tag-double">⚡ 2X EVENT</span>' 
         : '';
-      const isStackedBadge = d.isStacked ? '<span style="background:#E1BEE7; color:#4A148C; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #CE93D8; margin-left:4px;">🥞 STACKED</span>' : '';
-      const isSkippedBadge = d.isSkipped ? '<span style="background:#FFEBEE; color:#C62828; font-size:9px; font-weight:900; padding:1px 5px; border-radius:4px; border:1px solid #FFCDD2; margin-left:4px;">✕ SKIPPED</span>' : '';
+      const isStackedBadge = d.isStacked ? '<span class="tag-pill tag-stacked">🥞 STACKED</span>' : '';
+      const isSkippedBadge = d.isSkipped ? '<span class="tag-pill tag-skipped">✕ SKIPPED</span>' : '';
       const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
 
       let statusBadge = `<span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>`;
@@ -114,10 +114,11 @@ export function openCategorySummaryModal(cat) {
         catCost += itemCost;
       }
       const lvl = resolveAnimalLevel(b);
+      const lvlTag = lvl ? `<span class="tag-pill tag-lvl">Lvl ${lvl}</span>` : '';
 
       return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
-          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()} ${lvl ? '(Lvl ' + lvl + ')' : ''}</strong><br/>
+          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()}</strong>${lvlTag}<br/>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#8B4513; font-weight:bold;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
