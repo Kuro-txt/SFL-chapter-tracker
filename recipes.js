@@ -107,20 +107,20 @@ export const SFL_RECIPES = {
   "yellow balloon flower": { "yellow lotus": 1, "coins": 32 },
   "red daffodil": { "yellow pansy": 1, "coins": 32 },
 
+// ==========================================
+  // EXOTICS, MUTANTS & GIANT FRUITS
   // ==========================================
-  // EXOTICS & GIANT FRUITS
-  // ==========================================
-  "purple cauliflower": { "coins": 704 },
-  "adirondack potato": { "coins": 640 },
-  "chiogga": { "coins": 1920 },
-  "black magic": { "coins": 5200 },
-  "warty goblin pumpkin": { "coins": 400 },
+  "purple cauliflower": { "coins": 7040 },
+  "adirondack potato": { "coins": 6400 },
+  "chiogga": { "coins": 19200 },
+  "chioggia": { "coins": 19200 }, // alias to prevent delivery name mismatches
+  "black magic": { "coins": 52000 },
+  "warty goblin pumpkin": { "coins": 4000 },
   "white carrot": { "coins": 3200 },
   "golden helios": { "coins": 45000 },
   "giant orange": { "coins": 500 },
   "giant banana": { "coins": 4000 },
   "giant apple": { "coins": 1500 },
-
   // ==========================================
   // CRUSTACEA & FISH
   // ==========================================
