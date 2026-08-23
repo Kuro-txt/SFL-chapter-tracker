@@ -346,7 +346,7 @@
     .legend-box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); }
     .chart-container { width: 100%; overflow-x: auto; padding-bottom: 4px; }
 
-    /* Badges & Status Tags (Light Theme Defaults) */
+    /* Badges & Status Tags */
     .badge {
       padding: 3px 8px;
       font-size: clamp(9.5px, 1vw, 11px);
@@ -368,6 +368,34 @@
       background-color: #FFE0B2; 
       color: #B73E00 !important; 
       border-color: #FFB74D; 
+    }
+
+    /* Efficiency & Ratio Badges */
+    .ratio-pill {
+      background-color: #E8F5E9;
+      color: #1B5E20;
+      border: 1px solid #A5D6A7;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-weight: 900;
+      font-size: 10.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+    }
+    .avg-pill {
+      background-color: #C8E6C9;
+      color: #1B5E20;
+      border: 1px solid #81C784;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-weight: 900;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
     }
 
     /* Tags & Pills */
@@ -570,7 +598,14 @@
       color: #f5ebe6 !important;
     }
 
-    /* --- VIBRANT BADGE OVERRIDES IN DARK MODE --- */
+    /* Stat Box Ratios in Dark Mode */
+    body.dark-mode #statTotalRatio,
+    body.dark-mode #statWeekRatio,
+    body.dark-mode #statEarnedRatio {
+      color: #81c784 !important;
+    }
+
+    /* Badges & Status Overrides (Dark Mode) */
     body.dark-mode .badge-done {
       background-color: #1b5e20 !important;
       color: #ffffff !important;
@@ -584,7 +619,16 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     }
 
-    /* --- TAG PILLS (Dark Mode) --- */
+    /* Ratio & Avg Pills in Dark Mode */
+    body.dark-mode .ratio-pill,
+    body.dark-mode .avg-pill {
+      background-color: #1b381e !important;
+      color: #a5d6a7 !important;
+      border-color: #388e3c !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Tag Pills Overrides (Dark Mode) */
     body.dark-mode .tag-lvl {
       background: #AB47BC;
       color: #FFFFFF !important;
@@ -611,7 +655,7 @@
       border: 1px solid #FFE0B2;
     }
 
-    /* --- OVERVIEW CARDS (Dark Mode) --- */
+    /* Overview Cards (Dark Mode) */
     body.dark-mode .overview-card {
       background-color: #241a13;
       border-color: #5d4037;
@@ -627,7 +671,7 @@
       border-color: #4e3524;
     }
 
-    /* --- MODALS (Dark Mode) --- */
+    /* Modals (Dark Mode) */
     body.dark-mode .modal {
       background: rgba(12, 17, 9, 0.9);
     }
@@ -642,16 +686,16 @@
       color: #FFF8DC;
     }
 
-    /* --- OVERVIEW SUMMARY MODAL (Dark Mode) --- */
+    /* Overview Summary Modal (Dark Mode) */
     body.dark-mode #categorySummaryModal .modal-body > div:first-child {
       background-color: #1a120c !important;
       border-color: #d2691e !important;
     }
     body.dark-mode #categorySummaryTotals {
-      color: #81c784 !important;
+      color: #f5ebe6 !important;
     }
-    body.dark-mode #categorySummaryTotals span {
-      color: #81c784 !important;
+    body.dark-mode #categorySummaryTotals span.sum-stat {
+      color: #ffcc80 !important;
     }
     body.dark-mode #categorySummaryBody > div {
       background-color: #281d16 !important;
@@ -665,13 +709,8 @@
     body.dark-mode #categorySummaryBody strong {
       color: #ffcc80 !important;
     }
-    body.dark-mode #categorySummaryBody span[style*="background:#E8F5E9"] {
-      background-color: #1b381e !important;
-      border-color: #2e7d32 !important;
-      color: #81c784 !important;
-    }
 
-    /* --- EDIT / HISTORY MODAL (Dark Mode) --- */
+    /* Edit / History Modal (Dark Mode) */
     body.dark-mode #columnHistoryModal .modal-body > div:first-child {
       background-color: #1a120c !important;
       border-color: #d2691e !important;
@@ -1020,9 +1059,11 @@
         <button onclick="closeCategorySummaryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <div style="padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
           <span style="font-size:11px; font-weight:900; color:#8B4513;">TICKED TOTALS:</span>
-          <span id="categorySummaryTotals" style="font-size:12px; font-weight:900; color:#2E7D32;">0 Tickets | 0.000 SFL</span>
+          <div id="categorySummaryTotals" style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:900;">
+            <span class="sum-stat">0 Tickets</span> | <span class="sum-stat">0.000 SFL</span> | <span class="avg-pill">📊 Avg: 0.000 SFL / Tix</span>
+          </div>
         </div>
         <div id="categorySummaryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
           <p style="font-size: 12px; color: #8C7853; font-weight: bold;">Loading summary...</p>
