@@ -346,16 +346,29 @@
     .legend-box { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.2); }
     .chart-container { width: 100%; overflow-x: auto; padding-bottom: 4px; }
 
+    /* Badges & Status Tags (Light Theme Defaults) */
     .badge {
-      padding: 3px 7px;
+      padding: 3px 8px;
       font-size: clamp(9.5px, 1vw, 11px);
       font-weight: 900;
       border-radius: 5px;
       text-transform: uppercase;
-      border: 1px solid rgba(0,0,0,0.2);
+      letter-spacing: 0.3px;
+      border: 1px solid rgba(0,0,0,0.25);
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
     }
-    .badge-done { background-color: #C8E6C9; color: #2E7D32; }
-    .badge-active { background-color: #FFE0B2; color: #E65100; }
+    .badge-done { 
+      background-color: #C8E6C9; 
+      color: #1B5E20 !important; 
+      border-color: #81C784; 
+    }
+    .badge-active { 
+      background-color: #FFE0B2; 
+      color: #B73E00 !important; 
+      border-color: #FFB74D; 
+    }
 
     /* Tags & Pills */
     .tag-pill {
@@ -557,7 +570,21 @@
       color: #f5ebe6 !important;
     }
 
-    /* Tag Pills Dark Mode Overrides */
+    /* --- VIBRANT BADGE OVERRIDES IN DARK MODE --- */
+    body.dark-mode .badge-done {
+      background-color: #1b5e20 !important;
+      color: #ffffff !important;
+      border: 1px solid #4caf50 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    body.dark-mode .badge-active {
+      background-color: #bf360c !important;
+      color: #ffffff !important;
+      border: 1px solid #ff9800 !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    /* --- TAG PILLS (Dark Mode) --- */
     body.dark-mode .tag-lvl {
       background: #AB47BC;
       color: #FFFFFF !important;
@@ -584,7 +611,7 @@
       border: 1px solid #FFE0B2;
     }
 
-    /* Overview Cards Dark Mode */
+    /* --- OVERVIEW CARDS (Dark Mode) --- */
     body.dark-mode .overview-card {
       background-color: #241a13;
       border-color: #5d4037;
@@ -600,7 +627,7 @@
       border-color: #4e3524;
     }
 
-    /* Modals Dark Mode */
+    /* --- MODALS (Dark Mode) --- */
     body.dark-mode .modal {
       background: rgba(12, 17, 9, 0.9);
     }
@@ -615,7 +642,7 @@
       color: #FFF8DC;
     }
 
-    /* Overview Summary Modal Dark Mode */
+    /* --- OVERVIEW SUMMARY MODAL (Dark Mode) --- */
     body.dark-mode #categorySummaryModal .modal-body > div:first-child {
       background-color: #1a120c !important;
       border-color: #d2691e !important;
@@ -644,7 +671,7 @@
       color: #81c784 !important;
     }
 
-    /* Edit / History Modal Dark Mode */
+    /* --- EDIT / HISTORY MODAL (Dark Mode) --- */
     body.dark-mode #columnHistoryModal .modal-body > div:first-child {
       background-color: #1a120c !important;
       border-color: #d2691e !important;
