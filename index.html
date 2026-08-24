@@ -165,88 +165,102 @@
       if (savedKey) document.getElementById('apiKey').value = savedKey;
     });
 
-async function fetchClientData() {
-  const source = document.getElementById('dataSource').value;
-  const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const out = document.getElementById('output');
-
-  localStorage.setItem('sfl_farmId', farmId);
-  if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
-
-  const t0 = performance.now();
-  document.getElementById('statusDisplay').textContent = 'Fetching...';
-
-  try {
-    if (source === 'localStorage') {
-      const storageData = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        try {
-          storageData[key] = JSON.parse(localStorage.getItem(key));
-        } catch (e) {
-          storageData[key] = localStorage.getItem(key);
-        }
+    // Detect if we are on GitHub pages and need to route to Vercel backend
+    function getApiBaseUrl() {
+      const savedBackend = localStorage.getItem('sfl_backend_url');
+      if (savedBackend && savedBackend.trim() !== '') {
+        return savedBackend.trim().replace(/\/+$/, '');
       }
-      fullPayload = storageData;
-      document.getElementById('statusDisplay').textContent = '200 OK (Local)';
-    } else {
-      const targetUrl = source === 'rawSfl'
-        ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
-        : `https://sfl.world/api/v1/prices`;
-
-      out.textContent = `Fetching data...`;
-
-      // Candidate list: Try own backend proxy first, then fallback proxies
-      const candidateUrls = [
-        // 1. Direct project backend proxy (if running via Vercel / server)
-        source === 'rawSfl' 
-          ? `/api/chapter?action=rawSfl&farmId=${encodeURIComponent(farmId)}${apiKey ? `&apiKey=${encodeURIComponent(apiKey)}` : ''}`
-          : `/api/chapter?action=rawPrices`,
-        // 2. AllOrigins CORS Proxy
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-        // 3. Codeet CORS Proxy
-        `https://proxy.cors.sh/${targetUrl}`,
-        // 4. CorsProxy.io
-        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
-      ];
-
-      let res = null;
-      let lastError = null;
-
-      for (const url of candidateUrls) {
-        try {
-          const headers = { 'Accept': 'application/json' };
-          if (apiKey && !url.includes('/api/chapter')) headers['x-api-key'] = apiKey;
-
-          const testRes = await fetch(url, { headers });
-          if (testRes.ok) {
-            res = testRes;
-            break;
-          }
-        } catch (err) {
-          lastError = err;
-        }
+      if (window.location.hostname.includes('github.io')) {
+        return 'https://kuro-txt-sfl-chapter-tracker.vercel.app';
       }
-
-      if (!res || !res.ok) {
-        throw new Error(lastError?.message || `403 Forbidden: Sunflower Land blocked the request. Use your local server endpoint (e.g. localhost:3000 or Vercel deployment) or provide an SFL API Key.`);
-      }
-
-      fullPayload = await res.json();
-      const elapsed = (performance.now() - t0).toFixed(0);
-      document.getElementById('statusDisplay').textContent = `${res.status} OK`;
-      document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+      return ''; // Use relative path if running locally or directly on Vercel
     }
 
-    populateSubFilterDropdown();
-    applyViewFilter();
+    async function fetchClientData() {
+      const source = document.getElementById('dataSource').value;
+      const farmId = document.getElementById('farmId').value.trim() || '8472883706403914';
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const out = document.getElementById('output');
 
-  } catch (err) {
-    document.getElementById('statusDisplay').textContent = 'Error';
-    out.textContent = `❌ Fetch Failed: ${err.message}`;
-  }
-}
+      localStorage.setItem('sfl_farmId', farmId);
+      if (apiKey) localStorage.setItem('sfl_apiKey', apiKey);
+
+      const t0 = performance.now();
+      document.getElementById('statusDisplay').textContent = 'Fetching...';
+
+      try {
+        if (source === 'localStorage') {
+          const storageData = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            try {
+              storageData[key] = JSON.parse(localStorage.getItem(key));
+            } catch (e) {
+              storageData[key] = localStorage.getItem(key);
+            }
+          }
+          fullPayload = storageData;
+          document.getElementById('statusDisplay').textContent = '200 OK (Local)';
+          const elapsed = (performance.now() - t0).toFixed(0);
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+        } else {
+          const baseUrl = getApiBaseUrl();
+          const targetUrl = source === 'rawSfl'
+            ? `https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`
+            : `https://sfl.world/api/v1/prices`;
+
+          out.textContent = `Fetching data...`;
+
+          // Candidate list: Try own backend proxy first, then fallback to public proxies
+          const candidateUrls = [
+            // 1. Direct project backend proxy (handles GitHub Pages cross-origin)
+            source === 'rawSfl' 
+              ? `${baseUrl}/api/chapter?action=rawSfl&farmId=${encodeURIComponent(farmId)}${apiKey ? `&apiKey=${encodeURIComponent(apiKey)}` : ''}`
+              : `${baseUrl}/api/chapter?action=rawPrices`,
+            // 2. AllOrigins CORS Proxy
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+            // 3. CorsProxy.io
+            `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+          ];
+
+          let res = null;
+          let lastError = null;
+
+          for (const url of candidateUrls) {
+            try {
+              const headers = { 'Accept': 'application/json' };
+              if (apiKey && !url.includes('/api/chapter')) headers['x-api-key'] = apiKey;
+
+              const testRes = await fetch(url, { headers });
+              if (testRes.ok) {
+                res = testRes;
+                break; // Stop at first successful response
+              }
+            } catch (err) {
+              lastError = err;
+            }
+          }
+
+          if (!res || !res.ok) {
+            throw new Error(lastError?.message || `403/404: Sunflower Land blocked the request, or your Vercel backend isn't reachable.`);
+          }
+
+          fullPayload = await res.json();
+          const elapsed = (performance.now() - t0).toFixed(0);
+          document.getElementById('statusDisplay').textContent = `${res.status} OK`;
+          document.getElementById('timeDisplay').textContent = `${elapsed}ms`;
+        }
+
+        populateSubFilterDropdown();
+        applyViewFilter();
+
+      } catch (err) {
+        document.getElementById('statusDisplay').textContent = 'Error';
+        out.textContent = `❌ Fetch Failed: ${err.message}`;
+      }
+    }
+
     function handleCategoryChange() {
       populateSubFilterDropdown();
       applyViewFilter();
