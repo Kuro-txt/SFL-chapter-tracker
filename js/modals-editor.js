@@ -327,7 +327,8 @@ export async function addNewItemFromModal() {
   const baseMonday = new Date('2026-08-10T00:00:00.000Z');
   baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
   const targetWeekId = getMondayBasedWeekId(baseMonday);
-  const targetWeekTimestamp = baseMonday.getTime();
+  const targetWeekTimestamp = Date.now();
+  const todayStr = new Date().toISOString().split('T')[0];
 
   if (type === 'delivery') {
     const newDeliv = {
@@ -342,7 +343,8 @@ export async function addNewItemFromModal() {
       completed: true,
       isSkipped: false,
       completedAt: targetWeekTimestamp,
-      completedDate: targetWeekId,
+      completedDate: todayStr,
+      checkedToday: true,
       isManual: true,
       weekId: targetWeekId
     };
@@ -367,7 +369,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: targetWeekTimestamp,
-      completedDate: targetWeekId,
+      completedDate: todayStr,
+      checkedToday: true,
       isManual: true,
       weekId: targetWeekId
     };
@@ -391,7 +394,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: targetWeekTimestamp,
-      completedDate: targetWeekId,
+      completedDate: todayStr,
+      checkedToday: true,
       isManual: true,
       weekId: targetWeekId
     };
@@ -415,9 +419,12 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
     if (newStatus) {
       target.isSkipped = false;
       target.status = 'completed';
-      if (!target.completedDate) target.completedDate = target.weekId || new Date().toISOString().split('T')[0];
+      target.completedAt = target.completedAt || Date.now();
+      target.completedDate = target.completedDate || new Date().toISOString().split('T')[0];
+      target.checkedToday = true;
     } else {
       target.status = 'active';
+      target.checkedToday = false;
     }
     renderColumnHistoryModalList();
     recalculateAll();
@@ -455,7 +462,15 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
     const newStatus = !(targetItem.checked !== undefined ? targetItem.checked : Boolean(targetItem.completed));
     targetItem.checked = newStatus;
     targetItem.completed = newStatus;
-    targetItem.completedAt = newStatus ? (targetItem.completedAt || Date.now()) : null;
+    if (newStatus) {
+      targetItem.completedAt = targetItem.completedAt || Date.now();
+      targetItem.completedDate = targetItem.completedDate || new Date().toISOString().split('T')[0];
+      targetItem.checkedToday = true;
+    } else {
+      targetItem.completedAt = null;
+      targetItem.completedDate = null;
+      targetItem.checkedToday = false;
+    }
 
     renderColumnHistoryModalList();
     recalculateAll();
