@@ -873,6 +873,7 @@
     </div>
 
     <div class="stats-grid">
+      <!-- 1. TOTAL TICKETS (Includes all components: Track + Login) -->
       <div id="boxTotalTickets" class="stat-box">
         <div class="tooltip" id="tooltipTotal">
           <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
@@ -891,6 +892,7 @@
         </div>
       </div>
 
+      <!-- 2. THIS WEEK (Game activities only) -->
       <div id="boxWeekTickets" class="stat-box" style="border-color: #D2691E;">
         <div class="tooltip" id="tooltipWeek">
           <div>📅 <strong>WEEK BREAKDOWN:</strong></div>
@@ -898,8 +900,6 @@
           <div id="tipWeekBounty">📜 Bounties: 0 Tix</div>
           <div id="tipWeekAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
-          <div id="tipWeekTrack">🛤️ Track: 0 Tix</div>
-          <div id="tipWeekLogin">🎁 Daily Login: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK</div>
         <div id="statWeekTickets" class="stat-val" style="color: #D2691E;">0 Tickets</div>
@@ -909,6 +909,7 @@
         </div>
       </div>
 
+      <!-- 3. DONE TODAY (Game activities only) -->
       <div id="boxTodayTickets" class="stat-box" style="border-color: #4CAF50;">
         <div class="tooltip" id="tooltipToday">
           <div>✨ <strong>TODAY'S BREAKDOWN:</strong></div>
@@ -916,7 +917,6 @@
           <div id="tipTodayBounty">📜 Bounties: 0 Tix</div>
           <div id="tipTodayAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
           <div id="tipTodayChore">🧹 Chores: 0 Tix</div>
-          <div id="tipTodayLogin">🎁 Daily Login: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #2E7D32;">✨ DONE TODAY</div>
         <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0 Tickets</div>
@@ -926,6 +926,7 @@
         </div>
       </div>
 
+      <!-- 4. CHAPTER TARGET -->
       <div class="stat-box" style="border-color: #8E44AD; cursor: default;">
         <div class="stat-title" style="color: #8E44AD;">🎯 CHAPTER TARGET</div>
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
