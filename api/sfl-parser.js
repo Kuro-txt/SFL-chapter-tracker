@@ -139,11 +139,26 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
 
   const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
-    let recipeTotal = 0;
-    Object.entries(recipe).forEach(([ingName, ingQty]) => {
-      recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
-    });
-    return recipeTotal;
+    // 1. Direct SFL Recipe Value
+    if (recipe.sfl !== undefined) return recipe.sfl;
+    
+    // 2. Direct Coin Conversion
+    if (recipe.coins !== undefined) {
+      const coinsPerSfl = priceMap['sfl_coin_rate'] || 320;
+      return recipe.coins / coinsPerSfl;
+    }
+
+    // 3. Multi-Ingredient Breakdown
+    const ingredients = recipe.ingredients || recipe;
+    if (typeof ingredients === 'object') {
+      let recipeTotal = 0;
+      Object.entries(ingredients).forEach(([ingName, ingQty]) => {
+        if (typeof ingQty === 'number') {
+          recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
+        }
+      });
+      return recipeTotal;
+    }
   }
   return 0;
 }
@@ -242,6 +257,8 @@ export function extractDoubleDeliveryDates(farm) {
 
 export function parseFarmData(farm, priceMap) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
+  const nowMs = Date.now();
+  const todayUtcStr = new Date(nowMs).toISOString().split('T')[0];
 
   // 1. NPC Lifetime Stats
   const rawNpcs = farm.npcs || {};
@@ -284,6 +301,13 @@ export function parseFarmData(farm, priceMap) {
         ? `deliv_${npcClean}_d${npcStat.deliveryCount}` 
         : `deliv_${npcClean}_active`;
 
+      const compTimestamp = typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? nowMs : null);
+      let compDateStr = null;
+      if (compTimestamp) {
+        const ms = compTimestamp < 1e11 ? compTimestamp * 1000 : compTimestamp;
+        compDateStr = new Date(ms).toISOString().split('T')[0];
+      }
+
       deliveryList.push({
         id: canonicalId,
         from: order.from,
@@ -297,7 +321,8 @@ export function parseFarmData(farm, priceMap) {
         isChapterNpc: true,
         completed: isCompleted,
         checked: isCompleted,
-        completedAt: typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? Date.now() : null),
+        completedAt: compTimestamp,
+        completedDate: compDateStr,
         isStacked: false,
         deliveryCountAtCreation: isCompleted ? npcStat.deliveryCount : (npcStat.deliveryCount + 1),
         skippedCountAtCreation: npcStat.skippedCount,
@@ -318,8 +343,6 @@ export function parseFarmData(farm, priceMap) {
 
   // 3. Double Delivery Detection
   const doubleDeliveryDatesSet = extractDoubleDeliveryDates(farm);
-  const nowMs = Date.now();
-  const todayUtcStr = new Date(nowMs).toISOString().split('T')[0];
   const isDoubleDeliveryActive = doubleDeliveryDatesSet.has(todayUtcStr);
 
   // 4. Bounties (Only Shiny Feathers / Tickets)
@@ -372,6 +395,15 @@ export function parseFarmData(farm, priceMap) {
       if (typeof b.completedAt === 'number') completionTime = b.completedAt;
       else if (typeof b.claimedAt === 'number') completionTime = b.claimedAt;
       else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) completionTime = completedMap[String(b.id)];
+      else if (isCompleted) completionTime = nowMs;
+
+      let completedDateStr = null;
+      if (completionTime) {
+        const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
+        completedDateStr = new Date(ms).toISOString().split('T')[0];
+      } else if (isCompleted) {
+        completedDateStr = todayUtcStr;
+      }
 
       activeBounties.push({
         id: b.id || uniqueKey,
@@ -384,6 +416,7 @@ export function parseFarmData(farm, priceMap) {
         completed: isCompleted,
         checked: isCompleted,
         completedAt: completionTime,
+        completedDate: completedDateStr,
         checkedToday: false
       });
     });
@@ -402,8 +435,16 @@ export function parseFarmData(farm, priceMap) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      const completionTime = typeof details.completedAt === 'number' ? details.completedAt : null;
+      const completionTime = typeof details.completedAt === 'number' ? details.completedAt : (isCompleted ? nowMs : null);
       const taskLabel = details.name || details.description || key;
+
+      let completedDateStr = null;
+      if (completionTime) {
+        const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
+        completedDateStr = new Date(ms).toISOString().split('T')[0];
+      } else if (isCompleted) {
+        completedDateStr = todayUtcStr;
+      }
 
       choresList.push({
         npc: details.npc || details.from || 'Chore NPC',
@@ -418,6 +459,7 @@ export function parseFarmData(farm, priceMap) {
         completed: isCompleted,
         checked: isCompleted,
         completedAt: completionTime,
+        completedDate: completedDateStr,
         checkedToday: false
       });
     }
