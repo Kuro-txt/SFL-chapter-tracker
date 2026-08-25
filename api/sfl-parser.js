@@ -139,16 +139,13 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
 
   const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
-    // 1. Direct SFL Recipe Value
     if (recipe.sfl !== undefined) return recipe.sfl;
     
-    // 2. Direct Coin Conversion
     if (recipe.coins !== undefined) {
       const coinsPerSfl = priceMap['sfl_coin_rate'] || 320;
       return recipe.coins / coinsPerSfl;
     }
 
-    // 3. Multi-Ingredient Breakdown
     const ingredients = recipe.ingredients || recipe;
     if (typeof ingredients === 'object') {
       let recipeTotal = 0;
@@ -301,7 +298,7 @@ export function parseFarmData(farm, priceMap) {
         ? `deliv_${npcClean}_d${npcStat.deliveryCount}` 
         : `deliv_${npcClean}_active`;
 
-      const compTimestamp = typeof order.completedAt === 'number' ? order.completedAt : (isCompleted ? nowMs : null);
+      const compTimestamp = typeof order.completedAt === 'number' ? order.completedAt : null;
       let compDateStr = null;
       if (compTimestamp) {
         const ms = compTimestamp < 1e11 ? compTimestamp * 1000 : compTimestamp;
@@ -345,7 +342,7 @@ export function parseFarmData(farm, priceMap) {
   const doubleDeliveryDatesSet = extractDoubleDeliveryDates(farm);
   const isDoubleDeliveryActive = doubleDeliveryDatesSet.has(todayUtcStr);
 
-  // 4. Bounties (Only Shiny Feathers / Tickets)
+  // 4. Bounties (No fake nowMs fallback)
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -392,17 +389,18 @@ export function parseFarmData(farm, priceMap) {
       const isCompleted = typeof b.completedAt === 'number' || b.completed === true || b.status === 'completed' || completedMap[String(b.id)] !== undefined;
 
       let completionTime = null;
-      if (typeof b.completedAt === 'number') completionTime = b.completedAt;
-      else if (typeof b.claimedAt === 'number') completionTime = b.claimedAt;
-      else if (completedMap[String(b.id)] !== undefined && completedMap[String(b.id)] !== null) completionTime = completedMap[String(b.id)];
-      else if (isCompleted) completionTime = nowMs;
+      if (typeof b.completedAt === 'number' && b.completedAt > 0) {
+        completionTime = b.completedAt;
+      } else if (typeof b.claimedAt === 'number' && b.claimedAt > 0) {
+        completionTime = b.claimedAt;
+      } else if (completedMap[String(b.id)]) {
+        completionTime = completedMap[String(b.id)];
+      }
 
       let completedDateStr = null;
       if (completionTime) {
         const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
         completedDateStr = new Date(ms).toISOString().split('T')[0];
-      } else if (isCompleted) {
-        completedDateStr = todayUtcStr;
       }
 
       activeBounties.push({
@@ -422,7 +420,7 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 5. Chores
+  // 5. Chores (No fake nowMs fallback)
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
 
@@ -435,15 +433,13 @@ export function parseFarmData(farm, priceMap) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      const completionTime = typeof details.completedAt === 'number' ? details.completedAt : (isCompleted ? nowMs : null);
+      const completionTime = typeof details.completedAt === 'number' && details.completedAt > 0 ? details.completedAt : null;
       const taskLabel = details.name || details.description || key;
 
       let completedDateStr = null;
       if (completionTime) {
         const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
         completedDateStr = new Date(ms).toISOString().split('T')[0];
-      } else if (isCompleted) {
-        completedDateStr = todayUtcStr;
       }
 
       choresList.push({
