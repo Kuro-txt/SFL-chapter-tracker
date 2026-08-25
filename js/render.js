@@ -25,6 +25,7 @@ export function recalculateAll() {
   const now = new Date();
   const todayUtcStr = now.toISOString().split('T')[0];
   const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const startOfTodayUtcMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const currentWeekMonday = getMondayBasedWeekId(now);
 
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
@@ -108,8 +109,18 @@ export function recalculateAll() {
     return null;
   };
 
+  // Robust check: matches Today UTC, Today Local, or timestamp >= 00:00 UTC
   const isItemDoneToday = (item) => {
     if (item.checkedToday) return true;
+    
+    if (item.completedAt) {
+      const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
+      if (!isNaN(ts) && ts > 0) {
+        const ms = ts < 1e11 ? ts * 1000 : ts;
+        if (ms >= startOfTodayUtcMs) return true;
+      }
+    }
+
     const compDate = resolveDateStr(item);
     return compDate === todayUtcStr || compDate === localDateStr;
   };
@@ -168,7 +179,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Bounties Calculation (Fixed Done Today)
+  // 2. Bounties Calculation (Corrected Done Today Accumulation)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -203,7 +214,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Chores Calculation (Fixed Done Today)
+  // 3. Chores Calculation (Corrected Done Today Accumulation)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
