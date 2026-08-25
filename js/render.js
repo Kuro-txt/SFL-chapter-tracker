@@ -281,6 +281,7 @@ export function recalculateAll() {
     });
   });
 
+  // Totals calculations
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   const todayTicketsAll = todayDelivTix + todayBountyTix + todayAnimalBountyTix + todayChoreTix;
@@ -294,6 +295,7 @@ export function recalculateAll() {
   setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
   setElemText('choresCount', `${(state.globalData.chores || []).length} Tasks`);
 
+  // Main Metric Counters
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
   setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.000"} SFL / Ticket`);
@@ -307,6 +309,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
+  // Total Tooltip Breakdown (Retains Track & Login)
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
@@ -314,11 +317,13 @@ export function recalculateAll() {
   setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
+  // Week Tooltip Breakdown (Game Activities Only)
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
   setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix} Tix`);
   setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
 
+  // Today Tooltip Breakdown (Game Activities Only)
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
   setElemText('tipTodayBounty', `📜 Bounties: ${todayBountyTix} Tix`);
   setElemText('tipTodayAnimalBounty', `🐄 Animal Bounties: ${todayAnimalBountyTix} Tix`);
