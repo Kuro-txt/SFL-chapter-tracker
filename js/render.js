@@ -24,6 +24,7 @@ export function recalculateAll() {
 
   const now = new Date();
   const todayUtcStr = now.toISOString().split('T')[0];
+  const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const currentWeekMonday = getMondayBasedWeekId(now);
 
   const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
@@ -95,16 +96,22 @@ export function recalculateAll() {
     return Boolean(item.completed);
   };
 
-  // Safe resolver that returns null if timestamp is absent
   const resolveDateStr = (item) => {
     if (item.completedDate) return item.completedDate;
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
-        return new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
+        const ms = ts < 1e11 ? ts * 1000 : ts;
+        return new Date(ms).toISOString().split('T')[0];
       }
     }
     return null;
+  };
+
+  const isItemDoneToday = (item) => {
+    if (item.checkedToday) return true;
+    const compDate = resolveDateStr(item);
+    return compDate === todayUtcStr || compDate === localDateStr;
   };
 
   // 1. Deliveries Calculation
@@ -123,7 +130,7 @@ export function recalculateAll() {
       const isManual = Boolean(d.isManual);
       const compDate = resolveDateStr(d) || todayUtcStr;
       const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
-      const isToday = (compDate === todayUtcStr) && !isManual;
+      const isToday = isItemDoneToday(d);
 
       const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayUtcStr);
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
@@ -161,7 +168,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Bounties Calculation
+  // 2. Bounties Calculation (Fixed Done Today)
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -174,7 +181,7 @@ export function recalculateAll() {
       const compDate = resolveDateStr(b);
       const itemWeekMonday = getMondayBasedWeekId(b.weekId || compDate || currentWeekMonday);
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
-      const isToday = (compDate === todayUtcStr || Boolean(b.checkedToday)) && !isManual;
+      const isToday = isItemDoneToday(b);
 
       if (isAnimal) {
         totalAnimalBountyTix += finalTix;
@@ -196,7 +203,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Chores Calculation
+  // 3. Chores Calculation (Fixed Done Today)
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -208,7 +215,7 @@ export function recalculateAll() {
       const compDate = resolveDateStr(c);
       const itemWeekMonday = getMondayBasedWeekId(c.weekId || compDate || currentWeekMonday);
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
-      const isToday = (compDate === todayUtcStr || Boolean(c.checkedToday)) && !isManual;
+      const isToday = isItemDoneToday(c);
 
       totalChoreTix += finalTix;
       if (isThisWeek) weekChoreTix += finalTix;
@@ -322,7 +329,6 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
 
   const isDark = document.body.classList.contains('dark-mode');
 
-  // Chart Dynamic Theme Colors
   const colors = {
     gridLine: isDark ? '#3d2b1f' : '#E0D5C1',
     gridText: isDark ? '#bcaaa4' : '#8C7853',
@@ -330,23 +336,15 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     targetText: isDark ? '#cfd8dc' : '#757575',
     axisLabel: isDark ? '#f5ebe6' : '#5C4033',
     costLabel: isDark ? '#ffcc80' : '#8C7853',
-    
-    // Normal Completed Bar
     barDoneFill: isDark ? '#2e7d32' : '#4CAF50',
     barDoneStroke: isDark ? '#81c784' : '#2E7D32',
     barDoneText: isDark ? '#a5d6a7' : '#1b5e20',
-
-    // Current Week Bar
     barCurFill: isDark ? '#e65100' : '#D2691E',
     barCurStroke: isDark ? '#ffb74d' : '#8B4513',
     barCurText: isDark ? '#ffe082' : '#8B4513',
-
-    // Empty Bars
     barEmptyFill: isDark ? '#1a120c' : '#EFEBE9',
     barEmptyStroke: isDark ? '#4a3525' : '#BCAAA4',
     barEmptyText: isDark ? '#756156' : '#9E9E9E',
-
-    // Current Week Empty Bar
     barCurEmptyFill: isDark ? '#331f11' : '#FFE0B2',
     barCurEmptyStroke: isDark ? '#ff9800' : '#8B4513'
   };
