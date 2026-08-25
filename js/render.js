@@ -109,7 +109,6 @@ export function recalculateAll() {
     return null;
   };
 
-  // Robust check: matches Today UTC, Today Local, or timestamp >= 00:00 UTC
   const isItemDoneToday = (item) => {
     if (item.checkedToday) return true;
     
@@ -117,12 +116,16 @@ export function recalculateAll() {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
         const ms = ts < 1e11 ? ts * 1000 : ts;
-        if (ms >= startOfTodayUtcMs) return true;
+        return ms >= startOfTodayUtcMs;
       }
     }
 
     const compDate = resolveDateStr(item);
-    return compDate === todayUtcStr || compDate === localDateStr;
+    if (compDate) {
+      return compDate === todayUtcStr || compDate === localDateStr;
+    }
+
+    return false;
   };
 
   // 1. Deliveries Calculation
@@ -179,7 +182,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Bounties Calculation (Corrected Done Today Accumulation)
+  // 2. Bounties Calculation
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -214,7 +217,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Chores Calculation (Corrected Done Today Accumulation)
+  // 3. Chores Calculation
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
