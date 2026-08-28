@@ -19,7 +19,6 @@ async function runSync() {
   try {
     client = await pool.connect();
 
-    // Ensure database table exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_vaults (
         username VARCHAR(255) PRIMARY KEY,
@@ -37,7 +36,6 @@ async function runSync() {
 
     console.log(`📋 Found ${vaultsRes.rows.length} total user accounts to process.`);
 
-    // 1. Fetch latest prices
     let priceMap = {};
     try {
       const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
@@ -73,7 +71,6 @@ async function runSync() {
 
       console.log(`[${i + 1}/${vaultsRes.rows.length}] Processing user: "${username}" (Farm #${farmId})...`);
 
-      // 2. Reuse cached response if multiple users share the same farm ID
       let farm = farmCache.get(farmId) || null;
 
       if (!farm) {
@@ -114,10 +111,8 @@ async function runSync() {
       try {
         const parsed = parseFarmData(farm, priceMap);
 
-        // 3. Reconcile Deliveries & Lifetime NPC Counters
         reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
 
-        // 4. Update Weekly Chores & Bounties
         if (!vault.weeks) vault.weeks = {};
         if (!vault.weeks[currentWeekMonday]) {
           vault.weeks[currentWeekMonday] = {
@@ -141,11 +136,16 @@ async function runSync() {
         vault.milestones = parsed.liveMilestones;
         vault.npcSnapshots = parsed.npcsData;
 
-        // 5. Calculate Multipliers & Build Daily Log
         const isVip = Boolean(parsed.isVipActive);
         const vipBonus = isVip ? 2 : 0;
         const doubleDatesSet = new Set(parsed.doubleDeliveryDates || []);
         const isDoubleToday = doubleDatesSet.has(todayDateStr) || Boolean(parsed.isDoubleDeliveryActive);
+
+        // Daily login auto-increment on new calendar day
+        if (vault.lastDailyLoginDate !== todayDateStr) {
+          vault.dailyLoginTickets = (vault.dailyLoginTickets || 0) + 1;
+          vault.lastDailyLoginDate = todayDateStr;
+        }
 
         let totalCalculatedTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
         let totalCalculatedCost = (vault.trackCost || 0);
@@ -198,7 +198,6 @@ async function runSync() {
           }
         });
 
-        // Bounties
         (vault.bounties || []).forEach(b => {
           const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
           if (isDone) {
@@ -206,16 +205,9 @@ async function runSync() {
             const bCost = (b.itemsCost || b.cost || 0);
             totalCalculatedTickets += baseTix;
             totalCalculatedCost += bCost;
-
-            const bDate = b.completedDate || (b.completedAt ? new Date(b.completedAt).toISOString().split('T')[0] : null);
-            if (bDate === todayDateStr && !b.isManual) {
-              todayTicketsEarned += baseTix;
-              todayCostIncurred += bCost;
-            }
           }
         });
 
-        // Chores
         (vault.chores || []).forEach(c => {
           const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
           if (isDone) {
@@ -224,16 +216,9 @@ async function runSync() {
             const cCost = (c.itemsCost || c.cost || 0);
             totalCalculatedTickets += yieldAmt;
             totalCalculatedCost += cCost;
-
-            const cDate = c.completedDate || (c.completedAt ? new Date(c.completedAt).toISOString().split('T')[0] : null);
-            if (cDate === todayDateStr && !c.isManual) {
-              todayTicketsEarned += yieldAmt;
-              todayCostIncurred += cCost;
-            }
           }
         });
 
-        // Past weeks archive totals
         Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
           if (wkKey === currentWeekMonday) return;
           (wk.bounties || []).forEach(b => {
@@ -265,7 +250,6 @@ async function runSync() {
         vault.logs = [logEntry];
         vault.lastCronSyncAt = new Date().toISOString();
 
-        // 6. Write to Database
         await client.query(
           'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
           [JSON.stringify(vault), username]
@@ -279,7 +263,6 @@ async function runSync() {
         console.error(`  ❌ Parsing error for "${username}": ${err.message}`);
       }
 
-      // Polite 2-second pause between users
       if (i < vaultsRes.rows.length - 1) {
         await sleep(2000);
       }
