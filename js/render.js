@@ -85,7 +85,7 @@ export function recalculateAll() {
   let weekChoreTix = 0;
   let weekCostAll = 0;
 
-  // STRICTLY DELIVERIES ONLY FOR TODAY
+  // STRICTLY LIVE/BOARD DELIVERIES FOR TODAY (Excludes Manual)
   let todayDelivTix = 0;
   let todayDelivCost = 0;
 
@@ -108,6 +108,7 @@ export function recalculateAll() {
   };
 
   const isDeliveryDoneToday = (item) => {
+    if (!item || item.isManual) return false; // Strictly exclude manual deliveries
     if (item.checkedToday) return true;
     
     if (item.completedAt) {
@@ -126,7 +127,7 @@ export function recalculateAll() {
     return false;
   };
 
-  // 1. Deliveries Calculation (Feeds Total, Week, and Done Today)
+  // 1. Deliveries Calculation (Feeds Total, Week, and Live Done Today)
   const masterDeliveries = getDeliveryRecords();
   const npcDoubleDeliveryClaimed = new Set();
 
@@ -142,7 +143,7 @@ export function recalculateAll() {
       const isManual = Boolean(d.isManual);
       const compDate = resolveDateStr(d) || todayUtcStr;
       const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
-      const isToday = isDeliveryDoneToday(d);
+      const isToday = !isManual && isDeliveryDoneToday(d); // Exclude manual
 
       const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayUtcStr);
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
@@ -270,7 +271,7 @@ export function recalculateAll() {
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   
-  // Done today is 100% Deliveries only
+  // Done today is 100% Live Deliveries only
   const todayTicketsAll = todayDelivTix;
   const todayCostAll = todayDelivCost;
 
@@ -297,7 +298,7 @@ export function recalculateAll() {
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
   setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
 
-  // Total Tooltip Breakdown (Retains Track & Login)
+  // Tooltips Breakdown
   setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
   setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
   setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
@@ -305,13 +306,11 @@ export function recalculateAll() {
   setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
 
-  // Week Tooltip Breakdown (Game Activities Only)
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
   setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix} Tix`);
   setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
 
-  // Today Tooltip Breakdown (Deliveries Only)
   setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
 
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
