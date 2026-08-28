@@ -10,7 +10,6 @@ import { reconcileDeliveriesWithNpcs } from './chapter.js';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default async function handler(req, res) {
-  // 1. Optional Bearer Token Verification for Vercel Cron Secret
   const authHeader = req.headers['authorization'];
   if (process.env.CRON_SECRET && authHeader && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'Unauthorized cron request.' });
@@ -24,7 +23,6 @@ export default async function handler(req, res) {
   try {
     client = await pool.connect();
     
-    // Ensure table exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS user_vaults (
         username VARCHAR(255) PRIMARY KEY,
@@ -39,7 +37,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'No registered user vaults found in database.' });
     }
 
-    // 2. Fetch latest market prices from SFL.world (shared across all users)
     let priceMap = {};
     try {
       const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
@@ -88,10 +85,8 @@ export default async function handler(req, res) {
           const farm = payload.farm || payload;
           const parsed = parseFarmData(farm, priceMap);
 
-          // 1. Reconcile NPC Deliveries and Lifetime Counters
           reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
 
-          // 2. Synchronize Chores & Bounties into Weekly Archive
           if (!vault.weeks) vault.weeks = {};
           if (!vault.weeks[currentWeekMonday]) {
             vault.weeks[currentWeekMonday] = {
@@ -115,11 +110,16 @@ export default async function handler(req, res) {
           vault.milestones = parsed.liveMilestones;
           vault.npcSnapshots = parsed.npcsData;
 
-          // 3. Compute Totals & Build Daily Snapshot Log
           const isVip = Boolean(parsed.isVipActive);
           const vipBonus = isVip ? 2 : 0;
           const doubleDatesSet = new Set(parsed.doubleDeliveryDates || []);
           const isDoubleToday = doubleDatesSet.has(todayDateStr) || Boolean(parsed.isDoubleDeliveryActive);
+
+          // Daily login auto-increment on new calendar day
+          if (vault.lastDailyLoginDate !== todayDateStr) {
+            vault.dailyLoginTickets = (vault.dailyLoginTickets || 0) + 1;
+            vault.lastDailyLoginDate = todayDateStr;
+          }
 
           let totalCalculatedTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
           let totalCalculatedCost = (vault.trackCost || 0);
@@ -128,7 +128,6 @@ export default async function handler(req, res) {
           let todayCostIncurred = 0;
           const todayCompletedItems = [];
 
-          // Deliveries
           const npcDoubleClaimed = new Set();
           const sortedDeliveries = [...(vault.archiveDeliveries || [])].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
 
@@ -173,7 +172,6 @@ export default async function handler(req, res) {
             }
           });
 
-          // Bounties
           (vault.bounties || []).forEach(b => {
             const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
             if (isDone) {
@@ -181,16 +179,9 @@ export default async function handler(req, res) {
               const bCost = (b.itemsCost || b.cost || 0);
               totalCalculatedTickets += baseTix;
               totalCalculatedCost += bCost;
-
-              const bDate = b.completedDate || (b.completedAt ? new Date(b.completedAt).toISOString().split('T')[0] : null);
-              if (bDate === todayDateStr && !b.isManual) {
-                todayTicketsEarned += baseTix;
-                todayCostIncurred += bCost;
-              }
             }
           });
 
-          // Chores
           (vault.chores || []).forEach(c => {
             const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
             if (isDone) {
@@ -199,16 +190,9 @@ export default async function handler(req, res) {
               const cCost = (c.itemsCost || c.cost || 0);
               totalCalculatedTickets += yieldAmt;
               totalCalculatedCost += cCost;
-
-              const cDate = c.completedDate || (c.completedAt ? new Date(c.completedAt).toISOString().split('T')[0] : null);
-              if (cDate === todayDateStr && !c.isManual) {
-                todayTicketsEarned += yieldAmt;
-                todayCostIncurred += cCost;
-              }
             }
           });
 
-          // Past weeks archive totals
           Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
             if (wkKey === currentWeekMonday) return;
             (wk.bounties || []).forEach(b => {
@@ -225,7 +209,6 @@ export default async function handler(req, res) {
             });
           });
 
-          // Update root totals and append daily snapshot log
           vault.cumulativeTickets = totalCalculatedTickets;
           vault.cumulativeCost = totalCalculatedCost;
 
@@ -241,7 +224,6 @@ export default async function handler(req, res) {
           vault.logs = [logEntry];
           vault.lastCronSyncAt = new Date().toISOString();
 
-          // 4. Save directly into PostgreSQL
           await client.query(
             'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
             [JSON.stringify(vault), username]
