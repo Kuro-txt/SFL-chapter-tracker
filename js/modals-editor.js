@@ -328,7 +328,7 @@ export async function addNewItemFromModal() {
   baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
   const targetWeekId = getMondayBasedWeekId(baseMonday);
   const targetWeekTimestamp = Date.now();
-  const todayStr = new Date().toISOString().split('T')[0];
+  const targetDateStr = baseMonday.toISOString().split('T')[0];
 
   if (type === 'delivery') {
     const newDeliv = {
@@ -343,8 +343,8 @@ export async function addNewItemFromModal() {
       completed: true,
       isSkipped: false,
       completedAt: targetWeekTimestamp,
-      completedDate: todayStr,
-      checkedToday: true,
+      completedDate: targetDateStr,
+      checkedToday: false, // Explicitly false for manual entries
       isManual: true,
       weekId: targetWeekId
     };
@@ -369,8 +369,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: targetWeekTimestamp,
-      completedDate: todayStr,
-      checkedToday: true,
+      completedDate: targetDateStr,
+      checkedToday: false,
       isManual: true,
       weekId: targetWeekId
     };
@@ -394,8 +394,8 @@ export async function addNewItemFromModal() {
       checked: true,
       completed: true,
       completedAt: targetWeekTimestamp,
-      completedDate: todayStr,
-      checkedToday: true,
+      completedDate: targetDateStr,
+      checkedToday: false,
       isManual: true,
       weekId: targetWeekId
     };
@@ -421,7 +421,7 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
       target.status = 'completed';
       target.completedAt = target.completedAt || Date.now();
       target.completedDate = target.completedDate || new Date().toISOString().split('T')[0];
-      target.checkedToday = true;
+      target.checkedToday = !target.isManual;
     } else {
       target.status = 'active';
       target.checkedToday = false;
@@ -463,9 +463,9 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
     targetItem.checked = newStatus;
     targetItem.completed = newStatus;
     if (newStatus) {
-      targetItem.completedAt = targetItem.completedAt || Date.now();
-      targetItem.completedDate = targetItem.completedDate || new Date().toISOString().split('T')[0];
-      targetItem.checkedToday = true;
+      targetItem.completedAt = Date.now();
+      targetItem.completedDate = new Date().toISOString().split('T')[0];
+      targetItem.checkedToday = false;
     } else {
       targetItem.completedAt = null;
       targetItem.completedDate = null;
