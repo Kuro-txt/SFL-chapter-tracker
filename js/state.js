@@ -118,6 +118,8 @@ export async function checkAndAutoClaimDailyLogin() {
     ? parseInt(state.currentVaultData.dailyLoginTickets, 10)
     : parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10);
 
+  if (isNaN(count)) count = 0;
+
   const loginInput = document.getElementById('dailyLoginCount');
   const loginCheck = document.getElementById('dailyLoginCheck');
 
@@ -125,6 +127,7 @@ export async function checkAndAutoClaimDailyLogin() {
     count += 1;
     localStorage.setItem('sfl_daily_login_count', count);
     localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+    
     if (state.currentVaultData) {
       state.currentVaultData.dailyLoginTickets = count;
       state.currentVaultData.lastDailyLoginDate = todayUtc;
@@ -137,7 +140,9 @@ export async function checkAndAutoClaimDailyLogin() {
       const { recalculateAll } = await import('./render.js');
       recalculateAll();
       await syncCurrentVaultToCloud();
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Daily login sync warning:', e);
+    }
   } else {
     if (loginInput) loginInput.value = count;
     if (loginCheck) loginCheck.checked = true;
@@ -149,16 +154,25 @@ export async function handleDailyLoginToggle() {
   const loginInput = document.getElementById('dailyLoginCount');
   const todayUtc = new Date().toISOString().split('T')[0];
   let count = parseInt(loginInput?.value || '0', 10);
+  if (isNaN(count)) count = 0;
 
   if (loginCheck?.checked) {
     count += 1;
     localStorage.setItem('sfl_daily_login_count', count);
     localStorage.setItem('sfl_daily_login_last_date', todayUtc);
+    if (state.currentVaultData) {
+      state.currentVaultData.dailyLoginTickets = count;
+      state.currentVaultData.lastDailyLoginDate = todayUtc;
+    }
     if (loginInput) loginInput.value = count;
   } else {
     count = Math.max(0, count - 1);
     localStorage.setItem('sfl_daily_login_count', count);
     localStorage.removeItem('sfl_daily_login_last_date');
+    if (state.currentVaultData) {
+      state.currentVaultData.dailyLoginTickets = count;
+      state.currentVaultData.lastDailyLoginDate = null;
+    }
     if (loginInput) loginInput.value = count;
   }
 
@@ -179,7 +193,6 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
-// 🎯 CANONICAL DEDUPLICATOR: Strict 1-per-order deduplication
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
 
@@ -256,7 +269,6 @@ export function sanitizeDeliveries(deliveries) {
   return Array.from(map.values());
 }
 
-// 🎯 SINGLE GROUND TRUTH GETTER: Always used by Render, Editor, and Cloud Sync
 export function getDeliveryRecords() {
   const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
   const cleanList = sanitizeDeliveries(rawList);
