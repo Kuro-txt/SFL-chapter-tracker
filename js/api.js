@@ -82,6 +82,31 @@ export async function loadTrackerData() {
         trackCost: data.vaultData.trackCost || 0,
         dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
       };
+
+      if (data.vaultData.dailyLoginTickets !== undefined) {
+        const loginCountEl = document.getElementById('dailyLoginCount');
+        const loginCheckEl = document.getElementById('dailyLoginCheck');
+        const todayUtc = new Date().toISOString().split('T')[0];
+
+        if (loginCountEl) loginCountEl.value = data.vaultData.dailyLoginTickets;
+        if (loginCheckEl) loginCheckEl.checked = (data.vaultData.lastDailyLoginDate === todayUtc);
+        localStorage.setItem('sfl_daily_login_count', data.vaultData.dailyLoginTickets);
+        if (data.vaultData.lastDailyLoginDate) {
+          localStorage.setItem('sfl_daily_login_last_date', data.vaultData.lastDailyLoginDate);
+        }
+      }
+
+      if (data.vaultData.trackTickets !== undefined) {
+        const trackTixEl = document.getElementById('trackTicketsInput');
+        if (trackTixEl) trackTixEl.value = data.vaultData.trackTickets;
+      }
+      if (data.vaultData.trackCost !== undefined) {
+        const trackCostEl = document.getElementById('trackCostInput');
+        if (trackCostEl) trackCostEl.value = data.vaultData.trackCost;
+      }
+
+      const { checkAndAutoClaimDailyLogin } = await import('./state.js');
+      await checkAndAutoClaimDailyLogin();
     } else {
       state.globalData.cloudHistory = { logs: [], weeks: {} };
     }
@@ -132,7 +157,6 @@ export async function saveProgressToCloudKV(silent = false) {
   const todayDate = new Date().toISOString().split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId();
 
-  // STRICTLY DELIVERIES FOR TODAY'S SNAPSHOT
   let totalEarnedTix = 0;
   let totalEarnedCost = 0;
   const todayCompletedDeliveries = [];
@@ -214,14 +238,12 @@ export async function saveProgressToCloudKV(silent = false) {
   const existingWeeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks || {};
   const mergedWeeks = { ...existingWeeks };
 
-  // Set current week activities
   mergedWeeks[currentWeekMonday] = {
     weekId: currentWeekMonday,
     bounties: state.globalData?.bounties || [],
     chores: state.globalData?.chores || []
   };
 
-  // Sum up all past archived weeks into calculatedTotalTickets
   Object.entries(mergedWeeks).forEach(([wkKey, wk]) => {
     if (wkKey === currentWeekMonday) return;
     (wk.bounties || []).forEach(b => {
