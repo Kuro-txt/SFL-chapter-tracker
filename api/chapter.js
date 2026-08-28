@@ -5,7 +5,7 @@ import {
   parseFarmData,
   CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
- 
+
 async function ensureTableExists(client) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS user_vaults (
@@ -112,7 +112,6 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
           const isStacked = k > 1;
 
-          // Find the active pending order in vault to convert to done
           const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
             const dNpc = (d.from || d.name || '').toLowerCase().trim();
             const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
@@ -188,7 +187,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     };
   });
 
-  // 3. Register or update the currently active order from board (1 active order per NPC)
+  // 3. Register or update the currently active order from board
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
@@ -469,6 +468,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // NON-DESTRUCTIVE SAVE VAULT WITH WEEKS & DELIVERIES MERGE LOCK
     if (req.method === 'POST' && action === 'saveVault') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       const saveUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
@@ -505,9 +505,27 @@ export default async function handler(req, res) {
         if (body.cumulativeTickets !== undefined) existingData.cumulativeTickets = parseInt(body.cumulativeTickets, 10) || 0;
         if (body.cumulativeCost !== undefined) existingData.cumulativeCost = parseFloat(body.cumulativeCost) || 0;
 
-        if (body.weeks && typeof body.weeks === 'object') existingData.weeks = body.weeks;
+        // 1. Merge Weeks Deeply (Protects Past Weeks)
+        if (body.weeks && typeof body.weeks === 'object') {
+          existingData.weeks = {
+            ...(existingData.weeks || {}),
+            ...body.weeks
+          };
+        }
+
+        // 2. Merge Archived Deliveries by Unique ID
+        if (body.archiveDeliveries) {
+          const incomingDeliveries = sanitizeDeliveriesList(body.archiveDeliveries);
+          const existingDeliveries = existingData.archiveDeliveries || [];
+          const delivMap = new Map();
+
+          existingDeliveries.forEach(d => delivMap.set(d.id || `${d.from}_${d.completedAt}`, d));
+          incomingDeliveries.forEach(d => delivMap.set(d.id || `${d.from}_${d.completedAt}`, d));
+
+          existingData.archiveDeliveries = sanitizeDeliveriesList(Array.from(delivMap.values()));
+        }
+
         if (body.deliveries) existingData.deliveries = body.deliveries;
-        if (body.archiveDeliveries) existingData.archiveDeliveries = sanitizeDeliveriesList(body.archiveDeliveries);
         if (body.bounties) existingData.bounties = body.bounties;
         if (body.chores) existingData.chores = body.chores;
         if (body.milestones) existingData.milestones = body.milestones;
@@ -545,6 +563,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // GENERAL LIVE FETCH & AUTO-SYNC
     const [sflResponse, pricesResponse] = await Promise.all([
       fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => null),
       fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
@@ -589,6 +608,7 @@ export default async function handler(req, res) {
 
           currentVault.milestones = parsed.liveMilestones;
 
+          // Preserve all existing weeks and safely update the current week only
           if (!currentVault.weeks) currentVault.weeks = {};
           if (!currentVault.weeks[currentWeekMonday]) {
             currentVault.weeks[currentWeekMonday] = {
