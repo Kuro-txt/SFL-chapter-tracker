@@ -247,7 +247,10 @@ async function runSync() {
           deliveriesDone: todayCompletedItems,
           milestones: vault.milestones || {}
         };
-        vault.logs = [logEntry];
+
+        // Bug Fix: Preserve log history instead of replacing with a 1-item array
+        const existingLogs = Array.isArray(vault.logs) ? vault.logs.filter(l => l.date !== todayDateStr) : [];
+        vault.logs = [logEntry, ...existingLogs].slice(0, 60);
         vault.lastCronSyncAt = new Date().toISOString();
 
         await client.query(
