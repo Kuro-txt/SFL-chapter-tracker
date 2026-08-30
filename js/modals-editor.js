@@ -243,7 +243,26 @@ export function renderColumnHistoryModalList() {
     });
   }
 
-  records.sort((a, b) => (a.checked === b.checked ? 0 : a.checked ? 1 : -1));
+  records.sort((a, b) => {
+    // 1. Sort by Active vs Done (Active/uncompleted first, then Done/completed)
+    const aDone = Boolean(a.checked);
+    const bDone = Boolean(b.checked);
+    if (aDone !== bDone) {
+      return aDone ? 1 : -1;
+    }
+
+    // 2. Sort by date descending (most recent date first)
+    const dateA = a.date || '';
+    const dateB = b.date || '';
+    if (dateA !== dateB) {
+      return dateB.localeCompare(dateA);
+    }
+
+    // 3. Tie-breaker by name
+    const nameA = a.name || '';
+    const nameB = b.name || '';
+    return nameA.localeCompare(nameB);
+  });
 
   let totalTickedTickets = 0;
   let totalTickedCost = 0;
