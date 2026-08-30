@@ -216,6 +216,11 @@ export function renderHistoryModalList() {
 }
 
 export async function deleteMasterLog(logIdx) {
+  if (!state.currentUser) {
+    alert('Please log in to manage your vault history.');
+    return;
+  }
+
   const logs = 
     state.globalData?.cloudHistory?.logs || 
     state.globalData?.vaultData?.logs || 
@@ -248,6 +253,7 @@ export async function deleteMasterLog(logIdx) {
       }
 
       renderHistoryModalList();
+      const { recalculateAll } = await import('./render.js');
       recalculateAll();
     } catch (err) {
       alert(`Delete Error: ${err.message}`);
