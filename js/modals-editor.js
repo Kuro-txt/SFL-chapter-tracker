@@ -403,6 +403,15 @@ export async function addNewItemFromModal() {
     state.globalData.cloudHistory.weeks[targetWeekId].bounties.push(newBounty);
   }
 
+  try {
+    if (state.globalData?.archiveDeliveries) {
+      localStorage.setItem('sfl_archive_deliveries', JSON.stringify(state.globalData.archiveDeliveries));
+    }
+    if (state.globalData?.cloudHistory?.weeks) {
+      localStorage.setItem('sfl_cloud_weeks', JSON.stringify(state.globalData.cloudHistory.weeks));
+    }
+  } catch (e) {}
+
   renderColumnHistoryModalList();
   recalculateAll();
   await syncCurrentVaultToCloud();
