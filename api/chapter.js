@@ -40,17 +40,25 @@ export function sanitizeDeliveriesList(deliveries) {
     if (isMan) {
       canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
     } else if (isDone) {
-      const count = d.deliveryCountAtCreation;
-      canonicalId = (count !== undefined && count !== null && count !== '') 
-        ? `deliv_${npc}_d${count}` 
-        : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+      if (d.id && d.id.startsWith(`deliv_${npc}_d`)) {
+        canonicalId = d.id;
+      } else {
+        const count = d.deliveryCountAtCreation;
+        canonicalId = (count !== undefined && count !== null && count !== '') 
+          ? `deliv_${npc}_d${count}` 
+          : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+      }
       d.completed = true;
       d.checked = true;
       d.isSkipped = false;
       d.status = 'completed';
     } else if (isSkip) {
-      const skipCount = d.skippedCountAtCreation;
-      canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+      if (d.id && d.id.startsWith(`deliv_${npc}_skip_`)) {
+        canonicalId = d.id;
+      } else {
+        const skipCount = d.skippedCountAtCreation;
+        canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+      }
       d.completed = false;
       d.checked = false;
       d.isSkipped = true;
