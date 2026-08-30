@@ -278,10 +278,15 @@ export function sanitizeDeliveries(deliveries) {
 }
 
 export function getDeliveryRecords() {
-  const rawList = state.globalData?.archiveDeliveries || state.globalData?.deliveries || [];
+  const archive = state.globalData?.archiveDeliveries || [];
+  const board = state.globalData?.deliveries || [];
+  const rawList = (archive.length === 0 && board.length === 0) ? [] : [...archive, ...board];
   const cleanList = sanitizeDeliveries(rawList);
   if (state.globalData) {
     state.globalData.archiveDeliveries = cleanList;
   }
+  try {
+    localStorage.setItem('sfl_archive_deliveries', JSON.stringify(cleanList));
+  } catch (e) {}
   return cleanList;
 }
