@@ -140,18 +140,20 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
 
   const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
-    if (recipe.sfl !== undefined) return recipe.sfl;
-    
-    if (recipe.coins !== undefined) {
-      const coinsPerSfl = priceMap['sfl_coin_rate'] || 1000; // 1,000 Coins = 1 SFL
-      return recipe.coins / coinsPerSfl;
-    }
+    if (recipe.sfl !== undefined && Object.keys(recipe).length === 1) return recipe.sfl;
+
+    let recipeTotal = 0;
+    const coinsPerSfl = priceMap['sfl_coin_rate'] || 1000; // 1,000 Coins = 1 SFL
 
     const ingredients = recipe.ingredients || recipe;
     if (typeof ingredients === 'object') {
-      let recipeTotal = 0;
       Object.entries(ingredients).forEach(([ingName, ingQty]) => {
-        if (typeof ingQty === 'number') {
+        const cleanIng = ingName.toLowerCase().trim();
+        if (cleanIng === 'coins' || cleanIng === 'coin') {
+          recipeTotal += (typeof ingQty === 'number' ? ingQty : parseFloat(ingQty) || 0) / coinsPerSfl;
+        } else if (cleanIng === 'sfl') {
+          recipeTotal += (typeof ingQty === 'number' ? ingQty : parseFloat(ingQty) || 0);
+        } else if (typeof ingQty === 'number') {
           recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
         }
       });
