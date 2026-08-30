@@ -87,7 +87,7 @@ window.toggleDailyLogin = () => {
 };
 
 window.saveLoginCountAndRecalculate = () => {
-  const count = parseInt(document.getElementById('dailyLoginCount').value) || 0;
+  const count = parseInt(document.getElementById('dailyLoginCount').value, 10) || 0;
   localStorage.setItem('sfl_daily_login_count', count);
   recalculateAll();
 };
