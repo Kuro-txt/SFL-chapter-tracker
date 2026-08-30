@@ -1,29 +1,27 @@
-name: Daily SFL Chapter Tracker Sync
+name: SFL Farm Daily Sync
 
 on:
   schedule:
-    # Runs daily at 22:45 UTC (avoids high-traffic top-of-the-hour runner queues)
-    - cron: '45 22 * * *'
-  workflow_dispatch: # Enables the "Run workflow" button in the GitHub Actions tab
+    # Runs daily at 22:35 UTC (avoids top-of-hour runner delays)
+    - cron: '35 22 * * *'
+  workflow_dispatch:
 
 jobs:
   sync-farms:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci || npm install
 
-      - name: Run Farm Sync Script
+      - name: Run SFL Farm Sync
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SFL_API_KEY: ${{ secrets.SFL_API_KEY }}
