@@ -16,7 +16,7 @@ async function ensureTableExists(client) {
   `);
 }
 
-function sanitizeDeliveriesList(deliveries) {
+export function sanitizeDeliveriesList(deliveries) {
   if (!Array.isArray(deliveries)) return [];
   const map = new Map();
 
@@ -314,345 +314,263 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     }
   });
 
-  vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
-  vault.deliveries = parsedDeliveryList;
+  return vault.archiveDeliveries;
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  const { searchParams } = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const action = searchParams.get('action') || (req.query && req.query.action);
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const action = req.query.action;
-  const farmId = req.query.farmId || '8472883706403914';
-  const apiKey = req.query.apiKey || process.env.SFL_API_KEY || '';
-  
-  const rawUsername = (req.query.username || '').trim();
-  const username = rawUsername && rawUsername !== ':' ? rawUsername.toLowerCase().replace(/[^a-z0-9_]/g, '') : '';
-
-  const sflHeaders = {
-    'Accept': 'application/json, text/plain, */*',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Referer': 'https://sunflower-land.com/',
-    'Origin': 'https://sunflower-land.com'
-  };
-  if (apiKey && apiKey.trim() !== '') sflHeaders['x-api-key'] = apiKey.trim();
-
-  if (action === 'rawSfl') {
-    try {
-      const response = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders });
-      const data = await response.json().catch(() => ({}));
-      return res.status(response.status).json(data);
-    } catch (err) {
-      return res.status(500).json({ error: `Raw Proxy Error: ${err.message}` });
-    }
-  }
-
-  if (action === 'rawPrices') {
-    try {
-      const response = await fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      const data = await response.json().catch(() => ({}));
-      return res.status(response.status).json(data);
-    } catch (err) {
-      return res.status(500).json({ error: `Prices Proxy Error: ${err.message}` });
-    }
-  }
-
+  let client;
   try {
+    client = await pool.connect();
+    await ensureTableExists(client);
+
+    // ==========================================
+    // ACTION: REGISTER
+    // ==========================================
+    if (action === 'register' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username, password, farmId } = body || {};
+
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required.' });
+      }
+
+      const cleanUser = username.trim().toLowerCase();
+      const existing = await client.query('SELECT username FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ error: 'Username already exists. Please login instead.' });
+      }
+
+      const passwordHash = hashPassword(password);
+      const authData = { passwordHash, createdAt: new Date().toISOString() };
+      const vaultData = {
+        farmId: farmId || '8472883706403914',
+        trackTickets: 0,
+        trackCost: 0,
+        dailyLoginTickets: 0,
+        lastDailyLoginDate: null,
+        weeks: {},
+        logs: [],
+        archiveDeliveries: [],
+        archiveBounties: [],
+        archiveChores: [],
+        npcSnapshots: {}
+      };
+
+      await client.query(
+        'INSERT INTO user_vaults (username, auth_data, vault_data) VALUES ($1, $2, $3)',
+        [cleanUser, JSON.stringify(authData), JSON.stringify(vaultData)]
+      );
+
+      return res.status(200).json({ success: true, username: cleanUser, message: 'Registered successfully.' });
+    }
+
+    // ==========================================
+    // ACTION: LOGIN
+    // ==========================================
+    if (action === 'login' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username, password } = body || {};
+
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required.' });
+      }
+
+      const cleanUser = username.trim().toLowerCase();
+      const userRes = await client.query('SELECT auth_data, vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Account not found. Please register first.' });
+      }
+
+      const authData = typeof userRes.rows[0].auth_data === 'string' 
+        ? JSON.parse(userRes.rows[0].auth_data) 
+        : userRes.rows[0].auth_data;
+
+      const passwordHash = hashPassword(password);
+      if (authData.passwordHash !== passwordHash) {
+        return res.status(401).json({ error: 'Invalid password.' });
+      }
+
+      const vaultData = typeof userRes.rows[0].vault_data === 'string'
+        ? JSON.parse(userRes.rows[0].vault_data)
+        : userRes.rows[0].vault_data;
+
+      return res.status(200).json({ success: true, username: cleanUser, vaultData });
+    }
+
+    // ==========================================
+    // ACTION: GET VAULT
+    // ==========================================
     if (action === 'getVault') {
-      if (!username) return res.status(200).json({ success: true, vaultData: null });
-      let client;
-      try {
-        client = await pool.connect();
-        await ensureTableExists(client);
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
-        if (queryRes.rows.length > 0) {
-          const rawVault = queryRes.rows[0].vault_data;
-          const vaultData = typeof rawVault === 'string' ? JSON.parse(rawVault) : (rawVault || {});
-          delete vaultData.apiKey;
-          if (vaultData.archiveDeliveries) {
-            vaultData.archiveDeliveries = sanitizeDeliveriesList(vaultData.archiveDeliveries);
-          }
-          return res.status(200).json({ success: true, vaultData });
-        }
-        return res.status(200).json({ success: true, vaultData: null });
-      } catch (dbErr) {
-        console.error('getVault DB error:', dbErr.message);
-        return res.status(200).json({ success: true, vaultData: null });
-      } finally {
-        if (client) client.release();
+      const username = searchParams.get('username') || (req.query && req.query.username);
+      if (!username) {
+        return res.status(400).json({ error: 'Username required.' });
       }
-    }
 
-    if (req.method === 'POST' && action === 'register') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const regUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
-      const password = body.password || '';
-      const userFarmId = body.farmId || farmId;
-
-      if (!regUsername || !password) return res.status(400).json({ error: 'Valid alphanumeric username and password required.' });
-
-      const client = await pool.connect();
-      try {
-        await ensureTableExists(client);
-        const check = await client.query('SELECT username FROM user_vaults WHERE username = $1', [regUsername]);
-        if (check.rows.length > 0) return res.status(400).json({ error: 'Username already taken.' });
-
-        const passwordHash = hashPassword(password);
-        const initialVault = {
-          farmId: userFarmId,
-          archiveDeliveries: [],
-          cumulativeTickets: 0,
-          cumulativeCost: 0,
-          weeks: {},
-          trackTickets: 0,
-          trackCost: 0,
-          dailyLoginTickets: 0,
-          lastDailyLoginDate: null,
-          deliveries: [],
-          bounties: [],
-          chores: [],
-          milestones: {},
-          npcSnapshots: {}
-        };
-
-        await client.query(
-          'INSERT INTO user_vaults (username, auth_data, vault_data) VALUES ($1, $2, $3)',
-          [regUsername, JSON.stringify({ username: regUsername, passwordHash }), JSON.stringify(initialVault)]
-        );
-
-        return res.status(200).json({ success: true, username: regUsername, farmId: userFarmId });
-      } finally {
-        client.release();
+      const cleanUser = username.trim().toLowerCase();
+      const userRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'User vault not found.' });
       }
+
+      const vaultData = typeof userRes.rows[0].vault_data === 'string'
+        ? JSON.parse(userRes.rows[0].vault_data)
+        : userRes.rows[0].vault_data;
+
+      return res.status(200).json({ success: true, vaultData });
     }
 
-    if (req.method === 'POST' && action === 'login') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const loginUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
-      const password = body.password || '';
-      const userFarmId = body.farmId;
+    // ==========================================
+    // ACTION: SAVE VAULT (Preserves log history)
+    // ==========================================
+    if (action === 'saveVault' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username } = body || {};
 
-      if (!loginUsername || !password) return res.status(400).json({ error: 'Username and password required.' });
-
-      const client = await pool.connect();
-      try {
-        await ensureTableExists(client);
-        const queryRes = await client.query('SELECT auth_data, vault_data FROM user_vaults WHERE username = $1', [loginUsername]);
-        if (queryRes.rows.length === 0) return res.status(401).json({ error: 'Account not found.' });
-
-        const rawAuth = queryRes.rows[0].auth_data;
-        const authData = typeof rawAuth === 'string' ? JSON.parse(rawAuth) : (rawAuth || {});
-        if (authData.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Incorrect password.' });
-
-        const rawVault = queryRes.rows[0].vault_data;
-        const vaultData = typeof rawVault === 'string' ? JSON.parse(rawVault) : (rawVault || {});
-        if (userFarmId && !vaultData.farmId) {
-          vaultData.farmId = userFarmId;
-          await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), loginUsername]);
-        }
-
-        delete vaultData.apiKey;
-        if (vaultData.archiveDeliveries) {
-          vaultData.archiveDeliveries = sanitizeDeliveriesList(vaultData.archiveDeliveries);
-        }
-        return res.status(200).json({ success: true, username: loginUsername, vaultData });
-      } finally {
-        client.release();
+      if (!username) {
+        return res.status(400).json({ error: 'Username required to save vault.' });
       }
-    }
 
-    // NON-DESTRUCTIVE SAVE VAULT WITH WEEKS & DELIVERIES MERGE LOCK
-    if (req.method === 'POST' && action === 'saveVault') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const saveUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
-      if (!saveUsername) return res.status(401).json({ error: 'Not logged in.' });
-
-      const client = await pool.connect();
-      try {
-        await ensureTableExists(client);
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [saveUsername]);
-        let existingData = {};
-        if (queryRes.rows.length > 0) {
-          const rawV = queryRes.rows[0].vault_data;
-          existingData = typeof rawV === 'string' ? JSON.parse(rawV) : (rawV || {});
-        } else {
-          existingData = {
-            archiveDeliveries: [],
-            cumulativeTickets: 0,
-            cumulativeCost: 0,
-            weeks: {},
-            trackTickets: 0,
-            trackCost: 0,
-            dailyLoginTickets: 0,
-            lastDailyLoginDate: null,
-            milestones: {},
-            npcSnapshots: {}
-          };
-        }
-
-        if (body.farmId) existingData.farmId = body.farmId;
-        if (body.trackTickets !== undefined) existingData.trackTickets = parseInt(body.trackTickets, 10) || 0;
-        if (body.trackCost !== undefined) existingData.trackCost = parseFloat(body.trackCost) || 0;
-        if (body.dailyLoginTickets !== undefined) existingData.dailyLoginTickets = parseInt(body.dailyLoginTickets, 10) || 0;
-        if (body.lastDailyLoginDate) existingData.lastDailyLoginDate = body.lastDailyLoginDate;
-        if (body.cumulativeTickets !== undefined) existingData.cumulativeTickets = parseInt(body.cumulativeTickets, 10) || 0;
-        if (body.cumulativeCost !== undefined) existingData.cumulativeCost = parseFloat(body.cumulativeCost) || 0;
-
-        // 1. Merge Weeks Deeply (Protects Past Weeks)
-        if (body.weeks && typeof body.weeks === 'object') {
-          existingData.weeks = {
-            ...(existingData.weeks || {}),
-            ...body.weeks
-          };
-        }
-
-        // 2. Merge Archived Deliveries by Unique ID
-        if (body.archiveDeliveries) {
-          const incomingDeliveries = sanitizeDeliveriesList(body.archiveDeliveries);
-          const existingDeliveries = existingData.archiveDeliveries || [];
-          const delivMap = new Map();
-
-          existingDeliveries.forEach(d => delivMap.set(d.id || `${d.from}_${d.completedAt}`, d));
-          incomingDeliveries.forEach(d => delivMap.set(d.id || `${d.from}_${d.completedAt}`, d));
-
-          existingData.archiveDeliveries = sanitizeDeliveriesList(Array.from(delivMap.values()));
-        }
-
-        if (body.deliveries) existingData.deliveries = body.deliveries;
-        if (body.bounties) existingData.bounties = body.bounties;
-        if (body.chores) existingData.chores = body.chores;
-        if (body.milestones) existingData.milestones = body.milestones;
-        if (body.npcSnapshots) existingData.npcSnapshots = body.npcSnapshots;
-        if (body.logs) existingData.logs = body.logs;
-
-        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(existingData), saveUsername]);
-        return res.status(200).json({ success: true, vaultData: existingData });
-      } finally {
-        client.release();
+      const cleanUser = username.trim().toLowerCase();
+      const userRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'User vault not found.' });
       }
-    }
 
-    if (req.method === 'POST' && action === 'deleteLog') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-      const logUsername = (body.username || '').toLowerCase().replace(/[^a-z0-9_]/g, '').trim();
-      const logIdx = parseInt(body.logIdx, 10);
-      if (!logUsername || isNaN(logIdx)) return res.status(400).json({ error: 'Valid username and log index required.' });
+      const existingVault = typeof userRes.rows[0].vault_data === 'string'
+        ? JSON.parse(userRes.rows[0].vault_data)
+        : userRes.rows[0].vault_data;
 
-      const client = await pool.connect();
-      try {
-        await ensureTableExists(client);
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [logUsername]);
-        if (queryRes.rows.length === 0) return res.status(404).json({ error: 'User vault not found.' });
-
-        const rawV = queryRes.rows[0].vault_data;
-        const vaultData = typeof rawV === 'string' ? JSON.parse(rawV) : (rawV || {});
-        if (Array.isArray(vaultData.logs)) {
-          vaultData.logs.splice(logIdx, 1);
+      // Preserve log history (merge today's log without wiping past logs)
+      const incomingLogs = Array.isArray(body.logs) ? body.logs : [];
+      const pastLogs = Array.isArray(existingVault.logs) ? existingVault.logs : [];
+      
+      let mergedLogs = [...incomingLogs];
+      pastLogs.forEach(pl => {
+        if (!mergedLogs.some(ml => ml.date === pl.date)) {
+          mergedLogs.push(pl);
         }
-        await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(vaultData), logUsername]);
-        return res.status(200).json({ success: true, vaultData });
-      } finally {
-        client.release();
+      });
+      mergedLogs = mergedLogs.slice(0, 60);
+
+      const updatedVault = {
+        ...existingVault,
+        ...body,
+        logs: mergedLogs,
+        lastSavedAt: new Date().toISOString()
+      };
+
+      await client.query(
+        'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+        [JSON.stringify(updatedVault), cleanUser]
+      );
+
+      return res.status(200).json({ success: true, vaultData: updatedVault });
+    }
+
+    // ==========================================
+    // ACTION: DELETE LOG
+    // ==========================================
+    if (action === 'deleteLog' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username, logIdx } = body || {};
+
+      if (!username || logIdx === undefined) {
+        return res.status(400).json({ error: 'Username and logIdx required.' });
       }
+
+      const cleanUser = username.trim().toLowerCase();
+      const userRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'User vault not found.' });
+      }
+
+      const vaultData = typeof userRes.rows[0].vault_data === 'string'
+        ? JSON.parse(userRes.rows[0].vault_data)
+        : userRes.rows[0].vault_data;
+
+      if (Array.isArray(vaultData.logs) && vaultData.logs[logIdx]) {
+        vaultData.logs.splice(logIdx, 1);
+      }
+
+      await client.query(
+        'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+        [JSON.stringify(vaultData), cleanUser]
+      );
+
+      return res.status(200).json({ success: true, vaultData });
     }
 
-    // GENERAL LIVE FETCH & AUTO-SYNC
-    const [sflResponse, pricesResponse] = await Promise.all([
-      fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { headers: sflHeaders }).catch(() => null),
-      fetch(`https://sfl.world/api/v1/prices`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null)
-    ]);
-
-    if (!sflResponse || !sflResponse.ok) {
-      const status = sflResponse?.status || 500;
-      return res.status(status).json({ error: status === 401 ? 'SFL API 401 Unauthorized.' : `SFL API error (${status}). Check Farm ID.` });
-    }
-
-    const payload = await sflResponse.json().catch(() => ({}));
-    const farm = payload.farm || {};
+    // ==========================================
+    // DEFAULT: FETCH SFL FARM & MERGE WITH VAULT
+    // ==========================================
+    const farmId = searchParams.get('farmId') || (req.query && req.query.farmId) || '8472883706403914';
+    const apiKey = searchParams.get('apiKey') || (req.query && req.query.apiKey) || process.env.SFL_API_KEY || '';
+    const username = searchParams.get('username') || (req.query && req.query.username) || '';
 
     let priceMap = {};
-    if (pricesResponse && pricesResponse.ok) {
-      const rawPricesData = await pricesResponse.json().catch(() => null);
-      if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
+    try {
+      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: AbortSignal.timeout(8000)
+      });
+      if (pricesRes.ok) {
+        const rawPricesData = await pricesRes.json();
+        if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
+      }
+    } catch (e) {
+      console.warn('Live price fetch warning:', e.message);
     }
 
+    const sflHeaders = {
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer': 'https://sunflower-land.com/',
+      'Origin': 'https://sunflower-land.com'
+    };
+    if (apiKey) sflHeaders['x-api-key'] = apiKey;
+
+    const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
+      headers: sflHeaders,
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!sflRes.ok) {
+      throw new Error(`Sunflower Land API responded with status ${sflRes.status}`);
+    }
+
+    const payload = await sflRes.json();
+    const farm = payload.farm || payload;
     const parsed = parseFarmData(farm, priceMap);
-    let currentVault = null;
 
+    let userVault = null;
     if (username) {
-      let client;
-      try {
-        client = await pool.connect();
-        await ensureTableExists(client);
-        const queryRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [username]);
-        if (queryRes.rows.length > 0) {
-          const rawV = queryRes.rows[0].vault_data;
-          currentVault = typeof rawV === 'string' ? JSON.parse(rawV) : (rawV || {});
-          const currentWeekMonday = getMondayBasedWeekId();
-          currentVault.farmId = farmId;
-
-          reconcileDeliveriesWithNpcs(currentVault, parsed.deliveryList, parsed.npcsData);
-
-          const existingManualBounties = (currentVault.bounties || []).filter(b => b.isManual);
-          currentVault.bounties = [...parsed.activeBounties, ...existingManualBounties];
-
-          const existingManualChores = (currentVault.chores || []).filter(c => c.isManual);
-          currentVault.chores = [...parsed.choresList, ...existingManualChores];
-
-          currentVault.milestones = parsed.liveMilestones;
-
-          // Preserve all existing weeks and safely update the current week only
-          if (!currentVault.weeks) currentVault.weeks = {};
-          if (!currentVault.weeks[currentWeekMonday]) {
-            currentVault.weeks[currentWeekMonday] = {
-              weekId: currentWeekMonday,
-              bounties: currentVault.bounties,
-              chores: currentVault.chores
-            };
-          } else {
-            const savedWeekManualChores = (currentVault.weeks[currentWeekMonday].chores || []).filter(c => c.isManual);
-            const savedWeekManualBounties = (currentVault.weeks[currentWeekMonday].bounties || []).filter(b => b.isManual);
-            currentVault.weeks[currentWeekMonday].chores = [...parsed.choresList, ...savedWeekManualChores];
-            currentVault.weeks[currentWeekMonday].bounties = [...parsed.activeBounties, ...savedWeekManualBounties];
-          }
-
-          await client.query('UPDATE user_vaults SET vault_data = $1 WHERE username = $2', [JSON.stringify(currentVault), username]);
-        }
-      } catch (vaultErr) {
-        console.error('Vault update error:', vaultErr.message);
-      } finally {
-        if (client) client.release();
+      const cleanUser = username.trim().toLowerCase();
+      const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (uRes.rows.length > 0) {
+        userVault = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
+        reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
       }
     }
 
-    const guestVault = { archiveDeliveries: [], npcSnapshots: {} };
-    if (!currentVault) {
-      reconcileDeliveriesWithNpcs(guestVault, parsed.deliveryList, parsed.npcsData);
-    }
-
-    const cleanArchive = sanitizeDeliveriesList(currentVault ? currentVault.archiveDeliveries : guestVault.archiveDeliveries);
-
     return res.status(200).json({
+      success: true,
       farmId,
+      pricesLoadedCount: Object.keys(priceMap).length,
       isVipActive: parsed.isVipActive,
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       doubleDeliveryDates: parsed.doubleDeliveryDates,
       milestones: parsed.liveMilestones,
-      pricesLoadedCount: Object.keys(priceMap).length,
       deliveries: parsed.deliveryList,
-      archiveDeliveries: cleanArchive,
-      bounties: currentVault ? currentVault.bounties : parsed.activeBounties,
-      chores: currentVault ? currentVault.chores : parsed.choresList,
-      vaultData: currentVault
+      bounties: parsed.activeBounties,
+      chores: parsed.choresList,
+      vaultData: userVault
     });
   } catch (err) {
-    return res.status(500).json({ error: `Server Error: ${err.message}` });
+    return res.status(500).json({ error: `Chapter API Error: ${err.message}` });
+  } finally {
+    if (client) client.release();
   }
 }
