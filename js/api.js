@@ -67,10 +67,10 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    state.globalData.archiveDeliveries = getDeliveryRecords();
-
+    // 1. Restore historical deliveries & manual orders from vault or local storage
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
+      state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
       state.globalData.archiveBounties = data.vaultData.archiveBounties || [];
       state.globalData.archiveChores = data.vaultData.archiveChores || [];
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
@@ -82,6 +82,37 @@ export async function loadTrackerData() {
         trackCost: data.vaultData.trackCost || 0,
         dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
       };
+    } else {
+      // Local / Guest persistence fallback
+      try {
+        const localDelivs = localStorage.getItem('sfl_archive_deliveries');
+        if (localDelivs) {
+          state.globalData.archiveDeliveries = JSON.parse(localDelivs);
+        }
+      } catch (e) {}
+
+      try {
+        const localWeeks = localStorage.getItem('sfl_cloud_weeks');
+        const parsedWeeks = localWeeks ? JSON.parse(localWeeks) : {};
+        state.globalData.cloudHistory = {
+          logs: [],
+          weeks: parsedWeeks,
+          trackTickets: parseInt(localStorage.getItem('sfl_track_tix') || '0', 10),
+          trackCost: parseFloat(localStorage.getItem('sfl_track_cost') || '0'),
+          dailyLoginTickets: parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10)
+        };
+      } catch (e) {
+        state.globalData.cloudHistory = { logs: [], weeks: {} };
+      }
+    }
+
+    // 2. Merge historical archive with live board deliveries without dropping past/manual orders
+    state.globalData.archiveDeliveries = getDeliveryRecords();
+    try {
+      localStorage.setItem('sfl_archive_deliveries', JSON.stringify(state.globalData.archiveDeliveries));
+    } catch (e) {}
+
+    if (data.vaultData) {
 
       if (data.vaultData.dailyLoginTickets !== undefined) {
         const loginCountEl = document.getElementById('dailyLoginCount');
