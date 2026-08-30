@@ -107,13 +107,13 @@ export const SFL_RECIPES = {
   "yellow balloon flower": { "yellow lotus": 1, "coins": 32 },
   "red daffodil": { "yellow pansy": 1, "coins": 32 },
 
-// ==========================================
+  // ==========================================
   // EXOTICS, MUTANTS & GIANT FRUITS
   // ==========================================
   "purple cauliflower": { "coins": 7040 },
   "adirondack potato": { "coins": 6400 },
   "chiogga": { "coins": 19200 },
-  "chioggia": { "coins": 19200 }, // alias to prevent delivery name mismatches
+  "chioggia": { "coins": 19200 },
   "black magic": { "coins": 52000 },
   "warty goblin pumpkin": { "coins": 4000 },
   "white carrot": { "coins": 3200 },
@@ -121,6 +121,7 @@ export const SFL_RECIPES = {
   "giant orange": { "coins": 500 },
   "giant banana": { "coins": 4000 },
   "giant apple": { "coins": 1500 },
+
   // ==========================================
   // CRUSTACEA & FISH
   // ==========================================
@@ -144,6 +145,7 @@ export const SFL_RECIPES = {
 
   "red snapper": { "rod": 1, "apple": 3 },
   "olive founder": { "rod": 1 },
+  "olive flounder": { "rod": 1 },
   "anchovy": { "rod": 1, "carrot": 1 },
   "butterflyfish": { "rod": 1 },
   "halibut": { "rod": 1 },
@@ -248,6 +250,7 @@ export const SFL_RECIPES = {
   "goblins treat": { "pumpkin": 10, "radish": 20, "cabbage": 10 },
   "pancakes": { "wheat": 10, "egg": 10, "honey": 6 },
   "roast veggies": { "cauliflower": 15, "carrot": 10 },
+  "spaghetti al limone": { "wheat": 10, "lemon": 15, "cheese": 30 },
   "spaghettti al limone": { "wheat": 10, "lemon": 15, "cheese": 30 },
   "steamed red rice": { "rice": 3, "beetroot": 50 },
   "sunflower crunch": { "sunflower": 300 },
@@ -267,6 +270,7 @@ export const SFL_RECIPES = {
   "carrot juice": { "carrot": 30 },
   "grape juice": { "grape": 5, "radish": 20 },
   "orange juice": { "orange": 5 },
+  "power smoothie": { "blueberry": 10, "kale": 5 },
   "power smothie": { "blueberry": 10, "kale": 5 },
   "purple smoothies": { "blueberry": 5, "cabbage": 10 },
   "quick juice": { "sunflower": 50, "pumpkin": 40 },
