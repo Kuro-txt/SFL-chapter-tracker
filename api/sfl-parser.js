@@ -33,7 +33,8 @@ export function extractRewardTickets(rewardObj) {
         cleanKey === 'feather' ||
         cleanKey === 'chapter ticket' ||
         cleanKey === 'seasonal ticket' ||
-        cleanKey.includes('feather')
+        cleanKey.includes('feather') ||
+        cleanKey.includes('ticket')
       ) {
         if (typeof val === 'number' && val > 0) {
           count += val;
@@ -98,7 +99,7 @@ export function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
   const clean = name.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
-  if (clean === 'coins' || clean === 'coin') return 0.001;
+  if (clean === 'coins' || clean === 'coin') return 0.001; // 1,000 Coins = 1 SFL
 
   const baseClean = cleanItemName(clean);
 
@@ -142,7 +143,7 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
     if (recipe.sfl !== undefined) return recipe.sfl;
     
     if (recipe.coins !== undefined) {
-      const coinsPerSfl = priceMap['sfl_coin_rate'] || 320;
+      const coinsPerSfl = priceMap['sfl_coin_rate'] || 1000; // 1,000 Coins = 1 SFL
       return recipe.coins / coinsPerSfl;
     }
 
@@ -342,7 +343,7 @@ export function parseFarmData(farm, priceMap) {
   const doubleDeliveryDatesSet = extractDoubleDeliveryDates(farm);
   const isDoubleDeliveryActive = doubleDeliveryDatesSet.has(todayUtcStr);
 
-  // 4. Bounties (No fake nowMs fallback)
+  // 4. Bounties
   const activeBounties = [];
   const seenBountyKeys = new Set();
   const completedBountiesRaw = farm.bounties?.completed || farm.bounties?.claimed || [];
@@ -420,7 +421,7 @@ export function parseFarmData(farm, priceMap) {
     });
   });
 
-  // 5. Chores (No fake nowMs fallback)
+  // 5. Chores
   const choreObj = farm.choreBoard?.chores || farm.chores || {};
   const choresList = [];
 
