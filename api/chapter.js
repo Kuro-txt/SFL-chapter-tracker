@@ -560,6 +560,10 @@ export default async function handler(req, res) {
       if (uRes.rows.length > 0) {
         userVault = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
         reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
+        await client.query(
+          'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+          [JSON.stringify(userVault), cleanUser]
+        );
       }
     }
 
@@ -572,6 +576,7 @@ export default async function handler(req, res) {
       doubleDeliveryDates: parsed.doubleDeliveryDates,
       milestones: parsed.liveMilestones,
       deliveries: parsed.deliveryList,
+      archiveDeliveries: userVault ? (userVault.archiveDeliveries || []) : [],
       bounties: parsed.activeBounties,
       chores: parsed.choresList,
       vaultData: userVault
