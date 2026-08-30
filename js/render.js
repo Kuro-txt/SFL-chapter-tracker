@@ -5,7 +5,7 @@ import {
   getActiveBoostCount, 
   getActiveVipBonus, 
   getMondayBasedWeekId, 
-  isAnimalBounty,
+  isAnimalBounty, 
   getDeliveryRecords 
 } from './state.js';
 
@@ -85,7 +85,7 @@ export function recalculateAll() {
   let weekChoreTix = 0;
   let weekCostAll = 0;
 
-  // STRICTLY LIVE/BOARD DELIVERIES FOR TODAY (Excludes Manual)
+  // Live board deliveries completed today
   let todayDelivTix = 0;
   let todayDelivCost = 0;
 
@@ -108,7 +108,7 @@ export function recalculateAll() {
   };
 
   const isDeliveryDoneToday = (item) => {
-    if (!item || item.isManual) return false; // Strictly exclude manual deliveries
+    if (!item || item.isManual) return false;
     if (item.checkedToday) return true;
     
     if (item.completedAt) {
@@ -127,7 +127,7 @@ export function recalculateAll() {
     return false;
   };
 
-  // 1. Deliveries Calculation (Feeds Total, Week, and Live Done Today)
+  // 1. Deliveries Calculation
   const masterDeliveries = getDeliveryRecords();
   const npcDoubleDeliveryClaimed = new Set();
 
@@ -143,7 +143,7 @@ export function recalculateAll() {
       const isManual = Boolean(d.isManual);
       const compDate = resolveDateStr(d) || todayUtcStr;
       const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
-      const isToday = !isManual && isDeliveryDoneToday(d); // Exclude manual
+      const isToday = !isManual && isDeliveryDoneToday(d);
 
       const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayUtcStr);
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
@@ -181,7 +181,7 @@ export function recalculateAll() {
     }
   });
 
-  // 2. Bounties Calculation (Feeds Total and Week ONLY)
+  // 2. Bounties Calculation
   (state.globalData.bounties || []).forEach(b => {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
@@ -209,7 +209,7 @@ export function recalculateAll() {
     }
   });
 
-  // 3. Chores Calculation (Feeds Total and Week ONLY)
+  // 3. Chores Calculation
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -271,7 +271,6 @@ export function recalculateAll() {
   const totalTicketsAll = totalDelivTix + totalBountyTix + totalAnimalBountyTix + totalChoreTix + trackTickets + totalLoginTickets;
   const weekTicketsAll = weekDelivTix + weekBountyTix + weekAnimalBountyTix + weekChoreTix;
   
-  // Done today is 100% Live Deliveries only
   const todayTicketsAll = todayDelivTix;
   const todayCostAll = todayDelivCost;
 
