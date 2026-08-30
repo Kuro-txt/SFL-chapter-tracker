@@ -221,7 +221,10 @@ export default async function handler(req, res) {
             deliveriesDone: todayCompletedItems,
             milestones: vault.milestones || {}
           };
-          vault.logs = [logEntry];
+          
+          // Bug Fix: Preserve log history instead of replacing with a 1-item array
+          const existingLogs = Array.isArray(vault.logs) ? vault.logs.filter(l => l.date !== todayDateStr) : [];
+          vault.logs = [logEntry, ...existingLogs].slice(0, 60);
           vault.lastCronSyncAt = new Date().toISOString();
 
           await client.query(
@@ -246,7 +249,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       success: true, 
-      message: `Cron executed at 23:00 UTC.`, 
+      message: `Cron executed at 22:35 UTC.`, 
       syncedAt: new Date().toISOString(),
       processedUsers: processedCount,
       results,
