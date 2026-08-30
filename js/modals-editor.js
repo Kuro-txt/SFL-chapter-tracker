@@ -344,7 +344,7 @@ export async function addNewItemFromModal() {
       isSkipped: false,
       completedAt: targetWeekTimestamp,
       completedDate: targetDateStr,
-      checkedToday: false, // Explicitly false for manual entries
+      checkedToday: false,
       isManual: true,
       weekId: targetWeekId
     };
@@ -491,7 +491,13 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
       const isManual = Boolean(target.isManual);
       const vip = isManual ? 0 : getActiveVipBonus();
       const boost = isManual ? 0 : getActiveBoostCount();
-      const baseVal = Math.max(1, inputVal - vip - boost);
+      
+      // Bug Fix: divide by 2 if double delivery bonus applies before subtracting flat bonuses
+      let effectiveInput = inputVal;
+      if (target.hasDoubleBonus && !isManual) {
+        effectiveInput = Math.round(effectiveInput / 2);
+      }
+      const baseVal = Math.max(1, effectiveInput - vip - boost);
       target.baseTickets = baseVal;
       target.tickets = baseVal;
     }
