@@ -164,7 +164,7 @@ export async function saveProgressToCloudKV(silent = false) {
   let calculatedTotalTickets = trackTickets + dailyLoginTickets;
   let calculatedTotalCost = trackCost;
 
-  // 1. Deliveries Calculation (Totals & Today Snapshot)
+  // 1. Deliveries Calculation
   const masterDeliveries = getDeliveryRecords();
   const npcDoubleClaimedInSave = new Set();
 
@@ -210,7 +210,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // 2. Current Bounties (Total Only)
+  // 2. Current Bounties
   (state.globalData?.bounties || []).forEach(b => {
     const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
     if (isTicked) {
@@ -222,7 +222,7 @@ export async function saveProgressToCloudKV(silent = false) {
     }
   });
 
-  // 3. Current Chores (Total Only)
+  // 3. Current Chores
   (state.globalData?.chores || []).forEach(c => {
     const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
     if (isTicked) {
@@ -272,7 +272,11 @@ export async function saveProgressToCloudKV(silent = false) {
     milestones: state.globalData?.milestones || {}
   };
 
-  const logs = [logEntry];
+  // Bug Fix: Merge today's log entry with existing history instead of resetting
+  const pastLogs = Array.isArray(state.globalData.cloudHistory.logs) 
+    ? state.globalData.cloudHistory.logs.filter(l => l.date !== todayDate) 
+    : [];
+  const logs = [logEntry, ...pastLogs].slice(0, 60);
   state.globalData.cloudHistory.logs = logs;
 
   const payload = {
