@@ -1,17 +1,22 @@
 import { SFL_RECIPES } from '../../recipes.js';
 
 export const CHAPTER_NPC_TICKETS = {
+  "pumpkin pete": 1,
   "pumpkin' pete": 1,
+  "pete": 1,
   "bert": 2,
   "finley": 2,
-  "raven": 4,
+  "findlay": 2,
   "miranda": 2,
-  "finn": 5,
-  "pharaoh": 6,
   "cornwell": 3,
+  "corny": 3,
+  "raven": 4,
+  "jester": 4,
+  "finn": 5,
   "timmy": 5,
-  "tywin": 10,
-  "jester": 4
+  "tyreless timmy": 5,
+  "pharaoh": 6,
+  "tywin": 10
 };
 
 export function extractPricesRecursive(obj, map = {}) {
@@ -61,7 +66,7 @@ export function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
   const clean = name.toLowerCase().trim();
   const stripped = clean.replace(/[^a-z0-9]/g, '');
-  if (clean === 'coins' || clean === 'coin') return 0.001;
+  if (clean === 'coins' || clean === 'coin') return 0.001; // 1,000 Coins = 1 SFL
 
   const baseClean = cleanItemName(clean);
 
@@ -102,11 +107,23 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
 
   const recipe = SFL_RECIPES[clean] || SFL_RECIPES[stripped] || SFL_RECIPES[baseName] || SFL_RECIPES[baseStripped];
   if (recipe) {
-    let recipeTotal = 0;
-    Object.entries(recipe).forEach(([ingName, ingQty]) => {
-      recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
-    });
-    return recipeTotal;
+    if (recipe.sfl !== undefined) return recipe.sfl;
+    
+    if (recipe.coins !== undefined) {
+      const coinsPerSfl = priceMap['sfl_coin_rate'] || 1000; // 1,000 Coins = 1 SFL
+      return recipe.coins / coinsPerSfl;
+    }
+
+    const ingredients = recipe.ingredients || recipe;
+    if (typeof ingredients === 'object') {
+      let recipeTotal = 0;
+      Object.entries(ingredients).forEach(([ingName, ingQty]) => {
+        if (typeof ingQty === 'number') {
+          recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
+        }
+      });
+      return recipeTotal;
+    }
   }
   return 0;
 }
@@ -125,7 +142,7 @@ export function extractRewardTickets(rewardObj) {
         lower.includes('scroll') ||
         lower.includes('token')
       ) {
-        count += (typeof qty === 'number' ? qty : parseInt(qty) || 0);
+        count += (typeof qty === 'number' ? qty : parseInt(qty, 10) || 0);
       }
     }
   }
