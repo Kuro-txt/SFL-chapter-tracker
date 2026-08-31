@@ -28,10 +28,20 @@ export function recalculateAll() {
   const startOfTodayUtcMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const currentWeekMonday = getMondayBasedWeekId(now);
 
-  const rawWeeks = (state.globalData.cloudHistory && state.globalData.cloudHistory.weeks) || {};
+  let rawWeeks = (state.globalData?.cloudHistory && state.globalData?.cloudHistory?.weeks) || 
+    (state.currentVaultData && state.currentVaultData?.weeks) || 
+    {};
+  try {
+    const localWeeksStr = localStorage.getItem('sfl_cloud_weeks');
+    if (localWeeksStr) {
+      const localWeeks = JSON.parse(localWeeksStr);
+      rawWeeks = { ...localWeeks, ...rawWeeks };
+    }
+  } catch (e) {}
 
   const weeks = {};
   Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
+    if (!wkVal || typeof wkVal !== 'object') return;
     const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
     if (!weeks[normalizedId]) {
       weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
