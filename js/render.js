@@ -363,23 +363,23 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const isDark = document.body.classList.contains('dark-mode');
 
   const colors = {
-    gridLine: isDark ? '#3d2b1f' : '#E0D5C1',
-    gridText: isDark ? '#bcaaa4' : '#8C7853',
-    targetLine: isDark ? '#90a4ae' : '#9E9E9E',
-    targetText: isDark ? '#cfd8dc' : '#757575',
-    axisLabel: isDark ? '#f5ebe6' : '#5C4033',
-    costLabel: isDark ? '#ffcc80' : '#8C7853',
+    gridLine: isDark ? '#3d2b1f' : '#D7CCC8',
+    gridText: isDark ? '#bcaaa4' : '#3E2723',
+    targetLine: isDark ? '#90a4ae' : '#7B1FA2',
+    targetText: isDark ? '#cfd8dc' : '#4A148C',
+    axisLabel: isDark ? '#f5ebe6' : '#2E1B17',
+    costLabel: isDark ? '#ffcc80' : '#4E342E',
     barDoneFill: isDark ? '#2e7d32' : '#4CAF50',
-    barDoneStroke: isDark ? '#81c784' : '#2E7D32',
-    barDoneText: isDark ? '#a5d6a7' : '#1b5e20',
-    barCurFill: isDark ? '#e65100' : '#D2691E',
-    barCurStroke: isDark ? '#ffb74d' : '#8B4513',
-    barCurText: isDark ? '#ffe082' : '#8B4513',
-    barEmptyFill: isDark ? '#1a120c' : '#EFEBE9',
-    barEmptyStroke: isDark ? '#4a3525' : '#BCAAA4',
-    barEmptyText: isDark ? '#756156' : '#9E9E9E',
+    barDoneStroke: isDark ? '#81c784' : '#1B5E20',
+    barDoneText: isDark ? '#a5d6a7' : '#0F3812',
+    barCurFill: isDark ? '#e65100' : '#E65100',
+    barCurStroke: isDark ? '#ffb74d' : '#BF360C',
+    barCurText: isDark ? '#ffe082' : '#BF360C',
+    barEmptyFill: isDark ? '#1a120c' : '#ECEFF1',
+    barEmptyStroke: isDark ? '#4a3525' : '#78909C',
+    barEmptyText: isDark ? '#756156' : '#455A64',
     barCurEmptyFill: isDark ? '#331f11' : '#FFE0B2',
-    barCurEmptyStroke: isDark ? '#ff9800' : '#8B4513'
+    barCurEmptyStroke: isDark ? '#ff9800' : '#E65100'
   };
 
   const weekMondays = [];
@@ -450,7 +450,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     const yPos = topPadding + plotHeight - (val / yMax) * plotHeight;
     gridLinesSvg += `
       <line x1="${leftPadding}" y1="${yPos}" x2="${chartWidth - rightPadding}" y2="${yPos}" stroke="${colors.gridLine}" stroke-dasharray="3,3" stroke-width="1.5" />
-      <text x="${leftPadding - 8}" y="${yPos + 4}" font-size="11" font-weight="bold" fill="${colors.gridText}" text-anchor="end">${val}</text>
+      <text x="${leftPadding - 8}" y="${yPos + 4}" font-size="12" font-weight="900" fill="${colors.gridText}" text-anchor="end">${val}</text>
     `;
   }
 
@@ -459,7 +459,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     const targetY = topPadding + plotHeight - (targetPacePerWeek / yMax) * plotHeight;
     targetLineSvg += `
       <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="${colors.targetLine}" stroke-dasharray="5,5" stroke-width="2" />
-      <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="10" font-weight="900" fill="${colors.targetText}">Pace: ${targetPacePerWeek}</text>
+      <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="11" font-weight="900" fill="${colors.targetText}">Pace: ${targetPacePerWeek}</text>
     `;
   }
 
@@ -492,9 +492,9 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
           <title>📅 ${item.label} (${item.mondayKey})\n📦 Deliveries: ${item.delivTix} Tix\n📜 Bounties: ${item.bountyTix} Tix\n🐄 Animal Bounties: ${item.animalBountyTix} Tix\n🧹 Chores: ${item.choreTix} Tix\n🎟️ Total: ${item.tickets} Tix\n💰 Cost: ${formatSFL(item.cost)} SFL</title>
         </rect>
-        <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
-        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
-        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 35}" font-size="9" font-weight="bold" fill="${colors.costLabel}" text-anchor="middle">${costText}</text>` : ''}
+        <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="13" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
+        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="12" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
+        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 35}" font-size="10" font-weight="900" fill="${colors.costLabel}" text-anchor="middle">${costText}</text>` : ''}
       </g>
     `;
   });
@@ -519,18 +519,18 @@ export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, anima
 
   const sflCostStr = formatSFL(totalCost || 0);
   tooltip.innerHTML = `
-    <div style="color:#ffcc80; font-size:12px; font-weight:900; border-bottom:1px dashed #d2b48c; padding-bottom:4px; margin-bottom:6px;">
+    <div style="color:#FFD54F; font-size:12.5px; font-weight:900; border-bottom:1px dashed #d2b48c; padding-bottom:4px; margin-bottom:6px;">
       📅 <strong>${(label || 'WEEK').toUpperCase()} BREAKDOWN:</strong>
     </div>
-    <div style="display:flex; flex-direction:column; gap:3px; font-size:11.5px; font-weight:bold;">
-      <div style="display:flex; justify-content:space-between; gap:14px;"><span>📦 Deliveries:</span><strong>${delivTix || 0} Tix</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px;"><span>📜 Bounties:</span><strong>${bountyTix || 0} Tix</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px;"><span>🐄 Animal Bounties:</span><strong>${animalBountyTix || 0} Tix</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px;"><span>🧹 Chores:</span><strong>${choreTix || 0} Tix</strong></div>
+    <div style="display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:bold;">
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📦 Deliveries:</span><strong style="color:#FFFFFF; font-size:12.5px;">${delivTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📜 Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${bountyTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>🐄 Animal Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${animalBountyTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>🧹 Chores:</span><strong style="color:#FFFFFF; font-size:12.5px;">${choreTix || 0} Tix</strong></div>
     </div>
-    <div style="border-top:1px dashed #d2b48c; padding-top:4px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:900; color:#a5d6a7;">
-      <span>🎟️ Total: +${totalTix || 0} Tix</span>
-      <span style="color:#ffcc80;">💰 ${sflCostStr} SFL</span>
+    <div style="border-top:1px dashed #d2b48c; padding-top:5px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:900;">
+      <span style="color:#81C784;">🎟️ Total: +${totalTix || 0} Tix</span>
+      <span style="color:#FFD54F;">💰 ${sflCostStr} SFL</span>
     </div>
   `;
 
