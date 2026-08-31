@@ -266,6 +266,30 @@
       opacity: 1;
     }
 
+    .chart-floating-tooltip {
+      position: fixed;
+      z-index: 9999;
+      width: 240px;
+      background-color: #3E2723;
+      color: #FFF8DC;
+      text-align: left;
+      border: 2px solid #D2691E;
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+      pointer-events: none;
+      font-family: inherit;
+      display: none;
+      line-height: 1.45;
+    }
+
+    body.dark-mode .chart-floating-tooltip {
+      background-color: #1f1712;
+      border-color: #ff9800;
+      color: #f5ebe6;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.75);
+    }
+
     .overview-grid { 
       display: grid; 
       grid-template-columns: repeat(2, minmax(0, 1fr)); 
