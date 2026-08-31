@@ -3,6 +3,7 @@ export {
   toggleGuideModal,
   openCategorySummaryModal,
   closeCategorySummaryModal,
+  openWeekBreakdownModal,
   deleteMasterLog,
   toggleHistoryModal
 } from './modals-view.js';
