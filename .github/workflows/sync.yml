@@ -2,8 +2,8 @@ name: SFL Farm Daily Sync
 
 on:
   schedule:
-    # Runs daily at 22:35 UTC (avoids top-of-hour runner delays)
-    - cron: '35 22 * * *'
+    # Runs daily at 21:20 UTC (avoids top-of-hour runner delays)
+   - cron: '20 21 * * *'
   workflow_dispatch:
 
 jobs:
