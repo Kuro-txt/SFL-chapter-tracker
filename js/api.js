@@ -67,7 +67,15 @@ export async function loadTrackerData() {
     const data = await res.json();
     state.globalData = data;
 
-    // 1. Restore historical deliveries & manual orders from vault or local storage
+    // 1. Restore historical deliveries, chores, bounties & manual orders
+    let loadedWeeks = {};
+    try {
+      const localWeeksStr = localStorage.getItem('sfl_cloud_weeks');
+      if (localWeeksStr) {
+        loadedWeeks = JSON.parse(localWeeksStr);
+      }
+    } catch (e) {}
+
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
       state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
@@ -75,9 +83,12 @@ export async function loadTrackerData() {
       state.globalData.archiveChores = data.vaultData.archiveChores || [];
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
       
+      const vaultWeeks = data.vaultData.weeks || {};
+      loadedWeeks = { ...loadedWeeks, ...vaultWeeks };
+
       state.globalData.cloudHistory = {
         logs: data.vaultData.logs || [],
-        weeks: data.vaultData.weeks || {},
+        weeks: loadedWeeks,
         trackTickets: data.vaultData.trackTickets || 0,
         trackCost: data.vaultData.trackCost || 0,
         dailyLoginTickets: data.vaultData.dailyLoginTickets || 0
@@ -91,20 +102,18 @@ export async function loadTrackerData() {
         }
       } catch (e) {}
 
-      try {
-        const localWeeks = localStorage.getItem('sfl_cloud_weeks');
-        const parsedWeeks = localWeeks ? JSON.parse(localWeeks) : {};
-        state.globalData.cloudHistory = {
-          logs: [],
-          weeks: parsedWeeks,
-          trackTickets: parseInt(localStorage.getItem('sfl_track_tix') || '0', 10),
-          trackCost: parseFloat(localStorage.getItem('sfl_track_cost') || '0'),
-          dailyLoginTickets: parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10)
-        };
-      } catch (e) {
-        state.globalData.cloudHistory = { logs: [], weeks: {} };
-      }
+      state.globalData.cloudHistory = {
+        logs: [],
+        weeks: loadedWeeks,
+        trackTickets: parseInt(localStorage.getItem('sfl_track_tix') || '0', 10),
+        trackCost: parseFloat(localStorage.getItem('sfl_track_cost') || '0'),
+        dailyLoginTickets: parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10)
+      };
     }
+
+    try {
+      localStorage.setItem('sfl_cloud_weeks', JSON.stringify(loadedWeeks));
+    } catch (e) {}
 
     // 2. Merge historical archive with live board deliveries without dropping past/manual orders
     state.globalData.archiveDeliveries = getDeliveryRecords();
@@ -138,8 +147,6 @@ export async function loadTrackerData() {
 
       const { checkAndAutoClaimDailyLogin } = await import('./state.js');
       await checkAndAutoClaimDailyLogin();
-    } else {
-      state.globalData.cloudHistory = { logs: [], weeks: {} };
     }
 
     if (data.isVipActive !== undefined) {
