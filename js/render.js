@@ -363,23 +363,23 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const isDark = document.body.classList.contains('dark-mode');
 
   const colors = {
-    gridLine: isDark ? '#3d2b1f' : '#D7CCC8',
-    gridText: isDark ? '#bcaaa4' : '#3E2723',
-    targetLine: isDark ? '#90a4ae' : '#7B1FA2',
-    targetText: isDark ? '#cfd8dc' : '#4A148C',
-    axisLabel: isDark ? '#f5ebe6' : '#2E1B17',
-    costLabel: isDark ? '#ffcc80' : '#4E342E',
-    barDoneFill: isDark ? '#2e7d32' : '#4CAF50',
-    barDoneStroke: isDark ? '#81c784' : '#1B5E20',
-    barDoneText: isDark ? '#a5d6a7' : '#0F3812',
-    barCurFill: isDark ? '#e65100' : '#E65100',
-    barCurStroke: isDark ? '#ffb74d' : '#BF360C',
-    barCurText: isDark ? '#ffe082' : '#BF360C',
-    barEmptyFill: isDark ? '#1a120c' : '#ECEFF1',
-    barEmptyStroke: isDark ? '#4a3525' : '#78909C',
-    barEmptyText: isDark ? '#756156' : '#455A64',
-    barCurEmptyFill: isDark ? '#331f11' : '#FFE0B2',
-    barCurEmptyStroke: isDark ? '#ff9800' : '#E65100'
+    gridLine: isDark ? '#4E342E' : '#D7CCC8',
+    gridText: isDark ? '#FFF8DC' : '#3E2723',
+    targetLine: isDark ? '#CE93D8' : '#7B1FA2',
+    targetText: isDark ? '#F3E5F5' : '#4A148C',
+    axisLabel: isDark ? '#FFF8DC' : '#2E1B17',
+    costLabel: isDark ? '#FFE082' : '#4E342E',
+    barDoneFill: isDark ? '#2E7D32' : '#4CAF50',
+    barDoneStroke: isDark ? '#81C784' : '#1B5E20',
+    barDoneText: isDark ? '#C8E6C9' : '#0F3812',
+    barCurFill: isDark ? '#E65100' : '#E65100',
+    barCurStroke: isDark ? '#FFB74D' : '#BF360C',
+    barCurText: isDark ? '#FFF9C4' : '#BF360C',
+    barEmptyFill: isDark ? '#211812' : '#ECEFF1',
+    barEmptyStroke: isDark ? '#5D4037' : '#78909C',
+    barEmptyText: isDark ? '#D7CCC8' : '#455A64',
+    barCurEmptyFill: isDark ? '#3E271E' : '#FFE0B2',
+    barCurEmptyStroke: isDark ? '#FF9800' : '#E65100'
   };
 
   const weekMondays = [];
