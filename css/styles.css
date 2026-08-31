@@ -180,3 +180,27 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
 }
 .modal-header { padding: 16px; border-bottom: 3px solid #8B5A2B; display: flex; justify-content: space-between; align-items: center; background: #8B5A2B; color: #FFF8DC; border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+
+.chart-floating-tooltip {
+  position: fixed;
+  z-index: 9999;
+  width: 240px;
+  background-color: #3E2723;
+  color: #FFF8DC;
+  text-align: left;
+  border: 2px solid #D2691E;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+  pointer-events: none;
+  font-family: inherit;
+  display: none;
+  line-height: 1.45;
+}
+
+body.dark-mode .chart-floating-tooltip {
+  background-color: #1f1712;
+  border-color: #ff9800;
+  color: #f5ebe6;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.75);
+}
