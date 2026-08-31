@@ -16,7 +16,12 @@ import {
   updateHistoryItemCost, 
   deleteWeeklyItem 
 } from './modals.js';
-import { recalculateAll } from './render.js';
+import { 
+  recalculateAll,
+  showChartTooltip,
+  moveChartTooltip,
+  hideChartTooltip
+} from './render.js';
 import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
 
 // ==========================================
@@ -53,6 +58,9 @@ window.toggleGuideModal = toggleGuideModal;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
+window.showChartTooltip = showChartTooltip;
+window.moveChartTooltip = moveChartTooltip;
+window.hideChartTooltip = hideChartTooltip;
 window.openColumnHistoryModal = openColumnHistoryModal;
 window.closeColumnHistoryModal = closeColumnHistoryModal;
 window.renderColumnHistoryModalList = renderColumnHistoryModalList;
