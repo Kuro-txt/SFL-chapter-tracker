@@ -265,7 +265,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       success: true, 
-      message: `Cron executed at 22:35 UTC.`, 
+      message: `Cron executed at 21:20 UTC.`, 
       syncedAt: new Date().toISOString(),
       processedUsers: processedCount,
       results,
