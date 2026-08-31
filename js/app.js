@@ -40,6 +40,9 @@ export function applyTheme(theme) {
   }
 
   localStorage.setItem('sfl_theme', theme);
+  try {
+    recalculateAll();
+  } catch (e) {}
 }
 
 export function toggleTheme() {
