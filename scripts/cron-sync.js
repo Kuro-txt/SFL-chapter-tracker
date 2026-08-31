@@ -129,6 +129,22 @@ async function runSync() {
           currentWk.bounties = [...parsed.activeBounties, ...savedManualBounties];
         }
 
+        // Populate completed past-week bounties from SFL into their historical week bucket
+        (parsed.activeBounties || []).forEach(b => {
+          if (b.completed && b.completedDate) {
+            const bWeekId = getMondayBasedWeekId(b.completedDate);
+            if (bWeekId && bWeekId !== currentWeekMonday) {
+              if (!vault.weeks[bWeekId]) {
+                vault.weeks[bWeekId] = { weekId: bWeekId, bounties: [], chores: [] };
+              }
+              const exists = (vault.weeks[bWeekId].bounties || []).some(eb => eb.id === b.id);
+              if (!exists) {
+                vault.weeks[bWeekId].bounties.push(b);
+              }
+            }
+          }
+        });
+
         const existingManualChores = (vault.chores || []).filter(c => c.isManual);
         const existingManualBounties = (vault.bounties || []).filter(b => b.isManual);
         vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
