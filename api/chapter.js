@@ -560,6 +560,40 @@ export default async function handler(req, res) {
       if (uRes.rows.length > 0) {
         userVault = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
         reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
+
+        const currentWeekMonday = getMondayBasedWeekId(new Date());
+        if (!userVault.weeks) userVault.weeks = {};
+        if (!userVault.weeks[currentWeekMonday]) {
+          userVault.weeks[currentWeekMonday] = {
+            weekId: currentWeekMonday,
+            bounties: parsed.activeBounties || [],
+            chores: parsed.choresList || []
+          };
+        } else {
+          const currentWk = userVault.weeks[currentWeekMonday];
+          const savedManualChores = (currentWk.chores || []).filter(c => c.isManual);
+          const savedManualBounties = (currentWk.bounties || []).filter(b => b.isManual);
+
+          currentWk.chores = [...(parsed.choresList || []), ...savedManualChores];
+          currentWk.bounties = [...(parsed.activeBounties || []), ...savedManualBounties];
+        }
+
+        // Populate completed past-week bounties from SFL into their historical week bucket
+        (parsed.activeBounties || []).forEach(b => {
+          if (b.completed && b.completedDate) {
+            const bWeekId = getMondayBasedWeekId(b.completedDate);
+            if (bWeekId && bWeekId !== currentWeekMonday) {
+              if (!userVault.weeks[bWeekId]) {
+                userVault.weeks[bWeekId] = { weekId: bWeekId, bounties: [], chores: [] };
+              }
+              const exists = (userVault.weeks[bWeekId].bounties || []).some(eb => eb.id === b.id);
+              if (!exists) {
+                userVault.weeks[bWeekId].bounties.push(b);
+              }
+            }
+          }
+        });
+
         await client.query(
           'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
           [JSON.stringify(userVault), cleanUser]
