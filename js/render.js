@@ -73,14 +73,31 @@ export function recalculateAll() {
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
 
   const weeklyStats = {};
-  const addWeeklyStat = (mondayKey, tix, cost) => {
+  const addWeeklyStat = (mondayKey, tix, cost, category = 'deliv') => {
     if (!mondayKey) mondayKey = currentWeekMonday;
     const normMonday = getMondayBasedWeekId(mondayKey);
     if (!weeklyStats[normMonday]) {
-      weeklyStats[normMonday] = { tickets: 0, cost: 0 };
+      weeklyStats[normMonday] = { 
+        tickets: 0, 
+        cost: 0,
+        delivTix: 0,
+        bountyTix: 0,
+        animalBountyTix: 0,
+        choreTix: 0
+      };
     }
     weeklyStats[normMonday].tickets += tix;
     weeklyStats[normMonday].cost += cost;
+
+    if (category === 'deliv') {
+      weeklyStats[normMonday].delivTix += tix;
+    } else if (category === 'bounty') {
+      weeklyStats[normMonday].bountyTix += tix;
+    } else if (category === 'animalBounty') {
+      weeklyStats[normMonday].animalBountyTix += tix;
+    } else if (category === 'chore') {
+      weeklyStats[normMonday].choreTix += tix;
+    }
   };
 
   let totalDelivTix = 0;
@@ -182,7 +199,7 @@ export function recalculateAll() {
 
       totalDelivTix += calculatedYield;
       totalSflCostAll += dCost;
-      addWeeklyStat(itemWeekMonday, calculatedYield, dCost);
+      addWeeklyStat(itemWeekMonday, calculatedYield, dCost, 'deliv');
 
       if (isThisWeek) {
         weekDelivTix += calculatedYield;
@@ -215,7 +232,7 @@ export function recalculateAll() {
 
       totalSflCostAll += bCost;
       if (isThisWeek) weekCostAll += bCost;
-      addWeeklyStat(itemWeekMonday, finalTix, bCost);
+      addWeeklyStat(itemWeekMonday, finalTix, bCost, isAnimal ? 'animalBounty' : 'bounty');
     }
   });
 
@@ -237,7 +254,7 @@ export function recalculateAll() {
 
       totalSflCostAll += cCost;
       if (isThisWeek) weekCostAll += cCost;
-      addWeeklyStat(itemWeekMonday, finalTix, cCost);
+      addWeeklyStat(itemWeekMonday, finalTix, cCost, 'chore');
     }
   });
 
@@ -249,17 +266,21 @@ export function recalculateAll() {
     (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-        const finalTix = b.isManual ? baseTix : (baseTix + boostCount);
+        const isManual = Boolean(b.isManual);
+        const finalTix = isManual ? baseTix : (baseTix + boostCount);
         if (finalTix <= 0) return;
 
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
         const isAnimal = isAnimalBounty(b);
 
-        if (isAnimal) totalAnimalBountyTix += finalTix;
-        else totalBountyTix += finalTix;
+        if (isAnimal) {
+          totalAnimalBountyTix += finalTix;
+        } else {
+          totalBountyTix += finalTix;
+        }
 
         totalSflCostAll += bCost;
-        addWeeklyStat(pastMonday, finalTix, bCost);
+        addWeeklyStat(pastMonday, finalTix, bCost, isAnimal ? 'animalBounty' : 'bounty');
       }
     });
 
@@ -272,7 +293,7 @@ export function recalculateAll() {
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
         totalChoreTix += finalTix;
         totalSflCostAll += cCost;
-        addWeeklyStat(pastMonday, finalTix, cCost);
+        addWeeklyStat(pastMonday, finalTix, cCost, 'chore');
       }
     });
   });
@@ -379,15 +400,26 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const displayItems = [];
   weekMondays.forEach((mondayKey, idx) => {
     const isCurrent = (mondayKey === currentMondayKey);
-    const data = weeklyStats[mondayKey];
+    const data = weeklyStats[mondayKey] || {
+      tickets: 0,
+      cost: 0,
+      delivTix: 0,
+      bountyTix: 0,
+      animalBountyTix: 0,
+      choreTix: 0
+    };
 
     displayItems.push({
       label: `Week ${idx + 1}`,
       mondayKey,
-      tickets: data ? data.tickets : 0,
-      cost: data ? data.cost : 0,
+      tickets: data.tickets || 0,
+      cost: data.cost || 0,
+      delivTix: data.delivTix || 0,
+      bountyTix: data.bountyTix || 0,
+      animalBountyTix: data.animalBountyTix || 0,
+      choreTix: data.choreTix || 0,
       isCurrent,
-      hasData: Boolean(data && data.tickets > 0)
+      hasData: Boolean(data.tickets > 0)
     });
   });
 
@@ -451,9 +483,14 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     const costText = item.cost > 0 ? `${formatSFL(item.cost)} SFL` : '';
 
     barsSvg += `
-      <g class="chart-bar-group" onclick="openWeekBreakdownModal('${item.mondayKey}', '${item.label}')" style="cursor: pointer;">
+      <g class="chart-bar-group" 
+         onmouseenter="showChartTooltip(event, '${item.label}', '${item.mondayKey}', ${item.delivTix}, ${item.bountyTix}, ${item.animalBountyTix}, ${item.choreTix}, ${item.tickets}, ${item.cost})"
+         onmousemove="moveChartTooltip(event)"
+         onmouseleave="hideChartTooltip()"
+         onclick="showChartTooltip(event, '${item.label}', '${item.mondayKey}', ${item.delivTix}, ${item.bountyTix}, ${item.animalBountyTix}, ${item.choreTix}, ${item.tickets}, ${item.cost})"
+         style="cursor: pointer;">
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
-          <title>📊 Click to view ${item.label} breakdown\n(Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.000 SFL'}</title>
+          <title>📅 ${item.label} (${item.mondayKey})\n📦 Deliveries: ${item.delivTix} Tix\n📜 Bounties: ${item.bountyTix} Tix\n🐄 Animal Bounties: ${item.animalBountyTix} Tix\n🧹 Chores: ${item.choreTix} Tix\n🎟️ Total: ${item.tickets} Tix\n💰 Cost: ${formatSFL(item.cost)} SFL</title>
         </rect>
         <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
         <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
@@ -469,4 +506,71 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
       ${barsSvg}
     </svg>
   `;
+}
+
+export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, animalBountyTix, choreTix, totalTix, totalCost) {
+  let tooltip = document.getElementById('chartFloatingTooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'chartFloatingTooltip';
+    tooltip.className = 'chart-floating-tooltip';
+    document.body.appendChild(tooltip);
+  }
+
+  const sflCostStr = formatSFL(totalCost || 0);
+  tooltip.innerHTML = `
+    <div style="color:#ffcc80; font-size:12px; font-weight:900; border-bottom:1px dashed #d2b48c; padding-bottom:4px; margin-bottom:6px;">
+      📅 <strong>${(label || 'WEEK').toUpperCase()} BREAKDOWN:</strong>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:3px; font-size:11.5px; font-weight:bold;">
+      <div style="display:flex; justify-content:space-between; gap:14px;"><span>📦 Deliveries:</span><strong>${delivTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px;"><span>📜 Bounties:</span><strong>${bountyTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px;"><span>🐄 Animal Bounties:</span><strong>${animalBountyTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px;"><span>🧹 Chores:</span><strong>${choreTix || 0} Tix</strong></div>
+    </div>
+    <div style="border-top:1px dashed #d2b48c; padding-top:4px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:900; color:#a5d6a7;">
+      <span>🎟️ Total: +${totalTix || 0} Tix</span>
+      <span style="color:#ffcc80;">💰 ${sflCostStr} SFL</span>
+    </div>
+  `;
+
+  tooltip.style.display = 'block';
+  positionChartTooltip(e, tooltip);
+}
+
+export function moveChartTooltip(e) {
+  const tooltip = document.getElementById('chartFloatingTooltip');
+  if (tooltip && tooltip.style.display === 'block') {
+    positionChartTooltip(e, tooltip);
+  }
+}
+
+export function hideChartTooltip() {
+  const tooltip = document.getElementById('chartFloatingTooltip');
+  if (tooltip) {
+    tooltip.style.display = 'none';
+  }
+}
+
+function positionChartTooltip(e, tooltip) {
+  const x = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+  const y = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+  
+  const tooltipWidth = 230;
+  const tooltipHeight = 150;
+  
+  let left = x + 15;
+  let top = y - tooltipHeight - 10;
+  
+  if (typeof window !== 'undefined') {
+    if (left + tooltipWidth > window.innerWidth - 10) {
+      left = x - tooltipWidth - 15;
+    }
+    if (top < 10) {
+      top = y + 20;
+    }
+  }
+  
+  tooltip.style.left = `${Math.max(10, left)}px`;
+  tooltip.style.top = `${Math.max(10, top)}px`;
 }
