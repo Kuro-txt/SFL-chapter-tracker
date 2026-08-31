@@ -4,6 +4,7 @@ import {
   toggleGuideModal, 
   openCategorySummaryModal, 
   closeCategorySummaryModal, 
+  openWeekBreakdownModal,
   openColumnHistoryModal, 
   closeColumnHistoryModal, 
   renderColumnHistoryModalList, 
@@ -51,6 +52,7 @@ window.userLogout = userLogout;
 window.toggleGuideModal = toggleGuideModal;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
+window.openWeekBreakdownModal = openWeekBreakdownModal;
 window.openColumnHistoryModal = openColumnHistoryModal;
 window.closeColumnHistoryModal = closeColumnHistoryModal;
 window.renderColumnHistoryModalList = renderColumnHistoryModalList;
