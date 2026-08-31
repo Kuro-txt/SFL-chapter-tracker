@@ -363,10 +363,11 @@ export function parseFarmData(farm, priceMap) {
   }
 
   const rawBountySources = [
+    farm.bounties?.completed,
+    farm.bounties?.claimed,
     farm.bounties?.requests,
     farm.bounties?.board,
     farm.bounties?.active,
-    farm.bounties,
     farm.seasonBounties,
     farm.flowerBounties,
     farm.animalBounties
@@ -374,7 +375,15 @@ export function parseFarmData(farm, priceMap) {
 
   rawBountySources.forEach(source => {
     if (!source) return;
-    const items = Array.isArray(source) ? source : (typeof source === 'object' ? Object.values(source) : []);
+    let items = [];
+    if (Array.isArray(source)) {
+      items = source;
+    } else if (typeof source === 'object') {
+      Object.values(source).forEach(val => {
+        if (Array.isArray(val)) items.push(...val);
+        else if (val && typeof val === 'object') items.push(val);
+      });
+    }
 
     items.forEach(b => {
       if (!b || typeof b !== 'object') return;
@@ -424,15 +433,35 @@ export function parseFarmData(farm, priceMap) {
   });
 
   // 5. Chores
-  const choreObj = farm.choreBoard?.chores || farm.chores || {};
+  const rawChoreSources = [
+    farm.choreBoard?.chores,
+    farm.choreBoard?.historical,
+    farm.choreBoard?.completed,
+    farm.choreBoard?.closed,
+    farm.chores
+  ];
   const choresList = [];
+  const seenChoreKeys = new Set();
 
-  Object.entries(choreObj).forEach(([key, details]) => {
-    let featherCount = extractRewardTickets(details.reward);
-    if (featherCount === 0 && typeof details.tickets === 'number') featherCount = details.tickets;
-    if (featherCount === 0 && details.baseTickets) featherCount = details.baseTickets;
+  rawChoreSources.forEach(source => {
+    if (!source || typeof source !== 'object') return;
+    const entries = Array.isArray(source)
+      ? source.map((item, i) => [`idx_${i}`, item])
+      : Object.entries(source);
 
-    if (featherCount > 0) {
+    entries.forEach(([key, details]) => {
+      if (!details || typeof details !== 'object') return;
+      const taskLabel = details.name || details.description || details.task || key;
+      const npcName = details.npc || details.from || 'Chore NPC';
+      const choreKey = `${npcName}_${taskLabel}`.toLowerCase();
+      if (seenChoreKeys.has(choreKey)) return;
+      seenChoreKeys.add(choreKey);
+
+      let featherCount = extractRewardTickets(details.reward);
+      if (featherCount === 0 && typeof details.tickets === 'number') featherCount = details.tickets;
+      if (featherCount === 0 && details.baseTickets) featherCount = details.baseTickets;
+
+      if (featherCount > 0) {
       const currentProgress = details.initialProgress ?? details.progress ?? 0;
       const requirement = details.requirement ?? details.target ?? details.total ?? 0;
       const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
@@ -463,6 +492,7 @@ export function parseFarmData(farm, priceMap) {
       });
     }
   });
+});
 
   return {
     isVipActive,
