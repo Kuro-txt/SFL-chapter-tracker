@@ -451,9 +451,9 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     const costText = item.cost > 0 ? `${formatSFL(item.cost)} SFL` : '';
 
     barsSvg += `
-      <g class="chart-bar-group" style="cursor: pointer;">
+      <g class="chart-bar-group" onclick="openWeekBreakdownModal('${item.mondayKey}', '${item.label}')" style="cursor: pointer;">
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
-          <title>${item.label} (Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.000 SFL'}</title>
+          <title>📊 Click to view ${item.label} breakdown\n(Monday: ${item.mondayKey} UTC)\n🎟️ ${item.tickets} Tickets\n💰 ${item.cost > 0 ? formatSFL(item.cost) + ' SFL' : '0.000 SFL'}</title>
         </rect>
         <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="12" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
         <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="11" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
