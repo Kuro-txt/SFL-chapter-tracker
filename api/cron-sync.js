@@ -144,6 +144,16 @@ export default async function handler(req, res) {
           let todayCostIncurred = 0;
           const todayCompletedItems = [];
 
+          // Post-Midnight Delay Protection (if runner is delayed past 00:00 UTC reset)
+          const currentUtcHour = new Date(nowMs).getUTCHours();
+          const yesterdayDateStr = new Date(nowMs - 86400000).toISOString().split('T')[0];
+          const hasYesterdayLog = Array.isArray(vault.logs) && vault.logs.some(l => l.date === yesterdayDateStr);
+          
+          let snapshotDate = todayDateStr;
+          if ((currentUtcHour === 0 || currentUtcHour === 1) && !hasYesterdayLog) {
+            snapshotDate = yesterdayDateStr;
+          }
+
           const npcDoubleClaimed = new Set();
           const sortedDeliveries = [...(vault.archiveDeliveries || [])].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
 
@@ -153,7 +163,7 @@ export default async function handler(req, res) {
               const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
               const isManual = Boolean(d.isManual);
               const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDateStr);
-              const isToday = !isManual && (compDate === todayDateStr);
+              const isToday = !isManual && (compDate === snapshotDate || compDate === todayDateStr);
 
               const isDoubleDay = doubleDatesSet.has(compDate) || (isDoubleToday && compDate === todayDateStr);
               const npcClean = (d.from || d.name || '').toLowerCase().trim();
@@ -229,7 +239,7 @@ export default async function handler(req, res) {
           vault.cumulativeCost = totalCalculatedCost;
 
           const logEntry = {
-            date: todayDateStr,
+            date: snapshotDate,
             weekId: currentWeekMonday,
             timestamp: new Date().toISOString(),
             ticketsSaved: todayTicketsEarned,
@@ -239,7 +249,7 @@ export default async function handler(req, res) {
           };
           
           // Bug Fix: Preserve log history instead of replacing with a 1-item array
-          const existingLogs = Array.isArray(vault.logs) ? vault.logs.filter(l => l.date !== todayDateStr) : [];
+          const existingLogs = Array.isArray(vault.logs) ? vault.logs.filter(l => l.date !== snapshotDate) : [];
           vault.logs = [logEntry, ...existingLogs].slice(0, 60);
           vault.lastCronSyncAt = new Date().toISOString();
 
