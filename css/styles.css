@@ -204,3 +204,76 @@ body.dark-mode .chart-floating-tooltip {
   color: #f5ebe6;
   box-shadow: 0 6px 16px rgba(0,0,0,0.75);
 }
+
+.guide-card {
+  background: #FFFDF7;
+  border: 2px solid #8B5A2B;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.guide-card.highlight {
+  background: #F1F8E9;
+  border-color: #2E7D32;
+}
+.guide-card-title {
+  font-weight: 900;
+  color: #4E2712;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px dashed #D2B48C;
+  padding-bottom: 5px;
+  font-size: 14px;
+}
+.guide-card.highlight .guide-card-title {
+  color: #1B5E20;
+  border-bottom-color: #A5D6A7;
+}
+.guide-card-text {
+  color: #2E1B17;
+  line-height: 1.55;
+  font-weight: 500;
+}
+.guide-card code {
+  background: #EFEBE9;
+  color: #1B5E20;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #C8E6C9;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+body.dark-mode .guide-card {
+  background-color: #241a13 !important;
+  border-color: #5d4037 !important;
+  color: #F5EBE6 !important;
+  box-shadow: 0 4px 0px #120c08;
+}
+body.dark-mode .guide-card.highlight {
+  background-color: #142616 !important;
+  border-color: #2e7d32 !important;
+}
+body.dark-mode .guide-card-title {
+  color: #FFD54F !important;
+  border-bottom-color: #5D4037 !important;
+}
+body.dark-mode .guide-card.highlight .guide-card-title {
+  color: #81C784 !important;
+  border-bottom-color: #2E7D32 !important;
+}
+body.dark-mode .guide-card-text {
+  color: #F5EBE6 !important;
+}
+body.dark-mode .guide-card-text strong {
+  color: #FFE082 !important;
+}
+body.dark-mode .guide-card code {
+  background: #16110D !important;
+  color: #81C784 !important;
+  border-color: #2E7D32 !important;
+}
