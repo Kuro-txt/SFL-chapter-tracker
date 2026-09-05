@@ -462,35 +462,34 @@ export function parseFarmData(farm, priceMap) {
       if (featherCount === 0 && details.baseTickets) featherCount = details.baseTickets;
 
       if (featherCount > 0) {
-      const currentProgress = details.initialProgress ?? details.progress ?? 0;
-      const requirement = details.requirement ?? details.target ?? details.total ?? 0;
-      const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
-      const completionTime = typeof details.completedAt === 'number' && details.completedAt > 0 ? details.completedAt : null;
-      const taskLabel = details.name || details.description || key;
+        const currentProgress = details.initialProgress ?? details.progress ?? 0;
+        const requirement = details.requirement ?? details.target ?? details.total ?? 0;
+        const isCompleted = typeof details.completedAt === 'number' || details.completed === true || details.isCompleted === true || (requirement > 0 && currentProgress >= requirement);
+        const completionTime = typeof details.completedAt === 'number' && details.completedAt > 0 ? details.completedAt : null;
 
-      let completedDateStr = null;
-      if (completionTime) {
-        const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
-        completedDateStr = new Date(ms).toISOString().split('T')[0];
+        let completedDateStr = null;
+        if (completionTime) {
+          const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
+          completedDateStr = new Date(ms).toISOString().split('T')[0];
+        }
+
+        choresList.push({
+          npc: details.npc || details.from || 'Chore NPC',
+          name: taskLabel,
+          task: taskLabel,
+          baseTickets: featherCount,
+          tickets: featherCount,
+          cost: 0,
+          itemsCost: 0,
+          progress: currentProgress,
+          requirement,
+          completed: isCompleted,
+          checked: isCompleted,
+          completedAt: completionTime,
+          completedDate: completedDateStr,
+          checkedToday: false
+        });
       }
-
-      choresList.push({
-        npc: details.npc || details.from || 'Chore NPC',
-        name: taskLabel,
-        task: taskLabel,
-        baseTickets: featherCount,
-        tickets: featherCount,
-        cost: 0,
-        itemsCost: 0,
-        progress: currentProgress,
-        requirement,
-        completed: isCompleted,
-        checked: isCompleted,
-        completedAt: completionTime,
-        completedDate: completedDateStr,
-        checkedToday: false
-      });
-    }
   });
 });
 
