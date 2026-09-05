@@ -58,6 +58,7 @@ window.userRegister = userRegister;
 window.userLogin = userLogin;
 window.userLogout = userLogout;
 window.toggleGuideModal = toggleGuideModal;
+window.updateChapterCountdown = updateChapterCountdown;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
@@ -141,6 +142,37 @@ function startTipRotation() {
   });
 }
 
+// ==========================================
+// CHAPTER COUNTDOWN TIMER (Nov 2, 2026, 00:00 UTC)
+// ==========================================
+// 57 days 6 hours from Sept 5, 2026 18:00 UTC = Nov 2, 2026, 00:00:00 UTC
+const CHAPTER_END_TIMESTAMP = Date.UTC(2026, 10, 2, 0, 0, 0);
+
+export function updateChapterCountdown() {
+  const timerValEl = document.getElementById('chapterCountdownVal');
+  const widgetEl = document.getElementById('chapterCountdownWidget');
+  if (!timerValEl) return;
+
+  const nowMs = Date.now();
+  const diffMs = Math.max(0, CHAPTER_END_TIMESTAMP - nowMs);
+
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) {
+    timerValEl.textContent = `${days}d ${hours}h`;
+  } else if (hours > 0) {
+    timerValEl.textContent = `${hours}h ${mins}m`;
+  } else {
+    timerValEl.textContent = `${mins}m`;
+  }
+
+  if (widgetEl) {
+    widgetEl.title = `Chapter ends: November 2, 2026 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Initialize Dark / Light Theme
   const savedTheme = localStorage.getItem('sfl_theme') || 
@@ -176,5 +208,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkSavedAuth();
   await checkAndAutoClaimDailyLogin();
   startTipRotation();
+  updateChapterCountdown();
+  setInterval(updateChapterCountdown, 60000);
   recalculateAll();
 });
