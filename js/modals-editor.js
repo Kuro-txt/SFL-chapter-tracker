@@ -122,8 +122,9 @@ export function renderColumnHistoryModalList() {
   const bodyEl = document.getElementById('columnHistoryBody');
   let records = [];
 
+  const currentWeekNum = getWeekNumber(getMondayBasedWeekId());
   let weekOptionsHtml = CHAPTER_WEEKS.map(wk => {
-    const selectedAttr = (wk.num === 2) ? 'selected' : '';
+    const selectedAttr = (wk.num === currentWeekNum) ? 'selected' : '';
     return `<option value="${wk.id}" ${selectedAttr}>${wk.label}</option>`;
   }).join('');
 
