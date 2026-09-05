@@ -209,12 +209,12 @@ export async function saveProgressToCloudKV(silent = false) {
   const sortedDeliveries = [...masterDeliveries].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
 
   sortedDeliveries.forEach(d => {
-    const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
-    if (isTicked) {
+    const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+    if (isDone) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
       const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDate);
-      const isToday = isTicked && !isManual && (compDate === todayDate);
+      const isToday = !isManual && (compDate === todayDate);
 
       const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayDate);
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
