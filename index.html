@@ -1108,68 +1108,52 @@
         <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
-        <!-- 1. CLOUD VAULT & AUTOMATED CRON SYNC -->
+        <!-- 1. DAILY 3-STEP ROUTINE -->
         <div class="guide-card highlight">
-          <div class="guide-card-title">☁️ 1. CLOUD VAULT & AUTOMATED DAILY SYNC</div>
+          <div class="guide-card-title">🚀 1. DAILY 3-STEP ROUTINE</div>
           <div class="guide-card-text">
-            • <strong>☁️ SAVE IN CLOUD:</strong> Click anytime to securely sync all completed deliveries, chores, bounties, and tickets to your database vault.<br/>
-            • <strong>⏰ Automated GitHub Sync:</strong> Runs automatically every day via dual schedule (19:30 UTC & 22:00 UTC) with post-midnight protection. It syncs live prices from SFL.world, calculates cumulative tickets, and logs daily snapshots.
+            • <strong>① 🌾 FETCH DATA:</strong> Loads your active delivery board, chores & bounties with live market prices.<br/>
+            • <strong>② 📦 COMPLETE TASKS:</strong> Finish orders or chores in-game, then click <strong>🌾 FETCH DATA</strong> or tick them off.<br/>
+            • <strong>③ ☁️ SAVE IN CLOUD:</strong> Locks your progress and tickets into your vault.<br/>
+            <span style="font-size:11.5px; opacity:0.85;"><em>💡 Note: Background sync also automatically snapshots daily before 00:00 UTC.</em></span>
           </div>
         </div>
 
-        <!-- 2. WEEKLY PROGRESSION & INTERACTIVE BREAKDOWN -->
+        <!-- 2. WEEKLY PROGRESSION CHART -->
         <div class="guide-card">
-          <div class="guide-card-title">📈 2. WEEKLY PROGRESSION & INTERACTIVE BREAKDOWN</div>
+          <div class="guide-card-title">📈 2. CLICK BARS FOR WEEKLY BREAKDOWNS</div>
           <div class="guide-card-text">
-            • <strong>📊 Hover or Click Chart Bars:</strong> Hover over or tap any week bar (Week 1 through Week 12) in the <strong>Weekly Tickets Progression</strong> chart to see an instant breakdown popup showing tickets earned from Deliveries, Bounties, Animal Bounties, and Chores.<br/>
-            • <strong>🔍 Detailed Week Modal:</strong> Click any week to open the full itemized list of orders and tasks completed during that specific week with SFL costs and ticket efficiency ratios.
+            • <strong>Hover or Tap:</strong> Hover or tap any week bar in the <strong>Weekly Tickets Progression</strong> chart to see a breakdown popup of tickets earned from Deliveries, Bounties, Animal Bounties, and Chores.<br/>
+            • <strong>Click Bar:</strong> Opens the full itemized list of orders and tasks completed during that specific week with SFL costs.
           </div>
         </div>
 
-        <!-- 3. MULTI-WEEK EDITING & SORTING -->
+        <!-- 3. 2x DOUBLE DELIVERY EVENTS -->
         <div class="guide-card">
-          <div class="guide-card-title">📅 3. WEEK-BY-WEEK LOGGING & EDITING</div>
+          <div class="guide-card-title">⚡ 3. 2x DOUBLE DELIVERY EVENTS</div>
           <div class="guide-card-text">
-            • <strong>📜 EDIT:</strong> Click <strong>📜 EDIT</strong> on any category card to view full item history, filter by specific weeks (Week 1 to Week 12), or filter by NPC.<br/>
-            • <strong>⚡ Active-First Sorting:</strong> Tasks are automatically sorted with active orders first, followed by descending completion date.<br/>
-            • <strong>➕ Custom Tasks:</strong> Manually add, edit, or adjust ticket yields and SFL costs for any past or current week at any time.
+            • <strong>First Delivery 2x:</strong> On 2x event days, your <strong>first completed delivery</strong> for each NPC gives double tickets: <code>[(Base + VIP + Boosts) × 2]</code>.<br/>
+            • <strong>Extra Orders:</strong> Any additional orders completed for the same NPC on that day give standard 1x tickets.
           </div>
         </div>
 
-        <!-- 4. 2x DOUBLE DELIVERY EVENTS -->
+        <!-- 4. VIP, BOOSTERS & DAILY LOGIN -->
         <div class="guide-card">
-          <div class="guide-card-title">⚡ 4. 2x DOUBLE DELIVERY EVENTS & STACKED ORDERS</div>
+          <div class="guide-card-title">👑 4. VIP, BOOSTERS & DAILY LOGIN</div>
           <div class="guide-card-text">
-            • <strong>2x Double Delivery:</strong> When a Double Delivery event is active, the first completed delivery of each NPC today receives 2x total tickets: <code>[(Base + VIP + Boosts) × 2]</code>.<br/>
-            • <strong>🥞 Stacked Orders:</strong> If an NPC has multiple orders completed on the same day, subsequent deliveries yield standard single tickets.
+            • <strong>VIP (+2):</strong> Toggle the VIP checkbox at the top to automatically add +2 tickets to all Deliveries & Chores.<br/>
+            • <strong>Boosters (+1):</strong> Toggle your active boosters to add +1 ticket each.<br/>
+            • <strong>Daily Login (+1):</strong> +1 ticket is automatically credited every calendar day.
           </div>
         </div>
 
-        <!-- 5. REAL-TIME SFL & COMPOUND RECIPE PRICING -->
+        <!-- 5. FIXING OR CUSTOMIZING RECORDS -->
         <div class="guide-card">
-          <div class="guide-card-title">💰 5. REAL-TIME SFL & COMPOUND RECIPE PRICING</div>
+          <div class="guide-card-title">✏️ 5. EDITING & CUSTOM TASKS</div>
           <div class="guide-card-text">
-            • <strong>Live Market Prices:</strong> Automatically calculates item and recipe costs using real-time market data from SFL.world.<br/>
-            • <strong>Compound Recipes:</strong> Accurately accounts for both coin costs (<code>1,000 coins = 1 SFL</code>) and raw materials recursively (e.g. Synthetic Fibre, Dolls, Fish, Cooking meals).
-          </div>
-        </div>
-
-        <!-- 6. DAILY LOGIN & CHAPTER TARGETS -->
-        <div class="guide-card">
-          <div class="guide-card-title">🎁 6. DAILY LOGIN, CHAPTER TARGETS & TRACK</div>
-          <div class="guide-card-text">
-            • <strong>🎁 LOGIN:</strong> Automatically records +1 ticket per calendar day into your total ticket counter.<br/>
-            • <strong>🎯 CHAPTER TARGET:</strong> Set your target ticket goal (e.g. 1,000 Tix) and duration (e.g. 12 Wks) to see tickets remaining and your target pace per week.<br/>
-            • <strong>🛤️ TRACK:</strong> Use the Track inputs to log chapter reward track milestones or manual SFL adjustments.
-          </div>
-        </div>
-
-        <!-- 7. VIP & BOOST MULTIPLIERS -->
-        <div class="guide-card">
-          <div class="guide-card-title">👑 7. VIP & BOOST MULTIPLIERS</div>
-          <div class="guide-card-text">
-            • <strong>VIP (+2):</strong> Adds +2 bonus tickets to NPC Deliveries and Chores.<br/>
-            • <strong>+1 Boosts (#1–#3):</strong> Adds +1 ticket per active booster across all your activities.
+            • <strong>📜 EDIT:</strong> Click <strong>📜 EDIT</strong> on any card to view your history, filter by week, or filter by NPC.<br/>
+            • <strong>Active-First:</strong> Pending tasks always stay at the top. Completed orders are sorted by date.<br/>
+            • <strong>Custom Items:</strong> You can add or adjust tickets/costs for any past or current week at any time.
           </div>
         </div>
       </div>
