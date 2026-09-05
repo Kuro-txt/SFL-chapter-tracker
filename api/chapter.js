@@ -546,6 +546,16 @@ export default async function handler(req, res) {
     });
 
     if (!sflRes.ok) {
+      if (sflRes.status === 429) {
+        return res.status(429).json({
+          error: '⏳ Rate limit reached. Sunflower Land is blocking too many requests. Please wait 1–2 minutes before fetching again, or enter an SFL API Key for a higher quota.'
+        });
+      }
+      if (sflRes.status === 503 || sflRes.status === 502) {
+        return res.status(503).json({
+          error: '🔧 Sunflower Land servers are temporarily unavailable (maintenance). Please try again in a few minutes.'
+        });
+      }
       throw new Error(`Sunflower Land API responded with status ${sflRes.status}`);
     }
 
