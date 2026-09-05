@@ -167,12 +167,35 @@ export async function loadTrackerData() {
     recalculateAll();
   } catch (err) {
     if (priceBadge) {
-      priceBadge.textContent = `❌ ${err.message}`;
-      priceBadge.style.background = '#FFEBEE';
-      priceBadge.style.borderColor = '#E53935';
-      priceBadge.style.color = '#B71C1C';
+      const isRateLimit = err.message.includes('429') || err.message.includes('Rate limit') || err.message.includes('rate limit');
+      const isMaintenance = err.message.includes('503') || err.message.includes('502') || err.message.includes('unavailable');
+      const isTimeout = err.message.includes('timeout') || err.message.includes('aborted') || err.message.includes('TimeoutError');
+
+      if (isRateLimit) {
+        priceBadge.textContent = '⏳ Rate limited by SFL — wait 1–2 min then try again';
+        priceBadge.style.background = '#FFF9C4';
+        priceBadge.style.borderColor = '#F9A825';
+        priceBadge.style.color = '#E65100';
+      } else if (isMaintenance) {
+        priceBadge.textContent = '🔧 SFL servers under maintenance — try again shortly';
+        priceBadge.style.background = '#FFF9C4';
+        priceBadge.style.borderColor = '#F9A825';
+        priceBadge.style.color = '#E65100';
+      } else if (isTimeout) {
+        priceBadge.textContent = '⏱️ SFL took too long to respond — try again in a moment';
+        priceBadge.style.background = '#FFF9C4';
+        priceBadge.style.borderColor = '#F9A825';
+        priceBadge.style.color = '#E65100';
+      } else {
+        priceBadge.textContent = `❌ ${err.message}`;
+        priceBadge.style.background = '#FFEBEE';
+        priceBadge.style.borderColor = '#E53935';
+        priceBadge.style.color = '#B71C1C';
+        alert(`Failed to fetch farm data: ${err.message}`);
+      }
+    } else {
+      alert(`Failed to fetch farm data: ${err.message}`);
     }
-    alert(`Failed to fetch farm data: ${err.message}`);
   }
 }
 
