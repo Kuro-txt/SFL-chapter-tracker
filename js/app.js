@@ -108,10 +108,14 @@ window.saveLoginCountAndRecalculate = () => {
 
 // Focused Gameplay Tips Rotation
 const FARMER_TIPS = [
-  '📦 <strong>STACKED ORDERS:</strong> Completed 2 deliveries from the same NPC today? Use the EDIT modal to view or add extra orders!',
-  '⚡ <strong>DOUBLE DELIVERIES:</strong> 2x event automatically doubles total tickets on your 1st completed order of the day!',
-  '🛤️ <strong>MANUAL ADJUSTMENT:</strong> Have missed tickets, special events, or price mismatches? Add them to the <em>🛤️ TRACK</em> input anytime!',
-  '☁️ <strong>SAVE PROGRESS:</strong> Always click <em>"SAVE IN CLOUD"</em> before closing your tab to write your daily snapshot into your vault.'
+  '📈 <strong>WEEKLY BREAKDOWNS:</strong> Hover or tap any bar in the Weekly Progression chart to see tickets earned from Deliveries, Bounties, Animal Bounties & Chores!',
+  '☁️ <strong>CLOUD VAULT:</strong> Click <em>"SAVE IN CLOUD"</em> to lock in your tickets. Background sync also automatically snapshots daily before 00:00 UTC!',
+  '⚡ <strong>2x DOUBLE DELIVERIES:</strong> On 2x event days, your first completed order for each NPC gives double tickets: <em>[(Base + VIP + Boosts) × 2]</em>!',
+  '📜 <strong>MULTI-WEEK EDITING:</strong> Click <em>EDIT</em> on any card to view history, filter by week (Week 1–12), or add custom tasks. Active orders stay at the top!',
+  '🎯 <strong>CHAPTER GOAL PACE:</strong> Set your ticket target (e.g. 1,000 Tix) and weeks to track your remaining tickets and needed pace per week!',
+  '🎁 <strong>DAILY LOGIN:</strong> Free +1 ticket is automatically credited to your vault on your first visit each calendar day!',
+  '⏱️ <strong>SEASON COUNTDOWN:</strong> The pixel stopwatch in the top-left corner counts down live to the season reset on Nov 2, 2026!',
+  '👑 <strong>VIP & BOOSTERS:</strong> Toggle the VIP (+2) and booster (+1 each) checkboxes at the top to automatically boost your ticket yields!'
 ];
 
 let currentTipIndex = 0;
