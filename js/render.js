@@ -305,13 +305,33 @@ export function recalculateAll() {
   const todayTicketsAll = todayDelivTix;
   const todayCostAll = todayDelivCost;
 
-  const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
-  const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
+  const liveBoardDeliveries = state.globalData.deliveries || [];
+  const activeDeliveriesCount = liveBoardDeliveries.filter(d => {
+    if (!d || d.isSkipped) return false;
+    const isDone = d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed);
+    return !isDone;
+  }).length;
 
-  const activeDeliveriesCount = masterDeliveries.filter(d => !isTicked(d)).length;
-  const activeBountiesCount = regularBounties.filter(b => !isTicked(b)).length;
-  const activeAnimalBountiesCount = animalBounties.filter(b => !isTicked(b)).length;
-  const activeChoresCount = (state.globalData.chores || []).filter(c => !isTicked(c)).length;
+  const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
+  const activeBountiesCount = regularBounties.filter(b => {
+    if (!b) return false;
+    const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+    return !isDone;
+  }).length;
+
+  const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
+  const activeAnimalBountiesCount = animalBounties.filter(b => {
+    if (!b) return false;
+    const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+    return !isDone;
+  }).length;
+
+  const liveChores = state.globalData.chores || [];
+  const activeChoresCount = liveChores.filter(c => {
+    if (!c) return false;
+    const isDone = c.checked !== undefined ? Boolean(c.checked) : Boolean(c.completed);
+    return !isDone;
+  }).length;
 
   setElemText('deliveriesCount', `${activeDeliveriesCount} Orders`);
   setElemText('bountiesCount', `${activeBountiesCount} Items`);
