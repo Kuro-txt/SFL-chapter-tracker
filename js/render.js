@@ -308,11 +308,15 @@ export function recalculateAll() {
   const regularBounties = (state.globalData.bounties || []).filter(b => !isAnimalBounty(b));
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
 
-  const activeDeliveriesCount = masterDeliveries.filter(d => !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped).length;
+  const activeDeliveriesCount = masterDeliveries.filter(d => !isTicked(d)).length;
+  const activeBountiesCount = regularBounties.filter(b => !isTicked(b)).length;
+  const activeAnimalBountiesCount = animalBounties.filter(b => !isTicked(b)).length;
+  const activeChoresCount = (state.globalData.chores || []).filter(c => !isTicked(c)).length;
+
   setElemText('deliveriesCount', `${activeDeliveriesCount} Orders`);
-  setElemText('bountiesCount', `${regularBounties.length} Items`);
-  setElemText('animalBountiesCount', `${animalBounties.length} Animals`);
-  setElemText('choresCount', `${(state.globalData.chores || []).length} Tasks`);
+  setElemText('bountiesCount', `${activeBountiesCount} Items`);
+  setElemText('animalBountiesCount', `${activeAnimalBountiesCount} Animals`);
+  setElemText('choresCount', `${activeChoresCount} Tasks`);
 
   // Main Metric Counters
   setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
