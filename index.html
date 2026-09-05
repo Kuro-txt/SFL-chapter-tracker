@@ -47,6 +47,46 @@
     .header-title-group {
       flex: 1;
       text-align: center;
+      min-width: 240px;
+    }
+    .chapter-countdown-widget {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #C2CDD8;
+      border: 2px solid #2B3A4A;
+      border-radius: 6px;
+      padding: 4px 10px;
+      box-shadow: inset 1px 1px 0px rgba(255,255,255,0.7), 0 3px 0px #1A2530;
+      image-rendering: pixelated;
+      cursor: default;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .countdown-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .countdown-info {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+      text-align: left;
+    }
+    .countdown-label {
+      font-size: 10px;
+      font-weight: 800;
+      color: #243342;
+      letter-spacing: 0.2px;
+      font-family: inherit;
+    }
+    .countdown-timer {
+      font-size: 13px;
+      font-weight: 900;
+      color: #0F172A;
+      letter-spacing: 0.5px;
+      font-family: inherit;
     }
     h1 { 
       font-size: clamp(18px, 2.8vw, 28px); 
@@ -635,6 +675,17 @@
       box-shadow: 0 4px 0px #120c08;
       color: #ede0d4;
     }
+    body.dark-mode .chapter-countdown-widget {
+      background: #1e2530 !important;
+      border-color: #3b4d61 !important;
+      box-shadow: inset 1px 1px 0px rgba(255,255,255,0.1), 0 3px 0px #0b1016 !important;
+    }
+    body.dark-mode .countdown-label {
+      color: #94A3B8 !important;
+    }
+    body.dark-mode .countdown-timer {
+      color: #FFD54F !important;
+    }
     body.dark-mode .guide-card {
       background-color: #241a13 !important;
       border-color: #5d4037 !important;
@@ -867,6 +918,10 @@
 
     /* Mobile Adaptations */
     @media (max-width: 600px) {
+      header { justify-content: space-between; }
+      .header-title-group { order: -1; width: 100%; margin-bottom: 6px; }
+      .chapter-countdown-widget { order: 1; }
+      #themeToggleBtn { order: 2; }
       .modal { padding: 6px; }
       .modal-content { max-height: 94vh; width: 100%; border-radius: 8px; }
       .modal-body { padding: 10px 8px; }
@@ -884,6 +939,35 @@
 
   <div class="wrapper">
     <header>
+      <div id="chapterCountdownWidget" class="chapter-countdown-widget" title="Chapter ends on Nov 2, 2026 at 00:00 UTC">
+        <div class="countdown-icon">
+          <svg width="20" height="24" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg" style="image-rendering: pixelated;">
+            <rect x="6" y="0" width="4" height="1" fill="#4B6584"/>
+            <rect x="5" y="1" width="1" height="3" fill="#4B6584"/>
+            <rect x="10" y="1" width="1" height="3" fill="#4B6584"/>
+            <rect x="7" y="2" width="2" height="3" fill="#D1D8E0"/>
+            <rect x="4" y="4" width="8" height="1" fill="#1E272E"/>
+            <rect x="2" y="5" width="12" height="1" fill="#1E272E"/>
+            <rect x="1" y="6" width="14" height="9" fill="#1E272E"/>
+            <rect x="2" y="15" width="12" height="1" fill="#1E272E"/>
+            <rect x="4" y="16" width="8" height="1" fill="#1E272E"/>
+            <rect x="4" y="5" width="8" height="1" fill="#EA2027"/>
+            <rect x="2" y="6" width="3" height="9" fill="#EA2027"/>
+            <rect x="11" y="6" width="3" height="9" fill="#B71540"/>
+            <rect x="4" y="15" width="8" height="1" fill="#9A1F40"/>
+            <rect x="3" y="7" width="1" height="2" fill="#FF7979"/>
+            <rect x="5" y="6" width="6" height="9" fill="#F5F6FA"/>
+            <rect x="4" y="7" width="8" height="7" fill="#F5F6FA"/>
+            <rect x="7" y="8" width="1" height="3" fill="#2C3E50"/>
+            <rect x="8" y="10" width="2" height="1" fill="#2C3E50"/>
+          </svg>
+        </div>
+        <div class="countdown-info">
+          <span class="countdown-label">Chapter ends:</span>
+          <span id="chapterCountdownVal" class="countdown-timer">57d 6h</span>
+        </div>
+      </div>
+
       <div class="header-title-group">
         <h1>🌻 SUNFLOWER LAND CHAPTER TRACKER</h1>
         <p>Harvest Tickets & Chapter End Goal Calculator</p>
