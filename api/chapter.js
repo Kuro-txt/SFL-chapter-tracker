@@ -174,16 +174,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         });
 
         if (pendingIdx !== -1) {
-          const orderToSkip = vault.archiveDeliveries[pendingIdx];
-          orderToSkip.id = `deliv_${npcClean}_skip_${prevStat.skippedCount + 1}`;
-          orderToSkip.isSkipped = true;
-          orderToSkip.completed = false;
-          orderToSkip.checked = false;
-          orderToSkip.status = 'skipped';
-          orderToSkip.completedAt = nowMs;
-          orderToSkip.completedDate = todayDateStr;
-          orderToSkip.weekId = currentWeekMonday;
-          orderToSkip.skippedCountAtCreation = prevStat.skippedCount + 1;
+          vault.archiveDeliveries.splice(pendingIdx, 1);
         }
       }
     }
