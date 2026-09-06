@@ -266,6 +266,7 @@ export function parseFarmData(farm, priceMap) {
   Object.entries(rawNpcs).forEach(([npcKey, npcVal]) => {
     if (!npcVal || typeof npcVal !== 'object') return;
     const cleanKey = npcKey.toLowerCase().trim();
+    if (CHAPTER_NPC_TICKETS[cleanKey] === undefined) return;
     npcsData[cleanKey] = {
       deliveryCount: typeof npcVal.deliveryCount === 'number' ? npcVal.deliveryCount : 0,
       skippedCount: typeof npcVal.skippedCount === 'number' ? npcVal.skippedCount : 0,
