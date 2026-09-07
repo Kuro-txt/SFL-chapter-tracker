@@ -195,8 +195,12 @@ export function getMondayBasedWeekId(d) {
   return date.toISOString().split('T')[0];
 }
 
+export const KNOWN_DOUBLE_DELIVERY_DATES = [
+  '2026-09-02'
+];
+
 export function extractDoubleDeliveryDates(farm) {
-  const dates = new Set();
+  const dates = new Set(KNOWN_DOUBLE_DELIVERY_DATES);
   if (!farm || typeof farm !== 'object') return dates;
 
   const sources = [
