@@ -128,7 +128,8 @@ export default async function handler(req, res) {
 
           const isVip = Boolean(parsed.isVipActive);
           const vipBonus = isVip ? 2 : 0;
-          const doubleDatesSet = new Set(parsed.doubleDeliveryDates || []);
+          const KNOWN_DOUBLE_DELIVERY_DATES = ['2026-09-02'];
+          const doubleDatesSet = new Set([...(parsed.doubleDeliveryDates || []), ...KNOWN_DOUBLE_DELIVERY_DATES]);
           const isDoubleToday = doubleDatesSet.has(todayDateStr) || Boolean(parsed.isDoubleDeliveryActive);
 
           // Daily login auto-increment on new calendar day
@@ -169,9 +170,10 @@ export default async function handler(req, res) {
               const npcClean = (d.from || d.name || '').toLowerCase().trim();
               const doubleKey = `${npcClean}_${compDate}`;
 
+              const wasDouble = Boolean(d.hasDoubleBonus);
               let yieldAmt = baseTix;
               if (!isManual) {
-                if (isDoubleDay && !npcDoubleClaimed.has(doubleKey)) {
+                if (wasDouble || (isDoubleDay && !npcDoubleClaimed.has(doubleKey))) {
                   yieldAmt = (baseTix + vipBonus) * 2;
                   npcDoubleClaimed.add(doubleKey);
                   d.hasDoubleBonus = true;
