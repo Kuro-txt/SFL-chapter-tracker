@@ -213,7 +213,8 @@ export async function saveProgressToCloudKV(silent = false) {
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData?.isDoubleDeliveryActive);
-  const doubleDeliveryDates = new Set(state.globalData?.doubleDeliveryDates || []);
+  const KNOWN_DOUBLE_DELIVERY_DATES = ['2026-09-02'];
+  const doubleDeliveryDates = new Set([...(state.globalData?.doubleDeliveryDates || []), ...KNOWN_DOUBLE_DELIVERY_DATES]);
 
   const todayDate = new Date().toISOString().split('T')[0];
   const currentWeekMonday = getMondayBasedWeekId();
@@ -243,14 +244,17 @@ export async function saveProgressToCloudKV(silent = false) {
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
       const doubleKey = `${npcClean}_${compDate}`;
 
+      const wasDouble = Boolean(d.hasDoubleBonus);
       let yieldAmt = base;
       if (!isManual) {
         const withBonuses = base + vipBonus + boostCount;
-        if (isDoubleDay && !npcDoubleClaimedInSave.has(doubleKey)) {
+        if (wasDouble || (isDoubleDay && !npcDoubleClaimedInSave.has(doubleKey))) {
           yieldAmt = withBonuses * 2;
           npcDoubleClaimedInSave.add(doubleKey);
+          d.hasDoubleBonus = true;
         } else {
           yieldAmt = withBonuses;
+          d.hasDoubleBonus = false;
         }
       }
 
