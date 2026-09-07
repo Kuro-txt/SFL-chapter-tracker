@@ -15,7 +15,8 @@ export function recalculateAll() {
   const vipBonus = getActiveVipBonus();
   const boostCount = getActiveBoostCount();
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
-  const doubleDeliveryDates = new Set(state.globalData.doubleDeliveryDates || []);
+  const KNOWN_DOUBLE_DELIVERY_DATES = ['2026-09-02'];
+  const doubleDeliveryDates = new Set([...(state.globalData.doubleDeliveryDates || []), ...KNOWN_DOUBLE_DELIVERY_DATES]);
 
   const dblBanner = document.getElementById('doubleDeliveryBanner');
   if (dblBanner) {
@@ -176,8 +177,13 @@ export function recalculateAll() {
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
       const doubleClaimKey = `${npcClean}_${compDate}`;
 
+      const wasDouble = Boolean(d.hasDoubleBonus);
       let applyDouble = false;
-      if (isDoubleDay && !isManual && !npcDoubleDeliveryClaimed.has(doubleClaimKey)) {
+      if (wasDouble) {
+        applyDouble = true;
+        npcDoubleDeliveryClaimed.add(doubleClaimKey);
+        d.hasDoubleBonus = true;
+      } else if (isDoubleDay && !isManual && !npcDoubleDeliveryClaimed.has(doubleClaimKey)) {
         applyDouble = true;
         npcDoubleDeliveryClaimed.add(doubleClaimKey);
         d.hasDoubleBonus = true;
