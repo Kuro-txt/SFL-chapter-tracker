@@ -283,6 +283,80 @@ export function openCategorySummaryModal(cat) {
   if (cat === 'delivery') {
     titleEl.textContent = '📦 LIVE BOARD DELIVERIES OVERVIEW';
     const liveDeliveries = state.globalData.deliveries || [];
+
+    const KNOWN_DOUBLE_DELIVERY_DATES = ['2026-09-02'];
+    const doubleDeliveryDates = new Set([...(state.globalData.doubleDeliveryDates || []), ...KNOWN_DOUBLE_DELIVERY_DATES]);
+    const now = new Date();
+    const todayUtcStr = now.toISOString().split('T')[0];
+    const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const startOfTodayUtcMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+    const isDoubleToday = isDoubleDeliveryActive || doubleDeliveryDates.has(todayUtcStr);
+
+    // 1. Identify NPCs that have already completed a double delivery today
+    const npcDoubleClaimedToday = new Set();
+    const masterDeliveries = getDeliveryRecords();
+
+    if (isDoubleToday) {
+      masterDeliveries.forEach(d => {
+        if (!d || d.isSkipped) return;
+        const isDone = d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed);
+        if (!isDone) return;
+
+        let isToday = Boolean(d.checkedToday);
+        if (!isToday && d.completedAt) {
+          const ts = typeof d.completedAt === 'number' ? d.completedAt : Number(d.completedAt);
+          if (!isNaN(ts) && ts > 0) {
+            const ms = ts < 1e11 ? ts * 1000 : ts;
+            if (ms >= startOfTodayUtcMs) isToday = true;
+          }
+        }
+        const compDate = d.completedDate || (d.weekId && d.weekId.includes('-') ? d.weekId : '');
+        if (compDate === todayUtcStr || compDate === localDateStr) isToday = true;
+
+        if (isToday) {
+          const npcClean = (d.from || d.name || '').toLowerCase().trim();
+          if (d.hasDoubleBonus || !npcDoubleClaimedToday.has(npcClean)) {
+            npcDoubleClaimedToday.add(npcClean);
+          }
+        }
+      });
+    }
+
+    // 2. Pre-calculate double delivery eligibility in liveDeliveries (first non-skipped delivery for each NPC)
+    const doubleEligibleMap = new Map();
+
+    if (isDoubleToday) {
+      // First pass: if any live delivery was already marked with hasDoubleBonus
+      liveDeliveries.forEach(d => {
+        const isDone = (d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed)) && !d.isSkipped;
+        const npcClean = (d.from || d.name || '').toLowerCase().trim();
+        if (isDone && d.hasDoubleBonus) {
+          doubleEligibleMap.set(d, true);
+          npcDoubleClaimedToday.add(npcClean);
+        }
+      });
+
+      // Second pass: assign double bonus to the first un-skipped delivery for each NPC
+      liveDeliveries.forEach(d => {
+        if (doubleEligibleMap.has(d)) return;
+        const npcClean = (d.from || d.name || '').toLowerCase().trim();
+        const isSkipped = Boolean(d.isSkipped);
+
+        if (isSkipped) {
+          doubleEligibleMap.set(d, false);
+          return; // Skipped order does NOT consume the double bonus, leaves it for the next order
+        }
+
+        if (!npcDoubleClaimedToday.has(npcClean)) {
+          doubleEligibleMap.set(d, true);
+          npcDoubleClaimedToday.add(npcClean);
+        } else {
+          doubleEligibleMap.set(d, false);
+        }
+      });
+    }
+
     const sortedDeliv = [...liveDeliveries].sort((a, b) => {
       const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
       const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
@@ -293,9 +367,10 @@ export function openCategorySummaryModal(cat) {
       const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
+      const applyDouble = !isManual && Boolean(doubleEligibleMap.get(d));
       
       let finalTickets = computeYield(base, true, isManual);
-      if (isDoubleDeliveryActive && !isManual) {
+      if (applyDouble) {
         finalTickets *= 2;
       }
 
@@ -307,7 +382,7 @@ export function openCategorySummaryModal(cat) {
         catCost += itemCost;
       }
 
-      const doubleBadge = (isDoubleDeliveryActive && !isManual) 
+      const doubleBadge = applyDouble 
         ? '<span class="tag-pill tag-double">⚡ 2X EVENT</span>' 
         : '';
       const isStackedBadge = d.isStacked ? '<span class="tag-pill tag-stacked">🥞 STACKED</span>' : '';
