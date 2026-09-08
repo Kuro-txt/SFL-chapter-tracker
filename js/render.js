@@ -397,6 +397,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     gridText: isDark ? '#FFF8DC' : '#3E2723',
     targetLine: isDark ? '#CE93D8' : '#7B1FA2',
     targetText: isDark ? '#F3E5F5' : '#4A148C',
+    currentPaceLine: isDark ? '#4DD0E1' : '#00838F',
+    currentPaceText: isDark ? '#E0F7FA' : '#006064',
     axisLabel: isDark ? '#FFF8DC' : '#2E1B17',
     costLabel: isDark ? '#FFE082' : '#4E342E',
     barDoneFill: isDark ? '#2E7D32' : '#4CAF50',
@@ -453,16 +455,32 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     });
   });
 
+  const currentIndex = displayItems.findIndex(d => d.isCurrent);
   if (badgeEl) {
-    const currentIndex = displayItems.findIndex(d => d.isCurrent);
     const activeWeekNum = currentIndex !== -1 ? currentIndex + 1 : 2;
     badgeEl.textContent = `WEEK ${activeWeekNum} OF ${displayItems.length} WEEKS (UTC)`;
+  }
+
+  // Calculate Current Pace (Weekly Average Pace based on time elapsed so far)
+  let currentPace = 0;
+  if (currentIndex !== -1) {
+    const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
+    const nowMs = Date.now();
+    const daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
+    const elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
+    const totalEarnedSoFar = displayItems.slice(0, currentIndex + 1).reduce((sum, d) => sum + (d.tickets || 0), 0);
+    if (elapsedWeeks > 0 && totalEarnedSoFar > 0) {
+      currentPace = Math.round(totalEarnedSoFar / elapsedWeeks);
+    }
+  } else {
+    const activeWeeks = displayItems.filter(d => d.tickets > 0);
+    currentPace = activeWeeks.length > 0 ? Math.round(activeWeeks.reduce((sum, d) => sum + d.tickets, 0) / activeWeeks.length) : 0;
   }
 
   const barWidth = 52;
   const barGap = 24;
   const leftPadding = 50;
-  const rightPadding = 40;
+  const rightPadding = 75;
   const topPadding = 40;
   const bottomPadding = 52;
 
@@ -470,7 +488,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const plotHeight = chartHeight - topPadding - bottomPadding;
   const chartWidth = leftPadding + (displayItems.length * (barWidth + barGap)) + rightPadding;
 
-  const maxRecordedTickets = Math.max(...displayItems.map(d => d.tickets), targetPacePerWeek, 50);
+  const maxRecordedTickets = Math.max(...displayItems.map(d => d.tickets), targetPacePerWeek, currentPace, 50);
   const yMax = Math.ceil((maxRecordedTickets * 1.25) / 20) * 20;
 
   const gridCount = 4;
@@ -485,12 +503,39 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   }
 
   let targetLineSvg = '';
-  if (targetPacePerWeek > 0) {
-    const targetY = topPadding + plotHeight - (targetPacePerWeek / yMax) * plotHeight;
-    targetLineSvg += `
-      <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="${colors.targetLine}" stroke-dasharray="5,5" stroke-width="2" />
-      <text x="${chartWidth - rightPadding + 6}" y="${targetY + 4}" font-size="11" font-weight="900" fill="${colors.targetText}">Pace: ${targetPacePerWeek}</text>
-    `;
+  let currentPaceLineSvg = '';
+
+  if (targetPacePerWeek > 0 || currentPace > 0) {
+    const targetY = targetPacePerWeek > 0 ? (topPadding + plotHeight - (targetPacePerWeek / yMax) * plotHeight) : null;
+    const currentY = currentPace > 0 ? (topPadding + plotHeight - (currentPace / yMax) * plotHeight) : null;
+
+    let targetTextY = targetY !== null ? targetY + 4 : 0;
+    let currentTextY = currentY !== null ? currentY + 4 : 0;
+
+    // Prevent text overlap if the two lines are close to each other
+    if (targetY !== null && currentY !== null && Math.abs(targetY - currentY) < 16) {
+      if (currentY <= targetY) {
+        currentTextY = currentY - 4;
+        targetTextY = targetY + 12;
+      } else {
+        currentTextY = currentY + 12;
+        targetTextY = targetY - 4;
+      }
+    }
+
+    if (targetY !== null) {
+      targetLineSvg = `
+        <line x1="${leftPadding}" y1="${targetY}" x2="${chartWidth - rightPadding}" y2="${targetY}" stroke="${colors.targetLine}" stroke-dasharray="5,5" stroke-width="2" />
+        <text x="${chartWidth - rightPadding + 6}" y="${targetTextY}" font-size="11" font-weight="900" fill="${colors.targetText}">Target: ${targetPacePerWeek}</text>
+      `;
+    }
+
+    if (currentPace > 0 && currentY !== null) {
+      currentPaceLineSvg = `
+        <line x1="${leftPadding}" y1="${currentY}" x2="${chartWidth - rightPadding}" y2="${currentY}" stroke="${colors.currentPaceLine}" stroke-dasharray="3,3" stroke-width="2" />
+        <text x="${chartWidth - rightPadding + 6}" y="${currentTextY}" font-size="11" font-weight="900" fill="${colors.currentPaceText}">Pace: ${currentPace}</text>
+      `;
+    }
   }
 
   let barsSvg = '';
@@ -533,6 +578,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     <svg viewBox="0 0 ${chartWidth} ${chartHeight}" style="min-width: 100%; width: ${chartWidth}px; height: ${chartHeight}px; display: block; font-family: inherit;">
       ${gridLinesSvg}
       ${targetLineSvg}
+      ${currentPaceLineSvg}
       ${barsSvg}
     </svg>
   `;
