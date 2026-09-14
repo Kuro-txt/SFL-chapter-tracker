@@ -15,9 +15,15 @@ export async function loadTrackerData() {
   const fetchBtn = document.querySelector('button[onclick="loadTrackerData()"]');
   const priceBadge = document.getElementById('priceBadge');
 
-  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  const farmId = farmIdInput?.value.trim() || state.currentVaultData?.farmId;
   const apiKey = apiKeyInput?.value.trim() || '';
   const currentUsername = state.currentUser || '';
+
+  if (!farmId) {
+    alert('Please enter your Sunflower Land Farm ID in the FARM ID box first.');
+    if (farmIdInput) farmIdInput.focus();
+    return;
+  }
 
   localStorage.setItem('sfl_farmId', farmId);
 
@@ -205,7 +211,11 @@ export async function saveProgressToCloudKV(silent = false) {
     return;
   }
 
-  const farmId = document.getElementById('farmId')?.value.trim() || '8472883706403914';
+  const farmId = document.getElementById('farmId')?.value.trim() || state.currentVaultData?.farmId;
+  if (!farmId) {
+    if (!silent) alert('Please enter your Sunflower Land Farm ID.');
+    return;
+  }
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
   const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
