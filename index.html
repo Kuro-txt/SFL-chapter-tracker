@@ -5,6 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
   <title>Sunflower Land Chapter Tracker</title>
    
+  <script>
+    (function() {
+      var RESET_VERSION = 'v2_yugabyte_clean_v1';
+      if (localStorage.getItem('sfl_app_storage_ver') !== RESET_VERSION) {
+        var keepTheme = localStorage.getItem('sfl_theme');
+        // Clear all old SFL localStorage keys
+        var keys = Object.keys(localStorage);
+        for (var i = 0; i < keys.length; i++) {
+          if (keys[i].startsWith('sfl_')) {
+            localStorage.removeItem(keys[i]);
+          }
+        }
+        if (keepTheme) localStorage.setItem('sfl_theme', keepTheme);
+        // Expire all cookies across the site
+        try {
+          var cookies = document.cookie.split(";");
+          for (var j = 0; j < cookies.length; j++) {
+            var c = cookies[j];
+            var eqPos = c.indexOf("=");
+            var name = eqPos > -1 ? c.substr(0, eqPos) : c;
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+          }
+        } catch (e) {}
+        localStorage.setItem('sfl_app_storage_ver', RESET_VERSION);
+      }
+    })();
+  </script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
