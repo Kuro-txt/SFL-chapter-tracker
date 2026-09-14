@@ -9,12 +9,25 @@ export async function userRegister() {
 
   const username = usernameInput?.value.trim().toLowerCase();
   const password = passwordInput?.value.trim();
-  const farmId = farmIdInput?.value.trim() || '8472883706403914';
+  let farmId = farmIdInput?.value.trim();
 
   if (!username || !password) {
     alert('Please enter both a username and password to register.');
     return;
   }
+
+  if (!farmId) {
+    farmId = prompt('Please enter your Sunflower Land Farm ID to link to your account:');
+    if (farmId) farmId = farmId.trim();
+  }
+
+  if (!farmId) {
+    alert('A valid Sunflower Land Farm ID is required to register an account.');
+    if (farmIdInput) farmIdInput.focus();
+    return;
+  }
+
+  if (farmIdInput) farmIdInput.value = farmId;
 
   try {
     const res = await fetch('/api/chapter?action=register', {
@@ -41,7 +54,7 @@ export async function userLogin() {
 
   const username = usernameInput?.value.trim().toLowerCase();
   const password = passwordInput?.value.trim();
-  const farmId = farmIdInput?.value.trim() || localStorage.getItem('sfl_farmId') || '8472883706403914';
+  const farmId = farmIdInput?.value.trim();
 
   if (!username || !password) {
     alert('Please enter your username and password.');
@@ -64,8 +77,10 @@ export async function userLogin() {
     localStorage.setItem('sfl_auth_user', data.username);
 
     const activeFarmId = data.vaultData?.farmId || farmId;
-    if (farmIdInput) farmIdInput.value = activeFarmId;
-    localStorage.setItem('sfl_farmId', activeFarmId);
+    if (activeFarmId && farmIdInput) {
+      farmIdInput.value = activeFarmId;
+      localStorage.setItem('sfl_farmId', activeFarmId);
+    }
 
     updateAuthUI(true, data.username);
 
@@ -103,6 +118,9 @@ export function userLogout() {
   state.currentUser = null;
   state.currentVaultData = null;
   localStorage.removeItem('sfl_auth_user');
+  localStorage.removeItem('sfl_farmId');
+  const farmIdInput = document.getElementById('farmId');
+  if (farmIdInput) farmIdInput.value = '';
 
   updateAuthUI(false, '');
   if (state.globalData) {
