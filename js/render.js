@@ -394,25 +394,25 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const isDark = document.body.classList.contains('dark-mode');
 
   const colors = {
-    gridLine: isDark ? '#222F3E' : '#D7CCC8',
+    gridLine: isDark ? '#334155' : '#D7CCC8',
     gridText: isDark ? '#94A3B8' : '#3E2723',
     targetLine: isDark ? '#C084FC' : '#7B1FA2',
     targetText: isDark ? '#E9D5FF' : '#4A148C',
     currentPaceLine: isDark ? '#38BDF8' : '#00838F',
     currentPaceText: isDark ? '#BAE6FD' : '#006064',
-    axisLabel: isDark ? '#E2E8F0' : '#2E1B17',
+    axisLabel: isDark ? '#CBD5E1' : '#2E1B17',
     costLabel: isDark ? '#FCD34D' : '#4E342E',
-    barDoneFill: isDark ? '#059669' : '#4CAF50',
-    barDoneStroke: isDark ? '#34D399' : '#1B5E20',
-    barDoneText: isDark ? '#ECFDF5' : '#0F3812',
-    barCurFill: isDark ? '#D97706' : '#E65100',
-    barCurStroke: isDark ? '#FBBF24' : '#BF360C',
-    barCurText: isDark ? '#FFFBEB' : '#BF360C',
-    barEmptyFill: isDark ? '#0F172A' : '#ECEFF1',
-    barEmptyStroke: isDark ? '#1E293B' : '#78909C',
+    barDoneFill: isDark ? '#15803D' : '#4CAF50',
+    barDoneStroke: isDark ? '#4ADE80' : '#1B5E20',
+    barDoneText: isDark ? '#F0FDF4' : '#0F3812',
+    barCurFill: isDark ? '#C2410C' : '#E65100',
+    barCurStroke: isDark ? '#FB923C' : '#BF360C',
+    barCurText: isDark ? '#FFF7ED' : '#BF360C',
+    barEmptyFill: isDark ? '#1E293B' : '#ECEFF1',
+    barEmptyStroke: isDark ? '#334155' : '#78909C',
     barEmptyText: isDark ? '#64748B' : '#455A64',
-    barCurEmptyFill: isDark ? '#261C14' : '#FFE0B2',
-    barCurEmptyStroke: isDark ? '#F59E0B' : '#E65100'
+    barCurEmptyFill: isDark ? '#31231E' : '#FFE0B2',
+    barCurEmptyStroke: isDark ? '#EA580C' : '#E65100'
   };
 
   const weekMondays = [];
