@@ -249,22 +249,22 @@ body.dark-mode .chart-floating-tooltip {
 }
 
 body.dark-mode .guide-card {
-  background-color: #232c3d !important;
-  border-color: #37455a !important;
-  box-shadow: 0 3px 0px #141b24;
+  background-color: #16202d !important;
+  border: 2px solid #2d3f56 !important;
+  box-shadow: 0 3px 0px #090e16;
   color: #cbd5e1 !important;
 }
 body.dark-mode .guide-card.highlight {
-  background-color: #182e23 !important;
-  border-color: #10b981 !important;
+  background-color: #102619 !important;
+  border-color: #22c55e !important;
 }
 body.dark-mode .guide-card-title {
-  color: #fcd34d !important;
-  border-bottom-color: #37455a !important;
+  color: #fde047 !important;
+  border-bottom: 1px dashed #2d3f56 !important;
 }
 body.dark-mode .guide-card.highlight .guide-card-title {
   color: #4ade80 !important;
-  border-bottom-color: #10b981 !important;
+  border-bottom-color: #22c55e !important;
 }
 body.dark-mode .guide-card-text {
   color: #cbd5e1 !important;
@@ -273,9 +273,9 @@ body.dark-mode .guide-card-text strong {
   color: #fde68a !important;
 }
 body.dark-mode .guide-card code {
-  background: #18202c !important;
+  background: #0b1118 !important;
   color: #4ade80 !important;
-  border-color: #10b981 !important;
+  border-color: #22c55e !important;
 }
 
 .chapter-countdown-widget {
@@ -319,13 +319,13 @@ body.dark-mode .guide-card code {
 }
 
 body.dark-mode .chapter-countdown-widget {
-  background: #232c3d !important;
-  border-color: #3b495e !important;
-  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.06), 0 3px 0px #131922 !important;
+  background: #0f172a !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.1), 0 3px 0px #080e1a !important;
 }
 body.dark-mode .countdown-label {
-  color: #94a3b8 !important;
+  color: #93c5fd !important;
 }
 body.dark-mode .countdown-timer {
-  color: #fbbf24 !important;
+  color: #38bdf8 !important;
 }
