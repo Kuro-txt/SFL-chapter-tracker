@@ -305,5 +305,14 @@ export const SFL_RECIPES = {
   "red wiggler": { "blueberry": 1.6, "egg": 1 },
   "sprout mix": { "rhubarb": 0.625, "carrot": 0.3125 },
   "fruitful blend": { "soybean": 0.555, "corn": 0.333 },
-  "rapid root": { "blueberry": 0.381, "egg": 0.238 }
+  "rapid root": { "blueberry": 0.381, "egg": 0.238 },
+
+  // ==========================================
+  // AGING SHED
+  // ==========================================
+  "refined salt": { "salt": 10 },
+  "aged butterflyfish": { "salt": 7, "butterflyfish": 1 },
+  "aged anchovy": { "salt": 5, "anchovy": 1 },
+  "pickled broccoli": { "salt": 5, "broccoli": 20 },
+  "turbofruit mix": { "rapid root": 5, "fruitful blend": 5, "refined salt": 2 }
 };
