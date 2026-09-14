@@ -388,6 +388,7 @@ export function recalculateAll() {
 function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, totalPlannedWeeks) {
   const chartContainer = document.getElementById('weeklyChartContainer');
   const badgeEl = document.getElementById('chartSummaryBadge');
+  const headerBadgeEl = document.getElementById('chapterWeekText');
   if (!chartContainer) return;
 
   const isDark = document.body.classList.contains('dark-mode');
@@ -456,9 +457,13 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   });
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
+  const activeWeekNum = currentIndex !== -1 ? currentIndex + 1 : 2;
+  const weekLabelText = `WEEK ${activeWeekNum} OF ${displayItems.length} WEEKS (UTC)`;
   if (badgeEl) {
-    const activeWeekNum = currentIndex !== -1 ? currentIndex + 1 : 2;
-    badgeEl.textContent = `WEEK ${activeWeekNum} OF ${displayItems.length} WEEKS (UTC)`;
+    badgeEl.textContent = weekLabelText;
+  }
+  if (headerBadgeEl) {
+    headerBadgeEl.textContent = weekLabelText;
   }
 
   // Calculate Current Pace (Weekly Average Pace based on time elapsed so far)
