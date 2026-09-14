@@ -199,10 +199,10 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
 }
 
 body.dark-mode .chart-floating-tooltip {
-  background-color: #0f172a;
-  border-color: #38bdf8;
-  color: #f1f5f9;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+  background-color: #1e2634;
+  border-color: #60a5fa;
+  color: #f8fafc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 .guide-card {
@@ -249,22 +249,22 @@ body.dark-mode .chart-floating-tooltip {
 }
 
 body.dark-mode .guide-card {
-  background-color: #151d28 !important;
-  border-color: #28374d !important;
-  box-shadow: 0 4px 0px #080c12;
+  background-color: #232c3d !important;
+  border-color: #37455a !important;
+  box-shadow: 0 3px 0px #141b24;
   color: #cbd5e1 !important;
 }
 body.dark-mode .guide-card.highlight {
-  background-color: #0d2319 !important;
-  border-color: #059669 !important;
+  background-color: #182e23 !important;
+  border-color: #10b981 !important;
 }
 body.dark-mode .guide-card-title {
-  color: #fbbf24 !important;
-  border-bottom-color: #28374d !important;
+  color: #fcd34d !important;
+  border-bottom-color: #37455a !important;
 }
 body.dark-mode .guide-card.highlight .guide-card-title {
-  color: #34d399 !important;
-  border-bottom-color: #059669 !important;
+  color: #4ade80 !important;
+  border-bottom-color: #10b981 !important;
 }
 body.dark-mode .guide-card-text {
   color: #cbd5e1 !important;
@@ -273,9 +273,9 @@ body.dark-mode .guide-card-text strong {
   color: #fde68a !important;
 }
 body.dark-mode .guide-card code {
-  background: #0b0f17 !important;
-  color: #34d399 !important;
-  border-color: #059669 !important;
+  background: #18202c !important;
+  color: #4ade80 !important;
+  border-color: #10b981 !important;
 }
 
 .chapter-countdown-widget {
@@ -319,9 +319,9 @@ body.dark-mode .guide-card code {
 }
 
 body.dark-mode .chapter-countdown-widget {
-  background: #151d28 !important;
-  border-color: #2b394c !important;
-  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.06), 0 3px 0px #080c12 !important;
+  background: #232c3d !important;
+  border-color: #3b495e !important;
+  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.06), 0 3px 0px #131922 !important;
 }
 body.dark-mode .countdown-label {
   color: #94a3b8 !important;
