@@ -336,7 +336,12 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Username and password are required.' });
       }
 
+      if (!farmId || !String(farmId).trim()) {
+        return res.status(400).json({ error: 'A valid Sunflower Land Farm ID is required to register.' });
+      }
+
       const cleanUser = username.trim().toLowerCase();
+      const cleanFarmId = String(farmId).trim();
       const existing = await client.query('SELECT username FROM user_vaults WHERE username = $1', [cleanUser]);
       if (existing.rows.length > 0) {
         return res.status(409).json({ error: 'Username already exists. Please login instead.' });
@@ -345,7 +350,7 @@ export default async function handler(req, res) {
       const passwordHash = hashPassword(password);
       const authData = { passwordHash, createdAt: new Date().toISOString() };
       const vaultData = {
-        farmId: farmId || '8472883706403914',
+        farmId: cleanFarmId,
         trackTickets: 0,
         trackCost: 0,
         dailyLoginTickets: 0,
@@ -502,12 +507,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, vaultData });
     }
 
-    // ==========================================
-    // DEFAULT: FETCH SFL FARM & MERGE WITH VAULT
-    // ==========================================
-    const farmId = searchParams.get('farmId') || (req.query && req.query.farmId) || '8472883706403914';
+    let farmId = searchParams.get('farmId') || (req.query && req.query.farmId) || '';
     const apiKey = searchParams.get('apiKey') || (req.query && req.query.apiKey) || process.env.SFL_API_KEY || '';
     const username = searchParams.get('username') || (req.query && req.query.username) || '';
+
+    if (!farmId && username) {
+      const cleanUser = username.trim().toLowerCase();
+      const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (uRes.rows.length > 0) {
+        const v = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
+        if (v && v.farmId) farmId = String(v.farmId).trim();
+      }
+    }
+
+    if (!farmId) {
+      return res.status(400).json({ error: 'Farm ID is required.' });
+    }
 
     let priceMap = {};
     try {
