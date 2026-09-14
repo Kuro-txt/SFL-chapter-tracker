@@ -394,25 +394,25 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   const isDark = document.body.classList.contains('dark-mode');
 
   const colors = {
-    gridLine: isDark ? '#4E342E' : '#D7CCC8',
-    gridText: isDark ? '#FFF8DC' : '#3E2723',
-    targetLine: isDark ? '#CE93D8' : '#7B1FA2',
-    targetText: isDark ? '#F3E5F5' : '#4A148C',
-    currentPaceLine: isDark ? '#4DD0E1' : '#00838F',
-    currentPaceText: isDark ? '#E0F7FA' : '#006064',
-    axisLabel: isDark ? '#FFF8DC' : '#2E1B17',
-    costLabel: isDark ? '#FFE082' : '#4E342E',
-    barDoneFill: isDark ? '#2E7D32' : '#4CAF50',
-    barDoneStroke: isDark ? '#81C784' : '#1B5E20',
-    barDoneText: isDark ? '#C8E6C9' : '#0F3812',
-    barCurFill: isDark ? '#E65100' : '#E65100',
-    barCurStroke: isDark ? '#FFB74D' : '#BF360C',
-    barCurText: isDark ? '#FFF9C4' : '#BF360C',
-    barEmptyFill: isDark ? '#211812' : '#ECEFF1',
-    barEmptyStroke: isDark ? '#5D4037' : '#78909C',
-    barEmptyText: isDark ? '#D7CCC8' : '#455A64',
-    barCurEmptyFill: isDark ? '#3E271E' : '#FFE0B2',
-    barCurEmptyStroke: isDark ? '#FF9800' : '#E65100'
+    gridLine: isDark ? '#222F3E' : '#D7CCC8',
+    gridText: isDark ? '#94A3B8' : '#3E2723',
+    targetLine: isDark ? '#C084FC' : '#7B1FA2',
+    targetText: isDark ? '#E9D5FF' : '#4A148C',
+    currentPaceLine: isDark ? '#38BDF8' : '#00838F',
+    currentPaceText: isDark ? '#BAE6FD' : '#006064',
+    axisLabel: isDark ? '#E2E8F0' : '#2E1B17',
+    costLabel: isDark ? '#FCD34D' : '#4E342E',
+    barDoneFill: isDark ? '#059669' : '#4CAF50',
+    barDoneStroke: isDark ? '#34D399' : '#1B5E20',
+    barDoneText: isDark ? '#ECFDF5' : '#0F3812',
+    barCurFill: isDark ? '#D97706' : '#E65100',
+    barCurStroke: isDark ? '#FBBF24' : '#BF360C',
+    barCurText: isDark ? '#FFFBEB' : '#BF360C',
+    barEmptyFill: isDark ? '#0F172A' : '#ECEFF1',
+    barEmptyStroke: isDark ? '#1E293B' : '#78909C',
+    barEmptyText: isDark ? '#64748B' : '#455A64',
+    barCurEmptyFill: isDark ? '#261C14' : '#FFE0B2',
+    barCurEmptyStroke: isDark ? '#F59E0B' : '#E65100'
   };
 
   const weekMondays = [];
