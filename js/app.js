@@ -184,8 +184,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(savedTheme);
 
   // 2. Load Local State Preferences
-  const savedFarmId = localStorage.getItem('sfl_farmId');
-  if (savedFarmId) document.getElementById('farmId').value = savedFarmId;
+  const farmIdEl = document.getElementById('farmId');
+  if (farmIdEl) farmIdEl.value = '';
 
   const savedApiKey = localStorage.getItem('sfl_apiKey');
   if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
