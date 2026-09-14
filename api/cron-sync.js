@@ -66,7 +66,11 @@ export default async function handler(req, res) {
     for (const row of vaultsRes.rows) {
       const username = row.username;
       let vault = typeof row.vault_data === 'string' ? JSON.parse(row.vault_data) : (row.vault_data || {});
-      const farmId = vault.farmId || '8472883706403914';
+      const farmId = vault.farmId;
+      if (!farmId) {
+        console.warn(`Skipping user "${username}": No farmId linked.`);
+        continue;
+      }
 
       let success = false;
       let lastError = null;
