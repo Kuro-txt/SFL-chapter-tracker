@@ -177,6 +177,21 @@ export function updateChapterCountdown() {
   }
 }
 
+export function updateCurrentWeekBadge() {
+  const baseEpoch = new Date('2026-08-10T00:00:00.000Z').getTime();
+  const now = Date.now();
+  const diffDays = Math.max(0, (now - baseEpoch) / (1000 * 60 * 60 * 24));
+  const weekNum = Math.min(12, Math.floor(diffDays / 7) + 1);
+  const text = `WEEK ${weekNum} OF 12 WEEKS (UTC)`;
+
+  const headerBadgeEl = document.getElementById('chapterWeekText');
+  if (headerBadgeEl) headerBadgeEl.textContent = text;
+  const chartBadgeEl = document.getElementById('chartSummaryBadge');
+  if (chartBadgeEl && (chartBadgeEl.textContent.includes('0 WEEKS') || !chartBadgeEl.textContent)) {
+    chartBadgeEl.textContent = text;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // 1. Initialize Dark / Light Theme
   const savedTheme = localStorage.getItem('sfl_theme') || 
@@ -213,6 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkAndAutoClaimDailyLogin();
   startTipRotation();
   updateChapterCountdown();
+  updateCurrentWeekBadge();
   setInterval(updateChapterCountdown, 60000);
   recalculateAll();
 });
