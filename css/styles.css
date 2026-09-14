@@ -199,10 +199,10 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
 }
 
 body.dark-mode .chart-floating-tooltip {
-  background-color: #1f1712;
-  border-color: #ff9800;
-  color: #f5ebe6;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.75);
+  background-color: #0f172a;
+  border-color: #38bdf8;
+  color: #f1f5f9;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.8);
 }
 
 .guide-card {
@@ -249,33 +249,33 @@ body.dark-mode .chart-floating-tooltip {
 }
 
 body.dark-mode .guide-card {
-  background-color: #241a13 !important;
-  border-color: #5d4037 !important;
-  color: #F5EBE6 !important;
-  box-shadow: 0 4px 0px #120c08;
+  background-color: #151d28 !important;
+  border-color: #28374d !important;
+  box-shadow: 0 4px 0px #080c12;
+  color: #cbd5e1 !important;
 }
 body.dark-mode .guide-card.highlight {
-  background-color: #142616 !important;
-  border-color: #2e7d32 !important;
+  background-color: #0d2319 !important;
+  border-color: #059669 !important;
 }
 body.dark-mode .guide-card-title {
-  color: #FFD54F !important;
-  border-bottom-color: #5D4037 !important;
+  color: #fbbf24 !important;
+  border-bottom-color: #28374d !important;
 }
 body.dark-mode .guide-card.highlight .guide-card-title {
-  color: #81C784 !important;
-  border-bottom-color: #2E7D32 !important;
+  color: #34d399 !important;
+  border-bottom-color: #059669 !important;
 }
 body.dark-mode .guide-card-text {
-  color: #F5EBE6 !important;
+  color: #cbd5e1 !important;
 }
 body.dark-mode .guide-card-text strong {
-  color: #FFE082 !important;
+  color: #fde68a !important;
 }
 body.dark-mode .guide-card code {
-  background: #16110D !important;
-  color: #81C784 !important;
-  border-color: #2E7D32 !important;
+  background: #0b0f17 !important;
+  color: #34d399 !important;
+  border-color: #059669 !important;
 }
 
 .chapter-countdown-widget {
@@ -319,13 +319,13 @@ body.dark-mode .guide-card code {
 }
 
 body.dark-mode .chapter-countdown-widget {
-  background: #1e2530 !important;
-  border-color: #3b4d61 !important;
-  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.1), 0 3px 0px #0b1016 !important;
+  background: #151d28 !important;
+  border-color: #2b394c !important;
+  box-shadow: inset 1px 1px 0px rgba(255,255,255,0.06), 0 3px 0px #080c12 !important;
 }
 body.dark-mode .countdown-label {
-  color: #94A3B8 !important;
+  color: #94a3b8 !important;
 }
 body.dark-mode .countdown-timer {
-  color: #FFD54F !important;
+  color: #fbbf24 !important;
 }
