@@ -67,7 +67,11 @@ async function runSync() {
       const row = vaultsRes.rows[i];
       const username = row.username;
       let vault = typeof row.vault_data === 'string' ? JSON.parse(row.vault_data) : (row.vault_data || {});
-      const farmId = vault.farmId || '8472883706403914';
+      const farmId = vault.farmId;
+      if (!farmId) {
+        console.warn(`[${i + 1}/${vaultsRes.rows.length}] Skipping user "${username}": No farmId linked.`);
+        continue;
+      }
 
       console.log(`[${i + 1}/${vaultsRes.rows.length}] Processing user: "${username}" (Farm #${farmId})...`);
 
