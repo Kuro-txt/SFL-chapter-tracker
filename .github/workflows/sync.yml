@@ -2,10 +2,10 @@ name: SFL Farm Daily Sync
 
 on:
   schedule:
-    # 1. Primary Early Run (runs ~19:35 - 20:15 UTC, guaranteed before 00:00 UTC reset)
-    - cron: '30 19 * * *'
-    # 2. Secondary Late Run (catches late evening deliveries)
-    - cron: '00 22 * * *'
+    # 1. Primary Early Run (21:00 UTC / 02:30 AM IST): 1 hour before 22:00 UTC
+    - cron: '00 21 * * *'
+    # 2. Secondary Run (23:05 UTC / 04:35 AM IST): Safely before 00:00 UTC reset
+    - cron: '05 23 * * *'
   workflow_dispatch:
 
 jobs:
