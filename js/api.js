@@ -34,8 +34,9 @@ export async function loadTrackerData() {
 
   if (fetchBtn) {
     fetchBtn.disabled = true;
-    let secondsLeft = 10;
+    let secondsLeft = 11;
     fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+
     fetchCooldownTimer = setInterval(() => {
       secondsLeft--;
       if (secondsLeft > 0) {
