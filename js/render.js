@@ -137,8 +137,9 @@ export function recalculateAll() {
 
   const isDeliveryDoneToday = (item) => {
     if (!item || item.isManual) return false;
-    if (item.checkedToday) return true;
-    
+    if (item.id && item.id.endsWith('_active')) return false;
+    if (!isTicked(item)) return false;
+
     if (item.completedAt) {
       const ts = typeof item.completedAt === 'number' ? item.completedAt : Number(item.completedAt);
       if (!isNaN(ts) && ts > 0) {
@@ -147,7 +148,7 @@ export function recalculateAll() {
       }
     }
 
-    const compDate = resolveDateStr(item);
+    const compDate = item.completedDate || resolveDateStr(item);
     if (compDate) {
       return compDate === todayUtcStr || compDate === localDateStr;
     }
