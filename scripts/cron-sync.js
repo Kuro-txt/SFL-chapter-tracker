@@ -10,6 +10,18 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function runSync() {
   console.log('🚀 Starting GitHub Actions SFL Farm Sync...');
+
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcMin = now.getUTCMinutes();
+
+  // Safety constraint: Scheduled at 21:00 & 23:05 UTC.
+  // If delayed into 00:00 UTC collision window (or >= 23:55 UTC), abort immediately.
+  if (utcHour === 0 || (utcHour === 23 && utcMin >= 55)) {
+    console.warn(`🛑 [Safety Guard] Current UTC time is ${now.toISOString()} (${utcHour}:${utcMin.toString().padStart(2, '0')} UTC). Delayed into 00:00 UTC collision window. Aborting sync safely as requested.`);
+    process.exit(0);
+  }
+
   let client;
   let processedCount = 0;
   const errors = [];
@@ -86,8 +98,8 @@ async function runSync() {
             });
             
             if (sflRes.status === 429) {
-              console.warn(`  ⚠️ Rate limit (429) on attempt ${attempt}/3. Sleeping 8s before retry...`);
-              await sleep(8000);
+              console.warn(`  ⚠️ Rate limit (429) on attempt ${attempt}/3. Sleeping 11s before retry...`);
+              await sleep(11000);
               continue;
             }
 
