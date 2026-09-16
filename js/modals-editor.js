@@ -159,9 +159,10 @@ export function renderColumnHistoryModalList() {
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
-      const isManual = Boolean(item.isManual);
+      const isManual = Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
       let finalTix = computeYield(baseTix, true, isManual);
       if (item.hasDoubleBonus && !isManual) finalTix *= 2;
+
 
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
       const isSkipped = Boolean(item.isSkipped);
@@ -221,8 +222,9 @@ export function renderColumnHistoryModalList() {
       if (selectedWeekNum && itemWeekNum !== selectedWeekNum) return;
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
-      const isManual = Boolean(item.isManual);
+      const isManual = Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
       const finalTix = computeYield(baseTix, isChore, isManual);
+
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
 
@@ -284,6 +286,10 @@ export function renderColumnHistoryModalList() {
         ? `deleteDeliveryLogItem('${r.source}', ${r.itemIdx})`
         : `deleteWeeklyItem('${r.weekId}', '${r.mapKey}')`;
 
+      const deleteBtn = r.isManual 
+        ? `<button onclick="${deleteHandler}" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; padding:3px 8px; font-weight:bold; border-radius:6px; cursor:pointer;" title="Delete manual entry">✕</button>`
+        : `<span style="font-size:12px; opacity:0.35; padding:3px 6px; cursor:not-allowed;" title="Game-synced item cannot be deleted">🔒</span>`;
+
       const animalLevelTag = (type === 'animalBounty' && r.level) 
         ? `<span class="tag-pill tag-lvl">Lvl ${r.level}</span>` 
         : '';
@@ -307,8 +313,8 @@ export function renderColumnHistoryModalList() {
 
       return `<div class="history-card">
         <div class="history-info">
-          <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; width:100%;">
-            <input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0;" />
+          <label style="display:flex; align-items:flex-start; gap:8px; cursor:default; width:100%;">
+            <input type="checkbox" ${r.checked ? 'checked' : ''} disabled style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:not-allowed; opacity:0.75;" title="Status is synced from Sunflower Land (manual ticking disabled)" />
             <div style="flex:1; min-width:0; word-break:break-word;">
               <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
               ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}${skippedTag}
@@ -325,10 +331,11 @@ export function renderColumnHistoryModalList() {
             <span style="font-size:10px; font-weight:bold; color:#5C4033;">Tix:</span>
             <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />
           </div>
-          <button onclick="${deleteHandler}" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; padding:3px 8px; font-weight:bold; border-radius:6px;">✕</button>
+          ${deleteBtn}
         </div>
       </div>`;
     }).join('');
+
   }
 
   setElemText('columnHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
@@ -442,6 +449,11 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
   const target = master[itemIdx];
 
   if (target) {
+    const isMan = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
+    if (!isMan) {
+      alert('⚠️ Game-synced deliveries cannot be manually ticked or unticked.');
+      return;
+    }
     const newStatus = !(target.checked !== undefined ? target.checked : Boolean(target.completed));
     target.checked = newStatus;
     target.completed = newStatus;
@@ -450,7 +462,7 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
       target.status = 'completed';
       target.completedAt = target.completedAt || Date.now();
       target.completedDate = target.completedDate || new Date().toISOString().split('T')[0];
-      target.checkedToday = !target.isManual;
+      target.checkedToday = false;
     } else {
       target.status = 'active';
       target.checkedToday = false;
@@ -463,13 +475,19 @@ export async function toggleDeliveryLogCheck(source, itemIdx) {
 
 export async function deleteDeliveryLogItem(source, itemIdx) {
   const master = getDeliveryRecords();
-  if (master[itemIdx]) {
-    master.splice(itemIdx, 1);
+  const target = master[itemIdx];
+  if (!target) return;
+  const isMan = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
+  if (!isMan) {
+    alert('⚠️ Game-synced deliveries cannot be deleted. Only manually added deliveries can be deleted.');
+    return;
   }
+  master.splice(itemIdx, 1);
   renderColumnHistoryModalList();
   recalculateAll();
   await syncCurrentVaultToCloud();
 }
+
 
 export async function toggleWeeklyItemCheck(weekId, mapKey) {
   const type = state.activeColumnType;
@@ -488,7 +506,13 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
   }
 
   if (targetItem) {
+    const isMan = Boolean(targetItem.isManual) || (typeof targetItem.id === 'string' && targetItem.id.startsWith('manual_'));
+    if (!isMan) {
+      alert(`⚠️ Game-synced ${isChore ? 'chores' : 'bounties'} cannot be manually ticked or unticked.`);
+      return;
+    }
     const newStatus = !(targetItem.checked !== undefined ? targetItem.checked : Boolean(targetItem.completed));
+
     targetItem.checked = newStatus;
     targetItem.completed = newStatus;
     if (newStatus) {
@@ -606,6 +630,21 @@ export async function deleteWeeklyItem(weekId, mapKey) {
   const wkId = parts[1];
   const idx = parseInt(parts[2], 10);
 
+  let targetItem = null;
+  if (source === 'week') {
+    const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
+    if (wk) targetItem = isChore ? wk.chores?.[idx] : wk.bounties?.[idx];
+  } else if (source === 'current') {
+    targetItem = isChore ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+  }
+
+  if (!targetItem) return;
+  const isMan = Boolean(targetItem.isManual) || (typeof targetItem.id === 'string' && targetItem.id.startsWith('manual_'));
+  if (!isMan) {
+    alert(`⚠️ Game-synced ${isChore ? 'chores' : 'bounties'} cannot be deleted. Only manually added items can be deleted.`);
+    return;
+  }
+
   if (source === 'week') {
     const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
     if (wk) {
@@ -621,3 +660,4 @@ export async function deleteWeeklyItem(weekId, mapKey) {
   recalculateAll();
   await syncCurrentVaultToCloud();
 }
+
