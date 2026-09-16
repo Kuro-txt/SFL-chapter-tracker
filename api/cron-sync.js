@@ -15,6 +15,17 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized cron request.' });
   }
 
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcMin = now.getUTCMinutes();
+
+  // Safety constraint: Scheduled at 21:00 & 23:05 UTC.
+  // If delayed into 00:00 UTC collision window (or >= 23:55 UTC), abort immediately.
+  if (utcHour === 0 || (utcHour === 23 && utcMin >= 55)) {
+    console.warn(`🛑 [Safety Guard] Current UTC time is ${now.toISOString()} (${utcHour}:${utcMin.toString().padStart(2, '0')} UTC). Delayed into 00:00 UTC collision window. Aborting sync safely.`);
+    return res.status(200).json({ skipped: true, reason: 'Delayed into 00:00 UTC collision window' });
+  }
+
   let client;
   let processedCount = 0;
   let errors = [];
@@ -74,7 +85,7 @@ export default async function handler(req, res) {
 
       let success = false;
       let lastError = null;
-      const retryGaps = [3000, 5000];
+      const retryGaps = [11000, 15000];
 
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
@@ -83,6 +94,12 @@ export default async function handler(req, res) {
             signal: AbortSignal.timeout(9000)
           });
           
+          if (sflRes.status === 429) {
+            console.warn(`  ⚠️ Rate limit (429) for "${username}". Sleeping 11s before retry...`);
+            await sleep(11000);
+            continue;
+          }
+
           if (!sflRes.ok) throw new Error(`SFL API error status: ${sflRes.status}`);
 
           const payload = await sflRes.json();
