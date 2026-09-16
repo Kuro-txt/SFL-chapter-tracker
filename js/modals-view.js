@@ -303,16 +303,17 @@ export function openCategorySummaryModal(cat) {
         const isDone = d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed);
         if (!isDone) return;
 
-        let isToday = Boolean(d.checkedToday);
-        if (!isToday && d.completedAt) {
+        let isToday = false;
+        if (d.completedAt) {
           const ts = typeof d.completedAt === 'number' ? d.completedAt : Number(d.completedAt);
           if (!isNaN(ts) && ts > 0) {
             const ms = ts < 1e11 ? ts * 1000 : ts;
-            if (ms >= startOfTodayUtcMs) isToday = true;
+            isToday = (ms >= startOfTodayUtcMs);
           }
+        } else {
+          const compDate = d.completedDate || (d.weekId && d.weekId.includes('-') ? d.weekId : '');
+          if (compDate === todayUtcStr || compDate === localDateStr) isToday = true;
         }
-        const compDate = d.completedDate || (d.weekId && d.weekId.includes('-') ? d.weekId : '');
-        if (compDate === todayUtcStr || compDate === localDateStr) isToday = true;
 
         if (isToday) {
           const npcClean = (d.from || d.name || '').toLowerCase().trim();
