@@ -313,7 +313,14 @@ export const SFL_RECIPES = {
   "refined salt": { "salt": 10 },
   "aged butterflyfish": { "salt": 7, "butterflyfish": 1 },
   "aged anchovy": { "salt": 5, "anchovy": 1 },
-  "pickled broccoli": { "salt": 5, "broccoli": 20 },
   "aged tuna": { "salt": 12, "tuna": 1 },
+  "aged red snapper": { "salt": 6, "red snapper": 1 },
+  "aged sea bass": { "salt": 8, "sea bass": 1 },
+  "aged olive flounder": { "salt": 11, "olive flounder": 1 },
+  "aged clownfish": { "salt": 17, "clownfish": 1 },
+  "aged blowfish": { "salt": 10, "blowfish": 1 },
+  "aged halibut": { "salt": 18, "halibut": 1 },
+  "aged squid": { "salt": 20, "squid": 1 },
+  "pickled broccoli": { "salt": 5, "broccoli": 20 },
   "turbofruit mix": { "rapid root": 5, "fruitful blend": 5, "refined salt": 2 }
 };
