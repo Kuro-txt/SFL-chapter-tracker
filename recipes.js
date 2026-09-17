@@ -314,5 +314,6 @@ export const SFL_RECIPES = {
   "aged butterflyfish": { "salt": 7, "butterflyfish": 1 },
   "aged anchovy": { "salt": 5, "anchovy": 1 },
   "pickled broccoli": { "salt": 5, "broccoli": 20 },
+  "aged tuna": { "salt": 12, "tuna": 1 },
   "turbofruit mix": { "rapid root": 5, "fruitful blend": 5, "refined salt": 2 }
 };
