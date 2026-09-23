@@ -1138,6 +1138,199 @@
       .input-group { width: 100%; justify-content: space-between; }
       .stats-grid, .overview-grid { grid-template-columns: 1fr; }
     }
+
+    /* ==========================================
+       REGISTRATION & AUTH GATE MODAL
+       ========================================== */
+    #registrationGateModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 99999;
+      justify-content: center;
+      align-items: center;
+      padding: clamp(12px, 3vw, 24px);
+    }
+    .gate-card {
+      background-color: #FDF5E6;
+      border: 4px solid #8B5A2B;
+      border-radius: 14px;
+      box-shadow: 0 10px 0px #5C4033, 0 20px 35px rgba(0,0,0,0.5);
+      max-width: 480px;
+      width: 100%;
+      overflow: hidden;
+      animation: gatePopIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes gatePopIn {
+      0% { transform: scale(0.92); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .gate-header {
+      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
+      padding: 18px 20px;
+      text-align: center;
+      border-bottom: 3px solid #3E2723;
+      color: #FFF8DC;
+    }
+    .gate-header h2 {
+      font-size: 19px;
+      font-weight: 900;
+      text-shadow: 2px 2px #271813;
+      margin-bottom: 5px;
+      letter-spacing: 0.5px;
+    }
+    .gate-header p {
+      font-size: 12px;
+      color: #EEDC82;
+      font-weight: bold;
+      text-shadow: 1px 1px #271813;
+      line-height: 1.4;
+      margin: 0;
+    }
+    .gate-tabs {
+      display: flex;
+      background: #D2B48C;
+      border-bottom: 3px solid #8B5A2B;
+    }
+    .gate-tab-btn {
+      flex: 1;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: #5C4033;
+      transition: all 0.15s ease;
+    }
+    .gate-tab-btn.active {
+      background: #FDF5E6;
+      color: #8B4513;
+      box-shadow: inset 0 3px 0 #D2691E;
+    }
+    .gate-body {
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .gate-field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .gate-field-group label {
+      font-size: 11.5px;
+      font-weight: 900;
+      color: #5C4033;
+      text-transform: uppercase;
+    }
+    .gate-field-group input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: bold;
+      border: 2px solid #8B5A2B;
+      border-radius: 8px;
+      background: #FFF8DC;
+      color: #3E2723;
+      outline: none;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .gate-field-group input:focus {
+      border-color: #D2691E;
+      background: #fff;
+    }
+    .gate-field-help {
+      font-size: 11px;
+      color: #795548;
+      line-height: 1.35;
+      margin-top: 3px;
+    }
+    .gate-status-alert {
+      display: none;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.4;
+      text-align: center;
+    }
+    .gate-status-alert.error {
+      display: block;
+      background: #FFEBEE;
+      color: #C62828;
+      border: 2px solid #EF5350;
+    }
+    .gate-status-alert.success {
+      display: block;
+      background: #E8F5E9;
+      color: #2E7D32;
+      border: 2px solid #4CAF50;
+    }
+    .gate-status-alert.loading {
+      display: block;
+      background: #FFF8E1;
+      color: #F57F17;
+      border: 2px solid #FBC02D;
+    }
+    .gate-btn-submit {
+      width: 100%;
+      padding: 12px;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+    body.dark-mode .gate-card {
+      background-color: #1a2234 !important;
+      border-color: #334155 !important;
+      box-shadow: 0 10px 0px #0f172a, 0 20px 35px rgba(0,0,0,0.8) !important;
+    }
+    body.dark-mode .gate-header {
+      background: linear-gradient(to bottom, #1e293b, #0f172a) !important;
+      border-bottom-color: #334155 !important;
+    }
+    body.dark-mode .gate-tabs {
+      background: #0f172a !important;
+      border-bottom-color: #334155 !important;
+    }
+    body.dark-mode .gate-tab-btn {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode .gate-tab-btn.active {
+      background: #1a2234 !important;
+      color: #38bdf8 !important;
+      box-shadow: inset 0 3px 0 #38bdf8 !important;
+    }
+    body.dark-mode .gate-field-group label {
+      color: #cbd5e1 !important;
+    }
+    body.dark-mode .gate-field-group input {
+      background: #0b1118 !important;
+      border-color: #334155 !important;
+      color: #f1f5f9 !important;
+    }
+    body.dark-mode .gate-field-group input:focus {
+      border-color: #38bdf8 !important;
+    }
+    body.dark-mode .gate-field-help {
+      color: #94a3b8 !important;
+    }
+    .app-gated {
+      pointer-events: none !important;
+      user-select: none !important;
+      filter: blur(4px) brightness(0.8);
+      transition: filter 0.25s ease;
+    }
   </style>
 </head>
 <body>
@@ -1204,16 +1397,18 @@
 
     <div class="panel" style="padding: 10px 14px;">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <form id="authLoggedOut" onsubmit="return false;" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
-          <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT LOGIN:</span>
-          <input type="text" id="authUsername" placeholder="Username" style="width: 120px;" autocomplete="username" />
-          <input type="password" id="authPassword" placeholder="Password" style="width: 120px;" autocomplete="current-password" />
-          <button type="button" onclick="userLogin()" class="btn btn-sm btn-emerald">LOGIN</button>
-          <button type="button" onclick="userRegister()" class="btn btn-sm btn-wood">REGISTER</button>
-        </form>
+        <div id="authLoggedOut" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin:0; padding:0;">
+          <span style="font-size: 12px; font-weight: 900; color: #8B4513;">🔐 SECURE VAULT ACCESS:</span>
+          <span style="font-size: 11.5px; color: #5C4033; font-weight: bold;">Registration required to track & sync.</span>
+          <button type="button" onclick="showRegistrationGate('register')" class="btn btn-sm btn-wood">REGISTER</button>
+          <button type="button" onclick="showRegistrationGate('login')" class="btn btn-sm btn-emerald">LOGIN</button>
+        </div>
 
-        <div id="authLoggedIn" style="display: none; align-items: center; gap: 10px;">
-          <span style="font-size: 13px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
+        <div id="authLoggedIn" style="display: none; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 13px; font-weight: 900; color: #2E7D32;">👤 Logged in as: <strong id="displayUsername" style="color:#8B4513;"></strong></span>
+            <span id="displayFarmIdBadge" style="padding: 2px 8px; background: #E8F5E9; border: 1.5px solid #2E7D32; border-radius: 5px; font-size: 11.5px; font-weight: 900; color: #1B5E20;">Farm #<span id="displayFarmId">---</span></span>
+          </div>
           <button type="button" onclick="userLogout()" class="btn btn-sm" style="background:#C0392B; border-color:#922B21; color:#fff; box-shadow:0 2px 0px #78281F;">LOGOUT</button>
         </div>
       </div>
@@ -1514,6 +1709,72 @@
         <div id="columnHistoryBody" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
           <p style="font-size: 12px; color: #8C7853; font-weight: bold;">No history found.</p>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- ==========================================
+       REGISTRATION & AUTH GATE MODAL
+       ========================================== -->
+  <div id="registrationGateModal" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="gate-card">
+      <div class="gate-header">
+        <h2 id="gateTitle">🌻 FARMER REGISTRATION GATE</h2>
+        <p>To access Chapter Tracker, link your Farm ID and enable automatic 21:00 UTC cloud sync, please register or login.</p>
+      </div>
+
+      <div class="gate-tabs">
+        <button type="button" id="gateTabRegisterBtn" class="gate-tab-btn active" onclick="switchGateTab('register')">
+          📝 Register (New Farmer)
+        </button>
+        <button type="button" id="gateTabLoginBtn" class="gate-tab-btn" onclick="switchGateTab('login')">
+          🔑 Login (Existing)
+        </button>
+      </div>
+
+      <div class="gate-body">
+        <div id="gateStatusMsg" class="gate-status-alert"></div>
+
+        <!-- REGISTER FORM -->
+        <form id="gateRegisterForm" onsubmit="handleGateRegister(event)" autocomplete="on">
+          <div class="gate-field-group">
+            <label for="gateRegUsername">Username:</label>
+            <input type="text" id="gateRegUsername" placeholder="e.g. sunflower_king" autocomplete="username" required />
+          </div>
+
+          <div class="gate-field-group" style="margin-top: 10px;">
+            <label for="gateRegPassword">Password:</label>
+            <input type="password" id="gateRegPassword" placeholder="Choose a password" autocomplete="new-password" required />
+          </div>
+
+          <div class="gate-field-group" style="margin-top: 10px;">
+            <label for="gateRegFarmId">Sunflower Land Farm ID:</label>
+            <input type="text" id="gateRegFarmId" placeholder="e.g. 12345" autocomplete="off" required />
+            <span class="gate-field-help">💡 Your numerical Farm ID is required to link your vault & fetch your live deliveries and bounties.</span>
+          </div>
+
+          <button type="submit" id="gateRegSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
+            🌻 REGISTER & ENTER VAULT
+          </button>
+        </form>
+
+        <!-- LOGIN FORM -->
+        <form id="gateLoginForm" onsubmit="handleGateLogin(event)" autocomplete="on" style="display: none;">
+          <div class="gate-field-group">
+            <label for="gateLoginUsername">Username:</label>
+            <input type="text" id="gateLoginUsername" placeholder="Enter your username" autocomplete="username" required />
+          </div>
+
+          <div class="gate-field-group" style="margin-top: 10px;">
+            <label for="gateLoginPassword">Password:</label>
+            <input type="password" id="gateLoginPassword" placeholder="Enter your password" autocomplete="current-password" required />
+          </div>
+
+          <button type="submit" id="gateLoginSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
+            🔓 LOGIN & OPEN VAULT
+          </button>
+        </form>
       </div>
     </div>
   </div>
