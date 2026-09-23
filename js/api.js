@@ -19,6 +19,15 @@ export async function loadTrackerData() {
   const apiKey = apiKeyInput?.value.trim() || '';
   const currentUsername = state.currentUser || '';
 
+  if (!state.currentUser) {
+    if (typeof window.showRegistrationGate === 'function') {
+      window.showRegistrationGate('register', '⚠️ Please register or log into your farmer vault first.');
+    } else {
+      alert('Please register or log into your farmer vault first.');
+    }
+    return;
+  }
+
   if (!farmId) {
     alert('Please enter your Sunflower Land Farm ID in the FARM ID box first.');
     if (farmIdInput) farmIdInput.focus();
@@ -208,7 +217,13 @@ export async function loadTrackerData() {
 
 export async function saveProgressToCloudKV(silent = false) {
   if (!state.currentUser) {
-    if (!silent) alert('Please login to save your progress in your Cloud Vault.');
+    if (!silent) {
+      if (typeof window.showRegistrationGate === 'function') {
+        window.showRegistrationGate('register', '⚠️ Please register or log in to save your progress in Cloud Vault.');
+      } else {
+        alert('Please login to save your progress in your Cloud Vault.');
+      }
+    }
     return;
   }
 
