@@ -64,6 +64,7 @@ export function setGateStatus(message, type = 'error') {
   if (!statusEl) return;
 
   statusEl.className = `gate-status-alert ${type}`;
+  statusEl.style.display = 'block';
   statusEl.innerHTML = message;
 }
 
@@ -140,7 +141,18 @@ export async function userRegister(customUsername, customPassword, customFarmId)
     // Auto-login into vault
     await userLogin(username, password, farmId);
   } catch (err) {
-    setGateStatus(`❌ Registration Error: ${err.message}`, 'error');
+    const errorMsg = err.message || 'Registration failed.';
+    setGateStatus(`❌ Registration Failed: ${errorMsg}`, 'error');
+    if (regUserEl && errorMsg.toLowerCase().includes('already taken')) {
+      regUserEl.focus();
+      regUserEl.select();
+      regUserEl.style.borderColor = '#ef4444';
+      regUserEl.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.35)';
+      setTimeout(() => {
+        regUserEl.style.borderColor = '';
+        regUserEl.style.boxShadow = '';
+      }, 4000);
+    }
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -223,7 +235,26 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
     recalculateAll();
     loadTrackerData();
   } catch (err) {
-    setGateStatus(`❌ Login Error: ${err.message}`, 'error');
+    const errorMsg = err.message || 'Login failed.';
+    setGateStatus(`❌ Login Failed: ${errorMsg}`, 'error');
+    if (loginPassEl && (errorMsg.toLowerCase().includes('password') || errorMsg.toLowerCase().includes('invalid'))) {
+      loginPassEl.focus();
+      loginPassEl.select();
+      loginPassEl.style.borderColor = '#ef4444';
+      loginPassEl.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.35)';
+      setTimeout(() => {
+        loginPassEl.style.borderColor = '';
+        loginPassEl.style.boxShadow = '';
+      }, 4000);
+    } else if (loginUserEl) {
+      loginUserEl.focus();
+      loginUserEl.style.borderColor = '#ef4444';
+      loginUserEl.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.35)';
+      setTimeout(() => {
+        loginUserEl.style.borderColor = '';
+        loginUserEl.style.boxShadow = '';
+      }, 4000);
+    }
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
