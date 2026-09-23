@@ -1161,9 +1161,9 @@
       background-color: #FDF5E6;
       border: 4px solid #8B5A2B;
       border-radius: 14px;
-      box-shadow: 0 10px 0px #5C4033, 0 20px 35px rgba(0,0,0,0.5);
-      max-width: 520px;
-      max-height: 94vh;
+      box-shadow: 0 12px 0px #5C4033, 0 25px 45px rgba(0,0,0,0.6);
+      max-width: 860px;
+      max-height: 92vh;
       overflow-y: auto;
       width: 100%;
       animation: gatePopIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1172,55 +1172,18 @@
       0% { transform: scale(0.92); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
-    .gate-info-box {
-      background: #FFF8DC;
-      border: 2px dashed #8B5A2B;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 11.5px;
-      line-height: 1.4;
-      color: #3E2723;
-    }
-    .gate-info-title {
-      font-weight: 900;
-      color: #8B4513;
-      margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-    }
-    .gate-info-desc {
-      font-size: 11px;
-      color: #5C4033;
-      margin-bottom: 6px;
-    }
-    .gate-info-list {
-      margin: 0 0 0 16px;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .gate-info-list li {
-      font-size: 11px;
-      color: #4A3525;
-    }
-    .gate-info-list li strong {
-      color: #8B4513;
-    }
     .gate-header {
       background: linear-gradient(to bottom, #8B5A2B, #5C4033);
-      padding: 18px 20px;
+      padding: 16px 20px;
       text-align: center;
       border-bottom: 3px solid #3E2723;
       color: #FFF8DC;
     }
     .gate-header h2 {
-      font-size: 19px;
+      font-size: 20px;
       font-weight: 900;
       text-shadow: 2px 2px #271813;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
       letter-spacing: 0.5px;
     }
     .gate-header p {
@@ -1231,16 +1194,114 @@
       line-height: 1.4;
       margin: 0;
     }
+    .gate-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 20px;
+      padding: 22px;
+      align-items: stretch;
+    }
+    @media (max-width: 768px) {
+      .gate-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px;
+      }
+    }
+    .gate-info-col {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .gate-info-box {
+      background: #FFF8DC;
+      border: 2px dashed #8B5A2B;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .gate-info-title {
+      font-weight: 900;
+      color: #8B4513;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+    }
+    .gate-info-desc {
+      font-size: 11.5px;
+      color: #5C4033;
+      line-height: 1.45;
+    }
+    .gate-features-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .gate-feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 11.5px;
+      line-height: 1.35;
+      background: rgba(253, 245, 230, 0.7);
+      padding: 8px 10px;
+      border: 1px solid #D2B48C;
+      border-radius: 6px;
+    }
+    .gate-feature-item strong {
+      display: block;
+      color: #8B4513;
+      font-size: 11.5px;
+      margin-bottom: 2px;
+    }
+    .gate-feature-item p {
+      margin: 0;
+      color: #4A3525;
+      font-size: 11px;
+    }
+    .gate-feat-icon {
+      font-size: 16px;
+      line-height: 1;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+    .gate-info-footer {
+      font-size: 10.5px;
+      color: #795548;
+      border-top: 1px dashed #D2B48C;
+      padding-top: 8px;
+      margin-top: auto;
+      line-height: 1.4;
+    }
+    .gate-auth-col {
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+      height: 100%;
+      box-sizing: border-box;
+    }
     .gate-tabs {
       display: flex;
-      background: #D2B48C;
-      border-bottom: 3px solid #8B5A2B;
+      background: #EEDC82;
+      border: 2px solid #8B5A2B;
+      border-radius: 8px;
+      overflow: hidden;
     }
     .gate-tab-btn {
       flex: 1;
-      padding: 12px 14px;
+      padding: 9px 12px;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
       text-transform: uppercase;
       border: none;
@@ -1250,15 +1311,9 @@
       transition: all 0.15s ease;
     }
     .gate-tab-btn.active {
-      background: #FDF5E6;
-      color: #8B4513;
-      box-shadow: inset 0 3px 0 #D2691E;
-    }
-    .gate-body {
-      padding: 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      background: #8B5A2B;
+      color: #FFF8DC;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
     }
     .gate-field-group {
       display: flex;
@@ -1331,23 +1386,50 @@
     body.dark-mode .gate-card {
       background-color: #1a2234 !important;
       border-color: #334155 !important;
-      box-shadow: 0 10px 0px #0f172a, 0 20px 35px rgba(0,0,0,0.8) !important;
+      box-shadow: 0 12px 0px #0f172a, 0 25px 45px rgba(0,0,0,0.8) !important;
     }
     body.dark-mode .gate-header {
       background: linear-gradient(to bottom, #1e293b, #0f172a) !important;
       border-bottom-color: #334155 !important;
     }
-    body.dark-mode .gate-tabs {
+    body.dark-mode .gate-info-box {
       background: #0f172a !important;
-      border-bottom-color: #334155 !important;
+      border-color: #334155 !important;
+    }
+    body.dark-mode .gate-info-title {
+      color: #38bdf8 !important;
+    }
+    body.dark-mode .gate-info-desc {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode .gate-feature-item {
+      background: #16202d !important;
+      border-color: #334155 !important;
+    }
+    body.dark-mode .gate-feature-item strong {
+      color: #fbbf24 !important;
+    }
+    body.dark-mode .gate-feature-item p {
+      color: #cbd5e1 !important;
+    }
+    body.dark-mode .gate-info-footer {
+      color: #94a3b8 !important;
+      border-top-color: #334155 !important;
+    }
+    body.dark-mode .gate-auth-col {
+      background: #0f172a !important;
+      border-color: #334155 !important;
+    }
+    body.dark-mode .gate-tabs {
+      background: #1e293b !important;
+      border-color: #334155 !important;
     }
     body.dark-mode .gate-tab-btn {
       color: #94a3b8 !important;
     }
     body.dark-mode .gate-tab-btn.active {
-      background: #1a2234 !important;
-      color: #38bdf8 !important;
-      box-shadow: inset 0 3px 0 #38bdf8 !important;
+      background: #38bdf8 !important;
+      color: #0f172a !important;
     }
     body.dark-mode .gate-field-group label {
       color: #cbd5e1 !important;
@@ -1362,23 +1444,6 @@
     }
     body.dark-mode .gate-field-help {
       color: #94a3b8 !important;
-    }
-    body.dark-mode .gate-info-box {
-      background: #0f172a !important;
-      border-color: #334155 !important;
-      color: #e2e8f0 !important;
-    }
-    body.dark-mode .gate-info-title {
-      color: #38bdf8 !important;
-    }
-    body.dark-mode .gate-info-desc {
-      color: #94a3b8 !important;
-    }
-    body.dark-mode .gate-info-list li {
-      color: #cbd5e1 !important;
-    }
-    body.dark-mode .gate-info-list li strong {
-      color: #fbbf24 !important;
     }
     .app-gated {
       pointer-events: none !important;
@@ -1779,69 +1844,110 @@
         <p>To access Sun Forge, link your Farm ID and enable automatic 21:00 UTC cloud sync, please register or login.</p>
       </div>
 
-      <div class="gate-tabs">
-        <button type="button" id="gateTabRegisterBtn" class="gate-tab-btn active" onclick="switchGateTab('register')">
-          📝 Register (New Farmer)
-        </button>
-        <button type="button" id="gateTabLoginBtn" class="gate-tab-btn" onclick="switchGateTab('login')">
-          🔑 Login (Existing)
-        </button>
-      </div>
+      <div class="gate-grid">
+        <!-- LEFT COLUMN: BRIEF INFO ABOUT SUN FORGE -->
+        <div class="gate-info-col">
+          <div class="gate-info-box">
+            <div class="gate-info-title">
+              <span style="font-size: 16px;">🌾</span>
+              <span>What is Sun Forge?</span>
+            </div>
+            <div class="gate-info-desc">
+              Your companion tool built for Sunflower Land farmers to forge, optimize, and hit every seasonal Chapter goal:
+            </div>
+            <div class="gate-features-list">
+              <div class="gate-feature-item">
+                <span class="gate-feat-icon">📦</span>
+                <div>
+                  <strong>Live Farm Synchronization</strong>
+                  <p>Auto-imports your active NPC orders, deliveries, chore tasks, bounties & milestones directly from SFL.</p>
+                </div>
+              </div>
 
-      <div class="gate-body">
-        <!-- BRIEF INFO ABOUT THE TRACKER -->
-        <div class="gate-info-box">
-          <div class="gate-info-title">🌾 What is Sun Forge?</div>
-          <div class="gate-info-desc">An all-in-one companion tool designed to help you forge, track, and complete your Chapter progression:</div>
-          <ul class="gate-info-list">
-            <li>📦 <strong>Live Farm Sync:</strong> Directly imports your active NPC deliveries, chore tasks, bounties & milestone orders.</li>
-            <li>🎟️ <strong>Ticket & Cost Engine:</strong> Accurately tracks tickets earned, VIP (+2), 2x event bonuses, and real-time SFL resource crafting costs.</li>
-            <li>📈 <strong>Weekly Pace Goals:</strong> Visualizes your weekly ticket progression chart against your seasonal target.</li>
-            <li>☁️ <strong>Nightly Cloud Vault:</strong> Automatically snapshots your farm daily at 21:00 UTC so your progression history is never lost.</li>
-          </ul>
+              <div class="gate-feature-item">
+                <span class="gate-feat-icon">🎟️</span>
+                <div>
+                  <strong>Ticket & Cost Engine</strong>
+                  <p>Calculates tickets earned, VIP (+2), 2x event multiplier bonuses, and real-time SFL resource crafting costs.</p>
+                </div>
+              </div>
+
+              <div class="gate-feature-item">
+                <span class="gate-feat-icon">📈</span>
+                <div>
+                  <strong>Weekly Pace Goals</strong>
+                  <p>Interactive weekly progression charts compare your current pace directly against your seasonal target.</p>
+                </div>
+              </div>
+
+              <div class="gate-feature-item">
+                <span class="gate-feat-icon">☁️</span>
+                <div>
+                  <strong>Nightly Cloud Vault (21:00 UTC)</strong>
+                  <p>Automated background cron snapshots your farm daily so your historical tickets and logs are never lost.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="gate-info-footer">
+              💡 <em>Registering links your public Farm ID — no private keys or wallet signatures required.</em>
+            </div>
+          </div>
         </div>
 
-        <div id="gateStatusMsg" class="gate-status-alert"></div>
-
-        <!-- REGISTER FORM -->
-        <form id="gateRegisterForm" onsubmit="handleGateRegister(event)" autocomplete="on">
-          <div class="gate-field-group">
-            <label for="gateRegUsername">Username:</label>
-            <input type="text" id="gateRegUsername" placeholder="e.g. sunflower_king" autocomplete="username" required />
+        <!-- RIGHT COLUMN: REGISTRATION & LOGIN ACTIONS -->
+        <div class="gate-auth-col">
+          <div class="gate-tabs">
+            <button type="button" id="gateTabRegisterBtn" class="gate-tab-btn active" onclick="switchGateTab('register')">
+              📝 Register
+            </button>
+            <button type="button" id="gateTabLoginBtn" class="gate-tab-btn" onclick="switchGateTab('login')">
+              🔑 Login
+            </button>
           </div>
 
-          <div class="gate-field-group" style="margin-top: 10px;">
-            <label for="gateRegPassword">Password:</label>
-            <input type="password" id="gateRegPassword" placeholder="Choose a password" autocomplete="new-password" required />
-          </div>
+          <div id="gateStatusMsg" class="gate-status-alert"></div>
 
-          <div class="gate-field-group" style="margin-top: 10px;">
-            <label for="gateRegFarmId">Sunflower Land Farm ID:</label>
-            <input type="text" id="gateRegFarmId" placeholder="e.g. 12345" autocomplete="off" required />
-            <span class="gate-field-help">💡 Your numerical Farm ID is required to link your vault & fetch your live deliveries and bounties.</span>
-          </div>
+          <!-- REGISTER FORM -->
+          <form id="gateRegisterForm" onsubmit="handleGateRegister(event)" autocomplete="on">
+            <div class="gate-field-group">
+              <label for="gateRegUsername">Farmer Username:</label>
+              <input type="text" id="gateRegUsername" placeholder="e.g. sunflower_king" autocomplete="username" required />
+            </div>
 
-          <button type="submit" id="gateRegSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
-            🌻 REGISTER & ENTER VAULT
-          </button>
-        </form>
+            <div class="gate-field-group" style="margin-top: 10px;">
+              <label for="gateRegPassword">Vault Password:</label>
+              <input type="password" id="gateRegPassword" placeholder="Choose a password" autocomplete="new-password" required />
+            </div>
 
-        <!-- LOGIN FORM -->
-        <form id="gateLoginForm" onsubmit="handleGateLogin(event)" autocomplete="on" style="display: none;">
-          <div class="gate-field-group">
-            <label for="gateLoginUsername">Username:</label>
-            <input type="text" id="gateLoginUsername" placeholder="Enter your username" autocomplete="username" required />
-          </div>
+            <div class="gate-field-group" style="margin-top: 10px;">
+              <label for="gateRegFarmId">Sunflower Land Farm ID:</label>
+              <input type="text" id="gateRegFarmId" placeholder="e.g. 12345" autocomplete="off" required />
+              <span class="gate-field-help">💡 Your Farm ID links your orders and deliveries to your personal vault.</span>
+            </div>
 
-          <div class="gate-field-group" style="margin-top: 10px;">
-            <label for="gateLoginPassword">Password:</label>
-            <input type="password" id="gateLoginPassword" placeholder="Enter your password" autocomplete="current-password" required />
-          </div>
+            <button type="submit" id="gateRegSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
+              🌻 REGISTER & ENTER SUN FORGE
+            </button>
+          </form>
 
-          <button type="submit" id="gateLoginSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
-            🔓 LOGIN & OPEN VAULT
-          </button>
-        </form>
+          <!-- LOGIN FORM -->
+          <form id="gateLoginForm" onsubmit="handleGateLogin(event)" autocomplete="on" style="display: none;">
+            <div class="gate-field-group">
+              <label for="gateLoginUsername">Farmer Username:</label>
+              <input type="text" id="gateLoginUsername" placeholder="Enter your username" autocomplete="username" required />
+            </div>
+
+            <div class="gate-field-group" style="margin-top: 10px;">
+              <label for="gateLoginPassword">Vault Password:</label>
+              <input type="password" id="gateLoginPassword" placeholder="Enter your password" autocomplete="current-password" required />
+            </div>
+
+            <button type="submit" id="gateLoginSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
+              🔓 LOGIN & OPEN VAULT
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
