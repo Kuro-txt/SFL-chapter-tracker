@@ -40,13 +40,16 @@ import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js'
 export function applyTheme(theme) {
   const isDark = theme === 'dark';
   const toggleBtn = document.getElementById('themeToggleBtn');
+  const gateToggleBtn = document.getElementById('gateThemeToggleBtn');
 
   if (isDark) {
     document.body.classList.add('dark-mode');
     if (toggleBtn) toggleBtn.innerHTML = '☀️ LIGHT';
+    if (gateToggleBtn) gateToggleBtn.innerHTML = '☀️ LIGHT';
   } else {
     document.body.classList.remove('dark-mode');
     if (toggleBtn) toggleBtn.innerHTML = '🌙 DARK';
+    if (gateToggleBtn) gateToggleBtn.innerHTML = '🌙 DARK';
   }
 
   localStorage.setItem('sfl_theme', theme);
@@ -208,9 +211,8 @@ export function updateCurrentWeekBadge() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Initialize Dark / Light Theme
-  const savedTheme = localStorage.getItem('sfl_theme') || 
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  // 1. Initialize Dark / Light Theme (defaults to classic Sunflower Land light theme)
+  const savedTheme = localStorage.getItem('sfl_theme') || 'light';
   applyTheme(savedTheme);
 
   // 2. Load Local State Preferences
