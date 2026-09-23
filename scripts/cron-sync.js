@@ -8,6 +8,205 @@ import { reconcileDeliveriesWithNpcs } from '../api/chapter.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const BATCH_DELAY_MS = 11000;
+const SFL_BATCH_URL = 'https://api.sunflower-land.com/community/getFarms';
+const SFL_SINGLE_URL = 'https://api.sunflower-land.com/community/farms';
+
+export function normalizeFarmId(rawId) {
+  if (rawId === null || rawId === undefined) return null;
+  const parsed = Math.floor(Number(String(rawId).trim()));
+  return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : null;
+}
+
+function getBatchHeaders(apiKey = '') {
+  const keyToUse = (apiKey && apiKey.trim()) || (process.env.SFL_API_KEY && process.env.SFL_API_KEY.trim()) || '';
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Referer': 'https://sunflower-land.com/',
+    'Origin': 'https://sunflower-land.com'
+  };
+  if (keyToUse) {
+    headers['x-api-key'] = keyToUse;
+    headers['Authorization'] = `Bearer ${keyToUse}`;
+  }
+  return headers;
+}
+
+async function postBatch(ids, attempt = 1, apiKey = '') {
+  try {
+    const res = await fetch(SFL_BATCH_URL, {
+      method: 'POST',
+      headers: getBatchHeaders(apiKey),
+      body: JSON.stringify({ ids }),
+      signal: AbortSignal.timeout(25000)
+    });
+
+    if (res.status === 401) {
+      console.warn('⚠️ [401 Unauthorized] SFL batch API key invalid or unauthorized. Will trigger single-farm fallback.');
+      return { farms: {}, skipped: ids, status: 401 };
+    }
+
+    if (res.status === 429 && attempt <= 2) {
+      console.warn(`⚠️ [429 Throttle] SFL rate limit hit. Waiting 15s before retry (Attempt ${attempt}/2)...`);
+      await sleep(15000);
+      return postBatch(ids, attempt + 1, apiKey);
+    }
+
+    if (!res.ok) {
+      console.error(`❌ Batch request failed (HTTP ${res.status}) for ${ids.length} IDs.`);
+      return { farms: {}, skipped: ids, status: res.status };
+    }
+
+    const data = await res.json();
+    return data || { farms: {}, skipped: [] };
+  } catch (err) {
+    console.error(`❌ Batch request error (${err.message}) for ${ids.length} IDs.`);
+    return { farms: {}, skipped: ids, error: err.message };
+  }
+}
+
+async function fetchFarmsWithSplitRetry(ids, apiKey = '') {
+  if (!ids || ids.length === 0) return {};
+
+  const data = await postBatch(ids, 1, apiKey);
+  const farms = data.farms || {};
+  const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+
+  // Binary-split if farms were skipped and we have more than 1 ID
+  if (skipped.length > 0 && ids.length > 1) {
+    console.log(`ℹ️ [Split-Retry] ${skipped.length} farms skipped in batch of ${ids.length}. Binary splitting to recover payload drops...`);
+    const half = Math.ceil(skipped.length / 2);
+    const subBatches = [skipped.slice(0, half), skipped.slice(half)].filter(b => b.length > 0);
+
+    for (const subBatch of subBatches) {
+      await sleep(BATCH_DELAY_MS);
+      const recoveredFarms = await fetchFarmsWithSplitRetry(subBatch, apiKey);
+      for (const [key, val] of Object.entries(recoveredFarms)) {
+        farms[key] = val;
+      }
+    }
+  } else if (skipped.length > 0 && ids.length === 1) {
+    console.warn(`⚠️ Farm #${ids[0]} permanently skipped by SFL (farm does not exist or is inactive).`);
+  }
+
+  return farms;
+}
+
+async function fetchSingleFarmFallback(farmId, apiKey = '') {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${SFL_SINGLE_URL}/${encodeURIComponent(farmId)}`, {
+        headers: getBatchHeaders(apiKey),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (res.status === 429) {
+        console.warn(`  ⚠️ Rate limit (429) for farm #${farmId}. Sleeping 11s before retry...`);
+        await sleep(11000);
+        continue;
+      }
+      if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+      const payload = await res.json();
+      return payload.farm || payload;
+    } catch (err) {
+      console.warn(`  ⚠️ Single fetch attempt ${attempt}/3 for #${farmId} failed: ${err.message}`);
+      if (attempt < 3) await sleep(4000);
+    }
+  }
+  return null;
+}
+
+export async function fetchAllFarmsBatched(rawFarmIds, apiKey = '') {
+  const farmLookup = new Map();
+  if (!Array.isArray(rawFarmIds) || rawFarmIds.length === 0) {
+    return farmLookup;
+  }
+
+  const uniqueNumericIds = Array.from(
+    new Set(
+      rawFarmIds
+        .map(id => normalizeFarmId(id))
+        .filter(Boolean)
+        .map(Number)
+    )
+  );
+
+  if (uniqueNumericIds.length === 0) {
+    console.warn('⚠️ [Batch Fetcher] No valid numeric farm IDs to fetch.');
+    return farmLookup;
+  }
+
+  const CHUNK_SIZE = 20;
+  const totalBatches = Math.ceil(uniqueNumericIds.length / CHUNK_SIZE);
+  console.log(`🚜 [Batch Fetcher] Starting sync for ${uniqueNumericIds.length} unique farms in ${totalBatches} batch(es) of max ${CHUNK_SIZE}...`);
+
+  const startTime = Date.now();
+  let useFallback = false;
+
+  for (let i = 0; i < uniqueNumericIds.length; i += CHUNK_SIZE) {
+    const chunk = uniqueNumericIds.slice(i, i + CHUNK_SIZE);
+    const batchNum = Math.floor(i / CHUNK_SIZE) + 1;
+
+    console.log(`🚜 [Batch ${batchNum}/${totalBatches}] Requesting ${chunk.length} farms: [${chunk.slice(0, 5).join(', ')}${chunk.length > 5 ? '...' : ''}]`);
+
+    let batchFarms = {};
+    if (!useFallback) {
+      const data = await postBatch(chunk, 1, apiKey);
+      if (data.status === 401) {
+        console.warn('⚠️ Switching to single-farm fallback mode due to 401 Unauthorized on batch endpoint.');
+        useFallback = true;
+      } else {
+        batchFarms = data.farms || {};
+        const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+        if (skipped.length > 0 && chunk.length > 1) {
+          console.log(`ℹ️ [Split-Retry] ${skipped.length} farms skipped. Binary splitting to recover payload drops...`);
+          const half = Math.ceil(skipped.length / 2);
+          const subBatches = [skipped.slice(0, half), skipped.slice(half)].filter(b => b.length > 0);
+          for (const subBatch of subBatches) {
+            await sleep(BATCH_DELAY_MS);
+            const recovered = await fetchFarmsWithSplitRetry(subBatch, apiKey);
+            for (const [k, v] of Object.entries(recovered)) {
+              batchFarms[k] = v;
+            }
+          }
+        }
+      }
+    }
+
+    if (useFallback) {
+      for (const singleId of chunk) {
+        const farmObj = await fetchSingleFarmFallback(singleId, apiKey);
+        if (farmObj) {
+          batchFarms[String(singleId)] = farmObj;
+        }
+        await sleep(2000);
+      }
+    }
+
+    // Index strictly by normalized string ID
+    for (const [farmId, farmObj] of Object.entries(batchFarms)) {
+      const cleanKey = normalizeFarmId(farmId);
+      if (cleanKey && farmObj && typeof farmObj === 'object') {
+        farmLookup.set(cleanKey, farmObj.farm || farmObj);
+      }
+    }
+
+    console.log(`✅ [Batch ${batchNum}/${totalBatches}] Retrieved ${Object.keys(batchFarms).length} farms in this chunk.`);
+
+    // 11s spacing between major batches (skip after the last batch)
+    if (i + CHUNK_SIZE < uniqueNumericIds.length && !useFallback) {
+      console.log(`⏳ [Batch Throttle] Waiting ${BATCH_DELAY_MS / 1000}s before next batch...`);
+      await sleep(BATCH_DELAY_MS);
+    }
+  }
+
+  const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log(`📦 [Batch Fetcher Complete] Successfully indexed ${farmLookup.size}/${uniqueNumericIds.length} farms in ${elapsedSec}s.`);
+
+  return farmLookup;
+}
+
 async function runSync() {
   console.log('🚀 Starting GitHub Actions SFL Farm Sync...');
 
@@ -26,7 +225,6 @@ async function runSync() {
   let processedCount = 0;
   const errors = [];
   const results = [];
-  const farmCache = new Map();
 
   try {
     client = await pool.connect();
@@ -63,13 +261,20 @@ async function runSync() {
       console.warn('⚠️ Price fetch failed, proceeding with recipe values:', e.message);
     }
 
-    const sflHeaders = {
-      'Accept': 'application/json, text/plain, */*',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer': 'https://sunflower-land.com/',
-      'Origin': 'https://sunflower-land.com'
-    };
-    if (process.env.SFL_API_KEY) sflHeaders['x-api-key'] = process.env.SFL_API_KEY;
+    // 1. Gather all farm IDs across user accounts
+    const allRawFarmIds = vaultsRes.rows.map(r => {
+      try {
+        const v = typeof r.vault_data === 'string' ? JSON.parse(r.vault_data) : (r.vault_data || {});
+        return v.farmId;
+      } catch {
+        return null;
+      }
+    }).filter(Boolean);
+
+    console.log(`🔍 Found ${allRawFarmIds.length} farm IDs across ${vaultsRes.rows.length} vaults.`);
+
+    // 2. Fetch all farms via high-speed batch endpoint (max 20/call with split retry and 11s pacing)
+    const farmLookup = await fetchAllFarmsBatched(allRawFarmIds, process.env.SFL_API_KEY);
 
     const nowMs = Date.now();
     const todayDateStr = new Date(nowMs).toISOString().split('T')[0];
@@ -79,48 +284,44 @@ async function runSync() {
       const row = vaultsRes.rows[i];
       const username = row.username;
       let vault = typeof row.vault_data === 'string' ? JSON.parse(row.vault_data) : (row.vault_data || {});
-      const farmId = vault.farmId;
+      const rawFarmId = vault.farmId;
+      const farmId = normalizeFarmId(rawFarmId);
+
       if (!farmId) {
-        console.warn(`[${i + 1}/${vaultsRes.rows.length}] Skipping user "${username}": No farmId linked.`);
+        console.warn(`[${i + 1}/${vaultsRes.rows.length}] Skipping user "${username}": No valid farmId linked.`);
         continue;
       }
 
       console.log(`[${i + 1}/${vaultsRes.rows.length}] Processing user: "${username}" (Farm #${farmId})...`);
 
-      let farm = farmCache.get(farmId) || null;
+      // Strict Zero-Cross-Contamination Lookup:
+      // Always look up exclusively by this user's validated farm ID key in the Map
+      let farm = farmLookup.get(farmId) || null;
 
+      // Fallback: If not in batch results, attempt single farm fetch
       if (!farm) {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          try {
-            const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
-              headers: sflHeaders,
-              signal: AbortSignal.timeout(12000)
-            });
-            
-            if (sflRes.status === 429) {
-              console.warn(`  ⚠️ Rate limit (429) on attempt ${attempt}/3. Sleeping 11s before retry...`);
-              await sleep(11000);
-              continue;
-            }
-
-            if (!sflRes.ok) throw new Error(`HTTP status ${sflRes.status}`);
-
-            const payload = await sflRes.json();
-            farm = payload.farm || payload;
-            farmCache.set(farmId, farm);
-            break;
-          } catch (attemptErr) {
-            console.warn(`  ⚠️ Attempt ${attempt}/3 failed: ${attemptErr.message}`);
-            if (attempt < 3) await sleep(4000);
-          }
+        console.warn(`  ⚠️ Farm #${farmId} not found in batch results. Attempting single fallback fetch...`);
+        const fallbackFarm = await fetchSingleFarmFallback(farmId, process.env.SFL_API_KEY);
+        if (fallbackFarm) {
+          farm = fallbackFarm;
+          farmLookup.set(farmId, farm);
         }
-      } else {
-        console.log(`  ⚡ Reusing cached data for shared farm #${farmId}`);
       }
 
       if (!farm) {
-        errors.push({ username, farmId, error: 'Failed to fetch farm after 3 attempts' });
-        console.error(`  ❌ Failed to sync user "${username}". Skipping.`);
+        errors.push({ username, farmId, error: 'Failed to retrieve farm data from SFL API' });
+        console.error(`  ❌ Failed to sync user "${username}" (Farm #${farmId}). Skipping.`);
+        continue;
+      }
+
+      // Unwrap if nested
+      farm = farm.farm || farm;
+
+      // Payload Identity Lock: Verify payload matches expected farm ID
+      const payloadFarmId = normalizeFarmId(farm.id || farm.farmId);
+      if (payloadFarmId && payloadFarmId !== farmId) {
+        console.error(`🚨 [CROSS-CONTAMINATION GUARD BLOCKED] ID Mismatch for "${username}"! Expected #${farmId}, but received payload #${payloadFarmId}. Aborting save for this user.`);
+        errors.push({ username, farmId, error: `Cross-contamination blocked: ID mismatch (${payloadFarmId} !== ${farmId})` });
         continue;
       }
 
@@ -312,7 +513,7 @@ async function runSync() {
       }
 
       if (i < vaultsRes.rows.length - 1) {
-        await sleep(2000);
+        await sleep(50);
       }
     }
 
