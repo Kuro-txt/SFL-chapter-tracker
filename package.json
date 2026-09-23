@@ -1,13 +1,14 @@
 {
-  "name": "sfl-chapter-tracker",
+  "name": "sun-forge",
   "version": "1.0.0",
   "type": "module",
-  "description": "Sunflower Land Chapter Progress & Order Tracker",
+  "description": "Sun Forge - Sunflower Land Chapter Progress & Order Tracker",
   "main": "js/app.js",
   "scripts": {
     "sync": "node scripts/cron-sync.js"
   },
   "dependencies": {
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "tweetsodium": "^0.0.4"
   }
 }
