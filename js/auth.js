@@ -2,17 +2,107 @@ import { state, checkAndAutoClaimDailyLogin } from './state.js';
 import { recalculateAll } from './render.js';
 import { loadTrackerData } from './api.js';
 
-export async function userRegister() {
-  const usernameInput = document.getElementById('authUsername');
-  const passwordInput = document.getElementById('authPassword');
-  const farmIdInput = document.getElementById('farmId');
+// ==========================================
+// REGISTRATION & AUTH GATE CONTROLS
+// ==========================================
 
-  const username = usernameInput?.value.trim().toLowerCase();
-  const password = passwordInput?.value.trim();
-  let farmId = farmIdInput?.value.trim();
+export function showRegistrationGate(tab = 'register', message = '') {
+  const gateModal = document.getElementById('registrationGateModal');
+  const appWrapper = document.querySelector('.wrapper');
+
+  if (gateModal) gateModal.style.display = 'flex';
+  if (appWrapper) appWrapper.classList.add('app-gated');
+
+  switchGateTab(tab);
+
+  if (message) {
+    setGateStatus(message, 'error');
+  } else {
+    clearGateStatus();
+  }
+}
+
+export function hideRegistrationGate() {
+  const gateModal = document.getElementById('registrationGateModal');
+  const appWrapper = document.querySelector('.wrapper');
+
+  if (gateModal) gateModal.style.display = 'none';
+  if (appWrapper) appWrapper.classList.remove('app-gated');
+
+  clearGateStatus();
+}
+
+export function switchGateTab(tab) {
+  const regBtn = document.getElementById('gateTabRegisterBtn');
+  const loginBtn = document.getElementById('gateTabLoginBtn');
+  const regForm = document.getElementById('gateRegisterForm');
+  const loginForm = document.getElementById('gateLoginForm');
+
+  clearGateStatus();
+
+  if (tab === 'login') {
+    if (regBtn) regBtn.classList.remove('active');
+    if (loginBtn) loginBtn.classList.add('active');
+    if (regForm) regForm.style.display = 'none';
+    if (loginForm) loginForm.style.display = 'block';
+
+    const loginUser = document.getElementById('gateLoginUsername');
+    if (loginUser) loginUser.focus();
+  } else {
+    if (regBtn) regBtn.classList.add('active');
+    if (loginBtn) loginBtn.classList.remove('active');
+    if (regForm) regForm.style.display = 'block';
+    if (loginForm) loginForm.style.display = 'none';
+
+    const regUser = document.getElementById('gateRegUsername');
+    if (regUser) regUser.focus();
+  }
+}
+
+export function setGateStatus(message, type = 'error') {
+  const statusEl = document.getElementById('gateStatusMsg');
+  if (!statusEl) return;
+
+  statusEl.className = `gate-status-alert ${type}`;
+  statusEl.innerHTML = message;
+}
+
+export function clearGateStatus() {
+  const statusEl = document.getElementById('gateStatusMsg');
+  if (!statusEl) return;
+
+  statusEl.className = 'gate-status-alert';
+  statusEl.innerHTML = '';
+  statusEl.style.display = 'none';
+}
+
+export async function handleGateRegister(event) {
+  if (event) event.preventDefault();
+  await userRegister();
+}
+
+export async function handleGateLogin(event) {
+  if (event) event.preventDefault();
+  await userLogin();
+}
+
+// ==========================================
+// USER REGISTER & LOGIN ACTIONS
+// ==========================================
+
+export async function userRegister(customUsername, customPassword, customFarmId) {
+  const regUserEl = document.getElementById('gateRegUsername') || document.getElementById('authUsername');
+  const regPassEl = document.getElementById('gateRegPassword') || document.getElementById('authPassword');
+  const regFarmEl = document.getElementById('gateRegFarmId') || document.getElementById('farmId');
+
+  const username = (customUsername || regUserEl?.value || '').trim().toLowerCase();
+  const password = (customPassword || regPassEl?.value || '').trim();
+  let farmId = (customFarmId || regFarmEl?.value || '').trim();
 
   if (!username || !password) {
-    alert('Please enter both a username and password to register.');
+    setGateStatus('⚠️ Please enter both a username and password to register.', 'error');
+    if (!username && regUserEl) regUserEl.focus();
+    else if (!password && regPassEl) regPassEl.focus();
     return;
   }
 
@@ -22,12 +112,17 @@ export async function userRegister() {
   }
 
   if (!farmId) {
-    alert('A valid Sunflower Land Farm ID is required to register an account.');
-    if (farmIdInput) farmIdInput.focus();
+    setGateStatus('⚠️ A valid Sunflower Land Farm ID is required to register an account.', 'error');
+    if (regFarmEl) regFarmEl.focus();
     return;
   }
 
-  if (farmIdInput) farmIdInput.value = farmId;
+  const submitBtn = document.getElementById('gateRegSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ REGISTERING...';
+  }
+  setGateStatus('🌾 Registering farmer vault...', 'loading');
 
   try {
     const res = await fetch('/api/chapter?action=register', {
@@ -40,26 +135,42 @@ export async function userRegister() {
     if (!res.ok || data.error) throw new Error(data.error || 'Registration failed.');
 
     localStorage.setItem('sfl_farmId', farmId);
-    alert(`Account "${username}" registered and linked to Farm #${farmId}! Logging you in...`);
-    await userLogin();
+    setGateStatus(`🎉 Account "${username}" registered! Logging you in...`, 'success');
+
+    // Auto-login into vault
+    await userLogin(username, password, farmId);
   } catch (err) {
-    alert(`Registration Error: ${err.message}`);
+    setGateStatus(`❌ Registration Error: ${err.message}`, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '🌻 REGISTER & ENTER VAULT';
+    }
   }
 }
 
-export async function userLogin() {
-  const usernameInput = document.getElementById('authUsername');
-  const passwordInput = document.getElementById('authPassword');
+export async function userLogin(customUsername, customPassword, customFarmId) {
+  const loginUserEl = document.getElementById('gateLoginUsername') || document.getElementById('authUsername');
+  const loginPassEl = document.getElementById('gateLoginPassword') || document.getElementById('authPassword');
   const farmIdInput = document.getElementById('farmId');
 
-  const username = usernameInput?.value.trim().toLowerCase();
-  const password = passwordInput?.value.trim();
-  const farmId = farmIdInput?.value.trim();
+  const username = (customUsername || loginUserEl?.value || '').trim().toLowerCase();
+  const password = (customPassword || loginPassEl?.value || '').trim();
+  const farmId = (customFarmId || farmIdInput?.value || '').trim();
 
   if (!username || !password) {
-    alert('Please enter your username and password.');
+    setGateStatus('⚠️ Please enter your username and password.', 'error');
+    if (!username && loginUserEl) loginUserEl.focus();
+    else if (!password && loginPassEl) loginPassEl.focus();
     return;
   }
+
+  const submitBtn = document.getElementById('gateLoginSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ LOGGING IN...';
+  }
+  setGateStatus('🔓 Opening farmer vault...', 'loading');
 
   try {
     const res = await fetch('/api/chapter?action=login', {
@@ -82,7 +193,7 @@ export async function userLogin() {
       localStorage.setItem('sfl_farmId', activeFarmId);
     }
 
-    updateAuthUI(true, data.username);
+    updateAuthUI(true, data.username, activeFarmId);
 
     if (data.vaultData?.dailyLoginTickets !== undefined) {
       const loginCountEl = document.getElementById('dailyLoginCount');
@@ -106,11 +217,18 @@ export async function userLogin() {
       if (data.vaultData?.archiveChores) state.globalData.archiveChores = data.vaultData.archiveChores;
     }
 
+    hideRegistrationGate();
+
     await checkAndAutoClaimDailyLogin();
     recalculateAll();
     loadTrackerData();
   } catch (err) {
-    alert(`Login Error: ${err.message}`);
+    setGateStatus(`❌ Login Error: ${err.message}`, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '🔓 LOGIN & OPEN VAULT';
+    }
   }
 }
 
@@ -122,33 +240,43 @@ export function userLogout() {
   const farmIdInput = document.getElementById('farmId');
   if (farmIdInput) farmIdInput.value = '';
 
-  updateAuthUI(false, '');
+  updateAuthUI(false, '', '');
   if (state.globalData) {
     state.globalData.cloudHistory = null;
   }
   recalculateAll();
+
+  showRegistrationGate('login', 'You have been logged out. Please log in or register to enter your vault.');
 }
 
 export async function checkSavedAuth() {
   const savedUser = localStorage.getItem('sfl_auth_user');
-  if (!savedUser) return;
+  if (!savedUser) {
+    showRegistrationGate('register');
+    return;
+  }
 
   try {
     const res = await fetch(`/api/chapter?action=getVault&username=${encodeURIComponent(savedUser)}`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      showRegistrationGate('login', 'Session expired. Please log in again.');
+      return;
+    }
 
     const data = await res.json().catch(() => ({}));
     if (data && data.vaultData) {
       state.currentUser = savedUser;
       state.currentVaultData = data.vaultData;
 
-      if (data.vaultData.farmId) {
+      const farmId = data.vaultData.farmId || '';
+      if (farmId) {
         const farmIdInput = document.getElementById('farmId');
-        if (farmIdInput) farmIdInput.value = data.vaultData.farmId;
-        localStorage.setItem('sfl_farmId', data.vaultData.farmId);
+        if (farmIdInput) farmIdInput.value = farmId;
+        localStorage.setItem('sfl_farmId', farmId);
       }
 
-      updateAuthUI(true, savedUser);
+      updateAuthUI(true, savedUser, farmId);
+      hideRegistrationGate();
 
       if (data.vaultData.dailyLoginTickets !== undefined) {
         const loginCountEl = document.getElementById('dailyLoginCount');
@@ -165,24 +293,30 @@ export async function checkSavedAuth() {
 
       await checkAndAutoClaimDailyLogin();
       recalculateAll();
+    } else {
+      showRegistrationGate('login', 'User vault not found. Please log in or register.');
     }
   } catch (e) {
     console.warn('Silent auth check warning:', e.message);
+    showRegistrationGate('login', 'Could not verify session. Please log in.');
   }
 }
 
-function updateAuthUI(isLoggedIn, username) {
+function updateAuthUI(isLoggedIn, username, farmId = '') {
   const loggedOutBox = document.getElementById('authLoggedOut');
   const loggedInBox = document.getElementById('authLoggedIn');
   const displayUser = document.getElementById('displayUsername');
+  const displayFarmId = document.getElementById('displayFarmId');
 
   if (isLoggedIn) {
     if (loggedOutBox) loggedOutBox.style.display = 'none';
     if (loggedInBox) loggedInBox.style.display = 'flex';
     if (displayUser) displayUser.textContent = username;
+    if (displayFarmId) displayFarmId.textContent = farmId || '---';
   } else {
     if (loggedOutBox) loggedOutBox.style.display = 'flex';
     if (loggedInBox) loggedInBox.style.display = 'none';
     if (displayUser) displayUser.textContent = '';
+    if (displayFarmId) displayFarmId.textContent = '---';
   }
 }
