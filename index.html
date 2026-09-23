@@ -1217,6 +1217,21 @@
       margin: 0 auto;
       max-width: 520px;
     }
+    .gate-theme-btn {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 900;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 0px rgba(0,0,0,0.3);
+      z-index: 2;
+    }
     .gate-grid {
       display: grid;
       grid-template-columns: 1.15fr 1fr;
@@ -1225,10 +1240,58 @@
       align-items: stretch;
     }
     @media (max-width: 768px) {
+      .gate-card {
+        max-height: 96vh;
+        border-radius: 12px;
+        margin: 6px;
+      }
+      .gate-header {
+        padding: 14px 14px 10px;
+      }
+      .gate-header h2 {
+        font-size: 21px;
+        margin-bottom: 2px;
+      }
+      .gate-header-badge {
+        font-size: 9.5px;
+        padding: 2px 8px;
+        margin-bottom: 5px;
+      }
+      .gate-header p {
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .gate-theme-btn {
+        position: static;
+        margin: 0 auto 8px;
+        display: inline-flex;
+      }
       .gate-grid {
         grid-template-columns: 1fr;
-        gap: 16px;
-        padding: 16px;
+        gap: 12px;
+        padding: 12px;
+      }
+      .gate-auth-col {
+        order: 1 !important;
+        padding: 12px;
+        gap: 10px;
+      }
+      .gate-info-col {
+        order: 2 !important;
+      }
+      .gate-info-box {
+        padding: 10px 12px;
+        gap: 8px;
+      }
+      .gate-features-list {
+        gap: 6px;
+      }
+      .gate-feature-item {
+        padding: 6px 8px;
+      }
+      .gate-btn-submit {
+        padding: 10px;
+        font-size: 12px;
       }
     }
     .gate-info-col {
@@ -1374,30 +1437,37 @@
     }
     .gate-status-alert {
       display: none;
-      padding: 9px 12px;
-      border-radius: 6px;
-      font-size: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
       font-weight: 900;
       line-height: 1.4;
       text-align: center;
+      margin-bottom: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      animation: alertSlideDown 0.2s ease;
+    }
+    @keyframes alertSlideDown {
+      0% { opacity: 0; transform: translateY(-6px); }
+      100% { opacity: 1; transform: translateY(0); }
     }
     .gate-status-alert.error {
-      display: block;
-      background: #FFEBEE;
-      color: #C62828;
-      border: 2px solid #EF5350;
+      display: block !important;
+      background: #FFEBEE !important;
+      color: #B71C1C !important;
+      border: 2px solid #E53935 !important;
     }
     .gate-status-alert.success {
-      display: block;
-      background: #E8F5E9;
-      color: #2E7D32;
-      border: 2px solid #4CAF50;
+      display: block !important;
+      background: #E8F5E9 !important;
+      color: #1B5E20 !important;
+      border: 2px solid #43A047 !important;
     }
     .gate-status-alert.loading {
-      display: block;
-      background: #FFF8E1;
-      color: #F57F17;
-      border: 2px solid #FBC02D;
+      display: block !important;
+      background: #FFF8E1 !important;
+      color: #E65100 !important;
+      border: 2px solid #FB8C00 !important;
     }
     .gate-btn-submit {
       width: 100%;
@@ -1480,6 +1550,27 @@
     }
     body.dark-mode .gate-field-help {
       color: #94a3b8 !important;
+    }
+    body.dark-mode .gate-theme-btn {
+      background: #1e293b !important;
+      border-color: #334155 !important;
+      color: #38bdf8 !important;
+      box-shadow: 0 2px 0px #0f172a !important;
+    }
+    body.dark-mode .gate-status-alert.error {
+      background: #450a0a !important;
+      color: #fca5a5 !important;
+      border-color: #ef4444 !important;
+    }
+    body.dark-mode .gate-status-alert.success {
+      background: #052e16 !important;
+      color: #86efac !important;
+      border-color: #22c55e !important;
+    }
+    body.dark-mode .gate-status-alert.loading {
+      background: #451a03 !important;
+      color: #fed7aa !important;
+      border-color: #f97316 !important;
     }
     .app-gated {
       pointer-events: none !important;
@@ -1876,6 +1967,9 @@
   <div id="registrationGateModal" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
     <div class="gate-card">
       <div class="gate-header">
+        <button type="button" id="gateThemeToggleBtn" onclick="toggleTheme()" class="btn btn-sm btn-wood gate-theme-btn" title="Toggle Light / Dark Mode">
+          🌙 DARK
+        </button>
         <div class="gate-header-badge">⭐ CHAPTER TRACKER & VAULT</div>
         <h2 id="gateTitle">🌻 SUN FORGE</h2>
         <p>Link your Farm ID to track chapter progress, optimize deliveries & sync with cloud vault.</p>
