@@ -1173,26 +1173,49 @@
       100% { transform: scale(1); opacity: 1; }
     }
     .gate-header {
-      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
-      padding: 16px 20px;
+      background: linear-gradient(180deg, #8B5A2B 0%, #5C4033 100%);
+      padding: 20px 24px 18px;
       text-align: center;
       border-bottom: 3px solid #3E2723;
       color: #FFF8DC;
+      position: relative;
+    }
+    .gate-header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      background: rgba(0, 0, 0, 0.25);
+      color: #FEE78A;
+      padding: 3px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(254, 231, 138, 0.35);
+      margin-bottom: 8px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
     }
     .gate-header h2 {
-      font-size: 20px;
+      font-size: 26px;
       font-weight: 900;
-      text-shadow: 2px 2px #271813;
-      margin-bottom: 4px;
-      letter-spacing: 0.5px;
+      color: #FFF8DC;
+      text-shadow: 2px 2px 0px #271813, 0 0 16px rgba(255, 215, 0, 0.28);
+      margin: 0 0 4px 0;
+      letter-spacing: 1.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
     .gate-header p {
-      font-size: 12px;
+      font-size: 12.5px;
       color: #EEDC82;
       font-weight: bold;
       text-shadow: 1px 1px #271813;
       line-height: 1.4;
-      margin: 0;
+      margin: 0 auto;
+      max-width: 520px;
     }
     .gate-grid {
       display: grid;
@@ -1389,8 +1412,21 @@
       box-shadow: 0 12px 0px #0f172a, 0 25px 45px rgba(0,0,0,0.8) !important;
     }
     body.dark-mode .gate-header {
-      background: linear-gradient(to bottom, #1e293b, #0f172a) !important;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
       border-bottom-color: #334155 !important;
+    }
+    body.dark-mode .gate-header-badge {
+      background: rgba(56, 189, 248, 0.12) !important;
+      color: #38bdf8 !important;
+      border-color: rgba(56, 189, 248, 0.3) !important;
+    }
+    body.dark-mode .gate-header h2 {
+      color: #f8fafc !important;
+      text-shadow: 2px 2px 0px #020617, 0 0 16px rgba(56, 189, 248, 0.3) !important;
+    }
+    body.dark-mode .gate-header p {
+      color: #94a3b8 !important;
+      text-shadow: none !important;
     }
     body.dark-mode .gate-info-box {
       background: #0f172a !important;
@@ -1840,8 +1876,9 @@
   <div id="registrationGateModal" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
     <div class="gate-card">
       <div class="gate-header">
-        <h2 id="gateTitle">🌻 SUN FORGE ACCESS GATE</h2>
-        <p>To access Sun Forge, link your Farm ID and enable automatic 21:00 UTC cloud sync, please register or login.</p>
+        <div class="gate-header-badge">⭐ CHAPTER TRACKER & VAULT</div>
+        <h2 id="gateTitle">🌻 SUN FORGE</h2>
+        <p>Link your Farm ID to track chapter progress, optimize deliveries & sync with cloud vault.</p>
       </div>
 
       <div class="gate-grid">
