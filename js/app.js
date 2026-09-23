@@ -1,10 +1,20 @@
 import { loadTrackerData, saveProgressToCloudKV } from './api.js';
-import { userRegister, userLogin, userLogout, checkSavedAuth } from './auth.js';
+import { 
+  userRegister, 
+  userLogin, 
+  userLogout, 
+  checkSavedAuth,
+  showRegistrationGate,
+  hideRegistrationGate,
+  switchGateTab,
+  handleGateRegister,
+  handleGateLogin
+} from './auth.js';
 import { 
   toggleGuideModal, 
   openCategorySummaryModal, 
   closeCategorySummaryModal, 
-  openWeekBreakdownModal,
+  openWeekBreakdownModal, 
   openColumnHistoryModal, 
   closeColumnHistoryModal, 
   renderColumnHistoryModalList, 
@@ -57,6 +67,11 @@ window.saveProgressToCloudKV = saveProgressToCloudKV;
 window.userRegister = userRegister;
 window.userLogin = userLogin;
 window.userLogout = userLogout;
+window.showRegistrationGate = showRegistrationGate;
+window.hideRegistrationGate = hideRegistrationGate;
+window.switchGateTab = switchGateTab;
+window.handleGateRegister = handleGateRegister;
+window.handleGateLogin = handleGateLogin;
 window.toggleGuideModal = toggleGuideModal;
 window.updateChapterCountdown = updateChapterCountdown;
 window.openCategorySummaryModal = openCategorySummaryModal;
