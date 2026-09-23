@@ -1162,14 +1162,52 @@
       border: 4px solid #8B5A2B;
       border-radius: 14px;
       box-shadow: 0 10px 0px #5C4033, 0 20px 35px rgba(0,0,0,0.5);
-      max-width: 480px;
+      max-width: 520px;
+      max-height: 94vh;
+      overflow-y: auto;
       width: 100%;
-      overflow: hidden;
       animation: gatePopIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     @keyframes gatePopIn {
       0% { transform: scale(0.92); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
+    }
+    .gate-info-box {
+      background: #FFF8DC;
+      border: 2px dashed #8B5A2B;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: #3E2723;
+    }
+    .gate-info-title {
+      font-weight: 900;
+      color: #8B4513;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .gate-info-desc {
+      font-size: 11px;
+      color: #5C4033;
+      margin-bottom: 6px;
+    }
+    .gate-info-list {
+      margin: 0 0 0 16px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .gate-info-list li {
+      font-size: 11px;
+      color: #4A3525;
+    }
+    .gate-info-list li strong {
+      color: #8B4513;
     }
     .gate-header {
       background: linear-gradient(to bottom, #8B5A2B, #5C4033);
@@ -1324,6 +1362,23 @@
     }
     body.dark-mode .gate-field-help {
       color: #94a3b8 !important;
+    }
+    body.dark-mode .gate-info-box {
+      background: #0f172a !important;
+      border-color: #334155 !important;
+      color: #e2e8f0 !important;
+    }
+    body.dark-mode .gate-info-title {
+      color: #38bdf8 !important;
+    }
+    body.dark-mode .gate-info-desc {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode .gate-info-list li {
+      color: #cbd5e1 !important;
+    }
+    body.dark-mode .gate-info-list li strong {
+      color: #fbbf24 !important;
     }
     .app-gated {
       pointer-events: none !important;
@@ -1734,6 +1789,18 @@
       </div>
 
       <div class="gate-body">
+        <!-- BRIEF INFO ABOUT THE TRACKER -->
+        <div class="gate-info-box">
+          <div class="gate-info-title">🌾 What is the Sunflower Land Chapter Tracker?</div>
+          <div class="gate-info-desc">An all-in-one companion tool designed to help you optimize and complete your Chapter progression:</div>
+          <ul class="gate-info-list">
+            <li>📦 <strong>Live Farm Sync:</strong> Directly imports your active NPC deliveries, chore tasks, bounties & milestone orders.</li>
+            <li>🎟️ <strong>Ticket & Cost Engine:</strong> Accurately tracks tickets earned, VIP (+2), 2x event bonuses, and real-time SFL resource crafting costs.</li>
+            <li>📈 <strong>Weekly Pace Goals:</strong> Visualizes your weekly ticket progression chart against your seasonal target.</li>
+            <li>☁️ <strong>Nightly Cloud Vault:</strong> Automatically snapshots your farm daily at 21:00 UTC so your progression history is never lost.</li>
+          </ul>
+        </div>
+
         <div id="gateStatusMsg" class="gate-status-alert"></div>
 
         <!-- REGISTER FORM -->
