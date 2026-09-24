@@ -754,7 +754,7 @@ export function renderChapterLogsList() {
 
 export async function snapshotCurrentChapter() {
   const currentTitleEl = document.getElementById('chapterActiveName');
-  const defaultTitle = currentTitleEl ? currentTitleEl.textContent.replace('ACTIVE CHAPTER:', '').replace('LIVE SEASON', '').trim() : 'Pharaoh Chapter 2026';
+  const defaultTitle = currentTitleEl ? currentTitleEl.textContent.replace('ACTIVE CHAPTER:', '').replace('LIVE SEASON', '').trim() : 'Ascension Age (Chapter 15)';
   
   const chapterTitle = prompt('Enter a label for this chapter snapshot:', defaultTitle);
   if (!chapterTitle || !chapterTitle.trim()) return;
