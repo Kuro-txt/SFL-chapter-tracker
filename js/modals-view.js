@@ -673,11 +673,14 @@ export function renderChapterLogsList() {
 
   if (logs.length === 0) {
     container.innerHTML = `
-      <div style="background: #FFFDF9; border: 1.5px dashed #D5BF9E; border-radius: 8px; padding: 18px; text-align: center; color: #8C7853;">
-        <span style="font-size: 22px; display: block; margin-bottom: 6px;">📜</span>
-        <strong style="font-size: 13px; color: #5C3D23;">No archived chapter logs yet.</strong>
-        <p style="font-size: 11px; margin-top: 4px; color: #8C7853;">
-          Click <strong>"💾 SNAPSHOT TO LOGS"</strong> above to save a permanent lightweight (~1.2 KB) summary of your seasonal ticket count and resource costs!
+      <div class="chapter-empty-state">
+        <span class="chapter-empty-icon">📜</span>
+        <strong class="chapter-empty-title">No archived chapter logs yet.</strong>
+        <p class="chapter-empty-desc">
+          Click <strong style="color: #2E7D32;">"💾 SNAPSHOT TO LOGS"</strong> above to save a permanent lightweight (~1.2 KB) summary of your seasonal ticket count and resource costs!<br/>
+          <span style="display: inline-block; margin-top: 6px; font-size: 10.5px; opacity: 0.85;">
+            ⏰ Sun-Forge also automatically snapshots and updates this active chapter on the nightly 23:00 UTC cron sync.
+          </span>
         </p>
       </div>
     `;
@@ -695,55 +698,67 @@ export function renderChapterLogsList() {
 
     const weeks = Array.isArray(item.weeklySummary) ? item.weeklySummary : [];
     const weeksHtml = weeks.length > 0 ? `
-      <div style="border-top: 1px dashed #D8C3A5; padding-top: 6px; margin-top: 4px;">
-        <span style="font-size: 10.5px; font-weight: bold; color: #6C4426;">Weekly Progression (${weeks.length} Weeks Recorded):</span>
+      <div style="border-top: 1.5px dashed #D2B48C; padding-top: 8px; margin-top: 4px;">
+        <span class="chapter-weekly-title">Weekly Progression (${weeks.length} Weeks Recorded):</span>
         <div class="chapter-weekly-grid">
           ${weeks.map(w => `<span class="chapter-week-pill">W${w.week}: ${w.tickets} Tix (${formatSFL(w.cost)} SFL)</span>`).join('')}
         </div>
       </div>
     ` : '';
 
-    const dateFormatted = item.archivedAt ? new Date(item.archivedAt).toLocaleDateString() : 'Archived';
+    const dateFormatted = item.archivedAt ? new Date(item.archivedAt).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }) : 'Archived';
+
+    const isLocked = Boolean(item.isLocked);
+    const badgeHtml = isLocked 
+      ? `<span class="chapter-badge-locked" title="Chapter ended. Permanently locked historical archive.">🔒 LOCKED (FINAL ARCHIVE)</span>`
+      : `<span class="chapter-badge-live" title="Active season. Updates every cron sync.">⏳ IN PROGRESS (LIVE)</span>`;
+
+    const deleteBtnHtml = isLocked
+      ? `<button onclick="alert('🔒 This chapter log has ended and is permanently archived in the vault.')" class="btn btn-sm btn-wood" style="background: #64748b; border-color: #475569; color: #FFF; padding: 3px 8px; font-size: 10.5px; opacity: 0.6; cursor: not-allowed;" title="Permanently locked">🔒</button>`
+      : `<button onclick="deleteChapterLog(${idx})" class="btn btn-sm btn-wood" style="background: #C0392B; border-color: #922B21; color: #FFF; padding: 3px 8px; font-size: 10.5px;" title="Delete this log">🗑️</button>`;
 
     return `
       <div class="chapter-log-card">
         <div class="chapter-log-header">
-          <div>
-            <strong style="color: #4D260D; font-size: 13.5px;">🌾 ${item.chapterTitle || 'Archived Chapter'}</strong>
-            <span style="font-size: 10.5px; color: #8C7853; margin-left: 6px;">📅 ${dateFormatted}</span>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <strong class="chapter-card-title">🌾 ${item.chapterTitle || 'Archived Chapter'}</strong>
+            ${badgeHtml}
+            <span class="chapter-card-date">📅 ${dateFormatted}</span>
           </div>
           <div style="display: flex; gap: 6px;">
             <button onclick="exportChapterLog(${idx})" class="btn btn-sm btn-wood" style="padding: 3px 8px; font-size: 10.5px;" title="Export JSON summary">
               📥 EXPORT
             </button>
-            <button onclick="deleteChapterLog(${idx})" class="btn btn-sm btn-wood" style="background: #C0392B; border-color: #922B21; color: #FFF; padding: 3px 8px; font-size: 10.5px;" title="Delete this log">
-              🗑️
-            </button>
+            ${deleteBtnHtml}
           </div>
         </div>
 
         <div class="chapter-metrics-row">
           <div class="chapter-metric-box">
-            <span style="font-size: 10px; color: #8B4513; font-weight: bold;">TOTAL TICKETS</span>
-            <strong style="font-size: 14px; color: #2E7D32;">${item.totalTickets || 0} Tix</strong>
+            <span class="chapter-metric-label">TOTAL TICKETS</span>
+            <strong class="chapter-metric-val val-tix">${item.totalTickets || 0} Tix</strong>
           </div>
           <div class="chapter-metric-box">
-            <span style="font-size: 10px; color: #8B4513; font-weight: bold;">TOTAL COST</span>
-            <strong style="font-size: 14px; color: #8B4513;">${formatSFL(item.totalCost)} SFL</strong>
+            <span class="chapter-metric-label">TOTAL COST</span>
+            <strong class="chapter-metric-val val-cost">${formatSFL(item.totalCost)} SFL</strong>
           </div>
           <div class="chapter-metric-box">
-            <span style="font-size: 10px; color: #8B4513; font-weight: bold;">AVG EFFICIENCY</span>
-            <strong style="font-size: 14px; color: #1B5E20;">${formatSFL(item.efficiencyRatio)} SFL/Tix</strong>
+            <span class="chapter-metric-label">AVG EFFICIENCY</span>
+            <strong class="chapter-metric-val val-ratio">${formatSFL(item.efficiencyRatio)} SFL/Tix</strong>
           </div>
         </div>
 
         <div class="chapter-breakdown-list">
-          <div>📦 <strong>Deliveries:</strong> ${deliv.tickets || 0} Tix | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
-          <div>📜 <strong>Bounties:</strong> ${bounty.tickets || 0} Tix | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
-          <div>🐄 <strong>Animal Bounties:</strong> ${animal.tickets || 0} Tix | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
-          <div>🧹 <strong>Chores:</strong> ${chore.tickets || 0} Tix | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
-          <div>🎁 <strong>Daily Login:</strong> ${login.tickets || 0} Tix (${login.count || 0} collected)</div>
-          <div>🛤️ <strong>Manual Track:</strong> ${tracked.tickets || 0} Tix | ${formatSFL(tracked.cost)} SFL</div>
+          <div class="chapter-breakdown-item">📦 <strong>Deliveries:</strong> ${deliv.tickets || 0} Tix | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
+          <div class="chapter-breakdown-item">📜 <strong>Bounties:</strong> ${bounty.tickets || 0} Tix | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🐄 <strong>Animal Bounties:</strong> ${animal.tickets || 0} Tix | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🧹 <strong>Chores:</strong> ${chore.tickets || 0} Tix | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🎁 <strong>Daily Login:</strong> ${login.tickets || 0} Tix (${login.count || 0} collected)</div>
+          <div class="chapter-breakdown-item">🛤️ <strong>Manual Track:</strong> ${tracked.tickets || 0} Tix | ${formatSFL(tracked.cost)} SFL</div>
         </div>
 
         ${weeksHtml}
@@ -758,6 +773,17 @@ export async function snapshotCurrentChapter() {
   
   const chapterTitle = prompt('Enter a label for this chapter snapshot:', defaultTitle);
   if (!chapterTitle || !chapterTitle.trim()) return;
+
+  const ACTIVE_CHAPTER_ID = 'ascension_age_15';
+  const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+  const isLocked = Date.now() >= CHAPTER_END_MS;
+
+  const logs = getStoredChapterLogs();
+  const existingIdx = logs.findIndex(l => l.chapterId === ACTIVE_CHAPTER_ID || (l.chapterTitle || '').toLowerCase() === chapterTitle.trim().toLowerCase());
+  if (existingIdx >= 0 && logs[existingIdx].isLocked) {
+    alert('🔒 This chapter has ended and is permanently locked as a final archive. It cannot be overwritten.');
+    return;
+  }
 
   const totalTixEl = document.getElementById('statTotalTickets');
   const totalCostEl = document.getElementById('statTotalCost');
@@ -844,9 +870,10 @@ export async function snapshotCurrentChapter() {
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
 
   const newEntry = {
-    chapterId: 'chap_' + Date.now(),
+    chapterId: ACTIVE_CHAPTER_ID,
     chapterTitle: chapterTitle.trim(),
     archivedAt: new Date().toISOString(),
+    isLocked: isLocked,
     totalTickets: totalTix,
     totalCost: totalCost,
     efficiencyRatio: efficiencyRatio,
@@ -861,8 +888,6 @@ export async function snapshotCurrentChapter() {
     weeklySummary
   };
 
-  const logs = getStoredChapterLogs();
-  const existingIdx = logs.findIndex(l => (l.chapterTitle || '').toLowerCase() === newEntry.chapterTitle.toLowerCase());
   if (existingIdx >= 0) {
     logs[existingIdx] = newEntry;
   } else {
@@ -900,6 +925,11 @@ export async function deleteChapterLog(index) {
   if (!logs[index]) return;
 
   const target = logs[index];
+  if (target.isLocked) {
+    alert('🔒 This chapter log is locked and archived. It cannot be deleted.');
+    return;
+  }
+
   const title = target.chapterTitle || 'this log';
   if (confirm(`🗑️ Delete archived snapshot for "${title}"?`)) {
     // 1. Delete from dedicated user_chapter_logs table
