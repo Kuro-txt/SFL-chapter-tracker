@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0"/>
-  <title>Sun Forge | Sunflower Land Chapter Tracker</title>
+  <title>Sun-Forge | Sunflower Land Chapter Tracker</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -62,12 +62,12 @@
     }
     
     header {
-      background: linear-gradient(to bottom, #8B5A2B, #5C4033);
-      border: 3px solid #3E2723;
+      background: linear-gradient(180deg, #6C3814 0%, #4D260D 55%, #381A07 100%);
+      border: 3px solid #241004;
       border-radius: 12px;
       text-align: center;
       padding: clamp(12px, 1.8vw, 18px);
-      box-shadow: 0 5px 0px #271813, inset 0 2px 4px rgba(255,255,255,0.2);
+      box-shadow: inset 0 1px 0 rgba(255, 230, 150, 0.45), inset 0 -2px 0 rgba(0, 0, 0, 0.4), 0 5px 0px #1A0B02, 0 10px 20px rgba(0,0,0,0.25);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -150,23 +150,23 @@
       font-family: inherit;
     }
     h1 { 
-      font-size: clamp(18px, 2.8vw, 28px); 
+      font-size: clamp(20px, 2.8vw, 30px); 
       font-weight: 900; 
-      color: #FFF8DC; 
-      text-shadow: 2px 2px #271813; 
+      color: #FFFDF5; 
+      text-shadow: 0 2px 0px #140701, 0 0 18px rgba(255, 215, 0, 0.45); 
       margin-bottom: 4px; 
-      letter-spacing: 1.2px; 
+      letter-spacing: 1.5px; 
     }
     p { 
-      font-size: clamp(11.5px, 1.4vw, 14px); 
-      color: #EEDC82; 
-      font-weight: bold; 
-      text-shadow: 1px 1px #271813; 
+      font-size: clamp(12px, 1.3vw, 13.5px); 
+      color: #FDE68A; 
+      font-weight: 700; 
+      text-shadow: 0 1px 2px #140701; 
     }
     
     .tip-banner {
-      background: #FFF8DC;
-      border: 2px dashed #D2691E;
+      background: linear-gradient(135deg, #FFFDF5 0%, #FEF3C7 100%);
+      border: 2px solid #F59E0B;
       border-radius: 10px;
       padding: clamp(8px, 1.2vw, 12px) clamp(10px, 1.6vw, 18px);
       display: flex;
@@ -174,12 +174,12 @@
       justify-content: space-between;
       min-height: 40px;
       font-size: clamp(11.5px, 1.2vw, 13.5px);
-      font-weight: 900;
-      color: #8B4513;
+      font-weight: 800;
+      color: #78350F;
       cursor: pointer;
       user-select: none;
       gap: 10px;
-      box-shadow: 0 3px 0px #5C4033;
+      box-shadow: 0 3px 0px #B45309, 0 4px 12px rgba(180, 83, 9, 0.12);
     }
     #rotatingTipText {
       transition: opacity 0.3s ease;
@@ -1158,10 +1158,10 @@
       padding: clamp(12px, 3vw, 24px);
     }
     .gate-card {
-      background-color: #FDF5E6;
-      border: 4px solid #8B5A2B;
+      background-color: #FAF5EB;
+      border: 3.5px solid #4D260D;
       border-radius: 14px;
-      box-shadow: 0 12px 0px #5C4033, 0 25px 45px rgba(0,0,0,0.6);
+      box-shadow: 0 10px 0px #281205, 0 25px 50px rgba(0,0,0,0.55);
       max-width: 860px;
       max-height: 92vh;
       overflow-y: auto;
@@ -1173,36 +1173,38 @@
       100% { transform: scale(1); opacity: 1; }
     }
     .gate-header {
-      background: linear-gradient(180deg, #8B5A2B 0%, #5C4033 100%);
+      background: linear-gradient(180deg, #6C3814 0%, #4D260D 55%, #381A07 100%);
       padding: 20px 24px 18px;
       text-align: center;
-      border-bottom: 3px solid #3E2723;
-      color: #FFF8DC;
+      border-bottom: 3px solid #241004;
+      box-shadow: inset 0 1px 0 rgba(255, 230, 150, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+      color: #FFFDF5;
       position: relative;
     }
     .gate-header-badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 900;
       letter-spacing: 1.2px;
       text-transform: uppercase;
-      background: rgba(0, 0, 0, 0.25);
-      color: #FEE78A;
+      background: rgba(254, 240, 138, 0.18);
+      color: #FEF08A;
       padding: 3px 12px;
       border-radius: 20px;
-      border: 1px solid rgba(254, 231, 138, 0.35);
+      border: 1px solid rgba(254, 240, 138, 0.45);
       margin-bottom: 8px;
-      box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
     }
     .gate-header h2 {
       font-size: 26px;
       font-weight: 900;
-      color: #FFF8DC;
-      text-shadow: 2px 2px 0px #271813, 0 0 16px rgba(255, 215, 0, 0.28);
-      margin: 0 0 4px 0;
-      letter-spacing: 1.5px;
+      color: #FFFDF5;
+      text-shadow: 0 2px 0px #140701, 0 0 18px rgba(255, 215, 0, 0.45);
+      margin: 0 0 5px 0;
+      letter-spacing: 1.6px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1210,10 +1212,10 @@
     }
     .gate-header p {
       font-size: 12.5px;
-      color: #EEDC82;
-      font-weight: bold;
-      text-shadow: 1px 1px #271813;
-      line-height: 1.4;
+      color: #FDE68A;
+      font-weight: 700;
+      text-shadow: 0 1px 2px #140701;
+      line-height: 1.45;
       margin: 0 auto;
       max-width: 520px;
     }
@@ -1229,7 +1231,7 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      box-shadow: 0 2px 0px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 0px rgba(0,0,0,0.4);
       z-index: 2;
     }
     .gate-grid {
@@ -1300,73 +1302,78 @@
       height: 100%;
     }
     .gate-info-box {
-      background: #FFF8DC;
-      border: 2px dashed #8B5A2B;
+      background: #F2E7D5;
+      border: 2px solid #D1BBA0;
       border-radius: 10px;
-      padding: 14px 16px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       height: 100%;
       box-sizing: border-box;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
     }
     .gate-info-title {
       font-weight: 900;
-      color: #8B4513;
+      color: #241103;
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 13.5px;
+      font-size: 14.5px;
+      letter-spacing: 0.2px;
     }
     .gate-info-desc {
-      font-size: 11.5px;
-      color: #5C4033;
-      line-height: 1.45;
+      font-size: 12px;
+      color: #3F2614;
+      line-height: 1.5;
+      font-weight: 600;
     }
     .gate-features-list {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 9px;
     }
     .gate-feature-item {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
-      font-size: 11.5px;
-      line-height: 1.35;
-      background: rgba(253, 245, 230, 0.7);
-      padding: 8px 10px;
-      border: 1px solid #D2B48C;
-      border-radius: 6px;
+      gap: 10px;
+      background: #FFFFFF;
+      padding: 10px 12px;
+      border: 1.5px solid #D5BF9E;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(50, 25, 5, 0.05);
     }
     .gate-feature-item strong {
       display: block;
-      color: #8B4513;
-      font-size: 11.5px;
+      color: #1A0A01;
+      font-size: 12.5px;
+      font-weight: 900;
       margin-bottom: 2px;
     }
     .gate-feature-item p {
       margin: 0;
-      color: #4A3525;
-      font-size: 11px;
+      color: #442B18;
+      font-size: 11.5px;
+      line-height: 1.45;
+      font-weight: 500;
     }
     .gate-feat-icon {
-      font-size: 16px;
-      line-height: 1;
-      margin-top: 1px;
+      font-size: 18px;
+      line-height: 1.1;
       flex-shrink: 0;
     }
     .gate-info-footer {
-      font-size: 10.5px;
-      color: #795548;
-      border-top: 1px dashed #D2B48C;
-      padding-top: 8px;
+      font-size: 11px;
+      color: #5C3D23;
+      font-weight: 600;
+      border-top: 1px solid #D1BBA0;
+      padding-top: 10px;
       margin-top: auto;
       line-height: 1.4;
     }
     .gate-auth-col {
-      background: #FFF8DC;
-      border: 2px solid #8B5A2B;
+      background: #F2E7D5;
+      border: 2px solid #D1BBA0;
       border-radius: 10px;
       padding: 16px;
       display: flex;
@@ -1378,28 +1385,33 @@
     }
     .gate-tabs {
       display: flex;
-      background: #EEDC82;
-      border: 2px solid #8B5A2B;
+      background: #DFCFB7;
+      border: 2px solid #4D260D;
       border-radius: 8px;
-      overflow: hidden;
+      padding: 3px;
+      gap: 3px;
     }
     .gate-tab-btn {
       flex: 1;
       padding: 9px 12px;
       font-family: inherit;
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 900;
       text-transform: uppercase;
       border: none;
+      border-radius: 6px;
       cursor: pointer;
       background: transparent;
-      color: #5C4033;
+      color: #3F2410;
       transition: all 0.15s ease;
     }
+    .gate-tab-btn:hover {
+      background: rgba(77, 38, 13, 0.08);
+    }
     .gate-tab-btn.active {
-      background: #8B5A2B;
-      color: #FFF8DC;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+      background: linear-gradient(180deg, #6C3814 0%, #4D260D 100%);
+      color: #FFFDF5;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,230,150,0.4);
     }
     .gate-field-group {
       display: flex;
@@ -1407,32 +1419,36 @@
       gap: 6px;
     }
     .gate-field-group label {
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 900;
-      color: #5C4033;
+      color: #241103;
       text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
     .gate-field-group input {
       width: 100%;
       padding: 10px 12px;
-      font-size: 13px;
-      font-weight: bold;
-      border: 2px solid #8B5A2B;
+      font-size: 13.5px;
+      font-weight: 700;
+      border: 2px solid #A88B69;
       border-radius: 8px;
-      background: #FFF8DC;
-      color: #3E2723;
+      background: #FFFFFF !important;
+      color: #1A0A01 !important;
       outline: none;
       font-family: inherit;
       box-sizing: border-box;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     .gate-field-group input:focus {
-      border-color: #D2691E;
-      background: #fff;
+      border-color: #D97706;
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.25);
+      background: #FFFFFF !important;
     }
     .gate-field-help {
-      font-size: 11px;
-      color: #795548;
-      line-height: 1.35;
+      font-size: 11.5px;
+      color: #5C3D23;
+      font-weight: 600;
+      line-height: 1.4;
       margin-top: 3px;
     }
     .gate-status-alert {
@@ -1472,9 +1488,26 @@
     .gate-btn-submit {
       width: 100%;
       padding: 12px;
-      font-size: 13px;
+      font-size: 13.5px;
+      font-weight: 900;
       letter-spacing: 0.5px;
       margin-top: 4px;
+      background: linear-gradient(180deg, #16A34A 0%, #15803D 100%) !important;
+      border: 2px solid #14532D !important;
+      box-shadow: 0 4px 0 #14532D, 0 6px 14px rgba(22, 163, 74, 0.3) !important;
+      color: #FFFFFF !important;
+      text-shadow: 0 1px 2px #052e16;
+      cursor: pointer;
+      border-radius: 8px;
+      font-family: inherit;
+      transition: transform 0.1s ease, filter 0.15s ease;
+    }
+    .gate-btn-submit:hover {
+      filter: brightness(1.08);
+    }
+    .gate-btn-submit:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #14532D !important;
     }
     body.dark-mode .gate-card {
       background-color: #1a2234 !important;
@@ -1621,7 +1654,7 @@
       </div>
 
       <div class="header-title-group">
-        <h1>🌻 SUN FORGE</h1>
+        <h1>🌻 SUN-FORGE</h1>
         <p>Sunflower Land Chapter Tracker & Harvest Goal Calculator</p>
       </div>
       <button id="themeToggleBtn" onclick="toggleTheme()" class="btn btn-sm btn-wood" style="padding: 6px 12px; font-size: 11px;">
@@ -1843,7 +1876,7 @@
   <div id="guideModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📖 SUN FORGE GUIDE</h3>
+        <h3 style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📖 SUN-FORGE GUIDE</h3>
         <button onclick="toggleGuideModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body">
@@ -1971,17 +2004,17 @@
           🌙 DARK
         </button>
         <div class="gate-header-badge">⭐ CHAPTER TRACKER & VAULT</div>
-        <h2 id="gateTitle">🌻 SUN FORGE</h2>
-        <p>Link your Farm ID to track chapter progress, optimize deliveries & sync with cloud vault.</p>
+        <h2 id="gateTitle">🌻 SUN-FORGE</h2>
+        <p>Link your Farm ID to track chapter progress, optimize deliveries & sync with cloud vault (23:00 UTC).</p>
       </div>
 
       <div class="gate-grid">
-        <!-- LEFT COLUMN: BRIEF INFO ABOUT SUN FORGE -->
+        <!-- LEFT COLUMN: BRIEF INFO ABOUT SUN-FORGE -->
         <div class="gate-info-col">
           <div class="gate-info-box">
             <div class="gate-info-title">
               <span style="font-size: 16px;">🌾</span>
-              <span>What is Sun Forge?</span>
+              <span>What is Sun-Forge?</span>
             </div>
             <div class="gate-info-desc">
               Your companion tool built for Sunflower Land farmers to forge, optimize, and hit every seasonal Chapter goal:
@@ -2014,7 +2047,7 @@
               <div class="gate-feature-item">
                 <span class="gate-feat-icon">☁️</span>
                 <div>
-                  <strong>Nightly Cloud Vault (21:00 UTC)</strong>
+                  <strong>Nightly Cloud Vault (23:00 UTC)</strong>
                   <p>Automated background cron snapshots your farm daily so your historical tickets and logs are never lost.</p>
                 </div>
               </div>
@@ -2058,7 +2091,7 @@
             </div>
 
             <button type="submit" id="gateRegSubmitBtn" class="btn btn-emerald gate-btn-submit" style="margin-top: 14px;">
-              🌻 REGISTER & ENTER SUN FORGE
+              🌻 REGISTER & ENTER SUN-FORGE
             </button>
           </form>
 
