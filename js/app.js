@@ -24,7 +24,12 @@ import {
   toggleWeeklyItemCheck, 
   updateHistoryItemTickets, 
   updateHistoryItemCost, 
-  deleteWeeklyItem 
+  deleteWeeklyItem,
+  openChapterLogsModal,
+  closeChapterLogsModal,
+  snapshotCurrentChapter,
+  deleteChapterLog,
+  exportChapterLog
 } from './modals.js';
 import { 
   recalculateAll,
@@ -93,6 +98,11 @@ window.toggleWeeklyItemCheck = toggleWeeklyItemCheck;
 window.updateHistoryItemTickets = updateHistoryItemTickets;
 window.updateHistoryItemCost = updateHistoryItemCost;
 window.deleteWeeklyItem = deleteWeeklyItem;
+window.openChapterLogsModal = openChapterLogsModal;
+window.closeChapterLogsModal = closeChapterLogsModal;
+window.snapshotCurrentChapter = snapshotCurrentChapter;
+window.deleteChapterLog = deleteChapterLog;
+window.exportChapterLog = exportChapterLog;
 
 window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
