@@ -2,7 +2,7 @@
   "name": "sun-forge",
   "version": "1.0.0",
   "type": "module",
-  "description": "Sun Forge - Sunflower Land Chapter Progress & Order Tracker",
+  "description": "Sun-Forge - Sunflower Land Chapter Progress & Order Tracker",
   "main": "js/app.js",
   "scripts": {
     "sync": "node scripts/cron-sync.js"
