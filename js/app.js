@@ -177,7 +177,7 @@ function startTipRotation() {
 // ==========================================
 // CHAPTER COUNTDOWN TIMER (Nov 2, 2026, 00:00 UTC)
 // ==========================================
-// 57 days 6 hours from Sept 5, 2026 18:00 UTC = Nov 2, 2026, 00:00:00 UTC
+// Ascension Age (Chapter 15) ends Nov 2, 2026, 00:00:00 UTC (38 days and ~13 hours)
 const CHAPTER_END_TIMESTAMP = Date.UTC(2026, 10, 2, 0, 0, 0);
 
 export function updateChapterCountdown() {
@@ -201,7 +201,7 @@ export function updateChapterCountdown() {
   }
 
   if (widgetEl) {
-    widgetEl.title = `Chapter ends: November 2, 2026 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
+    widgetEl.title = `Ascension Age (Chapter 15) ends: November 2, 2026 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
   }
 }
 
