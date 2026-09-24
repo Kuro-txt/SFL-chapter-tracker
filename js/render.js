@@ -382,11 +382,10 @@ export function recalculateAll() {
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
 
-  const targetWeeksInput = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
-  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek, targetWeeksInput);
+  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek);
 }
 
-function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, totalPlannedWeeks) {
+function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   const chartContainer = document.getElementById('weeklyChartContainer');
   const badgeEl = document.getElementById('chartSummaryBadge');
   const headerBadgeEl = document.getElementById('chapterWeekText');
@@ -416,9 +415,10 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
     barCurEmptyStroke: isDark ? '#EA580C' : '#E65100'
   };
 
+  const TOTAL_CHAPTER_WEEKS = 12;
   const weekMondays = [];
   const baseEpoch = new Date('2026-08-10T00:00:00.000Z');
-  for (let w = 0; w < (totalPlannedWeeks || 12); w++) {
+  for (let w = 0; w < TOTAL_CHAPTER_WEEKS; w++) {
     const d = new Date(baseEpoch.getTime());
     d.setUTCDate(baseEpoch.getUTCDate() + (w * 7));
     weekMondays.push(d.toISOString().split('T')[0]);
@@ -458,8 +458,10 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek, tot
   });
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
-  const activeWeekNum = currentIndex !== -1 ? currentIndex + 1 : 2;
-  const weekLabelText = `WEEK ${activeWeekNum} OF ${displayItems.length} WEEKS (UTC)`;
+  const nowMs = Date.now();
+  const diffDays = Math.max(0, (nowMs - baseEpoch.getTime()) / (1000 * 60 * 60 * 24));
+  const activeWeekNum = currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.max(1, Math.floor(diffDays / 7) + 1));
+  const weekLabelText = `WEEK ${activeWeekNum} OF ${TOTAL_CHAPTER_WEEKS} WEEKS (UTC)`;
   if (badgeEl) {
     badgeEl.textContent = weekLabelText;
   }
