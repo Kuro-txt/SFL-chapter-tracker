@@ -613,6 +613,22 @@ export function openChapterLogsModal() {
 
   renderChapterLogsList();
   modal.classList.add('show');
+
+  if (state.currentUser) {
+    fetch(`/api/chapter?action=getChapterLogs&username=${encodeURIComponent(state.currentUser)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.chapterLogs)) {
+          if (!state.currentVaultData) state.currentVaultData = {};
+          state.currentVaultData.chapterLogs = data.chapterLogs;
+          try {
+            localStorage.setItem('sfl_chapter_logs', JSON.stringify(data.chapterLogs));
+          } catch (e) {}
+          renderChapterLogsList();
+        }
+      })
+      .catch(() => {});
+  }
 }
 
 export function closeChapterLogsModal() {
@@ -853,17 +869,55 @@ export async function snapshotCurrentChapter() {
     logs.unshift(newEntry);
   }
 
+  // 1. Direct Cloud Database Save to user_chapter_logs table
+  if (state.currentUser) {
+    try {
+      const res = await fetch('/api/chapter?action=saveChapterLog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: state.currentUser,
+          chapterLog: newEntry
+        })
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.chapterLogs)) {
+        if (!state.currentVaultData) state.currentVaultData = {};
+        state.currentVaultData.chapterLogs = data.chapterLogs;
+      }
+    } catch (e) {
+      console.warn('Cloud chapter logs save notice:', e.message);
+    }
+  }
+
   await saveStoredChapterLogs(logs);
   renderChapterLogsList();
-  alert(`✔ Successfully archived "${newEntry.chapterTitle}" (~1.2 KB summary)!`);
+  alert(`✔ Successfully archived "${newEntry.chapterTitle}" (~1.2 KB summary) to your cloud vault!`);
 }
 
 export async function deleteChapterLog(index) {
   const logs = getStoredChapterLogs();
   if (!logs[index]) return;
 
-  const title = logs[index].chapterTitle || 'this log';
+  const target = logs[index];
+  const title = target.chapterTitle || 'this log';
   if (confirm(`🗑️ Delete archived snapshot for "${title}"?`)) {
+    // 1. Delete from dedicated user_chapter_logs table
+    if (state.currentUser && target.chapterId) {
+      try {
+        await fetch('/api/chapter?action=deleteChapterLog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: state.currentUser,
+            chapterId: target.chapterId
+          })
+        });
+      } catch (e) {
+        console.warn('Cloud chapter log delete error:', e.message);
+      }
+    }
+
     logs.splice(index, 1);
     await saveStoredChapterLogs(logs);
     renderChapterLogsList();
