@@ -1125,15 +1125,82 @@
     }
 
     /* Chapter Logs Modal */
+    .chapter-active-box {
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .chapter-active-title {
+      color: #4D260D;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .chapter-active-stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 11.5px;
+      color: #4D260D;
+      background: #FAF0D7;
+      border: 1.5px solid #D2B48C;
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .chapter-section-header {
+      font-size: 12px;
+      font-weight: 900;
+      color: #5C3D23;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .chapter-section-sub {
+      font-size: 11px;
+      color: #8B5A2B;
+      font-weight: 700;
+    }
+    .chapter-empty-state {
+      background: #FFF8DC;
+      border: 2px dashed #8B5A2B;
+      border-radius: 8px;
+      padding: 22px 16px;
+      text-align: center;
+      color: #4D260D;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .chapter-empty-icon {
+      font-size: 26px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .chapter-empty-title {
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #4D260D;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .chapter-empty-desc {
+      font-size: 11.5px;
+      color: #5C3D23;
+      line-height: 1.55;
+      max-width: 480px;
+      margin: 0 auto;
+      font-weight: 600;
+    }
     .chapter-log-card {
-      background: #FFFFFF;
-      border: 2px solid #C8A97E;
+      background: #FFF8DC;
+      border: 2px solid #8B5A2B;
       border-radius: 8px;
       padding: 12px 14px;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+      box-shadow: 0 3px 0px #D2B48C;
       transition: border-color 0.15s ease;
     }
     .chapter-log-header {
@@ -1142,8 +1209,37 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 8px;
-      border-bottom: 1.5px dashed #D5BF9E;
+      border-bottom: 1.5px dashed #D2B48C;
       padding-bottom: 8px;
+    }
+    .chapter-card-title {
+      color: #4D260D;
+      font-size: 13.5px;
+      font-weight: 900;
+    }
+    .chapter-card-date {
+      font-size: 11px;
+      color: #8B5A2B;
+      font-weight: 700;
+    }
+    .chapter-badge-live {
+      background: #2E7D32;
+      color: #FFF;
+      font-size: 9.5px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .chapter-badge-locked {
+      background: #475569;
+      color: #FFF;
+      font-size: 9.5px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid #64748b;
+      letter-spacing: 0.5px;
     }
     .chapter-metrics-row {
       display: grid;
@@ -1151,23 +1247,46 @@
       gap: 8px;
     }
     .chapter-metric-box {
-      background: #FDF9F0;
-      border: 1px solid #E2D3B8;
+      background: #FAF0D7;
+      border: 1.5px solid #D2B48C;
       border-radius: 6px;
       padding: 6px 10px;
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
+    .chapter-metric-label {
+      font-size: 10px;
+      color: #8B4513;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .chapter-metric-val {
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .chapter-metric-val.val-tix { color: #2E7D32; }
+    .chapter-metric-val.val-cost { color: #B71C1C; }
+    .chapter-metric-val.val-ratio { color: #1B5E20; }
     .chapter-breakdown-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 6px;
       font-size: 11.5px;
-      background: #F8F3EA;
-      border: 1px solid #D8C3A5;
+      background: #FAF0D7;
+      border: 1.5px solid #D2B48C;
       border-radius: 6px;
       padding: 8px 10px;
+      color: #3E2723;
+    }
+    .chapter-breakdown-item strong {
+      color: #4D260D;
+    }
+    .chapter-weekly-title {
+      font-size: 11px;
+      font-weight: 900;
+      color: #5C3D23;
     }
     .chapter-weekly-grid {
       display: flex;
@@ -1176,25 +1295,47 @@
       padding: 6px 0;
     }
     .chapter-week-pill {
-      background: #EDE1CB;
-      border: 1px solid #C8AF8A;
+      background: #FAF0D7;
+      border: 1px solid #D2B48C;
       border-radius: 4px;
       padding: 3px 6px;
       font-size: 10.5px;
       font-weight: bold;
-      color: #3D2513;
+      color: #4D260D;
     }
+
+    /* Dark Mode Overrides for Chapter Logs */
     body.dark-mode .chapter-active-box {
       background: #0f172a !important;
       border-color: #38bdf8 !important;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
     }
-    body.dark-mode #chapterActiveName {
+    body.dark-mode .chapter-active-title {
       color: #f8fafc !important;
     }
-    body.dark-mode #chapterActiveStatsRow {
+    body.dark-mode .chapter-active-stats {
       background: #16202d !important;
       border-color: #334155 !important;
       color: #cbd5e1 !important;
+    }
+    body.dark-mode .chapter-section-header {
+      color: #fde047 !important;
+      text-shadow: 1px 1px 0px #000;
+    }
+    body.dark-mode .chapter-section-sub {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode .chapter-empty-state {
+      background: #0f172a !important;
+      border: 2px dashed #38bdf8 !important;
+      color: #cbd5e1 !important;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,0.5) !important;
+    }
+    body.dark-mode .chapter-empty-title {
+      color: #fde047 !important;
+    }
+    body.dark-mode .chapter-empty-desc {
+      color: #94a3b8 !important;
     }
     body.dark-mode .chapter-log-card {
       background: #16202d !important;
@@ -1204,19 +1345,42 @@
     body.dark-mode .chapter-log-header {
       border-bottom-color: #334155 !important;
     }
+    body.dark-mode .chapter-card-title {
+      color: #f8fafc !important;
+    }
+    body.dark-mode .chapter-card-date {
+      color: #94a3b8 !important;
+    }
     body.dark-mode .chapter-metric-box {
       background: #0f172a !important;
       border-color: #334155 !important;
     }
+    body.dark-mode .chapter-metric-label {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode .chapter-metric-val.val-tix { color: #4ade80 !important; }
+    body.dark-mode .chapter-metric-val.val-cost { color: #f87171 !important; }
+    body.dark-mode .chapter-metric-val.val-ratio { color: #86efac !important; }
     body.dark-mode .chapter-breakdown-list {
       background: #0f172a !important;
       border-color: #334155 !important;
       color: #cbd5e1 !important;
     }
+    body.dark-mode .chapter-breakdown-item strong {
+      color: #fde047 !important;
+    }
+    body.dark-mode .chapter-weekly-title {
+      color: #fde047 !important;
+    }
     body.dark-mode .chapter-week-pill {
       background: #1e293b !important;
       border-color: #475569 !important;
       color: #fbbf24 !important;
+    }
+    body.dark-mode .chapter-badge-locked {
+      background: #1e293b !important;
+      border-color: #475569 !important;
+      color: #94a3b8 !important;
     }
 
     /* Mobile Adaptations */
@@ -2097,8 +2261,9 @@
   </div>
 
   <!-- CHAPTER LOGS MODAL -->
+  <!-- CHAPTER LOGS MODAL -->
   <div id="chapterLogsModal" class="modal">
-    <div class="modal-content" style="max-width: 720px; max-height: 90vh;">
+    <div class="modal-content" style="max-width: 740px; max-height: 90vh;">
       <div class="modal-header">
         <h3 id="chapterLogsTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC; display: flex; align-items: center; gap: 6px;">
           <span>📜</span> <span>CHAPTER LOGS & SEASON ARCHIVES</span>
@@ -2108,32 +2273,32 @@
       <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px; max-height: 80vh; overflow-y: auto; padding: 14px;">
         
         <!-- ACTIVE CHAPTER SNAPSHOT BOX -->
-        <div class="chapter-active-box" style="background: #F4E8D1; border: 2px solid #C8A97E; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="chapter-active-box">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <span style="font-size: 16px;">🌾</span>
-              <strong id="chapterActiveName" style="color: #4D260D; font-size: 13px;">ACTIVE CHAPTER: Ascension Age (Chapter 15)</strong>
-              <span class="active-tag" style="background: #2E7D32; color: #FFF; font-size: 9.5px; font-weight: 900; padding: 2px 6px; border-radius: 4px;">LIVE SEASON</span>
+              <strong id="chapterActiveName" class="chapter-active-title">ACTIVE CHAPTER: Ascension Age (Chapter 15)</strong>
+              <span id="chapterActiveBadge" class="chapter-badge-live">⏳ LIVE SEASON</span>
             </div>
             <button onclick="snapshotCurrentChapter()" class="btn btn-sm btn-emerald" style="padding: 5px 12px; font-size: 11px; cursor: pointer;">
               💾 SNAPSHOT TO LOGS
             </button>
           </div>
           
-          <div id="chapterActiveStatsRow" style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 11.5px; color: #5C3D23; background: #FFFDF9; border: 1.5px solid #D5BF9E; border-radius: 6px; padding: 8px 10px;">
+          <div id="chapterActiveStatsRow" class="chapter-active-stats">
             <span>🏆 Total: <strong id="chapterActiveTix" style="color:#2E7D32;">0 Tix</strong></span>
-            <span>💰 Vault Cost: <strong id="chapterActiveCost" style="color:#8B4513;">0.000 SFL</strong></span>
+            <span>💰 Vault Cost: <strong id="chapterActiveCost" style="color:#B71C1C;">0.000 SFL</strong></span>
             <span>📊 Efficiency: <strong id="chapterActiveRatio" style="color:#1B5E20;">0.000 SFL/Tix</strong></span>
-            <span style="margin-left: auto; font-size: 10.5px; opacity: 0.85;">💡 Saves ~1.2 KB breakdown</span>
+            <span style="margin-left: auto; font-size: 10.5px; opacity: 0.9;">💡 Auto-saved daily on 23:00 UTC cron</span>
           </div>
         </div>
 
         <!-- PAST ARCHIVED SEASONS CONTAINER -->
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 12px; font-weight: 900; color: #8B4513; text-transform: uppercase; letter-spacing: 0.5px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+          <span class="chapter-section-header">
             📚 PAST ARCHIVED SEASONS (<span id="chapterLogsCount">0</span>)
           </span>
-          <span style="font-size: 10.5px; color: #8C7853;">Ultra-lightweight summaries (~1.2 KB each)</span>
+          <span class="chapter-section-sub">Ultra-lightweight summaries (~1.2 KB each)</span>
         </div>
 
         <div id="chapterLogsList" style="display: flex; flex-direction: column; gap: 10px;">
@@ -2267,6 +2432,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=chapter_logs_v1"></script>
+  <script type="module" src="./js/app.js?v=chapter_logs_v2"></script>
 </body>
 </html>
