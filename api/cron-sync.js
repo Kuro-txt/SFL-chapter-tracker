@@ -216,7 +216,7 @@ export default async function handler(req, res) {
   const utcHour = now.getUTCHours();
   const utcMin = now.getUTCMinutes();
 
-  // Safety constraint: Scheduled at 21:00 & 23:05 UTC.
+  // Safety constraint: Scheduled at 23:00 UTC.
   // If delayed into 00:00 UTC collision window (or >= 23:55 UTC), abort immediately.
   if (utcHour === 0 || (utcHour === 23 && utcMin >= 55)) {
     console.warn(`🛑 [Safety Guard] Current UTC time is ${now.toISOString()} (${utcHour}:${utcMin.toString().padStart(2, '0')} UTC). Delayed into 00:00 UTC collision window. Aborting sync safely.`);
@@ -513,7 +513,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       success: true, 
-      message: `Cron executed at 21:20 UTC.`, 
+      message: `Cron executed at 23:00 UTC.`, 
       syncedAt: new Date().toISOString(),
       processedUsers: processedCount,
       results,
