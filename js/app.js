@@ -68,7 +68,54 @@ export function toggleTheme() {
   applyTheme(isCurrentlyDark ? 'light' : 'dark');
 }
 
+export async function copyDonateAddress() {
+  const address = '0x55b97223202457d427a68389346da9a9314d0511';
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(address);
+      copied = true;
+    }
+  } catch (err) {
+    console.warn('Clipboard writeText failed, trying fallback...', err);
+  }
+
+  if (!copied) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = address;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch (e) {
+      console.error('Fallback execCommand copy failed', e);
+    }
+  }
+
+  const btn = document.getElementById('donateBtn');
+  const btnText = document.getElementById('donateBtnText');
+  if (btn && btnText) {
+    const origText = 'DONATE';
+    btn.classList.add('copied');
+    btnText.textContent = 'COPIED! ✨';
+    btn.setAttribute('title', 'Address copied to clipboard!');
+
+    if (window._donateTimeout) clearTimeout(window._donateTimeout);
+    window._donateTimeout = setTimeout(() => {
+      btn.classList.remove('copied');
+      btnText.textContent = origText;
+      btn.setAttribute('title', 'Copy donation address (0x55b9...0511)');
+    }, 2500);
+  }
+}
+
 // Expose handlers to window for inline HTML events
+window.copyDonateAddress = copyDonateAddress;
 window.toggleTheme = toggleTheme;
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
