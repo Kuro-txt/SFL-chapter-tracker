@@ -88,6 +88,29 @@
       gap: 8px;
       flex-wrap: wrap;
     }
+    .donate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 38px;
+      padding: 4px 12px;
+      font-size: 11.5px;
+      font-weight: 900;
+      letter-spacing: 0.4px;
+      border-radius: 6px;
+      box-sizing: border-box;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    }
+    .donate-btn.copied {
+      background: linear-gradient(180deg, #2E7D32 0%, #1B5E20 100%) !important;
+      border-color: #4ADE80 !important;
+      color: #FFFFFF !important;
+      box-shadow: 0 3px 0px #0F3813 !important;
+      text-shadow: 1px 1px 0px #0A260D !important;
+    }
     .chapter-week-badge {
       display: inline-flex;
       align-items: center;
@@ -862,6 +885,13 @@
     }
     body.dark-mode .btn-wood:active {
       box-shadow: 0 1px 0px #451a03 !important;
+    }
+    body.dark-mode .donate-btn.copied {
+      background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
+      border: 2px solid #86efac !important;
+      color: #ffffff !important;
+      box-shadow: 0 3px 0px #064e3b !important;
+      text-shadow: 1px 1px 0px #064e3b !important;
     }
     body.dark-mode .btn-emerald {
       background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
@@ -1884,6 +1914,11 @@
   <div class="wrapper">
     <header>
       <div class="header-left-group">
+        <button id="donateBtn" type="button" onclick="copyDonateAddress()" class="btn btn-wood donate-btn" title="Copy donation address (0x55b9...0511)">
+          <span style="font-size: 13px; line-height: 1;">💖</span>
+          <span id="donateBtnText">DONATE</span>
+        </button>
+
         <div id="chapterCountdownWidget" class="chapter-countdown-widget" title="Chapter ends on Nov 2, 2026 at 00:00 UTC">
           <div class="countdown-icon">
             <svg width="20" height="24" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg" style="image-rendering: pixelated;">
@@ -2432,6 +2467,6 @@
     </div>
   </div>
 
-  <script type="module" src="./js/app.js?v=chapter_logs_v3"></script>
+  <script type="module" src="./js/app.js?v=chapter_logs_v4"></script>
 </body>
 </html>
