@@ -5,7 +5,13 @@ export {
   closeCategorySummaryModal,
   openWeekBreakdownModal,
   deleteMasterLog,
-  toggleHistoryModal
+  toggleHistoryModal,
+  openChapterLogsModal,
+  closeChapterLogsModal,
+  renderChapterLogsList,
+  snapshotCurrentChapter,
+  deleteChapterLog,
+  exportChapterLog
 } from './modals-view.js';
 
 export {

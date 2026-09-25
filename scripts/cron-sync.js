@@ -235,6 +235,21 @@ async function runSync() {
         auth_data JSONB NOT NULL,
         vault_data JSONB NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS user_chapter_logs (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        chapter_id VARCHAR(100) NOT NULL,
+        chapter_title VARCHAR(255) NOT NULL,
+        archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        is_locked BOOLEAN DEFAULT FALSE,
+        summary_data JSONB NOT NULL,
+        CONSTRAINT unique_user_chapter UNIQUE (username, chapter_id)
+      );
+
+      ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
+
+      CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);
     `);
 
     const vaultsRes = await client.query('SELECT username, vault_data FROM user_vaults');
@@ -503,6 +518,178 @@ async function runSync() {
           'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
           [JSON.stringify(vault), username]
         );
+
+        // ==========================================
+        // AUTO CHAPTER SNAPSHOT (Dedicated Table & Zero Duplication)
+        // ==========================================
+        try {
+          const ACTIVE_CHAPTER_ID = 'ascension_age_15';
+          const ACTIVE_CHAPTER_TITLE = 'Ascension Age (Chapter 15)';
+          const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+          const isChapterEnded = Date.now() >= CHAPTER_END_MS;
+
+          let delivCount = 0, delivTix = 0, delivCost = 0;
+          (vault.archiveDeliveries || []).forEach(d => {
+            const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+            if (isDone) {
+              delivCount++;
+              const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+              const isManual = Boolean(d.isManual);
+              const yieldAmt = isManual ? baseTix : (d.hasDoubleBonus ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
+              delivTix += yieldAmt;
+              delivCost += (d.itemsCost || d.cost || 0);
+            }
+          });
+
+          let bountyCount = 0, bountyTix = 0, bountyCost = 0;
+          let animalBountyCount = 0, animalBountyTix = 0, animalBountyCost = 0;
+          (vault.bounties || []).forEach(b => {
+            const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
+            if (isDone) {
+              const bTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+              const bCost = (b.itemsCost || b.cost || 0);
+              const isAnimal = Boolean(b.isAnimal || (b.name && /egg|milk|wool|feather|leather|honey|animal/i.test(b.name)));
+              if (isAnimal) {
+                animalBountyCount++;
+                animalBountyTix += bTix;
+                animalBountyCost += bCost;
+              } else {
+                bountyCount++;
+                bountyTix += bTix;
+                bountyCost += bCost;
+              }
+            }
+          });
+
+          let choreCount = 0, choreTix = 0, choreCost = 0;
+          (vault.chores || []).forEach(c => {
+            const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
+            if (isDone) {
+              choreCount++;
+              const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+              const yieldAmt = c.isManual ? baseTix : (baseTix + vipBonus);
+              choreTix += yieldAmt;
+              choreCost += (c.itemsCost || c.cost || 0);
+            }
+          });
+
+          Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
+            if (wkKey === currentWeekMonday) return;
+            (wk.bounties || []).forEach(b => {
+              if (b.completed || b.checked) {
+                const bTix = (b.baseTickets || b.tickets || 0);
+                const bCost = (b.itemsCost || b.cost || 0);
+                const isAnimal = Boolean(b.isAnimal || (b.name && /egg|milk|wool|feather|leather|honey|animal/i.test(b.name)));
+                if (isAnimal) {
+                  animalBountyCount++;
+                  animalBountyTix += bTix;
+                  animalBountyCost += bCost;
+                } else {
+                  bountyCount++;
+                  bountyTix += bTix;
+                  bountyCost += bCost;
+                }
+              }
+            });
+            (wk.chores || []).forEach(c => {
+              if (c.completed || c.checked) {
+                choreCount++;
+                const baseTix = (c.baseTickets || c.tickets || 1);
+                const yieldAmt = c.isManual ? baseTix : (baseTix + vipBonus);
+                choreTix += yieldAmt;
+                choreCost += (c.itemsCost || c.cost || 0);
+              }
+            });
+          });
+
+          const loginCount = vault.dailyLoginCount || 0;
+          const trackTix = vault.trackTickets || 0;
+          const trackCost = vault.trackCost || 0;
+
+          const weeklyProgMap = new Map();
+          (vault.archiveDeliveries || []).forEach(d => {
+            const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+            if (isDone) {
+              const dDate = d.completedAt || d.completedDate;
+              const wId = d.weekId || (dDate ? getMondayBasedWeekId(dDate) : currentWeekMonday);
+              if (!weeklyProgMap.has(wId)) weeklyProgMap.set(wId, { tickets: 0, cost: 0 });
+              const stat = weeklyProgMap.get(wId);
+              const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+              const isManual = Boolean(d.isManual);
+              const yieldAmt = isManual ? baseTix : (d.hasDoubleBonus ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
+              stat.tickets += yieldAmt;
+              stat.cost += (d.itemsCost || d.cost || 0);
+            }
+          });
+
+          Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
+            const normWeek = getMondayBasedWeekId(wk.weekId || wkKey);
+            if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { tickets: 0, cost: 0 });
+            const stat = weeklyProgMap.get(normWeek);
+            (wk.bounties || []).forEach(b => {
+              if (b.completed || b.checked) {
+                stat.tickets += (b.baseTickets || b.tickets || 0);
+                stat.cost += (b.itemsCost || b.cost || 0);
+              }
+            });
+            (wk.chores || []).forEach(c => {
+              if (c.completed || c.checked) {
+                stat.tickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
+                stat.cost += (c.itemsCost || c.cost || 0);
+              }
+            });
+          });
+
+          const sortedWeeklyArray = Array.from(weeklyProgMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+          const weeklyProgressionSummary = sortedWeeklyArray.map(([wId, val], idx) => ({
+            week: idx + 1,
+            weekId: wId,
+            tickets: val.tickets,
+            cost: val.cost
+          }));
+
+          const efficiencyRatio = totalCalculatedTickets > 0 ? (totalCalculatedCost / totalCalculatedTickets) : 0;
+
+          const chapterSnapshot = {
+            chapterId: ACTIVE_CHAPTER_ID,
+            chapterTitle: ACTIVE_CHAPTER_TITLE,
+            archivedAt: new Date().toISOString(),
+            isLocked: isChapterEnded,
+            totalTickets: totalCalculatedTickets,
+            totalCost: totalCalculatedCost,
+            efficiencyRatio: efficiencyRatio,
+            categories: {
+              deliveries: { count: delivCount, tickets: delivTix, cost: delivCost },
+              bounties: { count: bountyCount, tickets: bountyTix, cost: bountyCost },
+              animalBounties: { count: animalBountyCount, tickets: animalBountyTix, cost: animalBountyCost },
+              chores: { count: choreCount, tickets: choreTix, cost: choreCost },
+              logins: { count: loginCount, tickets: loginCount, cost: 0 },
+              tracked: { tickets: trackTix, cost: trackCost }
+            },
+            weeklySummary: weeklyProgressionSummary
+          };
+
+          await client.query(`
+            INSERT INTO user_chapter_logs (username, chapter_id, chapter_title, archived_at, is_locked, summary_data)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (username, chapter_id)
+            DO UPDATE SET
+              chapter_title = EXCLUDED.chapter_title,
+              archived_at = EXCLUDED.archived_at,
+              is_locked = EXCLUDED.is_locked,
+              summary_data = EXCLUDED.summary_data
+            WHERE user_chapter_logs.is_locked IS NOT TRUE
+          `, [
+            username,
+            ACTIVE_CHAPTER_ID,
+            ACTIVE_CHAPTER_TITLE,
+            chapterSnapshot.archivedAt,
+            isChapterEnded,
+            JSON.stringify(chapterSnapshot)
+          ]);
+        } catch (chapterErr) {
+          console.warn(`  ⚠️ Auto chapter snapshot notice for "${username}": ${chapterErr.message}`);
+        }
 
         results.push({ username, farmId, totalTickets: totalCalculatedTickets });
         processedCount++;

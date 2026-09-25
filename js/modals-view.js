@@ -589,3 +589,382 @@ export function toggleHistoryModal() {
     renderHistoryModalList();
   }
 }
+
+// ==========================================
+// CHAPTER LOGS & SEASONAL ARCHIVES
+// ==========================================
+
+export function openChapterLogsModal() {
+  const modal = document.getElementById('chapterLogsModal');
+  if (!modal) return;
+
+  // Refresh active chapter preview
+  const tixEl = document.getElementById('statTotalTickets');
+  const costEl = document.getElementById('statTotalCost');
+  const ratioEl = document.getElementById('statTotalRatio');
+
+  const activeTixEl = document.getElementById('chapterActiveTix');
+  const activeCostEl = document.getElementById('chapterActiveCost');
+  const activeRatioEl = document.getElementById('chapterActiveRatio');
+
+  if (activeTixEl && tixEl) activeTixEl.textContent = `${tixEl.textContent || '0'} Tix`;
+  if (activeCostEl && costEl) activeCostEl.textContent = costEl.textContent || '0.000 SFL';
+  if (activeRatioEl && ratioEl) activeRatioEl.textContent = ratioEl.textContent || '0.000 SFL/Tix';
+
+  renderChapterLogsList();
+  modal.classList.add('show');
+
+  if (state.currentUser) {
+    fetch(`/api/chapter?action=getChapterLogs&username=${encodeURIComponent(state.currentUser)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.chapterLogs)) {
+          if (!state.currentVaultData) state.currentVaultData = {};
+          state.currentVaultData.chapterLogs = data.chapterLogs;
+          try {
+            localStorage.setItem('sfl_chapter_logs', JSON.stringify(data.chapterLogs));
+          } catch (e) {}
+          renderChapterLogsList();
+        }
+      })
+      .catch(() => {});
+  }
+}
+
+export function closeChapterLogsModal() {
+  const modal = document.getElementById('chapterLogsModal');
+  if (modal) modal.classList.remove('show');
+}
+
+export function getStoredChapterLogs() {
+  let logs = [];
+  if (state.currentVaultData && Array.isArray(state.currentVaultData.chapterLogs)) {
+    logs = state.currentVaultData.chapterLogs;
+  } else {
+    try {
+      const local = localStorage.getItem('sfl_chapter_logs');
+      if (local) logs = JSON.parse(local);
+    } catch (e) {}
+  }
+  return Array.isArray(logs) ? logs : [];
+}
+
+export async function saveStoredChapterLogs(logsArray) {
+  if (!state.currentVaultData) state.currentVaultData = {};
+  state.currentVaultData.chapterLogs = logsArray;
+
+  try {
+    localStorage.setItem('sfl_chapter_logs', JSON.stringify(logsArray));
+  } catch (e) {}
+
+  if (state.currentUser) {
+    const { saveProgressToCloudKV } = await import('./api.js');
+    await saveProgressToCloudKV();
+  }
+}
+
+export function renderChapterLogsList() {
+  const container = document.getElementById('chapterLogsList');
+  const countEl = document.getElementById('chapterLogsCount');
+  if (!container) return;
+
+  const logs = getStoredChapterLogs();
+  if (countEl) countEl.textContent = logs.length;
+
+  if (logs.length === 0) {
+    container.innerHTML = `
+      <div class="chapter-empty-state">
+        <span class="chapter-empty-icon">📜</span>
+        <strong class="chapter-empty-title">No archived chapter logs yet.</strong>
+        <p class="chapter-empty-desc">
+          Click <strong style="color: #2E7D32;">"💾 SNAPSHOT TO LOGS"</strong> above to save a permanent lightweight (~1.2 KB) summary of your seasonal ticket count and resource costs!<br/>
+          <span style="display: inline-block; margin-top: 6px; font-size: 10.5px; opacity: 0.85;">
+            ⏰ Sun-Forge also automatically snapshots and updates this active chapter on the nightly 23:00 UTC cron sync.
+          </span>
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = logs.map((item, idx) => {
+    const cats = item.categories || {};
+    const deliv = cats.deliveries || { count: 0, tickets: 0, cost: 0 };
+    const bounty = cats.bounties || { count: 0, tickets: 0, cost: 0 };
+    const animal = cats.animalBounties || { count: 0, tickets: 0, cost: 0 };
+    const chore = cats.chores || { count: 0, tickets: 0, cost: 0 };
+    const login = cats.logins || { count: 0, tickets: 0, cost: 0 };
+    const tracked = cats.tracked || { tickets: 0, cost: 0 };
+
+    const weeks = Array.isArray(item.weeklySummary) ? item.weeklySummary : [];
+    const weeksHtml = weeks.length > 0 ? `
+      <div style="border-top: 1.5px dashed #D2B48C; padding-top: 8px; margin-top: 4px;">
+        <span class="chapter-weekly-title">Weekly Progression (${weeks.length} Weeks Recorded):</span>
+        <div class="chapter-weekly-grid">
+          ${weeks.map(w => `<span class="chapter-week-pill">W${w.week}: ${w.tickets} Tix (${formatSFL(w.cost)} SFL)</span>`).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    const dateFormatted = item.archivedAt ? new Date(item.archivedAt).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }) : 'Archived';
+
+    const isLocked = Boolean(item.isLocked);
+    const badgeHtml = isLocked 
+      ? `<span class="chapter-badge-locked" title="Chapter ended. Permanently locked historical archive.">🔒 LOCKED (FINAL ARCHIVE)</span>`
+      : `<span class="chapter-badge-live" title="Active season. Updates every cron sync.">⏳ IN PROGRESS (LIVE)</span>`;
+
+    const deleteBtnHtml = isLocked
+      ? `<button onclick="alert('🔒 This chapter log has ended and is permanently archived in the vault.')" class="btn btn-sm btn-wood" style="background: #64748b; border-color: #475569; color: #FFF; padding: 3px 8px; font-size: 10.5px; opacity: 0.6; cursor: not-allowed;" title="Permanently locked">🔒</button>`
+      : `<button onclick="deleteChapterLog(${idx})" class="btn btn-sm btn-wood" style="background: #C0392B; border-color: #922B21; color: #FFF; padding: 3px 8px; font-size: 10.5px;" title="Delete this log">🗑️</button>`;
+
+    return `
+      <div class="chapter-log-card">
+        <div class="chapter-log-header">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <strong class="chapter-card-title">🌾 ${item.chapterTitle || 'Archived Chapter'}</strong>
+            ${badgeHtml}
+            <span class="chapter-card-date">📅 ${dateFormatted}</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button onclick="exportChapterLog(${idx})" class="btn btn-sm btn-wood" style="padding: 3px 8px; font-size: 10.5px;" title="Export JSON summary">
+              📥 EXPORT
+            </button>
+            ${deleteBtnHtml}
+          </div>
+        </div>
+
+        <div class="chapter-metrics-row">
+          <div class="chapter-metric-box">
+            <span class="chapter-metric-label">TOTAL TICKETS</span>
+            <strong class="chapter-metric-val val-tix">${item.totalTickets || 0} Tix</strong>
+          </div>
+          <div class="chapter-metric-box">
+            <span class="chapter-metric-label">TOTAL COST</span>
+            <strong class="chapter-metric-val val-cost">${formatSFL(item.totalCost)} SFL</strong>
+          </div>
+          <div class="chapter-metric-box">
+            <span class="chapter-metric-label">AVG EFFICIENCY</span>
+            <strong class="chapter-metric-val val-ratio">${formatSFL(item.efficiencyRatio)} SFL/Tix</strong>
+          </div>
+        </div>
+
+        <div class="chapter-breakdown-list">
+          <div class="chapter-breakdown-item">📦 <strong>Deliveries:</strong> ${deliv.tickets || 0} Tix | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
+          <div class="chapter-breakdown-item">📜 <strong>Bounties:</strong> ${bounty.tickets || 0} Tix | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🐄 <strong>Animal Bounties:</strong> ${animal.tickets || 0} Tix | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🧹 <strong>Chores:</strong> ${chore.tickets || 0} Tix | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🎁 <strong>Daily Login:</strong> ${login.tickets || 0} Tix (${login.count || 0} collected)</div>
+          <div class="chapter-breakdown-item">🛤️ <strong>Manual Track:</strong> ${tracked.tickets || 0} Tix | ${formatSFL(tracked.cost)} SFL</div>
+        </div>
+
+        ${weeksHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+export async function snapshotCurrentChapter() {
+  const currentTitleEl = document.getElementById('chapterActiveName');
+  const defaultTitle = currentTitleEl ? currentTitleEl.textContent.replace('ACTIVE CHAPTER:', '').replace('LIVE SEASON', '').trim() : 'Ascension Age (Chapter 15)';
+  
+  const chapterTitle = prompt('Enter a label for this chapter snapshot:', defaultTitle);
+  if (!chapterTitle || !chapterTitle.trim()) return;
+
+  const ACTIVE_CHAPTER_ID = 'ascension_age_15';
+  const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+  const isLocked = Date.now() >= CHAPTER_END_MS;
+
+  const logs = getStoredChapterLogs();
+  const existingIdx = logs.findIndex(l => l.chapterId === ACTIVE_CHAPTER_ID || (l.chapterTitle || '').toLowerCase() === chapterTitle.trim().toLowerCase());
+  if (existingIdx >= 0 && logs[existingIdx].isLocked) {
+    alert('🔒 This chapter has ended and is permanently locked as a final archive. It cannot be overwritten.');
+    return;
+  }
+
+  const totalTixEl = document.getElementById('statTotalTickets');
+  const totalCostEl = document.getElementById('statTotalCost');
+  const totalTix = parseInt(totalTixEl?.textContent?.replace(/[^\d]/g, ''), 10) || 0;
+  const totalCost = parseFloat(totalCostEl?.textContent?.replace(/[^\d.]/g, '')) || 0;
+  const efficiencyRatio = totalTix > 0 ? (totalCost / totalTix) : 0;
+
+  const masterDeliveries = getDeliveryRecords().filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped);
+  let delivTix = 0, delivCost = 0;
+  masterDeliveries.forEach(d => {
+    delivTix += (d.yield || d.tickets || 0);
+    delivCost += (d.itemsCost || d.cost || 0);
+  });
+
+  let bountyTix = 0, bountyCost = 0, bountyCount = 0;
+  let animalBountyTix = 0, animalBountyCost = 0, animalBountyCount = 0;
+  let choreTix = 0, choreCost = 0, choreCount = 0;
+
+  const rawWeeks = (state.globalData?.cloudHistory?.weeks) || (state.currentVaultData?.weeks) || {};
+  const weeklyMap = new Map();
+
+  Object.entries(rawWeeks).forEach(([wkId, wkVal]) => {
+    if (!wkVal || typeof wkVal !== 'object') return;
+    const normWeek = getMondayBasedWeekId(wkVal.weekId || wkId);
+    if (!weeklyMap.has(normWeek)) {
+      weeklyMap.set(normWeek, { tickets: 0, cost: 0 });
+    }
+    const stat = weeklyMap.get(normWeek);
+
+    (wkVal.bounties || []).forEach(b => {
+      if (b.completed || b.checked) {
+        const t = b.baseTickets || b.tickets || 0;
+        const c = b.itemsCost || b.cost || 0;
+        stat.tickets += t;
+        stat.cost += c;
+        if (isAnimalBounty(b)) {
+          animalBountyTix += t;
+          animalBountyCost += c;
+          animalBountyCount++;
+        } else {
+          bountyTix += t;
+          bountyCost += c;
+          bountyCount++;
+        }
+      }
+    });
+
+    (wkVal.chores || []).forEach(c => {
+      if (c.completed || c.checked) {
+        const t = (c.baseTickets || c.tickets || 1);
+        const cCost = (c.itemsCost || c.cost || 0);
+        stat.tickets += t;
+        stat.cost += cCost;
+        choreTix += t;
+        choreCost += cCost;
+        choreCount++;
+      }
+    });
+  });
+
+  masterDeliveries.forEach(d => {
+    const dDate = d.completedAt || d.completedDate;
+    if (dDate) {
+      const dWeek = getMondayBasedWeekId(dDate);
+      if (!weeklyMap.has(dWeek)) {
+        weeklyMap.set(dWeek, { tickets: 0, cost: 0 });
+      }
+      const stat = weeklyMap.get(dWeek);
+      stat.tickets += (d.yield || d.tickets || 0);
+      stat.cost += (d.itemsCost || d.cost || 0);
+    }
+  });
+
+  const sortedWeeks = Array.from(weeklyMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const weeklySummary = sortedWeeks.map(([wId, val], idx) => ({
+    week: idx + 1,
+    weekId: wId,
+    tickets: val.tickets,
+    cost: val.cost
+  }));
+
+  const loginCount = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
+  const trackTix = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
+  const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
+
+  const newEntry = {
+    chapterId: ACTIVE_CHAPTER_ID,
+    chapterTitle: chapterTitle.trim(),
+    archivedAt: new Date().toISOString(),
+    isLocked: isLocked,
+    totalTickets: totalTix,
+    totalCost: totalCost,
+    efficiencyRatio: efficiencyRatio,
+    categories: {
+      deliveries: { count: masterDeliveries.length, tickets: delivTix, cost: delivCost },
+      bounties: { count: bountyCount, tickets: bountyTix, cost: bountyCost },
+      animalBounties: { count: animalBountyCount, tickets: animalBountyTix, cost: animalBountyCost },
+      chores: { count: choreCount, tickets: choreTix, cost: choreCost },
+      logins: { count: loginCount, tickets: loginCount, cost: 0 },
+      tracked: { tickets: trackTix, cost: trackCost }
+    },
+    weeklySummary
+  };
+
+  if (existingIdx >= 0) {
+    logs[existingIdx] = newEntry;
+  } else {
+    logs.unshift(newEntry);
+  }
+
+  // 1. Direct Cloud Database Save to user_chapter_logs table
+  if (state.currentUser) {
+    try {
+      const res = await fetch('/api/chapter?action=saveChapterLog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: state.currentUser,
+          chapterLog: newEntry
+        })
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.chapterLogs)) {
+        if (!state.currentVaultData) state.currentVaultData = {};
+        state.currentVaultData.chapterLogs = data.chapterLogs;
+      }
+    } catch (e) {
+      console.warn('Cloud chapter logs save notice:', e.message);
+    }
+  }
+
+  await saveStoredChapterLogs(logs);
+  renderChapterLogsList();
+  alert(`✔ Successfully archived "${newEntry.chapterTitle}" (~1.2 KB summary) to your cloud vault!`);
+}
+
+export async function deleteChapterLog(index) {
+  const logs = getStoredChapterLogs();
+  if (!logs[index]) return;
+
+  const target = logs[index];
+  if (target.isLocked) {
+    alert('🔒 This chapter log is locked and archived. It cannot be deleted.');
+    return;
+  }
+
+  const title = target.chapterTitle || 'this log';
+  if (confirm(`🗑️ Delete archived snapshot for "${title}"?`)) {
+    // 1. Delete from dedicated user_chapter_logs table
+    if (state.currentUser && target.chapterId) {
+      try {
+        await fetch('/api/chapter?action=deleteChapterLog', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: state.currentUser,
+            chapterId: target.chapterId
+          })
+        });
+      } catch (e) {
+        console.warn('Cloud chapter log delete error:', e.message);
+      }
+    }
+
+    logs.splice(index, 1);
+    await saveStoredChapterLogs(logs);
+    renderChapterLogsList();
+  }
+}
+
+export function exportChapterLog(index) {
+  const logs = getStoredChapterLogs();
+  if (!logs[index]) return;
+
+  const item = logs[index];
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(item, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `sunforge_${(item.chapterTitle || 'chapter').replace(/\s+/g, '_').toLowerCase()}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+

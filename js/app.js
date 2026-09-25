@@ -24,7 +24,12 @@ import {
   toggleWeeklyItemCheck, 
   updateHistoryItemTickets, 
   updateHistoryItemCost, 
-  deleteWeeklyItem 
+  deleteWeeklyItem,
+  openChapterLogsModal,
+  closeChapterLogsModal,
+  snapshotCurrentChapter,
+  deleteChapterLog,
+  exportChapterLog
 } from './modals.js';
 import { 
   recalculateAll,
@@ -63,7 +68,54 @@ export function toggleTheme() {
   applyTheme(isCurrentlyDark ? 'light' : 'dark');
 }
 
+export async function copyDonateAddress() {
+  const address = '0x55b97223202457d427a68389346da9a9314d0511';
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(address);
+      copied = true;
+    }
+  } catch (err) {
+    console.warn('Clipboard writeText failed, trying fallback...', err);
+  }
+
+  if (!copied) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = address;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.top = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(textarea);
+    } catch (e) {
+      console.error('Fallback execCommand copy failed', e);
+    }
+  }
+
+  const btn = document.getElementById('donateBtn');
+  const btnText = document.getElementById('donateBtnText');
+  if (btn && btnText) {
+    const origText = 'DONATE';
+    btn.classList.add('copied');
+    btnText.textContent = 'COPIED! ✨';
+    btn.setAttribute('title', 'Address copied to clipboard!');
+
+    if (window._donateTimeout) clearTimeout(window._donateTimeout);
+    window._donateTimeout = setTimeout(() => {
+      btn.classList.remove('copied');
+      btnText.textContent = origText;
+      btn.setAttribute('title', 'Copy donation address (0x55b9...0511)');
+    }, 2500);
+  }
+}
+
 // Expose handlers to window for inline HTML events
+window.copyDonateAddress = copyDonateAddress;
 window.toggleTheme = toggleTheme;
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
@@ -93,6 +145,11 @@ window.toggleWeeklyItemCheck = toggleWeeklyItemCheck;
 window.updateHistoryItemTickets = updateHistoryItemTickets;
 window.updateHistoryItemCost = updateHistoryItemCost;
 window.deleteWeeklyItem = deleteWeeklyItem;
+window.openChapterLogsModal = openChapterLogsModal;
+window.closeChapterLogsModal = closeChapterLogsModal;
+window.snapshotCurrentChapter = snapshotCurrentChapter;
+window.deleteChapterLog = deleteChapterLog;
+window.exportChapterLog = exportChapterLog;
 
 window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
@@ -167,7 +224,7 @@ function startTipRotation() {
 // ==========================================
 // CHAPTER COUNTDOWN TIMER (Nov 2, 2026, 00:00 UTC)
 // ==========================================
-// 57 days 6 hours from Sept 5, 2026 18:00 UTC = Nov 2, 2026, 00:00:00 UTC
+// Ascension Age (Chapter 15) ends Nov 2, 2026, 00:00:00 UTC (38 days and ~13 hours)
 const CHAPTER_END_TIMESTAMP = Date.UTC(2026, 10, 2, 0, 0, 0);
 
 export function updateChapterCountdown() {
@@ -191,7 +248,7 @@ export function updateChapterCountdown() {
   }
 
   if (widgetEl) {
-    widgetEl.title = `Chapter ends: November 2, 2026 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
+    widgetEl.title = `Ascension Age (Chapter 15) ends: November 2, 2026 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
   }
 }
 

@@ -99,6 +99,17 @@ export async function loadTrackerData() {
       state.globalData.archiveChores = data.vaultData.archiveChores || [];
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
       
+      if (Array.isArray(data.vaultData.chapterLogs)) {
+        try {
+          localStorage.setItem('sfl_chapter_logs', JSON.stringify(data.vaultData.chapterLogs));
+        } catch (e) {}
+      } else {
+        try {
+          const localLogs = localStorage.getItem('sfl_chapter_logs');
+          if (localLogs) state.currentVaultData.chapterLogs = JSON.parse(localLogs);
+        } catch (e) {}
+      }
+      
       const vaultWeeks = data.vaultData.weeks || {};
       loadedWeeks = { ...loadedWeeks, ...vaultWeeks };
 
@@ -388,7 +399,8 @@ export async function saveProgressToCloudKV(silent = false) {
     chores: state.globalData?.chores || [],
     archiveChores: state.globalData?.archiveChores || [],
     milestones: state.globalData?.milestones || {},
-    npcSnapshots: state.globalData?.npcSnapshots || state.currentVaultData?.npcSnapshots || {}
+    npcSnapshots: state.globalData?.npcSnapshots || state.currentVaultData?.npcSnapshots || {},
+    chapterLogs: state.currentVaultData?.chapterLogs || JSON.parse(localStorage.getItem('sfl_chapter_logs') || '[]')
   };
 
   try {
@@ -402,6 +414,11 @@ export async function saveProgressToCloudKV(silent = false) {
     if (!res.ok || data.error) throw new Error(data.error || 'Failed to save.');
 
     state.currentVaultData = data.vaultData;
+    if (Array.isArray(data.vaultData.chapterLogs)) {
+      try {
+        localStorage.setItem('sfl_chapter_logs', JSON.stringify(data.vaultData.chapterLogs));
+      } catch (e) {}
+    }
     if (state.globalData) {
       state.globalData.cloudHistory = {
         logs: data.vaultData.logs || [],

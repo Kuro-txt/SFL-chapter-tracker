@@ -13,6 +13,21 @@ async function ensureTableExists(client) {
       auth_data JSONB NOT NULL,
       vault_data JSONB NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS user_chapter_logs (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(255) NOT NULL,
+      chapter_id VARCHAR(100) NOT NULL,
+      chapter_title VARCHAR(255) NOT NULL,
+      archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      is_locked BOOLEAN DEFAULT FALSE,
+      summary_data JSONB NOT NULL,
+      CONSTRAINT unique_user_chapter UNIQUE (username, chapter_id)
+    );
+
+    ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
+
+    CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);
   `);
 }
 
@@ -401,6 +416,17 @@ export default async function handler(req, res) {
         ? JSON.parse(userRes.rows[0].vault_data)
         : userRes.rows[0].vault_data;
 
+      const chapterLogsRes = await client.query(
+        'SELECT chapter_id, chapter_title, archived_at, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
+        [cleanUser]
+      );
+      vaultData.chapterLogs = chapterLogsRes.rows.map(r => ({
+        ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
+        chapterId: r.chapter_id,
+        chapterTitle: r.chapter_title,
+        archivedAt: r.archived_at
+      }));
+
       return res.status(200).json({ success: true, username: cleanUser, vaultData });
     }
 
@@ -505,6 +531,124 @@ export default async function handler(req, res) {
       );
 
       return res.status(200).json({ success: true, vaultData });
+    }
+
+    // ==========================================
+    // ACTION: GET CHAPTER LOGS (Dedicated Table)
+    // ==========================================
+    if (action === 'getChapterLogs') {
+      const username = searchParams.get('username') || (req.query && req.query.username) || (req.body && req.body.username);
+      if (!username) {
+        return res.status(400).json({ error: 'Username required.' });
+      }
+
+      const cleanUser = username.trim().toLowerCase();
+      const logsRes = await client.query(
+        'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
+        [cleanUser]
+      );
+
+      const chapterLogs = logsRes.rows.map(r => ({
+        ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
+        chapterId: r.chapter_id,
+        chapterTitle: r.chapter_title,
+        archivedAt: r.archived_at,
+        isLocked: Boolean(r.is_locked)
+      }));
+
+      return res.status(200).json({ success: true, chapterLogs });
+    }
+
+    // ==========================================
+    // ACTION: SAVE CHAPTER LOG (Dedicated Table)
+    // ==========================================
+    if (action === 'saveChapterLog' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username, chapterLog } = body || {};
+
+      if (!username || !chapterLog) {
+        return res.status(400).json({ error: 'Username and chapterLog required.' });
+      }
+
+      const cleanUser = username.trim().toLowerCase();
+      const chapterId = chapterLog.chapterId || 'ascension_age_15';
+      const chapterTitle = chapterLog.chapterTitle || 'Ascension Age (Chapter 15)';
+
+      // Check if already locked in database
+      const checkRes = await client.query(
+        'SELECT is_locked FROM user_chapter_logs WHERE username = $1 AND chapter_id = $2',
+        [cleanUser, chapterId]
+      );
+      if (checkRes.rows.length > 0 && checkRes.rows[0].is_locked) {
+        return res.status(403).json({ error: '🔒 This chapter has ended and is permanently locked. It cannot be overwritten.' });
+      }
+
+      const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+      const isLocked = Boolean(chapterLog.isLocked || Date.now() >= CHAPTER_END_MS);
+
+      await client.query(`
+        INSERT INTO user_chapter_logs (username, chapter_id, chapter_title, archived_at, is_locked, summary_data)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (username, chapter_id)
+        DO UPDATE SET
+          chapter_title = EXCLUDED.chapter_title,
+          archived_at = EXCLUDED.archived_at,
+          is_locked = EXCLUDED.is_locked,
+          summary_data = EXCLUDED.summary_data
+        WHERE user_chapter_logs.is_locked IS NOT TRUE
+      `, [
+        cleanUser,
+        chapterId,
+        chapterTitle,
+        chapterLog.archivedAt || new Date().toISOString(),
+        isLocked,
+        JSON.stringify({ ...chapterLog, isLocked })
+      ]);
+
+      const logsRes = await client.query(
+        'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
+        [cleanUser]
+      );
+
+      const chapterLogs = logsRes.rows.map(r => ({
+        ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
+        chapterId: r.chapter_id,
+        chapterTitle: r.chapter_title,
+        archivedAt: r.archived_at,
+        isLocked: Boolean(r.is_locked)
+      }));
+
+      return res.status(200).json({ success: true, chapterLogs });
+    }
+
+    // ==========================================
+    // ACTION: DELETE CHAPTER LOG (Dedicated Table)
+    // ==========================================
+    if (action === 'deleteChapterLog' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { username, chapterId } = body || {};
+
+      if (!username || !chapterId) {
+        return res.status(400).json({ error: 'Username and chapterId required.' });
+      }
+
+      const cleanUser = username.trim().toLowerCase();
+
+      // Check lock status - locked archives cannot be deleted
+      const checkRes = await client.query(
+        'SELECT is_locked FROM user_chapter_logs WHERE username = $1 AND chapter_id = $2',
+        [cleanUser, chapterId]
+      );
+      if (checkRes.rows.length > 0 && checkRes.rows[0].is_locked) {
+        return res.status(403).json({ error: '🔒 Locked chapter archives cannot be deleted.' });
+      }
+
+      await client.query(
+        'DELETE FROM user_chapter_logs WHERE username = $1 AND chapter_id = $2',
+        [cleanUser, chapterId]
+      );
+
+      return res.status(200).json({ success: true, deletedChapterId: chapterId });
     }
 
     let farmId = searchParams.get('farmId') || (req.query && req.query.farmId) || '';
@@ -614,6 +758,18 @@ export default async function handler(req, res) {
           'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
           [JSON.stringify(userVault), cleanUser]
         );
+
+        const chapterLogsRes = await client.query(
+          'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
+          [cleanUser]
+        );
+        userVault.chapterLogs = chapterLogsRes.rows.map(r => ({
+          ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
+          chapterId: r.chapter_id,
+          chapterTitle: r.chapter_title,
+          archivedAt: r.archived_at,
+          isLocked: Boolean(r.is_locked)
+        }));
       }
     }
 
