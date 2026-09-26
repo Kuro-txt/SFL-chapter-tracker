@@ -161,7 +161,7 @@ export function renderColumnHistoryModalList() {
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 2);
       const isManual = Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
       let finalTix = computeYield(baseTix, true, isManual);
-      if (item.hasDoubleBonus && !isManual) finalTix *= 2;
+      if (item.hasDoubleBonus && !isManual && !item.isStacked) finalTix *= 2;
 
 
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
@@ -547,7 +547,7 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
       
       // Bug Fix: divide by 2 if double delivery bonus applies before subtracting flat bonuses
       let effectiveInput = inputVal;
-      if (target.hasDoubleBonus && !isManual) {
+      if (target.hasDoubleBonus && !isManual && !target.isStacked) {
         effectiveInput = Math.round(effectiveInput / 2);
       }
       const baseVal = Math.max(1, effectiveInput - vip - boost);
