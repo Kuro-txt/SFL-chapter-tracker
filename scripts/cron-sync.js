@@ -415,13 +415,22 @@ async function runSync() {
         }
 
         const npcDoubleClaimed = new Set();
-        const sortedDeliveries = [...(vault.archiveDeliveries || [])].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
+        const sortedDeliveries = [...(vault.archiveDeliveries || [])].sort((a, b) => {
+          const aTime = a.completedAt || 0;
+          const bTime = b.completedAt || 0;
+          if (aTime !== bTime) return aTime - bTime;
+          if (Boolean(a.isStacked) !== Boolean(b.isStacked)) {
+            return a.isStacked ? 1 : -1;
+          }
+          return (a.deliveryCountAtCreation || 0) - (b.deliveryCountAtCreation || 0);
+        });
 
         sortedDeliveries.forEach(d => {
           const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
           if (isDone) {
             const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
             const isManual = Boolean(d.isManual);
+            const isStacked = Boolean(d.isStacked);
             const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDateStr);
             const isToday = !isManual && (compDate === snapshotDate || compDate === todayDateStr);
 
@@ -429,13 +438,22 @@ async function runSync() {
             const npcClean = (d.from || d.name || '').toLowerCase().trim();
             const doubleKey = `${npcClean}_${compDate}`;
 
-            const wasDouble = Boolean(d.hasDoubleBonus);
             let yieldAmt = baseTix;
             if (!isManual) {
-              if (wasDouble || (isDoubleDay && !npcDoubleClaimed.has(doubleKey))) {
-                yieldAmt = (baseTix + vipBonus) * 2;
-                npcDoubleClaimed.add(doubleKey);
-                d.hasDoubleBonus = true;
+              if (!isStacked) {
+                const wasDouble = Boolean(d.hasDoubleBonus);
+                if (wasDouble && !npcDoubleClaimed.has(doubleKey)) {
+                  yieldAmt = (baseTix + vipBonus) * 2;
+                  npcDoubleClaimed.add(doubleKey);
+                  d.hasDoubleBonus = true;
+                } else if (isDoubleDay && !npcDoubleClaimed.has(doubleKey)) {
+                  yieldAmt = (baseTix + vipBonus) * 2;
+                  npcDoubleClaimed.add(doubleKey);
+                  d.hasDoubleBonus = true;
+                } else {
+                  yieldAmt = (baseTix + vipBonus);
+                  d.hasDoubleBonus = false;
+                }
               } else {
                 yieldAmt = (baseTix + vipBonus);
                 d.hasDoubleBonus = false;
@@ -536,7 +554,7 @@ async function runSync() {
               delivCount++;
               const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
               const isManual = Boolean(d.isManual);
-              const wasDouble = Boolean(d.hasDoubleBonus);
+              const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
               if (isManual) {
                 manualDelivCount++;
               } else {
@@ -637,7 +655,8 @@ async function runSync() {
               const stat = weeklyProgMap.get(wId);
               const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
               const isManual = Boolean(d.isManual);
-              const yieldAmt = isManual ? baseTix : (d.hasDoubleBonus ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
+              const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
+              const yieldAmt = isManual ? baseTix : (wasDouble ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
               stat.tickets += yieldAmt;
               stat.cost += (d.itemsCost || d.cost || 0);
             }
