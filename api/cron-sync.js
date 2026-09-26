@@ -524,20 +524,30 @@ export default async function handler(req, res) {
             const isChapterEnded = Date.now() >= CHAPTER_END_MS;
 
             let delivCount = 0, delivTix = 0, delivCost = 0;
+            let delivDoubleCount = 0, autoDelivCount = 0, manualDelivCount = 0;
             (vault.archiveDeliveries || []).forEach(d => {
               const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
               if (isDone) {
                 delivCount++;
                 const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
                 const isManual = Boolean(d.isManual);
-                const yieldAmt = isManual ? baseTix : (d.hasDoubleBonus ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
+                const wasDouble = Boolean(d.hasDoubleBonus);
+                if (isManual) {
+                  manualDelivCount++;
+                } else {
+                  autoDelivCount++;
+                  if (wasDouble) delivDoubleCount++;
+                }
+                const yieldAmt = isManual ? baseTix : (wasDouble ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
                 delivTix += yieldAmt;
                 delivCost += (d.itemsCost || d.cost || 0);
               }
             });
 
             let bountyCount = 0, bountyTix = 0, bountyCost = 0;
+            let autoBountyCount = 0;
             let animalBountyCount = 0, animalBountyTix = 0, animalBountyCost = 0;
+            let autoAnimalBountyCount = 0;
             (vault.bounties || []).forEach(b => {
               const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
               if (isDone) {
@@ -546,10 +556,12 @@ export default async function handler(req, res) {
                 const isAnimal = Boolean(b.isAnimal || (b.name && /egg|milk|wool|feather|leather|honey|animal/i.test(b.name)));
                 if (isAnimal) {
                   animalBountyCount++;
+                  autoAnimalBountyCount++;
                   animalBountyTix += bTix;
                   animalBountyCost += bCost;
                 } else {
                   bountyCount++;
+                  autoBountyCount++;
                   bountyTix += bTix;
                   bountyCost += bCost;
                 }
@@ -557,12 +569,16 @@ export default async function handler(req, res) {
             });
 
             let choreCount = 0, choreTix = 0, choreCost = 0;
+            let autoChoreCount = 0, manualChoreCount = 0;
             (vault.chores || []).forEach(c => {
               const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
               if (isDone) {
                 choreCount++;
+                const isMan = Boolean(c.isManual);
+                if (isMan) manualChoreCount++;
+                else autoChoreCount++;
                 const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-                const yieldAmt = c.isManual ? baseTix : (baseTix + vipBonus);
+                const yieldAmt = isMan ? baseTix : (baseTix + vipBonus);
                 choreTix += yieldAmt;
                 choreCost += (c.itemsCost || c.cost || 0);
               }
@@ -577,10 +593,12 @@ export default async function handler(req, res) {
                   const isAnimal = Boolean(b.isAnimal || (b.name && /egg|milk|wool|feather|leather|honey|animal/i.test(b.name)));
                   if (isAnimal) {
                     animalBountyCount++;
+                    autoAnimalBountyCount++;
                     animalBountyTix += bTix;
                     animalBountyCost += bCost;
                   } else {
                     bountyCount++;
+                    autoBountyCount++;
                     bountyTix += bTix;
                     bountyCost += bCost;
                   }
@@ -589,15 +607,18 @@ export default async function handler(req, res) {
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   choreCount++;
+                  const isMan = Boolean(c.isManual);
+                  if (isMan) manualChoreCount++;
+                  else autoChoreCount++;
                   const baseTix = (c.baseTickets || c.tickets || 1);
-                  const yieldAmt = c.isManual ? baseTix : (baseTix + vipBonus);
+                  const yieldAmt = isMan ? baseTix : (baseTix + vipBonus);
                   choreTix += yieldAmt;
                   choreCost += (c.itemsCost || c.cost || 0);
                 }
               });
             });
 
-            const loginCount = vault.dailyLoginCount || 0;
+            const loginCount = vault.dailyLoginTickets || vault.dailyLoginCount || 0;
             const trackTix = vault.trackTickets || 0;
             const trackCost = vault.trackCost || 0;
 
@@ -654,10 +675,33 @@ export default async function handler(req, res) {
               totalCost: totalCalculatedCost,
               efficiencyRatio: efficiencyRatio,
               categories: {
-                deliveries: { count: delivCount, tickets: delivTix, cost: delivCost },
-                bounties: { count: bountyCount, tickets: bountyTix, cost: bountyCost },
-                animalBounties: { count: animalBountyCount, tickets: animalBountyTix, cost: animalBountyCost },
-                chores: { count: choreCount, tickets: choreTix, cost: choreCost },
+                deliveries: { 
+                  count: delivCount, 
+                  tickets: delivTix, 
+                  cost: delivCost,
+                  doubleCount: delivDoubleCount,
+                  autoCount: autoDelivCount,
+                  manualCount: manualDelivCount
+                },
+                bounties: { 
+                  count: bountyCount, 
+                  tickets: bountyTix, 
+                  cost: bountyCost,
+                  autoCount: autoBountyCount
+                },
+                animalBounties: { 
+                  count: animalBountyCount, 
+                  tickets: animalBountyTix, 
+                  cost: animalBountyCost,
+                  autoCount: autoAnimalBountyCount
+                },
+                chores: { 
+                  count: choreCount, 
+                  tickets: choreTix, 
+                  cost: choreCost,
+                  autoCount: autoChoreCount,
+                  manualCount: manualChoreCount
+                },
                 logins: { count: loginCount, tickets: loginCount, cost: 0 },
                 tracked: { tickets: trackTix, cost: trackCost }
               },
