@@ -152,6 +152,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             orderToComplete.completedDate = compDate;
             orderToComplete.weekId = compWeek;
             orderToComplete.deliveryCountAtCreation = completedCountIndex;
+            orderToComplete.isStacked = isStacked;
           } else {
             const alreadyExists = vault.archiveDeliveries.some(d => d.id === targetOrderId);
             if (!alreadyExists) {
