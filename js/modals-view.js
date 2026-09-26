@@ -70,7 +70,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
       let tix = computeYield(base, true, isManual);
-      if (d.hasDoubleBonus && !isManual) tix *= 2;
+      if (d.hasDoubleBonus && !isManual && !d.isStacked) tix *= 2;
       const cost = d.itemsCost || d.cost || 0;
 
       if (isDone) {
@@ -299,7 +299,7 @@ export function openCategorySummaryModal(cat) {
 
     if (isDoubleToday) {
       masterDeliveries.forEach(d => {
-        if (!d || d.isSkipped) return;
+        if (!d || d.isSkipped || d.isStacked || d.isManual) return;
         const isDone = d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed);
         if (!isDone) return;
 
@@ -330,6 +330,7 @@ export function openCategorySummaryModal(cat) {
     if (isDoubleToday) {
       // First pass: if any live delivery was already marked with hasDoubleBonus
       liveDeliveries.forEach(d => {
+        if (d.isStacked || d.isManual) return;
         const isDone = (d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed)) && !d.isSkipped;
         const npcClean = (d.from || d.name || '').toLowerCase().trim();
         if (isDone && d.hasDoubleBonus) {
@@ -341,6 +342,10 @@ export function openCategorySummaryModal(cat) {
       // Second pass: assign double bonus to the first un-skipped delivery for each NPC
       liveDeliveries.forEach(d => {
         if (doubleEligibleMap.has(d)) return;
+        if (d.isStacked || d.isManual) {
+          doubleEligibleMap.set(d, false);
+          return;
+        }
         const npcClean = (d.from || d.name || '').toLowerCase().trim();
         const isSkipped = Boolean(d.isSkipped);
 
@@ -368,7 +373,7 @@ export function openCategorySummaryModal(cat) {
       const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const applyDouble = !isManual && Boolean(doubleEligibleMap.get(d));
+      const applyDouble = !isManual && !d.isStacked && Boolean(doubleEligibleMap.get(d));
       
       let finalTickets = computeYield(base, true, isManual);
       if (applyDouble) {
@@ -831,7 +836,7 @@ export async function snapshotCurrentChapter() {
   masterDeliveries.forEach(d => {
     const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
     const isManual = Boolean(d.isManual);
-    const wasDouble = Boolean(d.hasDoubleBonus);
+    const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
     if (isManual) {
       manualDelivCount++;
       delivTix += base;
@@ -907,7 +912,7 @@ export async function snapshotCurrentChapter() {
       const stat = weeklyMap.get(dWeek);
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
-      const wasDouble = Boolean(d.hasDoubleBonus);
+      const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
       const rawYield = isManual ? base : (wasDouble ? (base + vipBonus) * 2 : (base + vipBonus));
       stat.tickets += rawYield;
       stat.cost += (d.itemsCost || d.cost || 0);
