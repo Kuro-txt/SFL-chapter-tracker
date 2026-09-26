@@ -163,13 +163,18 @@ export function recalculateAll() {
   const sortedDeliveries = [...masterDeliveries].sort((a, b) => {
     const aTime = a.completedAt || 0;
     const bTime = b.completedAt || 0;
-    return aTime - bTime;
+    if (aTime !== bTime) return aTime - bTime;
+    if (Boolean(a.isStacked) !== Boolean(b.isStacked)) {
+      return a.isStacked ? 1 : -1;
+    }
+    return (a.deliveryCountAtCreation || 0) - (b.deliveryCountAtCreation || 0);
   });
 
   sortedDeliveries.forEach(d => {
     if (isTicked(d)) {
       const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
+      const isStacked = Boolean(d.isStacked);
       const compDate = resolveDateStr(d) || todayUtcStr;
       const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
       const isToday = !isManual && isDeliveryDoneToday(d);
@@ -178,16 +183,20 @@ export function recalculateAll() {
       const npcClean = (d.from || d.name || '').toLowerCase().trim();
       const doubleClaimKey = `${npcClean}_${compDate}`;
 
-      const wasDouble = Boolean(d.hasDoubleBonus);
       let applyDouble = false;
-      if (wasDouble) {
-        applyDouble = true;
-        npcDoubleDeliveryClaimed.add(doubleClaimKey);
-        d.hasDoubleBonus = true;
-      } else if (isDoubleDay && !isManual && !npcDoubleDeliveryClaimed.has(doubleClaimKey)) {
-        applyDouble = true;
-        npcDoubleDeliveryClaimed.add(doubleClaimKey);
-        d.hasDoubleBonus = true;
+      if (!isManual && !isStacked) {
+        const wasDouble = Boolean(d.hasDoubleBonus);
+        if (wasDouble && !npcDoubleDeliveryClaimed.has(doubleClaimKey)) {
+          applyDouble = true;
+          npcDoubleDeliveryClaimed.add(doubleClaimKey);
+          d.hasDoubleBonus = true;
+        } else if (isDoubleDay && !npcDoubleDeliveryClaimed.has(doubleClaimKey)) {
+          applyDouble = true;
+          npcDoubleDeliveryClaimed.add(doubleClaimKey);
+          d.hasDoubleBonus = true;
+        } else {
+          d.hasDoubleBonus = false;
+        }
       } else {
         d.hasDoubleBonus = false;
       }
