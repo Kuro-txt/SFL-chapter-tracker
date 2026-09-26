@@ -663,6 +663,12 @@ export async function saveStoredChapterLogs(logsArray) {
   }
 }
 
+export function setChapterLogBoost(cardKey, count) {
+  const boostNum = Math.max(0, Math.min(3, parseInt(count, 10) || 0));
+  localStorage.setItem(`sfl_chapter_boost_${cardKey}`, boostNum);
+  renderChapterLogsList();
+}
+
 export function renderChapterLogsList() {
   const container = document.getElementById('chapterLogsList');
   const countEl = document.getElementById('chapterLogsCount');
@@ -695,6 +701,26 @@ export function renderChapterLogsList() {
     const chore = cats.chores || { count: 0, tickets: 0, cost: 0 };
     const login = cats.logins || { count: 0, tickets: 0, cost: 0 };
     const tracked = cats.tracked || { tickets: 0, cost: 0 };
+
+    const cardChapterKey = item.chapterId || `chapter_${idx}`;
+    const savedBoost = localStorage.getItem(`sfl_chapter_boost_${cardChapterKey}`);
+    const boostLevel = savedBoost !== null ? parseInt(savedBoost, 10) : getActiveBoostCount();
+
+    // Only automated tasks receive boost bonuses! Manual tasks and manual track are strictly excluded.
+    const autoDeliv = deliv.autoCount !== undefined ? deliv.autoCount : Math.max(0, (deliv.count || 0) - (deliv.manualCount || 0));
+    const doubleDeliv = deliv.doubleCount || 0; // 2x event deliveries receive +2 per boost
+    const autoBounty = bounty.autoCount !== undefined ? bounty.autoCount : (bounty.count || 0);
+    const autoAnimal = animal.autoCount !== undefined ? animal.autoCount : (animal.count || 0);
+    const autoChore = chore.autoCount !== undefined ? chore.autoCount : Math.max(0, (chore.count || 0) - (chore.manualCount || 0));
+
+    const extraDelivTix = boostLevel * (autoDeliv + doubleDeliv);
+    const extraBountyTix = boostLevel * autoBounty;
+    const extraAnimalTix = boostLevel * autoAnimal;
+    const extraChoreTix = boostLevel * autoChore;
+    const extraTotalTix = extraDelivTix + extraBountyTix + extraAnimalTix + extraChoreTix;
+
+    const displayTotalTickets = (item.totalTickets || 0) + extraTotalTix;
+    const displayEfficiencyRatio = displayTotalTickets > 0 ? (item.totalCost / displayTotalTickets) : 0;
 
     const weeks = Array.isArray(item.weeklySummary) ? item.weeklySummary : [];
     const weeksHtml = weeks.length > 0 ? `
@@ -737,10 +763,22 @@ export function renderChapterLogsList() {
           </div>
         </div>
 
+        <div class="chapter-card-boosts">
+          <span class="chapter-card-boosts-label">⚡ +1 BOOSTS:</span>
+          <div class="chapter-boost-btn-group">
+            <button type="button" class="chapter-boost-btn ${boostLevel === 0 ? 'active' : ''}" onclick="setChapterLogBoost('${cardChapterKey}', 0)">NONE</button>
+            <button type="button" class="chapter-boost-btn ${boostLevel === 1 ? 'active' : ''}" onclick="setChapterLogBoost('${cardChapterKey}', 1)">🌟 #1</button>
+            <button type="button" class="chapter-boost-btn ${boostLevel === 2 ? 'active' : ''}" onclick="setChapterLogBoost('${cardChapterKey}', 2)">🌟 #2</button>
+            <button type="button" class="chapter-boost-btn ${boostLevel === 3 ? 'active' : ''}" onclick="setChapterLogBoost('${cardChapterKey}', 3)">🌟 #3</button>
+          </div>
+          ${boostLevel > 0 ? `<span class="chapter-boost-info">(+${extraTotalTix} extra tickets added)</span>` : '<span class="chapter-boost-info" style="opacity: 0.7;">(Raw base tickets)</span>'}
+        </div>
+
         <div class="chapter-metrics-row">
           <div class="chapter-metric-box">
             <span class="chapter-metric-label">TOTAL TICKETS</span>
-            <strong class="chapter-metric-val val-tix">${item.totalTickets || 0} Tix</strong>
+            <strong class="chapter-metric-val val-tix">${displayTotalTickets} Tix</strong>
+            ${boostLevel > 0 ? `<span class="chapter-metric-subtext">+${extraTotalTix} from ${boostLevel} Boost${boostLevel > 1 ? 's' : ''}</span>` : ''}
           </div>
           <div class="chapter-metric-box">
             <span class="chapter-metric-label">TOTAL COST</span>
@@ -748,15 +786,15 @@ export function renderChapterLogsList() {
           </div>
           <div class="chapter-metric-box">
             <span class="chapter-metric-label">AVG EFFICIENCY</span>
-            <strong class="chapter-metric-val val-ratio">${formatSFL(item.efficiencyRatio)} SFL/Tix</strong>
+            <strong class="chapter-metric-val val-ratio">${formatSFL(displayEfficiencyRatio)} SFL/Tix</strong>
           </div>
         </div>
 
         <div class="chapter-breakdown-list">
-          <div class="chapter-breakdown-item">📦 <strong>Deliveries:</strong> ${deliv.tickets || 0} Tix | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
-          <div class="chapter-breakdown-item">📜 <strong>Bounties:</strong> ${bounty.tickets || 0} Tix | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
-          <div class="chapter-breakdown-item">🐄 <strong>Animal Bounties:</strong> ${animal.tickets || 0} Tix | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
-          <div class="chapter-breakdown-item">🧹 <strong>Chores:</strong> ${chore.tickets || 0} Tix | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
+          <div class="chapter-breakdown-item">📦 <strong>Deliveries:</strong> ${deliv.tickets + extraDelivTix} Tix ${extraDelivTix > 0 ? `<span class="chapter-boost-pill">+${extraDelivTix}</span>` : ''} | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
+          <div class="chapter-breakdown-item">📜 <strong>Bounties:</strong> ${bounty.tickets + extraBountyTix} Tix ${extraBountyTix > 0 ? `<span class="chapter-boost-pill">+${extraBountyTix}</span>` : ''} | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🐄 <strong>Animal Bounties:</strong> ${animal.tickets + extraAnimalTix} Tix ${extraAnimalTix > 0 ? `<span class="chapter-boost-pill">+${extraAnimalTix}</span>` : ''} | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🧹 <strong>Chores:</strong> ${chore.tickets + extraChoreTix} Tix ${extraChoreTix > 0 ? `<span class="chapter-boost-pill">+${extraChoreTix}</span>` : ''} | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
           <div class="chapter-breakdown-item">🎁 <strong>Daily Login:</strong> ${login.tickets || 0} Tix (${login.count || 0} collected)</div>
           <div class="chapter-breakdown-item">🛤️ <strong>Manual Track:</strong> ${tracked.tickets || 0} Tix | ${formatSFL(tracked.cost)} SFL</div>
         </div>
@@ -785,22 +823,30 @@ export async function snapshotCurrentChapter() {
     return;
   }
 
-  const totalTixEl = document.getElementById('statTotalTickets');
-  const totalCostEl = document.getElementById('statTotalCost');
-  const totalTix = parseInt(totalTixEl?.textContent?.replace(/[^\d]/g, ''), 10) || 0;
-  const totalCost = parseFloat(totalCostEl?.textContent?.replace(/[^\d.]/g, '')) || 0;
-  const efficiencyRatio = totalTix > 0 ? (totalCost / totalTix) : 0;
+  const vipBonus = getActiveVipBonus(); // 2 if VIP, 0 otherwise
 
+  // 1. Raw Deliveries (Base + VIP, and * 2 on double event days; 0 +1 item boosts)
   const masterDeliveries = getDeliveryRecords().filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped);
-  let delivTix = 0, delivCost = 0;
+  let delivTix = 0, delivCost = 0, delivDoubleCount = 0, autoDelivCount = 0, manualDelivCount = 0;
   masterDeliveries.forEach(d => {
-    delivTix += (d.yield || d.tickets || 0);
+    const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+    const isManual = Boolean(d.isManual);
+    const wasDouble = Boolean(d.hasDoubleBonus);
+    if (isManual) {
+      manualDelivCount++;
+      delivTix += base;
+    } else {
+      autoDelivCount++;
+      if (wasDouble) delivDoubleCount++;
+      delivTix += wasDouble ? (base + vipBonus) * 2 : (base + vipBonus);
+    }
     delivCost += (d.itemsCost || d.cost || 0);
   });
 
-  let bountyTix = 0, bountyCost = 0, bountyCount = 0;
-  let animalBountyTix = 0, animalBountyCost = 0, animalBountyCount = 0;
-  let choreTix = 0, choreCost = 0, choreCount = 0;
+  // 2. Raw Bounties & Chores (Base + VIP where applicable; 0 +1 item boosts)
+  let bountyTix = 0, bountyCost = 0, bountyCount = 0, autoBountyCount = 0;
+  let animalBountyTix = 0, animalBountyCost = 0, animalBountyCount = 0, autoAnimalBountyCount = 0;
+  let choreTix = 0, choreCost = 0, choreCount = 0, autoChoreCount = 0, manualChoreCount = 0;
 
   const rawWeeks = (state.globalData?.cloudHistory?.weeks) || (state.currentVaultData?.weeks) || {};
   const weeklyMap = new Map();
@@ -815,6 +861,7 @@ export async function snapshotCurrentChapter() {
 
     (wkVal.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
+        const isMan = Boolean(b.isManual);
         const t = b.baseTickets || b.tickets || 0;
         const c = b.itemsCost || b.cost || 0;
         stat.tickets += t;
@@ -823,23 +870,29 @@ export async function snapshotCurrentChapter() {
           animalBountyTix += t;
           animalBountyCost += c;
           animalBountyCount++;
+          if (!isMan) autoAnimalBountyCount++;
         } else {
           bountyTix += t;
           bountyCost += c;
           bountyCount++;
+          if (!isMan) autoBountyCount++;
         }
       }
     });
 
     (wkVal.chores || []).forEach(c => {
       if (c.completed || c.checked) {
-        const t = (c.baseTickets || c.tickets || 1);
+        const isMan = Boolean(c.isManual);
+        const base = (c.baseTickets || c.tickets || 1);
+        const t = isMan ? base : (base + vipBonus);
         const cCost = (c.itemsCost || c.cost || 0);
         stat.tickets += t;
         stat.cost += cCost;
         choreTix += t;
         choreCost += cCost;
         choreCount++;
+        if (isMan) manualChoreCount++;
+        else autoChoreCount++;
       }
     });
   });
@@ -852,7 +905,11 @@ export async function snapshotCurrentChapter() {
         weeklyMap.set(dWeek, { tickets: 0, cost: 0 });
       }
       const stat = weeklyMap.get(dWeek);
-      stat.tickets += (d.yield || d.tickets || 0);
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const isManual = Boolean(d.isManual);
+      const wasDouble = Boolean(d.hasDoubleBonus);
+      const rawYield = isManual ? base : (wasDouble ? (base + vipBonus) * 2 : (base + vipBonus));
+      stat.tickets += rawYield;
       stat.cost += (d.itemsCost || d.cost || 0);
     }
   });
@@ -869,19 +926,46 @@ export async function snapshotCurrentChapter() {
   const trackTix = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
 
+  const rawTotalTickets = delivTix + bountyTix + animalBountyTix + choreTix + loginCount + trackTix;
+  const rawTotalCost = delivCost + bountyCost + animalBountyCost + choreCost + trackCost;
+  const efficiencyRatio = rawTotalTickets > 0 ? (rawTotalCost / rawTotalTickets) : 0;
+
   const newEntry = {
     chapterId: ACTIVE_CHAPTER_ID,
     chapterTitle: chapterTitle.trim(),
     archivedAt: new Date().toISOString(),
     isLocked: isLocked,
-    totalTickets: totalTix,
-    totalCost: totalCost,
+    totalTickets: rawTotalTickets,
+    totalCost: rawTotalCost,
     efficiencyRatio: efficiencyRatio,
     categories: {
-      deliveries: { count: masterDeliveries.length, tickets: delivTix, cost: delivCost },
-      bounties: { count: bountyCount, tickets: bountyTix, cost: bountyCost },
-      animalBounties: { count: animalBountyCount, tickets: animalBountyTix, cost: animalBountyCost },
-      chores: { count: choreCount, tickets: choreTix, cost: choreCost },
+      deliveries: { 
+        count: masterDeliveries.length, 
+        tickets: delivTix, 
+        cost: delivCost,
+        doubleCount: delivDoubleCount,
+        autoCount: autoDelivCount,
+        manualCount: manualDelivCount
+      },
+      bounties: { 
+        count: bountyCount, 
+        tickets: bountyTix, 
+        cost: bountyCost,
+        autoCount: autoBountyCount
+      },
+      animalBounties: { 
+        count: animalBountyCount, 
+        tickets: animalBountyTix, 
+        cost: animalBountyCost,
+        autoCount: autoAnimalBountyCount
+      },
+      chores: { 
+        count: choreCount, 
+        tickets: choreTix, 
+        cost: choreCost,
+        autoCount: autoChoreCount,
+        manualCount: manualChoreCount
+      },
       logins: { count: loginCount, tickets: loginCount, cost: 0 },
       tracked: { tickets: trackTix, cost: trackCost }
     },
@@ -959,7 +1043,44 @@ export function exportChapterLog(index) {
   if (!logs[index]) return;
 
   const item = logs[index];
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(item, null, 2));
+  const cardChapterKey = item.chapterId || `chapter_${index}`;
+  const savedBoost = localStorage.getItem(`sfl_chapter_boost_${cardChapterKey}`);
+  const boostLevel = savedBoost !== null ? parseInt(savedBoost, 10) : getActiveBoostCount();
+
+  const cats = item.categories || {};
+  const deliv = cats.deliveries || {};
+  const bounty = cats.bounties || {};
+  const animal = cats.animalBounties || {};
+  const chore = cats.chores || {};
+
+  const autoDeliv = deliv.autoCount !== undefined ? deliv.autoCount : Math.max(0, (deliv.count || 0) - (deliv.manualCount || 0));
+  const doubleDeliv = deliv.doubleCount || 0;
+  const autoBounty = bounty.autoCount !== undefined ? bounty.autoCount : (bounty.count || 0);
+  const autoAnimal = animal.autoCount !== undefined ? animal.autoCount : (animal.count || 0);
+  const autoChore = chore.autoCount !== undefined ? chore.autoCount : Math.max(0, (chore.count || 0) - (chore.manualCount || 0));
+
+  const extraDelivTix = boostLevel * (autoDeliv + doubleDeliv);
+  const extraBountyTix = boostLevel * autoBounty;
+  const extraAnimalTix = boostLevel * autoAnimal;
+  const extraChoreTix = boostLevel * autoChore;
+  const extraTotalTix = extraDelivTix + extraBountyTix + extraAnimalTix + extraChoreTix;
+
+  const exportObj = {
+    ...item,
+    activeBoosts: boostLevel,
+    boostedTotalTickets: (item.totalTickets || 0) + extraTotalTix,
+    rawTotalTickets: item.totalTickets || 0,
+    categoriesWithBoosts: {
+      deliveries: { ...deliv, boostedTickets: (deliv.tickets || 0) + extraDelivTix },
+      bounties: { ...bounty, boostedTickets: (bounty.tickets || 0) + extraBountyTix },
+      animalBounties: { ...animal, boostedTickets: (animal.tickets || 0) + extraAnimalTix },
+      chores: { ...chore, boostedTickets: (chore.tickets || 0) + extraChoreTix },
+      logins: cats.logins || {},
+      tracked: cats.tracked || {}
+    }
+  };
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
   const downloadAnchor = document.createElement('a');
   downloadAnchor.setAttribute("href", dataStr);
   downloadAnchor.setAttribute("download", `sunforge_${(item.chapterTitle || 'chapter').replace(/\s+/g, '_').toLowerCase()}.json`);
