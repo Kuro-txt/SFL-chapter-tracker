@@ -27,6 +27,7 @@ import {
   deleteWeeklyItem,
   openChapterLogsModal,
   closeChapterLogsModal,
+  setChapterLogBoost,
   snapshotCurrentChapter,
   deleteChapterLog,
   exportChapterLog
@@ -147,6 +148,7 @@ window.updateHistoryItemCost = updateHistoryItemCost;
 window.deleteWeeklyItem = deleteWeeklyItem;
 window.openChapterLogsModal = openChapterLogsModal;
 window.closeChapterLogsModal = closeChapterLogsModal;
+window.setChapterLogBoost = setChapterLogBoost;
 window.snapshotCurrentChapter = snapshotCurrentChapter;
 window.deleteChapterLog = deleteChapterLog;
 window.exportChapterLog = exportChapterLog;
