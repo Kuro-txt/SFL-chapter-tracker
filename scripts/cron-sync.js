@@ -18,6 +18,29 @@ export function normalizeFarmId(rawId) {
   return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : null;
 }
 
+export function isAnimalBountyHelper(item) {
+  if (!item) return false;
+  if (item.category === 'animal' || item.type === 'animal') return true;
+  if (item.level !== undefined && item.level !== null) return true;
+  if (item.tier !== undefined && item.tier !== null) return true;
+  const rawName = typeof item === 'string' ? item : (item.name || '');
+  const animalKeywords = ['cow', 'sheep', 'chicken', 'bull', 'pig', 'duck', 'goat', 'animal'];
+  const lowerName = rawName.toLowerCase();
+  if (animalKeywords.some(kw => lowerName.includes(kw))) return true;
+  if (/(?:lvl|level|#|\()\s*(\d+)/i.test(rawName)) return true;
+  return false;
+}
+
+export function hasWeeklyBountiesBonusHelper(bountiesList) {
+  if (!Array.isArray(bountiesList) || bountiesList.length === 0) return false;
+  const regularBounties = bountiesList.filter(b => !isAnimalBountyHelper(b));
+  if (regularBounties.length === 0) return false;
+  return regularBounties.every(b => {
+    if (!b || b.isSkipped) return false;
+    return b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+  });
+}
+
 function getBatchHeaders(apiKey = '') {
   const keyToUse = (apiKey && apiKey.trim()) || (process.env.SFL_API_KEY && process.env.SFL_API_KEY.trim()) || '';
   const headers = {
@@ -486,6 +509,9 @@ async function runSync() {
             totalCalculatedCost += bCost;
           }
         });
+        if (hasWeeklyBountiesBonusHelper(vault.bounties)) {
+          totalCalculatedTickets += 100;
+        }
 
         (vault.chores || []).forEach(c => {
           const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
@@ -506,6 +532,9 @@ async function runSync() {
               totalCalculatedCost += (b.itemsCost || b.cost || 0);
             }
           });
+          if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+            totalCalculatedTickets += 100;
+          }
           (wk.chores || []).forEach(c => {
             if (c.completed || c.checked) {
               totalCalculatedTickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
@@ -590,6 +619,9 @@ async function runSync() {
               }
             }
           });
+          if (hasWeeklyBountiesBonusHelper(vault.bounties)) {
+            bountyTix += 100;
+          }
 
           let choreCount = 0, choreTix = 0, choreCost = 0;
           let autoChoreCount = 0, manualChoreCount = 0;
@@ -627,6 +659,9 @@ async function runSync() {
                 }
               }
             });
+            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+              bountyTix += 100;
+            }
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
                 choreCount++;
@@ -662,6 +697,11 @@ async function runSync() {
             }
           });
 
+          if (hasWeeklyBountiesBonusHelper(vault.bounties)) {
+            if (!weeklyProgMap.has(currentWeekMonday)) weeklyProgMap.set(currentWeekMonday, { tickets: 0, cost: 0 });
+            weeklyProgMap.get(currentWeekMonday).tickets += 100;
+          }
+
           Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
             const normWeek = getMondayBasedWeekId(wk.weekId || wkKey);
             if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { tickets: 0, cost: 0 });
@@ -672,6 +712,9 @@ async function runSync() {
                 stat.cost += (b.itemsCost || b.cost || 0);
               }
             });
+            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+              stat.tickets += 100;
+            }
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
                 stat.tickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));

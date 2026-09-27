@@ -87,6 +87,16 @@ export function isAnimalBounty(item) {
   return false;
 }
 
+export function hasWeeklyBountiesBonus(bountiesList) {
+  if (!Array.isArray(bountiesList) || bountiesList.length === 0) return false;
+  const regularBounties = bountiesList.filter(b => !isAnimalBounty(b));
+  if (regularBounties.length === 0) return false;
+  return regularBounties.every(b => {
+    if (!b || b.isSkipped) return false;
+    return b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+  });
+}
+
 export function resolveAnimalLevel(item) {
   if (item.level) return item.level;
   if (item.tier) return item.tier;

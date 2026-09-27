@@ -3,6 +3,8 @@ import {
   getActiveBoostCount, 
   getActiveVipBonus, 
   getMondayBasedWeekId,
+  isAnimalBounty,
+  hasWeeklyBountiesBonus,
   getDeliveryRecords
 } from './state.js';
 import { recalculateAll } from './render.js';
@@ -341,6 +343,9 @@ export async function saveProgressToCloudKV(silent = false) {
       calculatedTotalCost += lineCost;
     }
   });
+  if (hasWeeklyBountiesBonus(state.globalData?.bounties)) {
+    calculatedTotalTickets += 100;
+  }
 
   // 3. Current Chores
   (state.globalData?.chores || []).forEach(c => {
@@ -368,10 +373,13 @@ export async function saveProgressToCloudKV(silent = false) {
     if (wkKey === currentWeekMonday) return;
     (wk.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
-        calculatedTotalTickets += (b.baseTickets || b.tickets || 0);
+        calculatedTotalTickets += (b.isManual ? (b.baseTickets || b.tickets || 0) : ((b.baseTickets || b.tickets || 0) + boostCount));
         calculatedTotalCost += (b.itemsCost || b.cost || 0);
       }
     });
+    if (hasWeeklyBountiesBonus(wk.bounties)) {
+      calculatedTotalTickets += 100;
+    }
     (wk.chores || []).forEach(c => {
       if (c.completed || c.checked) {
         calculatedTotalTickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus + boostCount));

@@ -6,6 +6,7 @@ import {
   getActiveVipBonus, 
   getMondayBasedWeekId, 
   isAnimalBounty, 
+  hasWeeklyBountiesBonus,
   getDeliveryRecords 
 } from './state.js';
 
@@ -83,6 +84,7 @@ export function recalculateAll() {
         cost: 0,
         delivTix: 0,
         bountyTix: 0,
+        bountyBonusTix: 0,
         animalBountyTix: 0,
         choreTix: 0
       };
@@ -94,6 +96,9 @@ export function recalculateAll() {
       weeklyStats[normMonday].delivTix += tix;
     } else if (category === 'bounty') {
       weeklyStats[normMonday].bountyTix += tix;
+    } else if (category === 'bountyBonus') {
+      weeklyStats[normMonday].bountyTix += tix;
+      weeklyStats[normMonday].bountyBonusTix = (weeklyStats[normMonday].bountyBonusTix || 0) + tix;
     } else if (category === 'animalBounty') {
       weeklyStats[normMonday].animalBountyTix += tix;
     } else if (category === 'chore') {
@@ -252,6 +257,13 @@ export function recalculateAll() {
     }
   });
 
+  // Full Regular Bounty Board Completion Bonus (+100 flat tickets for 100% regular bounties)
+  if (hasWeeklyBountiesBonus(state.globalData.bounties)) {
+    totalBountyTix += 100;
+    weekBountyTix += 100;
+    addWeeklyStat(currentWeekMonday, 100, 0, 'bountyBonus');
+  }
+
   // 3. Chores Calculation
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
@@ -300,6 +312,11 @@ export function recalculateAll() {
       }
     });
 
+    if (hasWeeklyBountiesBonus(wk.bounties)) {
+      totalBountyTix += 100;
+      addWeeklyStat(pastMonday, 100, 0, 'bountyBonus');
+    }
+
     (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -334,6 +351,7 @@ export function recalculateAll() {
     const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
     return !isDone;
   }).length;
+  const isCurBoardComplete = regularBounties.length > 0 && activeBountiesCount === 0;
 
   const animalBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b));
   const activeAnimalBountiesCount = animalBounties.filter(b => {
@@ -350,7 +368,7 @@ export function recalculateAll() {
   }).length;
 
   setElemText('deliveriesCount', `${activeDeliveriesCount} Orders`);
-  setElemText('bountiesCount', `${activeBountiesCount} Items`);
+  setElemText('bountiesCount', isCurBoardComplete ? '✨ ALL DONE (+100)!' : `${activeBountiesCount} Items`);
   setElemText('animalBountiesCount', `${activeAnimalBountiesCount} Animals`);
   setElemText('choresCount', `${activeChoresCount} Tasks`);
 
@@ -448,6 +466,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
       cost: 0,
       delivTix: 0,
       bountyTix: 0,
+      bountyBonusTix: 0,
       animalBountyTix: 0,
       choreTix: 0
     };
@@ -459,6 +478,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
       cost: data.cost || 0,
       delivTix: data.delivTix || 0,
       bountyTix: data.bountyTix || 0,
+      bountyBonusTix: data.bountyBonusTix || 0,
       animalBountyTix: data.animalBountyTix || 0,
       choreTix: data.choreTix || 0,
       isCurrent,
@@ -573,16 +593,17 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
 
     const tixLabel = item.tickets > 0 ? `${item.tickets}` : '0';
     const costText = item.cost > 0 ? `${formatSFL(item.cost)} SFL` : '';
+    const bonusTitleText = item.bountyBonusTix > 0 ? ` (incl. +${item.bountyBonusTix} Board Bonus)` : '';
 
     barsSvg += `
       <g class="chart-bar-group" 
-         onmouseenter="showChartTooltip(event, '${item.label}', '${item.mondayKey}', ${item.delivTix}, ${item.bountyTix}, ${item.animalBountyTix}, ${item.choreTix}, ${item.tickets}, ${item.cost})"
+         onmouseenter="showChartTooltip(event, '${item.label}', '${item.mondayKey}', ${item.delivTix}, ${item.bountyTix}, ${item.animalBountyTix}, ${item.choreTix}, ${item.tickets}, ${item.cost}, ${item.bountyBonusTix || 0})"
          onmousemove="moveChartTooltip(event)"
          onmouseleave="hideChartTooltip()"
-         onclick="showChartTooltip(event, '${item.label}', '${item.mondayKey}', ${item.delivTix}, ${item.bountyTix}, ${item.animalBountyTix}, ${item.choreTix}, ${item.tickets}, ${item.cost})"
+         onclick="showChartTooltip(event, '${item.label}', '${item.mondayKey}', ${item.delivTix}, ${item.bountyTix}, ${item.animalBountyTix}, ${item.choreTix}, ${item.tickets}, ${item.cost}, ${item.bountyBonusTix || 0})"
          style="cursor: pointer;">
         <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" rx="6" fill="${barFill}" stroke="${strokeColor}" stroke-width="2">
-          <title>📅 ${item.label} (${item.mondayKey})\n📦 Deliveries: ${item.delivTix} Tix\n📜 Bounties: ${item.bountyTix} Tix\n🐄 Animal Bounties: ${item.animalBountyTix} Tix\n🧹 Chores: ${item.choreTix} Tix\n🎟️ Total: ${item.tickets} Tix\n💰 Cost: ${formatSFL(item.cost)} SFL</title>
+          <title>📅 ${item.label} (${item.mondayKey})\n📦 Deliveries: ${item.delivTix} Tix\n📜 Bounties: ${item.bountyTix} Tix${bonusTitleText}\n🐄 Animal Bounties: ${item.animalBountyTix} Tix\n🧹 Chores: ${item.choreTix} Tix\n🎟️ Total: ${item.tickets} Tix\n💰 Cost: ${formatSFL(item.cost)} SFL</title>
         </rect>
         <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="13" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
         <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="12" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
@@ -601,7 +622,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   `;
 }
 
-export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, animalBountyTix, choreTix, totalTix, totalCost) {
+export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, animalBountyTix, choreTix, totalTix, totalCost, bountyBonusTix = 0) {
   let tooltip = document.getElementById('chartFloatingTooltip');
   if (!tooltip) {
     tooltip = document.createElement('div');
@@ -611,13 +632,15 @@ export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, anima
   }
 
   const sflCostStr = formatSFL(totalCost || 0);
+  const bonusBadgeHtml = bountyBonusTix > 0 ? ` <span style="color:#FFD54F; font-size:11px; font-weight:900;">(+${bountyBonusTix} Board Bonus)</span>` : '';
+
   tooltip.innerHTML = `
     <div style="color:#FFD54F; font-size:12.5px; font-weight:900; border-bottom:1px dashed #d2b48c; padding-bottom:4px; margin-bottom:6px;">
       📅 <strong>${(label || 'WEEK').toUpperCase()} BREAKDOWN:</strong>
     </div>
     <div style="display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:bold;">
       <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📦 Deliveries:</span><strong style="color:#FFFFFF; font-size:12.5px;">${delivTix || 0} Tix</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📜 Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${bountyTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📜 Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${bountyTix || 0} Tix${bonusBadgeHtml}</strong></div>
       <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>🐄 Animal Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${animalBountyTix || 0} Tix</strong></div>
       <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>🧹 Chores:</span><strong style="color:#FFFFFF; font-size:12.5px;">${choreTix || 0} Tix</strong></div>
     </div>

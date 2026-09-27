@@ -3,6 +3,7 @@ import {
   formatSFL, 
   resolveAnimalLevel, 
   isAnimalBounty,
+  hasWeeklyBountiesBonus,
   getActiveBoostCount,
   getActiveVipBonus,
   getDeliveryRecords
@@ -147,6 +148,11 @@ export function openWeekBreakdownModal(mondayKey, label) {
     }
   });
 
+  const hasBountyBonus = hasWeeklyBountiesBonus(allBounties);
+  if (hasBountyBonus) {
+    bountyTickets += 100;
+  }
+
   // 3. Chores for this week
   const weekChores = [];
   let choreTickets = 0;
@@ -204,7 +210,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
       <div style="background:#FFF8DC; border:2px solid #8B5A2B; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:3px;">
         <span style="font-size:11px; font-weight:900; color:#8B4513;">📜 BOUNTIES</span>
         <span style="font-size:14px; font-weight:900; color:#2E7D32;">+${bountyTickets} Tix</span>
-        <span style="font-size:10px; font-weight:bold; color:#795548;">${formatSFL(bountyCost)} SFL (${weekBounties.filter(b => b.isDone).length}/${weekBounties.length})</span>
+        <span style="font-size:10px; font-weight:bold; color:#795548;">${formatSFL(bountyCost)} SFL (${weekBounties.filter(b => b.isDone).length}/${weekBounties.length})${hasBountyBonus ? ' <span style="color:#2E7D32; font-weight:900;">(+100 Bonus)</span>' : ''}</span>
       </div>
       <div style="background:#FFF8DC; border:2px solid #8B5A2B; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:3px;">
         <span style="font-size:11px; font-weight:900; color:#8B4513;">🐄 ANIMAL BOUNTIES</span>
@@ -454,6 +460,19 @@ export function openCategorySummaryModal(cat) {
         <span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>
       </div>`;
     }).join('');
+
+    if (!isAnimal && hasWeeklyBountiesBonus(state.globalData?.bounties)) {
+      catTickets += 100;
+      bodyEl.innerHTML = `
+        <div style="background:#E8F5E9; border:2px solid #2E7D32; border-radius:8px; padding:10px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong style="color:#1B5E20; font-size:12px;">🎉 100% REGULAR BOUNTY BOARD COMPLETED!</strong>
+            <div style="font-size:11px; color:#2E7D32; margin-top:2px;">All regular bounties done — +100 Flat Bonus Tickets Awarded!</div>
+          </div>
+          <span style="font-size:15px; font-weight:900; color:#1B5E20; background:#C8E6C9; padding:4px 8px; border-radius:6px;">+100 Tix</span>
+        </div>
+      ` + bodyEl.innerHTML;
+    }
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
     const currentChores = state.globalData.chores || [];
@@ -853,7 +872,18 @@ export async function snapshotCurrentChapter() {
   let animalBountyTix = 0, animalBountyCost = 0, animalBountyCount = 0, autoAnimalBountyCount = 0;
   let choreTix = 0, choreCost = 0, choreCount = 0, autoChoreCount = 0, manualChoreCount = 0;
 
-  const rawWeeks = (state.globalData?.cloudHistory?.weeks) || (state.currentVaultData?.weeks) || {};
+  const curWeekMonday = getMondayBasedWeekId();
+  const rawWeeks = { ...((state.globalData?.cloudHistory?.weeks) || (state.currentVaultData?.weeks) || {}) };
+  if (!rawWeeks[curWeekMonday]) {
+    rawWeeks[curWeekMonday] = { weekId: curWeekMonday, bounties: state.globalData?.bounties || [], chores: state.globalData?.chores || [] };
+  } else {
+    if (state.globalData?.bounties && state.globalData.bounties.length > 0) {
+      rawWeeks[curWeekMonday].bounties = state.globalData.bounties;
+    }
+    if (state.globalData?.chores && state.globalData.chores.length > 0) {
+      rawWeeks[curWeekMonday].chores = state.globalData.chores;
+    }
+  }
   const weeklyMap = new Map();
 
   Object.entries(rawWeeks).forEach(([wkId, wkVal]) => {
@@ -884,6 +914,11 @@ export async function snapshotCurrentChapter() {
         }
       }
     });
+
+    if (hasWeeklyBountiesBonus(wkVal.bounties)) {
+      bountyTix += 100;
+      stat.tickets += 100;
+    }
 
     (wkVal.chores || []).forEach(c => {
       if (c.completed || c.checked) {
