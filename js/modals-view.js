@@ -148,7 +148,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
     }
   });
 
-  const hasBountyBonus = hasWeeklyBountiesBonus(allBounties);
+  const hasBountyBonus = isCurrentWeek && hasWeeklyBountiesBonus(allBounties);
   if (hasBountyBonus) {
     bountyTickets += 100;
   }
@@ -915,7 +915,7 @@ export async function snapshotCurrentChapter() {
       }
     });
 
-    if (hasWeeklyBountiesBonus(wkVal.bounties)) {
+    if (normWeek === curWeekMonday && hasWeeklyBountiesBonus(state.globalData?.bounties || wkVal.bounties)) {
       bountyTix += 100;
       stat.tickets += 100;
     }

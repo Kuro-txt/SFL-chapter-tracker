@@ -532,9 +532,6 @@ async function runSync() {
               totalCalculatedCost += (b.itemsCost || b.cost || 0);
             }
           });
-          if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
-            totalCalculatedTickets += 100;
-          }
           (wk.chores || []).forEach(c => {
             if (c.completed || c.checked) {
               totalCalculatedTickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
@@ -659,9 +656,6 @@ async function runSync() {
                 }
               }
             });
-            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
-              bountyTix += 100;
-            }
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
                 choreCount++;
@@ -712,9 +706,6 @@ async function runSync() {
                 stat.cost += (b.itemsCost || b.cost || 0);
               }
             });
-            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
-              stat.tickets += 100;
-            }
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
                 stat.tickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));

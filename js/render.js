@@ -312,11 +312,6 @@ export function recalculateAll() {
       }
     });
 
-    if (hasWeeklyBountiesBonus(wk.bounties)) {
-      totalBountyTix += 100;
-      addWeeklyStat(pastMonday, 100, 0, 'bountyBonus');
-    }
-
     (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);

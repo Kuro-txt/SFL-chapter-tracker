@@ -377,9 +377,6 @@ export async function saveProgressToCloudKV(silent = false) {
         calculatedTotalCost += (b.itemsCost || b.cost || 0);
       }
     });
-    if (hasWeeklyBountiesBonus(wk.bounties)) {
-      calculatedTotalTickets += 100;
-    }
     (wk.chores || []).forEach(c => {
       if (c.completed || c.checked) {
         calculatedTotalTickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus + boostCount));

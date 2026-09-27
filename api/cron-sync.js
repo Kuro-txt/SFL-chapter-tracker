@@ -527,9 +527,6 @@ export default async function handler(req, res) {
                 totalCalculatedCost += (b.itemsCost || b.cost || 0);
               }
             });
-            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
-              totalCalculatedTickets += 100;
-            }
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
                 totalCalculatedTickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
@@ -654,9 +651,6 @@ export default async function handler(req, res) {
                   }
                 }
               });
-              if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
-                bountyTix += 100;
-              }
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   choreCount++;
@@ -707,9 +701,6 @@ export default async function handler(req, res) {
                   stat.cost += (b.itemsCost || b.cost || 0);
                 }
               });
-              if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
-                stat.tickets += 100;
-              }
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   stat.tickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
