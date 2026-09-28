@@ -311,6 +311,12 @@ export function recalculateAll() {
         addWeeklyStat(pastMonday, finalTix, bCost, isAnimal ? 'animalBounty' : 'bounty');
       }
     });
+    // Add +100 bounty board bonus for past weeks if all regular bounties are completed
+    if (hasWeeklyBountiesBonus(wk.bounties)) {
+      totalBountyTix += 100;
+      addWeeklyStat(pastMonday, 100, 0, 'bountyBonus');
+    }
+    
 
     (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
