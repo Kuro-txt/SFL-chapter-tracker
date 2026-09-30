@@ -800,21 +800,108 @@ export function renderChapterLogsList() {
     const displayTotalTickets = baseTotalTickets + extraTotalVip + extraTotalBoost;
     const displayEfficiencyRatio = displayTotalTickets > 0 ? (item.totalCost / displayTotalTickets) : 0;
 
+    // Helper to resolve week units for both new and existing snapshots
+    const masterDeliveries = getDeliveryRecords().filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped);
+    const cloudWeeks = state.globalData?.cloudHistory?.weeks || (function() {
+      try { return JSON.parse(localStorage.getItem('sfl_cloud_weeks') || '{}'); } catch(e) { return {}; }
+    })();
+
+    const isManuallyEditedOrAdded = (d) => {
+      if (!d) return false;
+      return Boolean(d.isManual) || 
+             (typeof d.id === 'string' && d.id.startsWith('manual_')) || 
+             Boolean(d.isCustomTickets) || 
+             (d.userTickets !== undefined && d.userTickets !== null) ||
+             Boolean(d.isCustom);
+    };
+
+    const liveWeekUnitsMap = new Map();
+    masterDeliveries.forEach(d => {
+      const isManualOrEdited = isManuallyEditedOrAdded(d);
+      const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
+      const dDate = d.completedAt || d.completedDate;
+      const dWeek = getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? getMondayBasedWeekId() : null));
+      if (!liveWeekUnitsMap.has(dWeek)) {
+        liveWeekUnitsMap.set(dWeek, { vipUnits: 0, boostUnits: 0, manualTickets: 0 });
+      }
+      const st = liveWeekUnitsMap.get(dWeek);
+      if (isManualOrEdited) {
+        st.manualTickets += (d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2));
+      } else {
+        st.vipUnits += wasDouble ? 2 : 1;
+        st.boostUnits += wasDouble ? 2 : 1;
+      }
+    });
+
+    Object.entries(cloudWeeks).forEach(([wkId, wkVal]) => {
+      if (!wkVal || typeof wkVal !== 'object') return;
+      const normWk = getMondayBasedWeekId(wkVal.weekId || wkId);
+      if (!liveWeekUnitsMap.has(normWk)) {
+        liveWeekUnitsMap.set(normWk, { vipUnits: 0, boostUnits: 0, manualTickets: 0 });
+      }
+      const st = liveWeekUnitsMap.get(normWk);
+      (wkVal.bounties || []).forEach(b => {
+        if (b.completed || b.checked) {
+          const isMan = isManuallyEditedOrAdded(b);
+          if (isMan) {
+            st.manualTickets += (b.baseTickets || b.tickets || 0);
+          } else {
+            st.boostUnits += 1;
+          }
+        }
+      });
+      (wkVal.chores || []).forEach(c => {
+        if (c.completed || c.checked) {
+          const isMan = isManuallyEditedOrAdded(c);
+          if (isMan) {
+            st.manualTickets += (c.baseTickets || c.tickets || 1);
+          } else {
+            st.boostUnits += 1;
+            st.vipUnits += 1;
+          }
+        }
+      });
+    });
+
     const weeks = Array.isArray(item.weeklySummary) ? item.weeklySummary : [];
     const weeksHtml = weeks.length > 0 ? `
       <div style="border-top: 1.5px dashed #D2B48C; padding-top: 8px; margin-top: 4px;">
         <span class="chapter-weekly-title">Weekly Progression (${weeks.length} Weeks Recorded):</span>
         <div class="chapter-weekly-grid">
           ${weeks.map(w => {
+            const normWk = getMondayBasedWeekId(w.weekId);
+            const liveUnits = liveWeekUnitsMap.get(normWk) || liveWeekUnitsMap.get(w.weekId);
+
+            let weekBoostUnits = w.boostUnits;
+            let weekVipUnits = w.vipUnits;
+            let weekManualTix = w.manualTickets || 0;
+
+            if (weekBoostUnits === undefined && liveUnits && (liveUnits.boostUnits > 0 || liveUnits.vipUnits > 0 || liveUnits.manualTickets > 0)) {
+              weekBoostUnits = liveUnits.boostUnits;
+              weekVipUnits = liveUnits.vipUnits;
+              weekManualTix = liveUnits.manualTickets;
+            }
+
+            // Fallback for older snapshots where raw tasks aren't in live cache
+            if (weekBoostUnits === undefined) {
+              const autoTicketsInWeek = Math.max(0, (w.tickets || 0) - weekManualTix);
+              const totalAutoTickets = Math.max(1, (item.totalTickets || 0));
+              const proportion = autoTicketsInWeek / totalAutoTickets;
+              weekBoostUnits = Math.round(totalBoostUnits * proportion);
+              weekVipUnits = Math.round(totalVipUnits * proportion);
+            }
+
+            if (weekVipUnits === undefined) {
+              weekVipUnits = 0;
+            }
+
             const weekBaseTix = w.baseTickets !== undefined 
               ? w.baseTickets 
-              : (w.vipUnits !== undefined
-                  ? (snapshotHadVip ? Math.max(0, (w.tickets || 0) - (w.vipUnits * 2)) : (w.tickets || 0))
-                  : (w.tickets || 0));
+              : (snapshotHadVip ? Math.max(0, (w.tickets || 0) - (weekVipUnits * 2)) : (w.tickets || 0));
 
-            // Strictly automated units receive VIP and Boost bonuses. Manual tasks get 0!
-            const extraWeekVip = vipMultiplier * (w.vipUnits || 0);
-            const extraWeekBoost = boostLevel * (w.boostUnits || 0);
+            // Strictly automated units receive VIP and Boost bonuses. Manual and manually edited tasks get 0!
+            const extraWeekVip = vipMultiplier * (weekVipUnits || 0);
+            const extraWeekBoost = boostLevel * (weekBoostUnits || 0);
             const displayWeekTix = weekBaseTix + extraWeekVip + extraWeekBoost;
             return `<span class="chapter-week-pill">W${w.week}: ${displayWeekTix} Tix (${formatSFL(w.cost)} SFL)</span>`;
           }).join('')}
@@ -927,8 +1014,12 @@ export async function snapshotCurrentChapter() {
   const vipBonus = getActiveVipBonus(); // 2 if VIP, 0 otherwise
   const curWeekMonday = getMondayBasedWeekId();
 
-  // Helper to accurately identify manual tasks
-  const isManTask = (item) => Boolean(item?.isManual) || (typeof item?.id === 'string' && item.id.startsWith('manual_'));
+  // Helper to accurately identify manual and manually edited tasks
+  const isManTask = (item) => Boolean(item?.isManual) || 
+                             (typeof item?.id === 'string' && item.id.startsWith('manual_')) || 
+                             Boolean(item?.isCustomTickets) || 
+                             (item?.userTickets !== undefined && item?.userTickets !== null) || 
+                             Boolean(item?.isCustom);
 
   // 1. Raw Deliveries (Base without VIP or Boost, and * 2 on double event days)
   const masterDeliveries = getDeliveryRecords().filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped);

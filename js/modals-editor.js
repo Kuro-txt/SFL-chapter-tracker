@@ -545,16 +545,7 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     const target = master[itemIdx];
 
     if (target) {
-      const isManual = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
-      const vip = isManual ? 0 : getActiveVipBonus();
-      const boost = isManual ? 0 : getActiveBoostCount();
-      
-      // Bug Fix: divide by 2 if double delivery bonus applies before subtracting flat bonuses
-      let effectiveInput = inputVal;
-      if (target.hasDoubleBonus && !isManual && !target.isStacked) {
-        effectiveInput = Math.round(effectiveInput / 2);
-      }
-      const baseVal = Math.max(1, effectiveInput - vip - boost);
+      const baseVal = Math.max(0, inputVal);
       target.baseTickets = baseVal;
       target.tickets = baseVal;
       target.userTickets = baseVal;
@@ -575,11 +566,7 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     }
 
     if (target) {
-      const isManual = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
-      const vip = (type === 'chore' && !isManual) ? getActiveVipBonus() : 0;
-      const boost = isManual ? 0 : getActiveBoostCount();
-      const baseVal = Math.max(1, inputVal - vip - boost);
-
+      const baseVal = Math.max(0, inputVal);
       target.baseTickets = baseVal;
       target.tickets = baseVal;
       target.userTickets = baseVal;

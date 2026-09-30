@@ -303,7 +303,7 @@ export async function saveProgressToCloudKV(silent = false) {
     const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
     if (isDone) {
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      const isManual = Boolean(d.isManual);
+      const isManual = Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_')) || Boolean(d.isCustomTickets) || (d.userTickets !== undefined);
       const isStacked = Boolean(d.isStacked);
       const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDate);
       const isToday = !isManual && (compDate === todayDate);
@@ -357,6 +357,7 @@ export async function saveProgressToCloudKV(silent = false) {
     const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
     if (isTicked) {
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_')) || Boolean(b.isCustomTickets) || (b.userTickets !== undefined);
       const yieldAmt = b.isManual ? base : (base + boostCount);
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
@@ -372,6 +373,7 @@ export async function saveProgressToCloudKV(silent = false) {
     const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
     if (isTicked) {
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const isManual = Boolean(c.isManual) || (typeof c.id === 'string' && c.id.startsWith('manual_')) || Boolean(c.isCustomTickets) || (c.userTickets !== undefined);
       const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
       const lineCost = (c.itemsCost || c.cost || 0);
       calculatedTotalTickets += yieldAmt;
@@ -393,13 +395,15 @@ export async function saveProgressToCloudKV(silent = false) {
     if (wkKey === currentWeekMonday) return;
     (wk.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
-        calculatedTotalTickets += (b.isManual ? (b.baseTickets || b.tickets || 0) : ((b.baseTickets || b.tickets || 0) + boostCount));
+        const isMan = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_')) || Boolean(b.isCustomTickets) || (b.userTickets !== undefined);
+        calculatedTotalTickets += (isMan ? (b.baseTickets || b.tickets || 0) : ((b.baseTickets || b.tickets || 0) + boostCount));
         calculatedTotalCost += (b.itemsCost || b.cost || 0);
       }
     });
     (wk.chores || []).forEach(c => {
       if (c.completed || c.checked) {
-        calculatedTotalTickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus + boostCount));
+        const isMan = Boolean(c.isManual) || (typeof c.id === 'string' && c.id.startsWith('manual_')) || Boolean(c.isCustomTickets) || (c.userTickets !== undefined);
+        calculatedTotalTickets += (isMan ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus + boostCount));
         calculatedTotalCost += (c.itemsCost || c.cost || 0);
       }
     });
