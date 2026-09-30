@@ -557,6 +557,8 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
       const baseVal = Math.max(1, effectiveInput - vip - boost);
       target.baseTickets = baseVal;
       target.tickets = baseVal;
+      target.userTickets = baseVal;
+      target.isCustomTickets = true;
     }
   } else {
     const parts = mapKeyOrIdx.split('_');
@@ -580,8 +582,19 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
 
       target.baseTickets = baseVal;
       target.tickets = baseVal;
+      target.userTickets = baseVal;
+      target.isCustomTickets = true;
     }
   }
+
+  try {
+    if (state.globalData?.archiveDeliveries) {
+      localStorage.setItem('sfl_archive_deliveries', JSON.stringify(state.globalData.archiveDeliveries));
+    }
+    if (state.globalData?.cloudHistory?.weeks) {
+      localStorage.setItem('sfl_cloud_weeks', JSON.stringify(state.globalData.cloudHistory.weeks));
+    }
+  } catch (e) {}
 
   renderColumnHistoryModalList();
   recalculateAll();
@@ -600,6 +613,8 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
     if (target) {
       target.cost = costVal;
       target.itemsCost = costVal;
+      target.userCost = costVal;
+      target.isCustomCost = true;
     }
   } else {
     const parts = mapKeyOrIdx.split('_');
@@ -618,8 +633,19 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
     if (target) {
       target.cost = costVal;
       target.itemsCost = costVal;
+      target.userCost = costVal;
+      target.isCustomCost = true;
     }
   }
+
+  try {
+    if (state.globalData?.archiveDeliveries) {
+      localStorage.setItem('sfl_archive_deliveries', JSON.stringify(state.globalData.archiveDeliveries));
+    }
+    if (state.globalData?.cloudHistory?.weeks) {
+      localStorage.setItem('sfl_cloud_weeks', JSON.stringify(state.globalData.cloudHistory.weeks));
+    }
+  } catch (e) {}
 
   renderColumnHistoryModalList();
   recalculateAll();

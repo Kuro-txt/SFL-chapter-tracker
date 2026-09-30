@@ -5,7 +5,7 @@ import {
   parseFarmData,
   CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
-import { reconcileDeliveriesWithNpcs } from './chapter.js';
+import { reconcileDeliveriesWithNpcs, preserveCustomTaskEdits } from './chapter.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -381,6 +381,10 @@ export default async function handler(req, res) {
             const savedManualChores = (currentWk.chores || []).filter(c => isManualBountyHelper(c));
             const savedManualBounties = (currentWk.bounties || []).filter(b => isManualBountyHelper(b));
 
+            // Preserve user edited tickets and costs
+            preserveCustomTaskEdits(parsed.activeBounties, currentWk.bounties || vault.bounties, false);
+            preserveCustomTaskEdits(parsed.choresList, currentWk.chores || vault.chores, true);
+
             currentWk.chores = [...parsed.choresList, ...savedManualChores];
             currentWk.bounties = [...parsed.activeBounties, ...savedManualBounties];
           }
@@ -401,10 +405,8 @@ export default async function handler(req, res) {
             }
           });
 
-          const existingManualChores = (vault.chores || []).filter(c => isManualBountyHelper(c));
-          const existingManualBounties = (vault.bounties || []).filter(b => isManualBountyHelper(b));
-          vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
-          vault.chores = [...parsed.choresList, ...existingManualChores];
+          vault.bounties = vault.weeks[currentWeekMonday].bounties;
+          vault.chores = vault.weeks[currentWeekMonday].chores;
           vault.milestones = parsed.liveMilestones;
           vault.npcSnapshots = parsed.npcsData;
 

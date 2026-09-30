@@ -104,6 +104,53 @@ export function sanitizeDeliveriesList(deliveries) {
   return Array.from(map.values());
 }
 
+export function preserveCustomTaskEdits(freshList, existingList, isChore = false) {
+  if (!Array.isArray(freshList) || !Array.isArray(existingList)) return freshList;
+  freshList.forEach(freshItem => {
+    if (!freshItem) return;
+    let match = null;
+    if (isChore) {
+      const freshKey = `${(freshItem.npc || '').toLowerCase().trim()}_${(freshItem.task || freshItem.name || '').toLowerCase().trim()}`;
+      match = existingList.find(e => {
+        if (!e) return false;
+        if (freshItem.id && e.id && String(freshItem.id) === String(e.id)) return true;
+        const eKey = `${(e.npc || '').toLowerCase().trim()}_${(e.task || e.name || '').toLowerCase().trim()}`;
+        return eKey === freshKey;
+      });
+    } else {
+      match = existingList.find(e => {
+        if (!e) return false;
+        if (freshItem.id && e.id && String(freshItem.id) === String(e.id)) return true;
+        const freshName = (freshItem.name || '').toLowerCase().trim();
+        const eName = (e.name || '').toLowerCase().trim();
+        if (freshName && eName && freshName === eName) {
+          if (freshItem.level !== undefined && e.level !== undefined) {
+            return Number(freshItem.level) === Number(e.level);
+          }
+          return true;
+        }
+        return false;
+      });
+    }
+
+    if (match) {
+      if (match.isCustomCost || match.userCost !== undefined) {
+        freshItem.cost = match.userCost !== undefined ? match.userCost : match.cost;
+        freshItem.itemsCost = freshItem.cost;
+        freshItem.userCost = freshItem.cost;
+        freshItem.isCustomCost = true;
+      }
+      if (match.isCustomTickets || match.userTickets !== undefined) {
+        freshItem.baseTickets = match.userTickets !== undefined ? match.userTickets : (match.baseTickets || match.tickets);
+        freshItem.tickets = freshItem.baseTickets;
+        freshItem.userTickets = freshItem.baseTickets;
+        freshItem.isCustomTickets = true;
+      }
+    }
+  });
+  return freshList;
+}
+
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
   if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
   if (!vault.npcSnapshots) vault.npcSnapshots = {};
@@ -231,11 +278,15 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         target.weekId = compWeek;
         target.deliveryCountAtCreation = currStat.deliveryCount;
         target.items = order.items || target.items;
-        target.itemsCost = order.itemsCost || target.itemsCost;
-        target.cost = order.itemsCost || target.cost;
+        if (!target.isCustomCost && target.userCost === undefined) {
+          target.itemsCost = order.itemsCost || target.itemsCost;
+          target.cost = order.itemsCost || target.cost;
+        }
         target.itemDetails = order.itemDetails || target.itemDetails;
-        target.baseTickets = order.baseTickets || target.baseTickets;
-        target.tickets = order.baseTickets || target.tickets;
+        if (!target.isCustomTickets && target.userTickets === undefined) {
+          target.baseTickets = order.baseTickets || target.baseTickets;
+          target.tickets = order.baseTickets || target.tickets;
+        }
       } else {
         const doneIdx = vault.archiveDeliveries.findIndex(d => d.id === targetDoneId);
         if (doneIdx !== -1) {
@@ -248,11 +299,15 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           target.completedDate = compDate;
           target.weekId = compWeek;
           target.items = order.items || target.items;
-          target.itemsCost = order.itemsCost || target.itemsCost;
-          target.cost = order.itemsCost || target.cost;
+          if (!target.isCustomCost && target.userCost === undefined) {
+            target.itemsCost = order.itemsCost || target.itemsCost;
+            target.cost = order.itemsCost || target.cost;
+          }
           target.itemDetails = order.itemDetails || target.itemDetails;
-          target.baseTickets = order.baseTickets || target.baseTickets;
-          target.tickets = order.baseTickets || target.tickets;
+          if (!target.isCustomTickets && target.userTickets === undefined) {
+            target.baseTickets = order.baseTickets || target.baseTickets;
+            target.tickets = order.baseTickets || target.tickets;
+          }
         } else {
           vault.archiveDeliveries.push({
             id: targetDoneId,
@@ -289,11 +344,15 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         const target = vault.archiveDeliveries[existingIdx];
         if (!target.completed) {
           target.items = order.items || target.items;
-          target.itemsCost = order.itemsCost || target.itemsCost;
-          target.cost = order.itemsCost || target.cost;
+          if (!target.isCustomCost && target.userCost === undefined) {
+            target.itemsCost = order.itemsCost || target.itemsCost;
+            target.cost = order.itemsCost || target.cost;
+          }
           target.itemDetails = order.itemDetails || target.itemDetails;
-          target.baseTickets = order.baseTickets || target.baseTickets;
-          target.tickets = order.baseTickets || target.tickets;
+          if (!target.isCustomTickets && target.userTickets === undefined) {
+            target.baseTickets = order.baseTickets || target.baseTickets;
+            target.tickets = order.baseTickets || target.tickets;
+          }
           target.deliveryCountAtCreation = nextTargetCount;
           target.skippedCountAtCreation = currStat.skippedCount;
           target.completed = false;
@@ -736,9 +795,16 @@ export default async function handler(req, res) {
           const savedManualChores = (currentWk.chores || []).filter(isMan);
           const savedManualBounties = (currentWk.bounties || []).filter(isMan);
 
+          // Preserve user edited tickets and costs on active tasks
+          preserveCustomTaskEdits(parsed.activeBounties, currentWk.bounties || userVault.bounties, false);
+          preserveCustomTaskEdits(parsed.choresList, currentWk.chores || userVault.chores, true);
+
           currentWk.chores = [...(parsed.choresList || []), ...savedManualChores];
           currentWk.bounties = [...(parsed.activeBounties || []), ...savedManualBounties];
         }
+
+        userVault.bounties = userVault.weeks[currentWeekMonday].bounties;
+        userVault.chores = userVault.weeks[currentWeekMonday].chores;
 
         // Populate completed past-week bounties from SFL into their historical week bucket
         (parsed.activeBounties || []).forEach(b => {
@@ -775,6 +841,7 @@ export default async function handler(req, res) {
       }
     }
 
+    const curWkId = getMondayBasedWeekId(new Date());
     return res.status(200).json({
       success: true,
       farmId,
@@ -785,8 +852,8 @@ export default async function handler(req, res) {
       milestones: parsed.liveMilestones,
       deliveries: parsed.deliveryList,
       archiveDeliveries: userVault ? (userVault.archiveDeliveries || []) : [],
-      bounties: parsed.activeBounties,
-      chores: parsed.choresList,
+      bounties: userVault?.weeks?.[curWkId]?.bounties || parsed.activeBounties,
+      chores: userVault?.weeks?.[curWkId]?.chores || parsed.choresList,
       vaultData: userVault
     });
   } catch (err) {

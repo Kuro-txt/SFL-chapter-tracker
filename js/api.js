@@ -115,6 +115,16 @@ export async function loadTrackerData() {
       const vaultWeeks = data.vaultData.weeks || {};
       loadedWeeks = { ...loadedWeeks, ...vaultWeeks };
 
+      const curWkId = getMondayBasedWeekId();
+      if (vaultWeeks[curWkId]) {
+        if (Array.isArray(vaultWeeks[curWkId].bounties) && vaultWeeks[curWkId].bounties.length > 0) {
+          state.globalData.bounties = vaultWeeks[curWkId].bounties;
+        }
+        if (Array.isArray(vaultWeeks[curWkId].chores) && vaultWeeks[curWkId].chores.length > 0) {
+          state.globalData.chores = vaultWeeks[curWkId].chores;
+        }
+      }
+
       state.globalData.cloudHistory = {
         logs: data.vaultData.logs || [],
         weeks: loadedWeeks,
@@ -130,6 +140,16 @@ export async function loadTrackerData() {
           state.globalData.archiveDeliveries = JSON.parse(localDelivs);
         }
       } catch (e) {}
+
+      const curWkId = getMondayBasedWeekId();
+      if (loadedWeeks[curWkId]) {
+        if (Array.isArray(loadedWeeks[curWkId].bounties) && loadedWeeks[curWkId].bounties.length > 0) {
+          state.globalData.bounties = loadedWeeks[curWkId].bounties;
+        }
+        if (Array.isArray(loadedWeeks[curWkId].chores) && loadedWeeks[curWkId].chores.length > 0) {
+          state.globalData.chores = loadedWeeks[curWkId].chores;
+        }
+      }
 
       state.globalData.cloudHistory = {
         logs: [],
