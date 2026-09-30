@@ -87,9 +87,14 @@ export function isAnimalBounty(item) {
   return false;
 }
 
+export function isManualBounty(item) {
+  if (!item) return false;
+  return Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
+}
+
 export function hasWeeklyBountiesBonus(bountiesList) {
   if (!Array.isArray(bountiesList) || bountiesList.length === 0) return false;
-  const regularBounties = bountiesList.filter(b => !isAnimalBounty(b));
+  const regularBounties = bountiesList.filter(b => !isAnimalBounty(b) && !isManualBounty(b));
   if (regularBounties.length === 0) return false;
   return regularBounties.every(b => {
     if (!b || b.isSkipped) return false;

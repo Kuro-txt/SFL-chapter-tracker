@@ -383,6 +383,10 @@ export async function saveProgressToCloudKV(silent = false) {
         calculatedTotalCost += (c.itemsCost || c.cost || 0);
       }
     });
+    // Add +100 bounty board bonus for past weeks if all regular bounties are completed
+    if (hasWeeklyBountiesBonus(wk.bounties)) {
+      calculatedTotalTickets += 100;
+    }
   });
 
   if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };

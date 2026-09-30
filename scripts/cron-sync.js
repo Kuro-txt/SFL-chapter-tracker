@@ -31,9 +31,14 @@ export function isAnimalBountyHelper(item) {
   return false;
 }
 
+export function isManualBountyHelper(item) {
+  if (!item) return false;
+  return Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
+}
+
 export function hasWeeklyBountiesBonusHelper(bountiesList) {
   if (!Array.isArray(bountiesList) || bountiesList.length === 0) return false;
-  const regularBounties = bountiesList.filter(b => !isAnimalBountyHelper(b));
+  const regularBounties = bountiesList.filter(b => !isAnimalBountyHelper(b) && !isManualBountyHelper(b));
   if (regularBounties.length === 0) return false;
   return regularBounties.every(b => {
     if (!b || b.isSkipped) return false;
@@ -538,6 +543,10 @@ async function runSync() {
               totalCalculatedCost += (c.itemsCost || c.cost || 0);
             }
           });
+          // Add +100 bounty board bonus for past weeks if all regular bounties are completed
+          if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+            totalCalculatedTickets += 100;
+          }
         });
 
         vault.cumulativeTickets = totalCalculatedTickets;
