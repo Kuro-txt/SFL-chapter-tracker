@@ -849,6 +849,7 @@ export default async function handler(req, res) {
       isVipActive: parsed.isVipActive,
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       doubleDeliveryDates: parsed.doubleDeliveryDates,
+      chapterPoints: parsed.chapterPoints || 0,
       milestones: parsed.liveMilestones,
       deliveries: parsed.deliveryList,
       archiveDeliveries: userVault ? (userVault.archiveDeliveries || []) : [],

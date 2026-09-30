@@ -8,6 +8,7 @@ import {
   getDeliveryRecords
 } from './state.js';
 import { recalculateAll } from './render.js';
+import { calculateTrackTickets } from './chapter-tracks.js';
 
 let fetchCooldownTimer = null;
 
@@ -203,6 +204,20 @@ export async function loadTrackerData() {
       if (vipToggle) {
         vipToggle.checked = Boolean(data.isVipActive);
         localStorage.setItem('sfl_vip', vipToggle.checked);
+      }
+    }
+
+    if (data.chapterPoints !== undefined) {
+      state.globalData.chapterPoints = data.chapterPoints;
+      localStorage.setItem('sfl_chapter_points', data.chapterPoints);
+
+      const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+      const autoTrackTickets = calculateTrackTickets(data.chapterPoints, isVip);
+      const trackTixEl = document.getElementById('trackTicketsInput');
+      if (trackTixEl) trackTixEl.value = autoTrackTickets;
+      localStorage.setItem('sfl_track_tix', autoTrackTickets);
+      if (state.globalData.cloudHistory) {
+        state.globalData.cloudHistory.trackTickets = autoTrackTickets;
       }
     }
 

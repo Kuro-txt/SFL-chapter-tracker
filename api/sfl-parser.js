@@ -498,10 +498,19 @@ export function parseFarmData(farm, priceMap) {
   });
 });
 
+  const chapterPoints = Number(
+    farm.bumpkin?.activity?.["Ascension Age Points Earned"] ??
+    farm.activity?.["Ascension Age Points Earned"] ??
+    farm.bumpkin?.activity?.["Ascension Age Points"] ??
+    farm.activity?.["Ascension Age Points"] ??
+    0
+  );
+
   return {
     isVipActive,
     isDoubleDeliveryActive,
     doubleDeliveryDates: Array.from(doubleDeliveryDatesSet),
+    chapterPoints,
     liveMilestones,
     deliveryList,
     activeBounties,

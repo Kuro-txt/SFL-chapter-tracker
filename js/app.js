@@ -39,7 +39,8 @@ import {
   moveChartTooltip,
   hideChartTooltip
 } from './render.js';
-import { checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
+import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
+import { calculateTrackTickets } from './chapter-tracks.js';
 
 // ==========================================
 // THEME MANAGER (Dark / Light Mode)
@@ -156,10 +157,27 @@ window.deleteChapterLog = deleteChapterLog;
 window.exportChapterLog = exportChapterLog;
 
 window.saveAndRecalculate = () => {
-  localStorage.setItem('sfl_vip', document.getElementById('vipToggle').checked);
+  const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+  localStorage.setItem('sfl_vip', isVip);
   localStorage.setItem('sfl_boost1', document.getElementById('boost1').checked);
   localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
   localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
+
+  // Dynamically update Track Tickets based on chapterPoints and VIP status
+  const chapterPoints = (state.globalData?.chapterPoints !== undefined)
+    ? state.globalData.chapterPoints
+    : parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
+
+  if (chapterPoints > 0) {
+    const autoTrackTickets = calculateTrackTickets(chapterPoints, isVip);
+    const trackTixEl = document.getElementById('trackTicketsInput');
+    if (trackTixEl) trackTixEl.value = autoTrackTickets;
+    localStorage.setItem('sfl_track_tix', autoTrackTickets);
+    if (state.globalData?.cloudHistory) {
+      state.globalData.cloudHistory.trackTickets = autoTrackTickets;
+    }
+  }
+
   recalculateAll();
 };
 
@@ -290,8 +308,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
 
-  const savedTrackTix = localStorage.getItem('sfl_track_tix');
-  if (savedTrackTix !== null) document.getElementById('trackTicketsInput').value = savedTrackTix;
+  const savedChapterPoints = parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
+  if (savedChapterPoints > 0) {
+    if (!state.globalData) state.globalData = {};
+    state.globalData.chapterPoints = savedChapterPoints;
+    const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+    const autoTrackTickets = calculateTrackTickets(savedChapterPoints, isVip);
+    const trackTixEl = document.getElementById('trackTicketsInput');
+    if (trackTixEl) trackTixEl.value = autoTrackTickets;
+  } else {
+    const savedTrackTix = localStorage.getItem('sfl_track_tix');
+    if (savedTrackTix !== null) document.getElementById('trackTicketsInput').value = savedTrackTix;
+  }
 
   const savedTrackCost = localStorage.getItem('sfl_track_cost');
   if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;
