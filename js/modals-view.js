@@ -751,7 +751,18 @@ export function renderChapterLogsList() {
       <div style="border-top: 1.5px dashed #D2B48C; padding-top: 8px; margin-top: 4px;">
         <span class="chapter-weekly-title">Weekly Progression (${weeks.length} Weeks Recorded):</span>
         <div class="chapter-weekly-grid">
-          ${weeks.map(w => `<span class="chapter-week-pill">W${w.week}: ${w.tickets} Tix (${formatSFL(w.cost)} SFL)</span>`).join('')}
+          ${weeks.map(w => {
+            let extraWeekTix = 0;
+            if (boostLevel > 0) {
+              if (w.boostUnits !== undefined) {
+                extraWeekTix = boostLevel * w.boostUnits;
+              } else if (item.totalTickets > 0 && extraTotalTix > 0) {
+                extraWeekTix = Math.round((w.tickets / item.totalTickets) * extraTotalTix);
+              }
+            }
+            const displayWeekTix = (w.tickets || 0) + extraWeekTix;
+            return `<span class="chapter-week-pill">W${w.week}: ${displayWeekTix} Tix (${formatSFL(w.cost)} SFL)</span>`;
+          }).join('')}
         </div>
       </div>
     ` : '';
@@ -890,7 +901,7 @@ export async function snapshotCurrentChapter() {
     if (!wkVal || typeof wkVal !== 'object') return;
     const normWeek = getMondayBasedWeekId(wkVal.weekId || wkId);
     if (!weeklyMap.has(normWeek)) {
-      weeklyMap.set(normWeek, { tickets: 0, cost: 0 });
+      weeklyMap.set(normWeek, { tickets: 0, cost: 0, boostUnits: 0 });
     }
     const stat = weeklyMap.get(normWeek);
 
@@ -901,6 +912,9 @@ export async function snapshotCurrentChapter() {
         const c = b.itemsCost || b.cost || 0;
         stat.tickets += t;
         stat.cost += c;
+        if (!isMan) {
+          stat.boostUnits = (stat.boostUnits || 0) + 1;
+        }
         if (isAnimalBounty(b)) {
           animalBountyTix += t;
           animalBountyCost += c;
@@ -932,7 +946,10 @@ export async function snapshotCurrentChapter() {
         choreCost += cCost;
         choreCount++;
         if (isMan) manualChoreCount++;
-        else autoChoreCount++;
+        else {
+          autoChoreCount++;
+          stat.boostUnits = (stat.boostUnits || 0) + 1;
+        }
       }
     });
   });
@@ -942,7 +959,7 @@ export async function snapshotCurrentChapter() {
     if (dDate) {
       const dWeek = getMondayBasedWeekId(dDate);
       if (!weeklyMap.has(dWeek)) {
-        weeklyMap.set(dWeek, { tickets: 0, cost: 0 });
+        weeklyMap.set(dWeek, { tickets: 0, cost: 0, boostUnits: 0 });
       }
       const stat = weeklyMap.get(dWeek);
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
@@ -951,6 +968,9 @@ export async function snapshotCurrentChapter() {
       const rawYield = isManual ? base : (wasDouble ? (base + vipBonus) * 2 : (base + vipBonus));
       stat.tickets += rawYield;
       stat.cost += (d.itemsCost || d.cost || 0);
+      if (!isManual) {
+        stat.boostUnits = (stat.boostUnits || 0) + (wasDouble ? 2 : 1);
+      }
     }
   });
 
@@ -959,7 +979,8 @@ export async function snapshotCurrentChapter() {
     week: idx + 1,
     weekId: wId,
     tickets: val.tickets,
-    cost: val.cost
+    cost: val.cost,
+    boostUnits: val.boostUnits || 0
   }));
 
   const loginCount = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;

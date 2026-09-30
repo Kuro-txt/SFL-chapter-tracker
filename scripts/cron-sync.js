@@ -691,30 +691,36 @@ async function runSync() {
             if (isDone) {
               const dDate = d.completedAt || d.completedDate;
               const wId = d.weekId || (dDate ? getMondayBasedWeekId(dDate) : currentWeekMonday);
-              if (!weeklyProgMap.has(wId)) weeklyProgMap.set(wId, { tickets: 0, cost: 0 });
+              if (!weeklyProgMap.has(wId)) weeklyProgMap.set(wId, { tickets: 0, cost: 0, boostUnits: 0 });
               const stat = weeklyProgMap.get(wId);
               const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-              const isManual = Boolean(d.isManual);
+              const isManual = isManualBountyHelper(d);
               const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
               const yieldAmt = isManual ? baseTix : (wasDouble ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
               stat.tickets += yieldAmt;
               stat.cost += (d.itemsCost || d.cost || 0);
+              if (!isManual) {
+                stat.boostUnits = (stat.boostUnits || 0) + (wasDouble ? 2 : 1);
+              }
             }
           });
 
           if (hasWeeklyBountiesBonusHelper(vault.bounties)) {
-            if (!weeklyProgMap.has(currentWeekMonday)) weeklyProgMap.set(currentWeekMonday, { tickets: 0, cost: 0 });
+            if (!weeklyProgMap.has(currentWeekMonday)) weeklyProgMap.set(currentWeekMonday, { tickets: 0, cost: 0, boostUnits: 0 });
             weeklyProgMap.get(currentWeekMonday).tickets += 100;
           }
 
           Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
             const normWeek = getMondayBasedWeekId(wk.weekId || wkKey);
-            if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { tickets: 0, cost: 0 });
+            if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { tickets: 0, cost: 0, boostUnits: 0 });
             const stat = weeklyProgMap.get(normWeek);
             (wk.bounties || []).forEach(b => {
               if (b.completed || b.checked) {
                 stat.tickets += (b.baseTickets || b.tickets || 0);
                 stat.cost += (b.itemsCost || b.cost || 0);
+                if (!isManualBountyHelper(b)) {
+                  stat.boostUnits = (stat.boostUnits || 0) + 1;
+                }
               }
             });
             (wk.chores || []).forEach(c => {
@@ -722,6 +728,9 @@ async function runSync() {
                 const isMan = isManualBountyHelper(c);
                 stat.tickets += (isMan ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
                 stat.cost += (c.itemsCost || c.cost || 0);
+                if (!isMan) {
+                  stat.boostUnits = (stat.boostUnits || 0) + 1;
+                }
               }
             });
             if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
@@ -734,7 +743,8 @@ async function runSync() {
             week: idx + 1,
             weekId: wId,
             tickets: val.tickets,
-            cost: val.cost
+            cost: val.cost,
+            boostUnits: val.boostUnits || 0
           }));
 
           const efficiencyRatio = totalCalculatedTickets > 0 ? (totalCalculatedCost / totalCalculatedTickets) : 0;
