@@ -732,8 +732,9 @@ export default async function handler(req, res) {
           };
         } else {
           const currentWk = userVault.weeks[currentWeekMonday];
-          const savedManualChores = (currentWk.chores || []).filter(c => c.isManual);
-          const savedManualBounties = (currentWk.bounties || []).filter(b => b.isManual);
+          const isMan = (x) => Boolean(x?.isManual) || (typeof x?.id === 'string' && x.id.startsWith('manual_'));
+          const savedManualChores = (currentWk.chores || []).filter(isMan);
+          const savedManualBounties = (currentWk.bounties || []).filter(isMan);
 
           currentWk.chores = [...(parsed.choresList || []), ...savedManualChores];
           currentWk.bounties = [...(parsed.activeBounties || []), ...savedManualBounties];

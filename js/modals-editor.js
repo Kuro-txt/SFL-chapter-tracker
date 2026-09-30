@@ -311,10 +311,14 @@ export function renderColumnHistoryModalList() {
         ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
         : '';
 
+      const checkboxHtml = r.isManual
+        ? `<input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:pointer;" title="Click to toggle status" />`
+        : `<input type="checkbox" ${r.checked ? 'checked' : ''} disabled style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:not-allowed; opacity:0.75;" title="Status is synced from Sunflower Land (manual ticking disabled)" />`;
+
       return `<div class="history-card">
         <div class="history-info">
-          <label style="display:flex; align-items:flex-start; gap:8px; cursor:default; width:100%;">
-            <input type="checkbox" ${r.checked ? 'checked' : ''} disabled style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:not-allowed; opacity:0.75;" title="Status is synced from Sunflower Land (manual ticking disabled)" />
+          <label style="display:flex; align-items:flex-start; gap:8px; cursor:${r.isManual ? 'pointer' : 'default'}; width:100%;">
+            ${checkboxHtml}
             <div style="flex:1; min-width:0; word-break:break-word;">
               <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
               ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}${skippedTag}
@@ -541,7 +545,7 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     const target = master[itemIdx];
 
     if (target) {
-      const isManual = Boolean(target.isManual);
+      const isManual = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
       const vip = isManual ? 0 : getActiveVipBonus();
       const boost = isManual ? 0 : getActiveBoostCount();
       
@@ -569,7 +573,7 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     }
 
     if (target) {
-      const isManual = Boolean(target.isManual);
+      const isManual = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
       const vip = (type === 'chore' && !isManual) ? getActiveVipBonus() : 0;
       const boost = isManual ? 0 : getActiveBoostCount();
       const baseVal = Math.max(1, inputVal - vip - boost);

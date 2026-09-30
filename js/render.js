@@ -268,7 +268,7 @@ export function recalculateAll() {
   (state.globalData.chores || []).forEach(c => {
     if (isTicked(c)) {
       const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-      const isManual = Boolean(c.isManual);
+      const isManual = Boolean(c.isManual) || (typeof c.id === 'string' && c.id.startsWith('manual_'));
       const finalTix = isManual ? baseTix : (baseTix + vipBonus + boostCount);
       if (finalTix <= 0) return;
 
@@ -294,7 +294,7 @@ export function recalculateAll() {
     (wk.bounties || []).forEach(b => {
       if (isTicked(b)) {
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-        const isManual = Boolean(b.isManual);
+        const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
         const finalTix = isManual ? baseTix : (baseTix + boostCount);
         if (finalTix <= 0) return;
 
@@ -321,7 +321,8 @@ export function recalculateAll() {
     (wk.chores || []).forEach(c => {
       if (isTicked(c)) {
         const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-        const finalTix = c.isManual ? baseTix : (baseTix + vipBonus + boostCount);
+        const isManual = Boolean(c.isManual) || (typeof c.id === 'string' && c.id.startsWith('manual_'));
+        const finalTix = isManual ? baseTix : (baseTix + vipBonus + boostCount);
         if (finalTix <= 0) return;
 
         const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);

@@ -896,7 +896,7 @@ export async function snapshotCurrentChapter() {
 
     (wkVal.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
-        const isMan = Boolean(b.isManual);
+        const isMan = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
         const t = b.baseTickets || b.tickets || 0;
         const c = b.itemsCost || b.cost || 0;
         stat.tickets += t;
@@ -922,7 +922,7 @@ export async function snapshotCurrentChapter() {
 
     (wkVal.chores || []).forEach(c => {
       if (c.completed || c.checked) {
-        const isMan = Boolean(c.isManual);
+        const isMan = Boolean(c.isManual) || (typeof c.id === 'string' && c.id.startsWith('manual_'));
         const base = (c.baseTickets || c.tickets || 1);
         const t = isMan ? base : (base + vipBonus);
         const cCost = (c.itemsCost || c.cost || 0);
@@ -946,7 +946,7 @@ export async function snapshotCurrentChapter() {
       }
       const stat = weeklyMap.get(dWeek);
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-      const isManual = Boolean(d.isManual);
+      const isManual = Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_'));
       const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
       const rawYield = isManual ? base : (wasDouble ? (base + vipBonus) * 2 : (base + vipBonus));
       stat.tickets += rawYield;

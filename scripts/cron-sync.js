@@ -382,8 +382,8 @@ async function runSync() {
           };
         } else {
           const currentWk = vault.weeks[currentWeekMonday];
-          const savedManualChores = (currentWk.chores || []).filter(c => c.isManual);
-          const savedManualBounties = (currentWk.bounties || []).filter(b => b.isManual);
+          const savedManualChores = (currentWk.chores || []).filter(c => isManualBountyHelper(c));
+          const savedManualBounties = (currentWk.bounties || []).filter(b => isManualBountyHelper(b));
 
           currentWk.chores = [...parsed.choresList, ...savedManualChores];
           currentWk.bounties = [...parsed.activeBounties, ...savedManualBounties];
@@ -405,8 +405,8 @@ async function runSync() {
           }
         });
 
-        const existingManualChores = (vault.chores || []).filter(c => c.isManual);
-        const existingManualBounties = (vault.bounties || []).filter(b => b.isManual);
+        const existingManualChores = (vault.chores || []).filter(c => isManualBountyHelper(c));
+        const existingManualBounties = (vault.bounties || []).filter(b => isManualBountyHelper(b));
         vault.bounties = [...parsed.activeBounties, ...existingManualBounties];
         vault.chores = [...parsed.choresList, ...existingManualChores];
         vault.milestones = parsed.liveMilestones;
@@ -717,10 +717,14 @@ async function runSync() {
             });
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
-                stat.tickets += (c.isManual ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
+                const isMan = isManualBountyHelper(c);
+                stat.tickets += (isMan ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
                 stat.cost += (c.itemsCost || c.cost || 0);
               }
             });
+            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+              stat.tickets += 100;
+            }
           });
 
           const sortedWeeklyArray = Array.from(weeklyProgMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
