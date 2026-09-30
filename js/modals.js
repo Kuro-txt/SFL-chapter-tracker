@@ -10,6 +10,7 @@ export {
   closeChapterLogsModal,
   renderChapterLogsList,
   setChapterLogBoost,
+  setChapterLogVip,
   snapshotCurrentChapter,
   deleteChapterLog,
   exportChapterLog

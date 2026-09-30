@@ -686,7 +686,7 @@ export default async function handler(req, res) {
               if (isDone) {
                 const dDate = d.completedAt || d.completedDate;
                 const wId = d.weekId || (dDate ? getMondayBasedWeekId(dDate) : currentWeekMonday);
-                if (!weeklyProgMap.has(wId)) weeklyProgMap.set(wId, { tickets: 0, cost: 0, boostUnits: 0 });
+                if (!weeklyProgMap.has(wId)) weeklyProgMap.set(wId, { baseTickets: 0, tickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
                 const stat = weeklyProgMap.get(wId);
                 const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
                 const isManual = isManualBountyHelper(d);
@@ -694,42 +694,59 @@ export default async function handler(req, res) {
                 const yieldAmt = isManual ? baseTix : (wasDouble ? (baseTix + vipBonus) * 2 : (baseTix + vipBonus));
                 stat.tickets += yieldAmt;
                 stat.cost += (d.itemsCost || d.cost || 0);
-                if (!isManual) {
-                  stat.boostUnits = (stat.boostUnits || 0) + (wasDouble ? 2 : 1);
+                if (isManual) {
+                  stat.baseTickets += baseTix;
+                  stat.manualTickets += baseTix;
+                } else {
+                  const baseYield = wasDouble ? (baseTix * 2) : baseTix;
+                  stat.baseTickets += baseYield;
+                  stat.vipUnits += (wasDouble ? 2 : 1);
+                  stat.boostUnits += (wasDouble ? 2 : 1);
                 }
               }
             });
 
             if (hasWeeklyBountiesBonusHelper(vault.bounties)) {
-              if (!weeklyProgMap.has(currentWeekMonday)) weeklyProgMap.set(currentWeekMonday, { tickets: 0, cost: 0, boostUnits: 0 });
+              if (!weeklyProgMap.has(currentWeekMonday)) weeklyProgMap.set(currentWeekMonday, { baseTickets: 0, tickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
               weeklyProgMap.get(currentWeekMonday).tickets += 100;
+              weeklyProgMap.get(currentWeekMonday).baseTickets += 100;
             }
 
             Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
               const normWeek = getMondayBasedWeekId(wk.weekId || wkKey);
-              if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { tickets: 0, cost: 0, boostUnits: 0 });
+              if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { baseTickets: 0, tickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
               const stat = weeklyProgMap.get(normWeek);
               (wk.bounties || []).forEach(b => {
                 if (b.completed || b.checked) {
-                  stat.tickets += (b.baseTickets || b.tickets || 0);
+                  const bTix = (b.baseTickets || b.tickets || 0);
+                  stat.tickets += bTix;
+                  stat.baseTickets += bTix;
                   stat.cost += (b.itemsCost || b.cost || 0);
-                  if (!isManualBountyHelper(b)) {
-                    stat.boostUnits = (stat.boostUnits || 0) + 1;
+                  if (isManualBountyHelper(b)) {
+                    stat.manualTickets += bTix;
+                  } else {
+                    stat.boostUnits += 1;
                   }
                 }
               });
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   const isMan = isManualBountyHelper(c);
-                  stat.tickets += (isMan ? (c.baseTickets || c.tickets || 1) : ((c.baseTickets || c.tickets || 1) + vipBonus));
+                  const base = (c.baseTickets || c.tickets || 1);
+                  stat.tickets += (isMan ? base : (base + vipBonus));
+                  stat.baseTickets += base;
                   stat.cost += (c.itemsCost || c.cost || 0);
-                  if (!isMan) {
-                    stat.boostUnits = (stat.boostUnits || 0) + 1;
+                  if (isMan) {
+                    stat.manualTickets += base;
+                  } else {
+                    stat.boostUnits += 1;
+                    stat.vipUnits += 1;
                   }
                 }
               });
               if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
                 stat.tickets += 100;
+                stat.baseTickets += 100;
               }
             });
 
@@ -737,48 +754,65 @@ export default async function handler(req, res) {
             const weeklyProgressionSummary = sortedWeeklyArray.map(([wId, val], idx) => ({
               week: idx + 1,
               weekId: wId,
+              baseTickets: val.baseTickets,
               tickets: val.tickets,
               cost: val.cost,
-              boostUnits: val.boostUnits || 0
+              boostUnits: val.boostUnits || 0,
+              vipUnits: val.vipUnits || 0,
+              manualTickets: val.manualTickets || 0
             }));
 
             const efficiencyRatio = totalCalculatedTickets > 0 ? (totalCalculatedCost / totalCalculatedTickets) : 0;
+            const delivVipUnits = autoDelivCount + delivDoubleCount;
+            const totalVipUnits = delivVipUnits + autoChoreCount;
+            const baseTotalTickets = totalCalculatedTickets - (vipBonus > 0 ? (totalVipUnits * 2) : 0);
 
             const chapterSnapshot = {
               chapterId: ACTIVE_CHAPTER_ID,
               chapterTitle: ACTIVE_CHAPTER_TITLE,
               archivedAt: new Date().toISOString(),
               isLocked: isChapterEnded,
+              baseTotalTickets: baseTotalTickets,
               totalTickets: totalCalculatedTickets,
               totalCost: totalCalculatedCost,
               efficiencyRatio: efficiencyRatio,
+              vipActive: vipBonus > 0,
               categories: {
                 deliveries: { 
                   count: delivCount, 
+                  baseTickets: Math.max(0, delivTix - (vipBonus > 0 ? (delivVipUnits * 2) : 0)),
                   tickets: delivTix, 
                   cost: delivCost,
                   doubleCount: delivDoubleCount,
                   autoCount: autoDelivCount,
-                  manualCount: manualDelivCount
+                  manualCount: manualDelivCount,
+                  vipUnits: delivVipUnits
                 },
                 bounties: { 
                   count: bountyCount, 
+                  baseTickets: bountyTix,
                   tickets: bountyTix, 
                   cost: bountyCost,
-                  autoCount: autoBountyCount
+                  autoCount: autoBountyCount,
+                  boostUnits: autoBountyCount
                 },
                 animalBounties: { 
                   count: animalBountyCount, 
+                  baseTickets: animalBountyTix,
                   tickets: animalBountyTix, 
                   cost: animalBountyCost,
-                  autoCount: autoAnimalBountyCount
+                  autoCount: autoAnimalBountyCount,
+                  boostUnits: autoAnimalBountyCount
                 },
                 chores: { 
                   count: choreCount, 
+                  baseTickets: Math.max(0, choreTix - (vipBonus > 0 ? (autoChoreCount * 2) : 0)),
                   tickets: choreTix, 
                   cost: choreCost,
                   autoCount: autoChoreCount,
-                  manualCount: manualChoreCount
+                  manualCount: manualChoreCount,
+                  vipUnits: autoChoreCount,
+                  boostUnits: autoChoreCount
                 },
                 logins: { count: loginCount, tickets: loginCount, cost: 0 },
                 tracked: { tickets: trackTix, cost: trackCost }
