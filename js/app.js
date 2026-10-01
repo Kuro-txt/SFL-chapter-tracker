@@ -164,7 +164,7 @@ window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
 
   // Dynamically update Track Tickets based on chapterPoints and VIP status
-  const chapterPoints = (state.globalData?.chapterPoints !== undefined)
+  const chapterPoints = (state.globalData?.chapterPoints !== undefined && state.globalData.chapterPoints > 0)
     ? state.globalData.chapterPoints
     : parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
 

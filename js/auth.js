@@ -1,6 +1,7 @@
 import { state, checkAndAutoClaimDailyLogin } from './state.js';
 import { recalculateAll } from './render.js';
 import { loadTrackerData } from './api.js';
+import { calculateTrackTickets } from './chapter-tracks.js';
 
 // ==========================================
 // REGISTRATION & AUTH GATE CONTROLS
@@ -214,8 +215,16 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
     }
 
     if (data.vaultData?.trackTickets !== undefined) {
+      const savedChapterPoints = parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
       const trackTixEl = document.getElementById('trackTicketsInput');
-      if (trackTixEl) trackTixEl.value = data.vaultData.trackTickets;
+      if (trackTixEl) {
+        if (savedChapterPoints > 0) {
+          const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+          trackTixEl.value = calculateTrackTickets(savedChapterPoints, isVip);
+        } else {
+          trackTixEl.value = data.vaultData.trackTickets;
+        }
+      }
     }
     if (data.vaultData?.trackCost !== undefined) {
       const trackCostEl = document.getElementById('trackCostInput');

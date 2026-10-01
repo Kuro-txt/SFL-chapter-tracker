@@ -259,7 +259,85 @@ export function extractDoubleDeliveryDates(farm) {
   return dates;
 }
 
-export function parseFarmData(farm, priceMap) {
+export function extractChapterPoints(farm, payload = null) {
+  if (!farm && !payload) return 0;
+
+  const candidateSources = [
+    farm?.farmActivity,
+    farm?.bumpkin?.activity,
+    farm?.activity,
+    farm?.inventory,
+    farm?.chapterTrack,
+    farm?.season,
+    farm,
+    payload?.farmActivity,
+    payload?.farm?.farmActivity,
+    payload?.bumpkin?.activity,
+    payload?.farm?.bumpkin?.activity,
+    payload?.inventory,
+    payload?.farm?.inventory,
+    payload
+  ];
+
+  for (const src of candidateSources) {
+    if (!src || typeof src !== 'object') continue;
+    if (src["Ascension Age Points Earned"] !== undefined) {
+      const v = Number(src["Ascension Age Points Earned"]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+    if (src["Ascension Age Points"] !== undefined) {
+      const v = Number(src["Ascension Age Points"]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+  }
+
+  for (const src of candidateSources) {
+    if (!src || typeof src !== 'object') continue;
+    for (const [k, val] of Object.entries(src)) {
+      const cleanK = k.toLowerCase().trim();
+      if (
+        cleanK === "ascension age points earned" ||
+        cleanK === "ascension age points" ||
+        cleanK === "ascension points earned" ||
+        cleanK === "ascension points" ||
+        cleanK === "chapter points earned" ||
+        cleanK === "chapter points"
+      ) {
+        const num = Number(typeof val === 'object' && val !== null ? (val.value ?? val.amount ?? val.count) : val);
+        if (!isNaN(num) && num > 0) return num;
+      }
+    }
+  }
+
+  let found = 0;
+  function deepSearch(obj, depth = 0) {
+    if (found > 0 || depth > 6 || !obj || typeof obj !== 'object') return;
+    for (const [k, val] of Object.entries(obj)) {
+      const cleanK = k.toLowerCase().trim();
+      if (
+        cleanK === "ascension age points earned" ||
+        cleanK === "ascension age points" ||
+        cleanK === "ascension points earned" ||
+        cleanK === "ascension points"
+      ) {
+        const num = Number(typeof val === 'object' && val !== null ? (val.value ?? val.amount ?? val.count) : val);
+        if (!isNaN(num) && num > 0) {
+          found = num;
+          return;
+        }
+      }
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        deepSearch(val, depth + 1);
+      }
+    }
+  }
+
+  if (farm) deepSearch(farm);
+  if (found === 0 && payload) deepSearch(payload);
+  return found;
+}
+
+export function parseFarmData(farm, priceMap, rawPayload = null) {
   const isVipActive = !!(farm.vip?.expiresAt && farm.vip.expiresAt > Date.now());
   const nowMs = Date.now();
   const todayUtcStr = new Date(nowMs).toISOString().split('T')[0];
@@ -498,13 +576,7 @@ export function parseFarmData(farm, priceMap) {
   });
 });
 
-  const chapterPoints = Number(
-    farm.bumpkin?.activity?.["Ascension Age Points Earned"] ??
-    farm.activity?.["Ascension Age Points Earned"] ??
-    farm.bumpkin?.activity?.["Ascension Age Points"] ??
-    farm.activity?.["Ascension Age Points"] ??
-    0
-  );
+  const chapterPoints = extractChapterPoints(farm, rawPayload);
 
   return {
     isVipActive,

@@ -186,7 +186,9 @@ export async function loadTrackerData() {
         }
       }
 
-      if (data.vaultData.trackTickets !== undefined) {
+      const savedPoints = parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
+      const hasPoints = (data.chapterPoints !== undefined && data.chapterPoints > 0) || savedPoints > 0;
+      if (!hasPoints && data.vaultData.trackTickets !== undefined) {
         const trackTixEl = document.getElementById('trackTicketsInput');
         if (trackTixEl) trackTixEl.value = data.vaultData.trackTickets;
       }
@@ -207,16 +209,20 @@ export async function loadTrackerData() {
       }
     }
 
-    if (data.chapterPoints !== undefined) {
-      state.globalData.chapterPoints = data.chapterPoints;
-      localStorage.setItem('sfl_chapter_points', data.chapterPoints);
+    const activeChapterPoints = (data.chapterPoints !== undefined && data.chapterPoints > 0)
+      ? data.chapterPoints
+      : parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
+
+    if (activeChapterPoints > 0) {
+      state.globalData.chapterPoints = activeChapterPoints;
+      localStorage.setItem('sfl_chapter_points', activeChapterPoints);
 
       const isVip = Boolean(document.getElementById('vipToggle')?.checked);
-      const autoTrackTickets = calculateTrackTickets(data.chapterPoints, isVip);
+      const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
       const trackTixEl = document.getElementById('trackTicketsInput');
       if (trackTixEl) trackTixEl.value = autoTrackTickets;
       localStorage.setItem('sfl_track_tix', autoTrackTickets);
-      if (state.globalData.cloudHistory) {
+      if (state.globalData?.cloudHistory) {
         state.globalData.cloudHistory.trackTickets = autoTrackTickets;
       }
     }
@@ -450,7 +456,7 @@ export async function saveProgressToCloudKV(silent = false) {
   const payload = {
     username: state.currentUser,
     farmId,
-    trackTickets,
+    trackTickets: (state.currentVaultData?.trackTickets !== undefined) ? state.currentVaultData.trackTickets : trackTickets,
     trackCost,
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,

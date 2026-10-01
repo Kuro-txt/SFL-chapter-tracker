@@ -548,6 +548,7 @@ export default async function handler(req, res) {
       const updatedVault = {
         ...existingVault,
         ...body,
+        trackTickets: existingVault.trackTickets !== undefined ? existingVault.trackTickets : (body.trackTickets || 0),
         logs: mergedLogs,
         lastSavedAt: new Date().toISOString()
       };
@@ -771,7 +772,7 @@ export default async function handler(req, res) {
 
     const payload = await sflRes.json();
     const farm = payload.farm || payload;
-    const parsed = parseFarmData(farm, priceMap);
+    const parsed = parseFarmData(farm, priceMap, payload);
 
     let userVault = null;
     if (username) {
