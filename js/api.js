@@ -186,11 +186,13 @@ export async function loadTrackerData() {
         }
       }
 
-      const savedPoints = parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
-      const hasPoints = (data.chapterPoints !== undefined && data.chapterPoints > 0) || savedPoints > 0;
-      if (!hasPoints && data.vaultData.trackTickets !== undefined) {
+      const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
+      if (!isAuto && data.vaultData.trackTickets !== undefined) {
+        const savedManual = localStorage.getItem('sfl_track_manual_tix');
         const trackTixEl = document.getElementById('trackTicketsInput');
-        if (trackTixEl) trackTixEl.value = data.vaultData.trackTickets;
+        if (trackTixEl) {
+          trackTixEl.value = (savedManual !== null) ? savedManual : data.vaultData.trackTickets;
+        }
       }
       if (data.vaultData.trackCost !== undefined) {
         const trackCostEl = document.getElementById('trackCostInput');
@@ -217,13 +219,16 @@ export async function loadTrackerData() {
       state.globalData.chapterPoints = activeChapterPoints;
       localStorage.setItem('sfl_chapter_points', activeChapterPoints);
 
-      const isVip = Boolean(document.getElementById('vipToggle')?.checked);
-      const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
-      const trackTixEl = document.getElementById('trackTicketsInput');
-      if (trackTixEl) trackTixEl.value = autoTrackTickets;
-      localStorage.setItem('sfl_track_tix', autoTrackTickets);
-      if (state.globalData?.cloudHistory) {
-        state.globalData.cloudHistory.trackTickets = autoTrackTickets;
+      const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
+      if (isAuto) {
+        const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+        const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
+        const trackTixEl = document.getElementById('trackTicketsInput');
+        if (trackTixEl) trackTixEl.value = autoTrackTickets;
+        localStorage.setItem('sfl_track_tix', autoTrackTickets);
+        if (state.globalData?.cloudHistory) {
+          state.globalData.cloudHistory.trackTickets = autoTrackTickets;
+        }
       }
     }
 

@@ -215,14 +215,16 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
     }
 
     if (data.vaultData?.trackTickets !== undefined) {
+      const isAuto = localStorage.getItem('sfl_track_auto') === 'true';
       const savedChapterPoints = parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
       const trackTixEl = document.getElementById('trackTicketsInput');
       if (trackTixEl) {
-        if (savedChapterPoints > 0) {
+        if (isAuto && savedChapterPoints > 0) {
           const isVip = Boolean(document.getElementById('vipToggle')?.checked);
           trackTixEl.value = calculateTrackTickets(savedChapterPoints, isVip);
         } else {
-          trackTixEl.value = data.vaultData.trackTickets;
+          const savedManual = localStorage.getItem('sfl_track_manual_tix');
+          trackTixEl.value = (savedManual !== null) ? savedManual : data.vaultData.trackTickets;
         }
       }
     }
