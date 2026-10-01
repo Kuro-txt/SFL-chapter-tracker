@@ -751,12 +751,50 @@ export default async function handler(req, res) {
     };
     if (apiKey) sflHeaders['x-api-key'] = apiKey;
 
-    const sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
+    let sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
       headers: sflHeaders,
       signal: AbortSignal.timeout(10000)
     });
 
+    let usedBackupKey = false;
+    let apiKeyInvalid = false;
+
+    // Backup route: if user's API key returned an error (e.g. 401 Unauthorized or 403 Forbidden), use our system API key
+    if (!sflRes.ok && apiKey) {
+      apiKeyInvalid = (sflRes.status === 401 || sflRes.status === 403);
+      console.warn(`User-provided API key returned status ${sflRes.status}. Attempting backup route with system API key...`);
+
+      const backupHeaders = {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://sunflower-land.com/',
+        'Origin': 'https://sunflower-land.com'
+      };
+      if (process.env.SFL_API_KEY) {
+        backupHeaders['x-api-key'] = process.env.SFL_API_KEY;
+      }
+
+      try {
+        const backupRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, {
+          headers: backupHeaders,
+          signal: AbortSignal.timeout(10000)
+        });
+        if (backupRes.ok) {
+          sflRes = backupRes;
+          usedBackupKey = true;
+          console.log(`Backup route succeeded for farm #${farmId}!`);
+        }
+      } catch (backupErr) {
+        console.warn('Backup fetch warning:', backupErr.message);
+      }
+    }
+
     if (!sflRes.ok) {
+      if (sflRes.status === 401 || apiKeyInvalid) {
+        return res.status(401).json({
+          error: 'The API key you entered is incorrect'
+        });
+      }
       if (sflRes.status === 429) {
         return res.status(429).json({
           error: '⏳ Rate limit reached. Sunflower Land is blocking too many requests. Please wait 1–2 minutes before fetching again, or enter an SFL API Key for a higher quota.'
@@ -851,6 +889,8 @@ export default async function handler(req, res) {
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       doubleDeliveryDates: parsed.doubleDeliveryDates,
       chapterPoints: parsed.chapterPoints || 0,
+      usedBackupKey,
+      apiKeyInvalid,
       milestones: parsed.liveMilestones,
       deliveries: parsed.deliveryList,
       archiveDeliveries: userVault ? (userVault.archiveDeliveries || []) : [],
@@ -859,7 +899,10 @@ export default async function handler(req, res) {
       vaultData: userVault
     });
   } catch (err) {
-    return res.status(500).json({ error: `Chapter API Error: ${err.message}` });
+    if (err.message.includes('401') || err.message.toLowerCase().includes('api key')) {
+      return res.status(401).json({ error: 'The API key you entered is incorrect' });
+    }
+    return res.status(500).json({ error: err.message });
   } finally {
     if (client) client.release();
   }

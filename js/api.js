@@ -38,6 +38,7 @@ export async function loadTrackerData() {
   }
 
   localStorage.setItem('sfl_farmId', farmId);
+  localStorage.setItem('sfl_apiKey', apiKey);
 
   if (fetchCooldownTimer) {
     alert('⏳ Please wait for the cooldown before fetching again.');
@@ -233,20 +234,44 @@ export async function loadTrackerData() {
     }
 
     if (priceBadge) {
-      priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED & SAVED`;
-      priceBadge.style.background = '#E8F5E9';
-      priceBadge.style.borderColor = '#4CAF50';
-      priceBadge.style.color = '#2E7D32';
+      if (data.usedBackupKey || data.apiKeyInvalid) {
+        priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED (⚠️ API key incorrect, used backup)`;
+        priceBadge.style.background = '#FFF8E1';
+        priceBadge.style.borderColor = '#FFA000';
+        priceBadge.style.color = '#E65100';
+        const apiKeyEl = document.getElementById('apiKey');
+        if (apiKeyEl) {
+          apiKeyEl.style.borderColor = '#FFA000';
+          apiKeyEl.title = 'The API key entered was incorrect. Used backup API.';
+        }
+      } else {
+        priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED & SAVED`;
+        priceBadge.style.background = '#E8F5E9';
+        priceBadge.style.borderColor = '#4CAF50';
+        priceBadge.style.color = '#2E7D32';
+      }
     }
 
     recalculateAll();
   } catch (err) {
-    if (priceBadge) {
-      const isRateLimit = err.message.includes('429') || err.message.includes('Rate limit') || err.message.includes('rate limit');
-      const isMaintenance = err.message.includes('503') || err.message.includes('502') || err.message.includes('unavailable');
-      const isTimeout = err.message.includes('timeout') || err.message.includes('aborted') || err.message.includes('TimeoutError');
+    const errMsg = err.message || '';
+    const isApiKeyError = errMsg.includes('401') || errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('unauthorized') || errMsg.toLowerCase().includes('incorrect');
+    const isRateLimit = errMsg.includes('429') || errMsg.includes('Rate limit') || errMsg.includes('rate limit');
+    const isMaintenance = errMsg.includes('503') || errMsg.includes('502') || errMsg.includes('unavailable');
+    const isTimeout = errMsg.includes('timeout') || errMsg.includes('aborted') || errMsg.includes('TimeoutError');
 
-      if (isRateLimit) {
+    if (priceBadge) {
+      if (isApiKeyError) {
+        priceBadge.textContent = '⚠️ The API key you entered is incorrect';
+        priceBadge.style.background = '#FFF3E0';
+        priceBadge.style.borderColor = '#FF9800';
+        priceBadge.style.color = '#E65100';
+        const apiKeyEl = document.getElementById('apiKey');
+        if (apiKeyEl) {
+          apiKeyEl.style.borderColor = '#FF9800';
+          apiKeyEl.title = 'The API key you entered is incorrect';
+        }
+      } else if (isRateLimit) {
         priceBadge.textContent = '⏳ Rate limited by SFL — wait 1–2 min then try again';
         priceBadge.style.background = '#FFF9C4';
         priceBadge.style.borderColor = '#F9A825';
@@ -262,14 +287,16 @@ export async function loadTrackerData() {
         priceBadge.style.borderColor = '#F9A825';
         priceBadge.style.color = '#E65100';
       } else {
-        priceBadge.textContent = `❌ ${err.message}`;
+        priceBadge.textContent = `❌ ${errMsg}`;
         priceBadge.style.background = '#FFEBEE';
         priceBadge.style.borderColor = '#E53935';
         priceBadge.style.color = '#B71C1C';
-        alert(`Failed to fetch farm data: ${err.message}`);
+        alert(`Failed to fetch farm data: ${errMsg}`);
       }
     } else {
-      alert(`Failed to fetch farm data: ${err.message}`);
+      if (!isApiKeyError) {
+        alert(`Failed to fetch farm data: ${errMsg}`);
+      }
     }
   }
 }

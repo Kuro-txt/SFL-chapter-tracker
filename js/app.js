@@ -377,7 +377,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (farmIdEl) farmIdEl.value = '';
 
   const savedApiKey = localStorage.getItem('sfl_apiKey');
-  if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
+  const apiKeyEl = document.getElementById('apiKey');
+  if (apiKeyEl) {
+    if (savedApiKey) apiKeyEl.value = savedApiKey;
+    apiKeyEl.addEventListener('input', () => {
+      localStorage.setItem('sfl_apiKey', apiKeyEl.value.trim());
+      apiKeyEl.style.borderColor = '';
+      apiKeyEl.title = '';
+    });
+  }
 
   if (localStorage.getItem('sfl_vip') !== null) {
     document.getElementById('vipToggle').checked = localStorage.getItem('sfl_vip') === 'true';
