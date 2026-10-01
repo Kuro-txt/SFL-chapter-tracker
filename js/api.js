@@ -488,7 +488,7 @@ export async function saveProgressToCloudKV(silent = false) {
   const payload = {
     username: state.currentUser,
     farmId,
-    trackTickets: (state.currentVaultData?.trackTickets !== undefined) ? state.currentVaultData.trackTickets : trackTickets,
+    trackTickets,
     trackCost,
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,

@@ -548,7 +548,7 @@ export default async function handler(req, res) {
       const updatedVault = {
         ...existingVault,
         ...body,
-        trackTickets: existingVault.trackTickets !== undefined ? existingVault.trackTickets : (body.trackTickets || 0),
+        trackTickets: body.trackTickets !== undefined ? body.trackTickets : (existingVault.trackTickets || 0),
         logs: mergedLogs,
         lastSavedAt: new Date().toISOString()
       };
