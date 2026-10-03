@@ -216,16 +216,9 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
 
     if (data.vaultData?.trackTickets !== undefined) {
       const isAuto = localStorage.getItem('sfl_track_auto') === 'true';
-      const savedChapterPoints = parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
       const trackTixEl = document.getElementById('trackTicketsInput');
-      if (trackTixEl) {
-        if (isAuto && savedChapterPoints > 0) {
-          const isVip = Boolean(document.getElementById('vipToggle')?.checked);
-          trackTixEl.value = calculateTrackTickets(savedChapterPoints, isVip);
-        } else {
-          const savedManual = localStorage.getItem('sfl_track_manual_tix');
-          trackTixEl.value = (savedManual !== null) ? savedManual : data.vaultData.trackTickets;
-        }
+      if (trackTixEl && !isAuto) {
+        trackTixEl.value = data.vaultData.trackTickets;
       }
     }
     if (data.vaultData?.trackCost !== undefined) {
@@ -279,6 +272,11 @@ export function userLogout() {
   state.currentVaultData = null;
   localStorage.removeItem('sfl_auth_user');
   localStorage.removeItem('sfl_farmId');
+  localStorage.removeItem('sfl_track_manual_tix');
+  localStorage.removeItem('sfl_track_tix');
+  localStorage.removeItem('sfl_chapter_points');
+  const trackTixEl = document.getElementById('trackTicketsInput');
+  if (trackTixEl) trackTixEl.value = '0';
   const farmIdInput = document.getElementById('farmId');
   if (farmIdInput) farmIdInput.value = '';
 

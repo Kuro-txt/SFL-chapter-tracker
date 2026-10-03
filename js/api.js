@@ -156,8 +156,8 @@ export async function loadTrackerData() {
       state.globalData.cloudHistory = {
         logs: [],
         weeks: loadedWeeks,
-        trackTickets: parseInt(localStorage.getItem('sfl_track_tix') || '0', 10),
-        trackCost: parseFloat(localStorage.getItem('sfl_track_cost') || '0'),
+        trackTickets: parseInt(document.getElementById('trackTicketsInput')?.value || '0', 10),
+        trackCost: parseFloat(document.getElementById('trackCostInput')?.value || '0'),
         dailyLoginTickets: parseInt(localStorage.getItem('sfl_daily_login_count') || '0', 10)
       };
     }
@@ -189,10 +189,9 @@ export async function loadTrackerData() {
 
       const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
       if (!isAuto && data.vaultData.trackTickets !== undefined) {
-        const savedManual = localStorage.getItem('sfl_track_manual_tix');
         const trackTixEl = document.getElementById('trackTicketsInput');
         if (trackTixEl) {
-          trackTixEl.value = (savedManual !== null) ? savedManual : data.vaultData.trackTickets;
+          trackTixEl.value = data.vaultData.trackTickets;
         }
       }
       if (data.vaultData.trackCost !== undefined) {
@@ -212,13 +211,9 @@ export async function loadTrackerData() {
       }
     }
 
-    const activeChapterPoints = (data.chapterPoints !== undefined && data.chapterPoints > 0)
-      ? data.chapterPoints
-      : parseInt(localStorage.getItem('sfl_chapter_points') || '0', 10);
-
+    const activeChapterPoints = data.chapterPoints || 0;
     if (activeChapterPoints > 0) {
       state.globalData.chapterPoints = activeChapterPoints;
-      localStorage.setItem('sfl_chapter_points', activeChapterPoints);
 
       const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
       if (isAuto) {
@@ -226,7 +221,6 @@ export async function loadTrackerData() {
         const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
         const trackTixEl = document.getElementById('trackTicketsInput');
         if (trackTixEl) trackTixEl.value = autoTrackTickets;
-        localStorage.setItem('sfl_track_tix', autoTrackTickets);
         if (state.globalData?.cloudHistory) {
           state.globalData.cloudHistory.trackTickets = autoTrackTickets;
         }
