@@ -367,9 +367,15 @@ async function runSync() {
         errors.push({ username, farmId, error: `Cross-contamination blocked: ID mismatch (${payloadFarmId} !== ${farmId})` });
         continue;
       }
-
       try {
-        const parsed = parseFarmData(farm, priceMap);
+        const userCoinRatio = (vault.coinRatio && parseFloat(vault.coinRatio) > 0) ? parseFloat(vault.coinRatio) : 1000;
+        const userPriceMap = {
+          ...priceMap,
+          'sfl_coin_rate': userCoinRatio,
+          'coins': 1 / userCoinRatio,
+          'coin': 1 / userCoinRatio
+        };
+        const parsed = parseFarmData(farm, userPriceMap);
 
         reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
 
