@@ -607,6 +607,7 @@ export default async function handler(req, res) {
         ...existingVault,
         ...body,
         trackTickets: body.trackTickets !== undefined ? body.trackTickets : (existingVault.trackTickets || 0),
+        coinRatio: body.coinRatio !== undefined ? (parseFloat(body.coinRatio) || 1000) : (existingVault.coinRatio || 1000),
         logs: mergedLogs,
         lastSavedAt: new Date().toISOString()
       };
@@ -868,15 +869,33 @@ export default async function handler(req, res) {
 
     const payload = await sflRes.json();
     const farm = payload.farm || payload;
-    const parsed = parseFarmData(farm, priceMap, payload);
+
+    const coinRatioQuery = searchParams.get('coinRatio');
+    let userCoinRatio = (coinRatioQuery && parseFloat(coinRatioQuery) > 0) ? parseFloat(coinRatioQuery) : null;
 
     let userVault = null;
+    let cleanUser = null;
     if (username) {
-      const cleanUser = username.trim().toLowerCase();
+      cleanUser = username.trim().toLowerCase();
       const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
       if (uRes.rows.length > 0) {
         userVault = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
-        reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
+        if (!userCoinRatio && userVault.coinRatio) {
+          userCoinRatio = parseFloat(userVault.coinRatio);
+        }
+      }
+    }
+
+    const finalCoinRatio = (userCoinRatio && userCoinRatio > 0) ? userCoinRatio : 1000;
+    priceMap['sfl_coin_rate'] = finalCoinRatio;
+    priceMap['coins'] = 1 / finalCoinRatio;
+    priceMap['coin'] = 1 / finalCoinRatio;
+
+    const parsed = parseFarmData(farm, priceMap, payload);
+
+    if (userVault && cleanUser) {
+      userVault.coinRatio = finalCoinRatio;
+      reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
 
         const currentWeekMonday = getMondayBasedWeekId(new Date());
         if (!userVault.weeks) userVault.weeks = {};
@@ -936,7 +955,6 @@ export default async function handler(req, res) {
           isLocked: Boolean(r.is_locked)
         }));
       }
-    }
 
     const curWkId = getMondayBasedWeekId(new Date());
     return res.status(200).json({
@@ -947,6 +965,7 @@ export default async function handler(req, res) {
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       doubleDeliveryDates: parsed.doubleDeliveryDates,
       chapterPoints: parsed.chapterPoints || 0,
+      coinRatio: finalCoinRatio,
       usedBackupKey,
       apiKeyInvalid,
       milestones: parsed.liveMilestones,

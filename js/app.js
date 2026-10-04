@@ -39,7 +39,7 @@ import {
   moveChartTooltip,
   hideChartTooltip
 } from './render.js';
-import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle } from './state.js';
+import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
 
 // ==========================================
@@ -258,6 +258,24 @@ window.saveLoginCountAndRecalculate = () => {
   recalculateAll();
 };
 
+export async function handleCoinRatioChange() {
+  const input = document.getElementById('coinsPerSflInput');
+  const val = parseFloat(input?.value);
+  const ratio = (val && val > 0) ? val : 1000;
+  if (input) input.value = ratio;
+  localStorage.setItem('sfl_coin_ratio', ratio);
+  if (state.currentVaultData) {
+    state.currentVaultData.coinRatio = ratio;
+  }
+  if (state.globalData) {
+    state.globalData.coinRatio = ratio;
+  }
+  recomputeCoinCosts(ratio);
+  recalculateAll();
+  saveProgressToCloudKV(true);
+}
+window.handleCoinRatioChange = handleCoinRatioChange;
+
 // Focused Gameplay Tips Rotation
 const FARMER_TIPS = [
   '📈 <strong>WEEKLY BREAKDOWNS:</strong> Hover or tap any bar in the Weekly Progression chart to see tickets earned from Deliveries, Bounties, Animal Bounties & Chores!',
@@ -393,6 +411,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const savedWeeks = localStorage.getItem('sfl_target_weeks');
   if (savedWeeks) document.getElementById('targetWeeksInput').value = savedWeeks;
+
+  const savedCoinRatio = localStorage.getItem('sfl_coin_ratio');
+  const coinRatioEl = document.getElementById('coinsPerSflInput');
+  if (coinRatioEl && savedCoinRatio) {
+    coinRatioEl.value = savedCoinRatio;
+  }
 
   await checkSavedAuth();
   await checkAndAutoClaimDailyLogin();

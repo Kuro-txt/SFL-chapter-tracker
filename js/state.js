@@ -308,3 +308,56 @@ export function getDeliveryRecords() {
   } catch (e) {}
   return cleanList;
 }
+
+export function recomputeCoinCosts(ratio) {
+  if (!ratio || ratio <= 0) ratio = 1000;
+  const newCoinPrice = 1 / ratio;
+
+  function updateItem(item) {
+    if (!item) return;
+    let hasCoinItem = false;
+    if (Array.isArray(item.itemDetails) && item.itemDetails.length > 0) {
+      item.itemDetails.forEach(det => {
+        const cName = (det.name || '').toLowerCase().trim();
+        if (cName === 'coins' || cName === 'coin') {
+          hasCoinItem = true;
+          det.unitPrice = newCoinPrice;
+          det.lineCost = (typeof det.qty === 'number' ? det.qty : parseFloat(det.qty) || 0) * newCoinPrice;
+        }
+      });
+      if (hasCoinItem && !item.isCustomCost && item.userCost === undefined) {
+        const totalCost = item.itemDetails.reduce((sum, d) => sum + (d.lineCost || 0), 0);
+        item.itemsCost = totalCost;
+        item.cost = totalCost;
+      }
+    } else if (item.items && typeof item.items === 'object') {
+      Object.entries(item.items).forEach(([ingName, qty]) => {
+        const cName = ingName.toLowerCase().trim();
+        if (cName === 'coins' || cName === 'coin') {
+          hasCoinItem = true;
+          if (!item.isCustomCost && item.userCost === undefined) {
+            const numQty = typeof qty === 'number' ? qty : parseFloat(qty) || 0;
+            const coinCost = numQty * newCoinPrice;
+            item.itemsCost = coinCost;
+            item.cost = coinCost;
+          }
+        }
+      });
+    }
+  }
+
+  // Update live deliveries & archive
+  (state.globalData?.deliveries || []).forEach(updateItem);
+  (state.globalData?.archiveDeliveries || []).forEach(updateItem);
+  (state.globalData?.bounties || []).forEach(updateItem);
+  (state.globalData?.chores || []).forEach(updateItem);
+
+  // Update historical weeks
+  const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks || {};
+  Object.values(weeks).forEach(wk => {
+    if (!wk || typeof wk !== 'object') return;
+    (wk.bounties || []).forEach(updateItem);
+    (wk.chores || []).forEach(updateItem);
+  });
+}
+

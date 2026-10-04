@@ -72,9 +72,11 @@ export async function loadTrackerData() {
   }
 
   try {
+    const coinRatioVal = parseFloat(document.getElementById('coinsPerSflInput')?.value) || 1000;
     const queryParams = new URLSearchParams({
       farmId,
-      username: currentUsername
+      username: currentUsername,
+      coinRatio: String(coinRatioVal)
     });
     if (apiKey) queryParams.set('apiKey', apiKey);
 
@@ -197,6 +199,14 @@ export async function loadTrackerData() {
       if (data.vaultData.trackCost !== undefined) {
         const trackCostEl = document.getElementById('trackCostInput');
         if (trackCostEl) trackCostEl.value = data.vaultData.trackCost;
+      }
+      if (data.vaultData?.coinRatio !== undefined || data.coinRatio !== undefined) {
+        const cr = data.vaultData?.coinRatio || data.coinRatio;
+        const coinRatioEl = document.getElementById('coinsPerSflInput');
+        if (coinRatioEl) coinRatioEl.value = cr;
+        localStorage.setItem('sfl_coin_ratio', cr);
+        if (state.currentVaultData) state.currentVaultData.coinRatio = cr;
+        if (state.globalData) state.globalData.coinRatio = cr;
       }
 
       const { checkAndAutoClaimDailyLogin } = await import('./state.js');
@@ -484,6 +494,7 @@ export async function saveProgressToCloudKV(silent = false) {
     farmId,
     trackTickets,
     trackCost,
+    coinRatio: parseFloat(document.getElementById('coinsPerSflInput')?.value) || 1000,
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,
     cumulativeCost: calculatedTotalCost,

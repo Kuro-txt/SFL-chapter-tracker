@@ -98,10 +98,13 @@ export function cleanItemName(name) {
 export function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
   const clean = name.toLowerCase().trim();
-  const stripped = clean.replace(/[^a-z0-9]/g, '');
-  if (clean === 'coins' || clean === 'coin') return 0.001; // 1,000 Coins = 1 SFL
+  if (clean === 'coins' || clean === 'coin') {
+    const coinsPerSfl = (priceMap && priceMap['sfl_coin_rate'] && priceMap['sfl_coin_rate'] > 0) ? priceMap['sfl_coin_rate'] : 1000;
+    return 1 / coinsPerSfl;
+  }
 
   const baseClean = cleanItemName(clean);
+  const stripped = clean.replace(/[^a-z0-9]/g, '');
 
   const searchNames = [
     clean, 
@@ -143,7 +146,7 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
     if (recipe.sfl !== undefined && Object.keys(recipe).length === 1) return recipe.sfl;
 
     let recipeTotal = 0;
-    const coinsPerSfl = priceMap['sfl_coin_rate'] || 1000; // 1,000 Coins = 1 SFL
+    const coinsPerSfl = (priceMap && priceMap['sfl_coin_rate'] && priceMap['sfl_coin_rate'] > 0) ? priceMap['sfl_coin_rate'] : 1000;
 
     const ingredients = recipe.ingredients || recipe;
     if (typeof ingredients === 'object') {
