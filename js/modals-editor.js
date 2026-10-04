@@ -307,8 +307,10 @@ export function renderColumnHistoryModalList() {
         : '';
 
       const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
-      const itemsRow = (type === 'delivery' && r.requestedItems) 
-        ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
+      const itemsRow = type === 'delivery'
+        ? (r.requestedItems 
+            ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
+            : (r.isStacked ? `<div style="font-size:10px; color:#8D6E63; margin-top:2px;">📦 Needs: Recipe not available (historical stacked delivery)</div>` : ''))
         : '';
 
       const checkboxHtml = r.isManual

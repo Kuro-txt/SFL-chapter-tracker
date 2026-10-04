@@ -286,6 +286,9 @@ export function sanitizeDeliveries(deliveries) {
         existing.itemsCost = d.itemsCost;
         existing.cost = d.cost;
       }
+      if (!existing.activeSince && d.activeSince) {
+        existing.activeSince = d.activeSince;
+      }
     }
   }
 

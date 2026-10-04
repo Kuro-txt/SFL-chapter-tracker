@@ -98,6 +98,9 @@ export function sanitizeDeliveriesList(deliveries) {
         existing.itemsCost = d.itemsCost;
         existing.cost = d.cost;
       }
+      if (!existing.activeSince && d.activeSince) {
+        existing.activeSince = d.activeSince;
+      }
     }
   }
 
@@ -162,6 +165,9 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   // 1. Sanitize past database records
   vault.archiveDeliveries = sanitizeDeliveriesList(vault.archiveDeliveries);
 
+  // Track NPCs that had a stale delivery completed in this cycle
+  const staleCompletedNpcs = new Set();
+
   // 2. Reconcile Deltas using NPC Lifetime Counters
   Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
     const npcClean = npcName.toLowerCase().trim();
@@ -169,27 +175,33 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     const prevStat = vault.npcSnapshots[npcClean];
 
     if (prevStat) {
-      const delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
-      const skipDelta = currStat.skippedCount - prevStat.skippedCount;
+      let delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
+      let skipDelta = currStat.skippedCount - prevStat.skippedCount;
 
-      if (delivDelta > 0) {
+      if (delivDelta > 0 || skipDelta > 0) {
         const completionTime = currStat.deliveryCompletedAt || nowMs;
         const compDate = new Date(completionTime).toISOString().split('T')[0];
         const compWeek = getMondayBasedWeekId(completionTime);
 
-        for (let k = 1; k <= delivDelta; k++) {
-          const completedCountIndex = prevStat.deliveryCount + k;
-          const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
-          const isStacked = k > 1;
+        // STALE ACTIVE CARD RESOLUTION
+        // Look for an existing pending active card for this NPC that was created on a previous day
+        const staleActiveIdx = vault.archiveDeliveries.findIndex(d => {
+          const dNpc = (d.from || d.name || '').toLowerCase().trim();
+          const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+          const isStale = Boolean(d.activeSince && d.activeSince < todayDateStr);
+          return dNpc === npcClean && d.id === `deliv_${npcClean}_active` && isPending && isStale;
+        });
 
-          const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
-            const dNpc = (d.from || d.name || '').toLowerCase().trim();
-            const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
-            return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active` || d.id === targetOrderId);
-          });
-
-          if (existingPendingIdx !== -1) {
-            const orderToComplete = vault.archiveDeliveries[existingPendingIdx];
+        if (staleActiveIdx !== -1) {
+          if (skipDelta > 0) {
+            // Yesterday's delivery was skipped: remove it from storage
+            vault.archiveDeliveries.splice(staleActiveIdx, 1);
+            skipDelta--;
+          } else if (delivDelta > 0) {
+            // Yesterday's delivery was completed: upgrade it to d<completedCountIndex>, keep original items!
+            const completedCountIndex = prevStat.deliveryCount + 1;
+            const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
+            const orderToComplete = vault.archiveDeliveries[staleActiveIdx];
             orderToComplete.id = targetOrderId;
             orderToComplete.completed = true;
             orderToComplete.checked = true;
@@ -199,45 +211,81 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             orderToComplete.completedDate = compDate;
             orderToComplete.weekId = compWeek;
             orderToComplete.deliveryCountAtCreation = completedCountIndex;
-            orderToComplete.isStacked = isStacked;
-          } else {
-            const alreadyExists = vault.archiveDeliveries.some(d => d.id === targetOrderId);
-            if (!alreadyExists) {
-              vault.archiveDeliveries.push({
-                id: targetOrderId,
-                from: npcName,
-                name: npcName,
-                baseTickets: defaultTix,
-                tickets: defaultTix,
-                cost: 0,
-                itemsCost: 0,
-                itemDetails: [],
-                items: {},
-                completed: true,
-                checked: true,
-                isSkipped: false,
-                isStacked,
-                status: 'completed',
-                completedAt: completionTime,
-                completedDate: compDate,
-                weekId: compWeek,
-                deliveryCountAtCreation: completedCountIndex,
-                isManual: false
-              });
+            orderToComplete.isStacked = false; // Primary / oldest delivery: eligible for 2x double delivery bonus
+            staleCompletedNpcs.add(npcClean);
+            delivDelta--;
+          }
+        }
+
+        // Remaining delivDelta loop (for today's stacked deliveries or fresh completions)
+        if (delivDelta > 0) {
+          const baseCount = currStat.deliveryCount - delivDelta;
+          for (let k = 1; k <= delivDelta; k++) {
+            const completedCountIndex = baseCount + k;
+            const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
+            const isStacked = k > 1 || staleCompletedNpcs.has(npcClean);
+
+            const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
+              const dNpc = (d.from || d.name || '').toLowerCase().trim();
+              const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+              return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active` || d.id === targetOrderId);
+            });
+
+            if (existingPendingIdx !== -1) {
+              const orderToComplete = vault.archiveDeliveries[existingPendingIdx];
+              orderToComplete.id = targetOrderId;
+              orderToComplete.completed = true;
+              orderToComplete.checked = true;
+              orderToComplete.isSkipped = false;
+              orderToComplete.status = 'completed';
+              orderToComplete.completedAt = completionTime;
+              orderToComplete.completedDate = compDate;
+              orderToComplete.weekId = compWeek;
+              orderToComplete.deliveryCountAtCreation = completedCountIndex;
+              orderToComplete.isStacked = isStacked;
+            } else {
+              const alreadyExists = vault.archiveDeliveries.some(d => d.id === targetOrderId);
+              if (!alreadyExists) {
+                // Preceding delivery lookup so it has recipe/tickets instead of 0 cost if needed
+                const prevDelivId = `deliv_${npcClean}_d${completedCountIndex - 1}`;
+                const prevDeliv = vault.archiveDeliveries.find(d => d.id === prevDelivId);
+
+                vault.archiveDeliveries.push({
+                  id: targetOrderId,
+                  from: npcName,
+                  name: npcName,
+                  baseTickets: defaultTix,
+                  tickets: defaultTix,
+                  cost: prevDeliv?.cost || prevDeliv?.itemsCost || 0,
+                  itemsCost: prevDeliv?.itemsCost || 0,
+                  itemDetails: prevDeliv?.itemDetails || [],
+                  items: prevDeliv?.items || {},
+                  completed: true,
+                  checked: true,
+                  isSkipped: false,
+                  isStacked,
+                  status: 'completed',
+                  completedAt: completionTime,
+                  completedDate: compDate,
+                  weekId: compWeek,
+                  deliveryCountAtCreation: completedCountIndex,
+                  isManual: false
+                });
+              }
             }
           }
         }
-      }
 
-      if (skipDelta > 0) {
-        const pendingIdx = vault.archiveDeliveries.findIndex(d => {
-          const dNpc = (d.from || d.name || '').toLowerCase().trim();
-          const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
-          return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
-        });
+        if (skipDelta > 0) {
+          const pendingIdx = vault.archiveDeliveries.findIndex(d => {
+            const dNpc = (d.from || d.name || '').toLowerCase().trim();
+            const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+            return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
+          });
 
-        if (pendingIdx !== -1) {
-          vault.archiveDeliveries.splice(pendingIdx, 1);
+          if (pendingIdx !== -1) {
+            vault.archiveDeliveries.splice(pendingIdx, 1);
+          }
         }
       }
     }
@@ -259,6 +307,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       const compTime = order.completedAt || currStat.deliveryCompletedAt || nowMs;
       const compDate = new Date(compTime).toISOString().split('T')[0];
       const compWeek = getMondayBasedWeekId(compTime);
+      const isStackedOrder = staleCompletedNpcs.has(npcClean);
 
       const activeIdx = vault.archiveDeliveries.findIndex(d => {
         const dNpc = (d.from || d.name || '').toLowerCase().trim();
@@ -277,6 +326,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         target.completedDate = compDate;
         target.weekId = compWeek;
         target.deliveryCountAtCreation = currStat.deliveryCount;
+        target.isStacked = isStackedOrder;
         target.items = order.items || target.items;
         if (!target.isCustomCost && target.userCost === undefined) {
           target.itemsCost = order.itemsCost || target.itemsCost;
@@ -298,6 +348,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           target.completedAt = compTime;
           target.completedDate = compDate;
           target.weekId = compWeek;
+          target.isStacked = isStackedOrder;
           target.items = order.items || target.items;
           if (!target.isCustomCost && target.userCost === undefined) {
             target.itemsCost = order.itemsCost || target.itemsCost;
@@ -323,7 +374,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             completed: true,
             checked: true,
             isSkipped: false,
-            isStacked: false,
+            isStacked: isStackedOrder,
             status: 'completed',
             completedAt: compTime,
             completedDate: compDate,
@@ -343,15 +394,18 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       if (existingIdx !== -1) {
         const target = vault.archiveDeliveries[existingIdx];
         if (!target.completed) {
-          target.items = order.items || target.items;
-          if (!target.isCustomCost && target.userCost === undefined) {
-            target.itemsCost = order.itemsCost || target.itemsCost;
-            target.cost = order.itemsCost || target.cost;
-          }
-          target.itemDetails = order.itemDetails || target.itemDetails;
-          if (!target.isCustomTickets && target.userTickets === undefined) {
-            target.baseTickets = order.baseTickets || target.baseTickets;
-            target.tickets = order.baseTickets || target.tickets;
+          const isStaleCard = Boolean(target.activeSince && target.activeSince < todayDateStr);
+          if (!isStaleCard) {
+            target.items = order.items || target.items;
+            if (!target.isCustomCost && target.userCost === undefined) {
+              target.itemsCost = order.itemsCost || target.itemsCost;
+              target.cost = order.itemsCost || target.cost;
+            }
+            target.itemDetails = order.itemDetails || target.itemDetails;
+            if (!target.isCustomTickets && target.userTickets === undefined) {
+              target.baseTickets = order.baseTickets || target.baseTickets;
+              target.tickets = order.baseTickets || target.tickets;
+            }
           }
           target.deliveryCountAtCreation = nextTargetCount;
           target.skippedCountAtCreation = currStat.skippedCount;
@@ -359,6 +413,9 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           target.checked = false;
           target.isSkipped = false;
           target.status = 'active';
+          if (!target.activeSince) {
+            target.activeSince = todayDateStr;
+          }
         }
       } else {
         vault.archiveDeliveries.push({
@@ -382,7 +439,8 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           weekId: currentWeekMonday,
           deliveryCountAtCreation: nextTargetCount,
           skippedCountAtCreation: currStat.skippedCount,
-          isManual: false
+          isManual: false,
+          activeSince: todayDateStr
         });
       }
     }

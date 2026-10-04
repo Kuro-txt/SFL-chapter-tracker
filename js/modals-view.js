@@ -411,7 +411,7 @@ export function openCategorySummaryModal(cat) {
           <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}</span>
           ${statusBadge}
         </div>
-        <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || 'No item recipe data'}</div>
+        <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || (d.isStacked ? '🥞 Stacked delivery — recipe not synced' : 'No item recipe data')}</div>
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
           <span>Yield: 🎟️ ${finalTickets} Tickets</span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
