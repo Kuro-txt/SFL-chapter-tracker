@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800;900&display=swap');
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   background-color: #3b5323;
@@ -5,7 +7,7 @@ body {
   background-size: 30px 30px;
   background-position: 0 0, 15px 15px;
   color: #3e2723;
-  font-family: 'Courier New', Courier, monospace, sans-serif;
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace, sans-serif;
   padding: 16px;
   display: flex;
   flex-direction: column;
