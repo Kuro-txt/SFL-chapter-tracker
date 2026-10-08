@@ -31,7 +31,10 @@ import {
   setChapterLogVip,
   snapshotCurrentChapter,
   deleteChapterLog,
-  exportChapterLog
+  exportChapterLog,
+  openItemsBurnedModal,
+  closeItemsBurnedModal,
+  renderItemsBurnedList
 } from './modals.js';
 import { 
   recalculateAll,
@@ -155,6 +158,9 @@ window.setChapterLogVip = setChapterLogVip;
 window.snapshotCurrentChapter = snapshotCurrentChapter;
 window.deleteChapterLog = deleteChapterLog;
 window.exportChapterLog = exportChapterLog;
+window.openItemsBurnedModal = openItemsBurnedModal;
+window.closeItemsBurnedModal = closeItemsBurnedModal;
+window.renderItemsBurnedList = renderItemsBurnedList;
 
 export function toggleTrackAuto() {
   const autoToggle = document.getElementById('trackAutoToggle');

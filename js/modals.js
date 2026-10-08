@@ -29,4 +29,10 @@ export {
   deleteWeeklyItem
 } from './modals-editor.js';
 
+export {
+  openItemsBurnedModal,
+  closeItemsBurnedModal,
+  renderItemsBurnedList
+} from './modals-items.js';
+
 export { syncCurrentVaultToCloud } from './state.js';
