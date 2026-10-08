@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet" />
   <script>
     (function() {
       var RESET_VERSION = 'v2_yugabyte_clean_v2';
@@ -291,11 +291,12 @@
     }
 
     .btn {
-      font-family: inherit;
-      font-weight: 900;
-      font-size: clamp(11px, 1.1vw, 13px);
+      font-family: 'JetBrains Mono', Courier, monospace, sans-serif;
+      font-weight: 700;
+      font-size: clamp(11px, 1.05vw, 12.5px);
+      letter-spacing: 0.5px;
       text-transform: uppercase;
-      padding: clamp(7px, 1vw, 10px) clamp(10px, 1.4vw, 16px);
+      padding: clamp(6px, 0.9vw, 9px) clamp(10px, 1.3vw, 15px);
       border-radius: 8px;
       border: 2px solid #3E2723;
       cursor: pointer;
@@ -877,6 +878,11 @@
     }
 
     /* Retro Pixel Buttons (Lively & Tactile) */
+    body.dark-mode .btn {
+      font-family: 'JetBrains Mono', Courier, monospace, sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
     body.dark-mode .btn-wood {
       background: linear-gradient(180deg, #d97706 0%, #92400e 100%) !important;
       border: 2px solid #f59e0b !important;

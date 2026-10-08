@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700;800&display=swap');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -69,11 +69,12 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
 }
 
 .btn {
-  font-family: inherit;
-  font-weight: 900;
+  font-family: 'JetBrains Mono', Courier, monospace, sans-serif;
+  font-weight: 700;
   font-size: 12px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  padding: 10px 16px;
+  padding: 8px 15px;
   border-radius: 8px;
   border: 2px solid #3E2723;
   cursor: pointer;
