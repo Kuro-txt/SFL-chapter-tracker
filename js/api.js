@@ -45,20 +45,35 @@ export async function loadTrackerData() {
     return;
   }
 
+  const LOADING_SPINNER_SVG = `<svg class="btn-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10"></path></svg>`;
+
+  let secondsLeft = 11;
+  let isRequestPending = true;
+
+  const updateFetchBtn = () => {
+    if (!fetchBtn) return;
+    if (secondsLeft <= 0) {
+      fetchBtn.disabled = false;
+      fetchBtn.innerHTML = '🌾 FETCH DATA';
+    } else if (isRequestPending) {
+      fetchBtn.innerHTML = `${LOADING_SPINNER_SVG}<span>FETCHING...</span>`;
+    } else {
+      fetchBtn.innerHTML = `${LOADING_SPINNER_SVG}<span>WAIT ${secondsLeft}s</span>`;
+    }
+  };
+
   if (fetchBtn) {
     fetchBtn.disabled = true;
-    let secondsLeft = 11;
-    fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+    updateFetchBtn();
 
     fetchCooldownTimer = setInterval(() => {
       secondsLeft--;
       if (secondsLeft > 0) {
-        fetchBtn.textContent = `⏳ WAIT ${secondsLeft}s`;
+        updateFetchBtn();
       } else {
         clearInterval(fetchCooldownTimer);
         fetchCooldownTimer = null;
-        fetchBtn.disabled = false;
-        fetchBtn.textContent = '🌾 FETCH DATA';
+        updateFetchBtn();
       }
     }, 1000);
   }
@@ -87,6 +102,8 @@ export async function loadTrackerData() {
     }
 
     const data = await res.json();
+    isRequestPending = false;
+    updateFetchBtn();
     state.globalData = data;
 
     // 1. Restore historical deliveries, chores, bounties & manual orders
@@ -258,6 +275,8 @@ export async function loadTrackerData() {
 
     recalculateAll();
   } catch (err) {
+    isRequestPending = false;
+    updateFetchBtn();
     const errMsg = err.message || '';
     const isApiKeyError = errMsg.includes('401') || errMsg.toLowerCase().includes('api key') || errMsg.toLowerCase().includes('unauthorized') || errMsg.toLowerCase().includes('incorrect');
     const isRateLimit = errMsg.includes('429') || errMsg.includes('Rate limit') || errMsg.includes('rate limit');
