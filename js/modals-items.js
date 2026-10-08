@@ -438,61 +438,59 @@ export function renderItemsBurnedList() {
     }).join('');
 
     summaryBox.innerHTML = `
-      <div class="chapter-items-summary-grid">
-        <div class="items-summary-card">
-          <span class="items-summary-icon">🔥</span>
-          <div class="items-summary-data">
-            <span class="items-summary-label">${statusLabel} SFL Cost</span>
-            <span class="items-summary-value text-red">${formatSFL(catStats.all.cost)} SFL</span>
+      <!-- 1. COMPACT METRICS CHIP STRIP -->
+      <div class="chapter-items-summary-strip">
+        <div class="summary-metric-chip">
+          <span class="chip-icon">🔥</span>
+          <div class="chip-content">
+            <span class="chip-label">${statusLabel} Cost</span>
+            <span class="chip-val text-red">${formatSFL(catStats.all.cost)} SFL</span>
           </div>
         </div>
 
-        <div class="items-summary-card">
-          <span class="items-summary-icon">📦</span>
-          <div class="items-summary-data">
-            <span class="items-summary-label">${statusLabel} Units</span>
-            <span class="items-summary-value text-emerald">${Math.round(catStats.all.units).toLocaleString()} Units</span>
+        <div class="summary-metric-chip">
+          <span class="chip-icon">📦</span>
+          <div class="chip-content">
+            <span class="chip-label">${statusLabel} Units</span>
+            <span class="chip-val text-emerald">${Math.round(catStats.all.units).toLocaleString()}</span>
           </div>
         </div>
 
-        <div class="items-summary-card">
-          <span class="items-summary-icon">🧺</span>
-          <div class="items-summary-data">
-            <span class="items-summary-label">Items Count</span>
-            <span class="items-summary-value text-amber">${catStats.all.count} Items</span>
+        <div class="summary-metric-chip">
+          <span class="chip-icon">🧺</span>
+          <div class="chip-content">
+            <span class="chip-label">Unique Items</span>
+            <span class="chip-val text-amber">${catStats.all.count}</span>
           </div>
         </div>
 
-        <div class="items-summary-card">
-          <span class="items-summary-icon">👑</span>
-          <div class="items-summary-data">
-            <span class="items-summary-label">Top Expense Item</span>
-            <span class="items-summary-value text-purple" style="font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${topItem ? `${topItem.name} (${formatSFL(topCost)} SFL)` : 'None'}">
-              ${topItem ? `${topItem.name} (${formatSFL(topCost)} SFL)` : '---'}
-            </span>
+        <div class="summary-metric-chip chip-top-item" title="${topItem ? `${topItem.name} (${formatSFL(topCost)} SFL)` : 'None'}">
+          <span class="chip-icon">👑</span>
+          <div class="chip-content">
+            <span class="chip-label">Top Expense</span>
+            <span class="chip-val text-purple">${topItem ? `${topItem.name}` : '---'}</span>
           </div>
         </div>
       </div>
 
-      <!-- VISUAL SPEND DISTRIBUTION BAR -->
+      <!-- 2. COMPACT SPEND DISTRIBUTION BAR -->
       ${totalCostAll > 0 ? `
-        <div class="spend-distribution-wrap">
-          <div class="spend-distribution-header">
-            <span>📊 CATEGORY SPEND DISTRIBUTION:</span>
-            <div class="spend-distribution-legend">
-              <span class="leg-item leg-crops">🌾 Crops (${catStats.crops.cost > 0 ? ((catStats.crops.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
-              <span class="leg-item leg-food">🍳 Food (${catStats.food.cost > 0 ? ((catStats.food.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
-              <span class="leg-item leg-animals">🐄 Animals (${catStats.animals.cost > 0 ? ((catStats.animals.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
-              <span class="leg-item leg-resources">🪵 Resources (${catStats.resources.cost > 0 ? ((catStats.resources.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
+        <div class="spend-distribution-compact">
+          <div class="spend-bar-container">
+            <div class="spend-distribution-bar">
+              ${distributionSegments}
             </div>
           </div>
-          <div class="spend-distribution-bar">
-            ${distributionSegments}
+          <div class="spend-distribution-legend">
+            <span class="leg-item leg-crops">🌾 Crops (${catStats.crops.cost > 0 ? ((catStats.crops.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
+            <span class="leg-item leg-food">🍳 Food (${catStats.food.cost > 0 ? ((catStats.food.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
+            <span class="leg-item leg-animals">🐄 Animals (${catStats.animals.cost > 0 ? ((catStats.animals.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
+            <span class="leg-item leg-resources">🪵 Resources (${catStats.resources.cost > 0 ? ((catStats.resources.cost/totalCostAll)*100).toFixed(0) : 0}%)</span>
           </div>
         </div>
       ` : ''}
 
-      <!-- INTERACTIVE CATEGORY TABS -->
+      <!-- 3. COMPACT CATEGORY FILTER TABS -->
       <div class="items-category-tabs">
         ${tabsHtml}
       </div>
@@ -503,7 +501,7 @@ export function renderItemsBurnedList() {
   if (filtered.length === 0) {
     listContainer.innerHTML = `
       <div class="items-empty-state">
-        <span style="font-size:32px;">🔍</span>
+        <span style="font-size:28px;">🔍</span>
         <div class="empty-state-title">No items found matching your filters.</div>
         <p class="empty-state-sub">Try changing your search keywords, status filter, or selecting "All Categories".</p>
       </div>
@@ -523,8 +521,8 @@ export function renderItemsBurnedList() {
     const catLabel = getCategoryLabel(item.category);
 
     const sourcesHtml = [
-      item.deliveryCount > 0 ? `<span class="source-tag">📦 ${item.deliveryCount} Deliv</span>` : '',
-      item.bountyCount > 0 ? `<span class="source-tag">📜 ${item.bountyCount} Bounty</span>` : ''
+      item.deliveryCount > 0 ? `<span class="source-tag">📦 ${item.deliveryCount}</span>` : '',
+      item.bountyCount > 0 ? `<span class="source-tag">📜 ${item.bountyCount}</span>` : ''
     ].filter(Boolean).join(' ');
 
     if (currentViewMode === 'compact') {
@@ -532,12 +530,13 @@ export function renderItemsBurnedList() {
         <div class="item-burn-compact-row">
           <div class="compact-left">
             <span class="compact-emoji">${emoji}</span>
-            <strong>${item.name}</strong>
+            <strong class="compact-name" title="${item.name}">${item.name}</strong>
             <span class="cat-pill cat-${item.category}">${catLabel}</span>
           </div>
           <div class="compact-center">
             <span class="compact-qty">${displayQty.toLocaleString()}x</span>
-            <span class="compact-unit">@ ~${formatSFL(item.unitPrice)} SFL</span>
+            <span class="compact-unit">@ ~${formatSFL(item.unitPrice)}</span>
+            <span class="compact-sources">${sourcesHtml}</span>
           </div>
           <div class="compact-right">
             <strong class="compact-cost">${formatSFL(displayCost)} SFL</strong>
@@ -547,51 +546,41 @@ export function renderItemsBurnedList() {
       `;
     }
 
-    // Grid Card Mode (Modern Pixel Tile)
+    // Grid Card Mode (High Density Inventory Tile)
     return `
       <div class="item-burn-grid-card">
-        <div class="card-top-row">
-          <div class="card-icon-title">
-            <div class="card-icon-box">${emoji}</div>
-            <div class="card-title-wrap">
-              <strong class="card-item-name" title="${item.name}">${item.name}</strong>
+        <div class="card-row-top">
+          <div class="card-left">
+            <div class="card-emoji-box">${emoji}</div>
+            <div class="card-name-wrap">
+              <strong class="card-name" title="${item.name}">${item.name}</strong>
               <span class="cat-pill cat-${item.category}">${catLabel}</span>
             </div>
           </div>
-          <div class="card-cost-wrap">
-            <span class="card-cost-value">${formatSFL(displayCost)} SFL</span>
-            <span class="card-cost-share">${costSharePercent}% share</span>
+          <div class="card-right">
+            <span class="card-cost">${formatSFL(displayCost)} SFL</span>
+            <span class="card-share">${costSharePercent}%</span>
           </div>
         </div>
 
-        <div class="card-mid-row">
-          <div class="card-qty-box">
-            <span class="card-qty-num">${displayQty.toLocaleString()}x</span>
-            <span class="card-qty-label">${statusFilter === 'all' ? 'Total Required' : (isCompletedFilter ? '🔥 Burned' : '⏳ Pending')}</span>
+        <div class="card-row-bottom">
+          <div class="card-stats">
+            <span class="card-qty">${displayQty.toLocaleString()}x</span>
+            <span class="card-unit">@ ~${formatSFL(item.unitPrice)}</span>
           </div>
-          <div class="card-unit-box">
-            <span class="card-unit-label">Unit Price</span>
-            <span class="card-unit-val">~${formatSFL(item.unitPrice)} SFL</span>
+          <div class="card-sources">
+            ${sourcesHtml || '<span class="source-tag">Order</span>'}
           </div>
         </div>
 
-        ${statusFilter === 'all' ? `
-          <div class="card-progress-wrap">
+        ${statusFilter === 'all' && item.totalQty > 0 ? `
+          <div class="card-progress-compact">
             <div class="card-progress-bar">
               <div class="card-progress-fill" style="width: ${percentDone}%;"></div>
             </div>
-            <div class="card-progress-text">
-              <span>${item.completedQty.toLocaleString()} / ${item.totalQty.toLocaleString()} burned</span>
-              <span>${percentDone}%</span>
-            </div>
+            <span class="card-progress-text">${percentDone}% (${item.completedQty}/${item.totalQty})</span>
           </div>
         ` : ''}
-
-        <div class="card-footer-row">
-          <div class="card-sources">
-            ${sourcesHtml || '<span class="source-tag">Chapter Order</span>'}
-          </div>
-        </div>
       </div>
     `;
   };
