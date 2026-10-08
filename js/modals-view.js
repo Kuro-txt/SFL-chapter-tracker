@@ -719,7 +719,7 @@ export function renderChapterLogsList() {
         <p class="chapter-empty-desc">
           Click <strong style="color: #2E7D32;">"💾 SNAPSHOT TO LOGS"</strong> above to save a permanent lightweight (~1.2 KB) summary of your seasonal ticket count and resource costs!<br/>
           <span style="display: inline-block; margin-top: 6px; font-size: 10.5px; opacity: 0.85;">
-            ⏰ Sun-Forge also automatically snapshots and updates this active chapter on the nightly 23:00 UTC cron sync.
+            ⏰ Sun-Forge also automatically snapshots and updates this active chapter on the 01:30 & 23:30 UTC cron syncs.
           </span>
         </p>
       </div>
