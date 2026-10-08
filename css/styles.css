@@ -330,6 +330,77 @@ body.dark-mode .countdown-timer {
   color: #38bdf8 !important;
 }
 
+/* --- Refined Main Stat Boxes (Dark Slate with Red, Blue, Purple & Pink Shades) --- */
+/* Box 1: Total Tickets (Shade of Red) */
+body.dark-mode #boxTotalTickets {
+  background: linear-gradient(180deg, #161822 0%, #12131b 100%) !important;
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 4px 0px #090e16 !important;
+}
+body.dark-mode #boxTotalTickets:hover {
+  box-shadow: 0 6px 0px #090e16, 0 0 16px rgba(239, 68, 68, 0.22) !important;
+  transform: translateY(-2px);
+}
+body.dark-mode #boxTotalTickets .stat-title { color: #fca5a5 !important; }
+body.dark-mode #statTotalTickets { color: #f87171 !important; }
+body.dark-mode #statTotalCost { color: #fca5a5 !important; }
+body.dark-mode #statTotalRatio { color: #cbd5e1 !important; }
+
+/* Box 2: This Week (Shade of Blue) */
+body.dark-mode #boxWeekTickets {
+  background: linear-gradient(180deg, #131b26 0%, #0f1520 100%) !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 4px 0px #090e16 !important;
+}
+body.dark-mode #boxWeekTickets:hover {
+  box-shadow: 0 6px 0px #090e16, 0 0 16px rgba(56, 189, 248, 0.22) !important;
+  transform: translateY(-2px);
+}
+body.dark-mode #boxWeekTickets .stat-title { color: #7dd3fc !important; }
+body.dark-mode #statWeekTickets { color: #38bdf8 !important; }
+body.dark-mode #statWeekCost { color: #93c5fd !important; }
+body.dark-mode #statWeekRatio { color: #cbd5e1 !important; }
+
+/* Box 3: Done Today (Shade of Purple) */
+body.dark-mode #boxTodayTickets {
+  background: linear-gradient(180deg, #161524 0%, #11101c 100%) !important;
+  border: 2px solid #a855f7 !important;
+  box-shadow: 0 4px 0px #090e16 !important;
+}
+body.dark-mode #boxTodayTickets:hover {
+  box-shadow: 0 6px 0px #090e16, 0 0 16px rgba(168, 85, 247, 0.22) !important;
+  transform: translateY(-2px);
+}
+body.dark-mode #boxTodayTickets .stat-title { color: #d8b4fe !important; }
+body.dark-mode #statEarnedTickets { color: #c084fc !important; }
+body.dark-mode #statEarnedCost { color: #d8b4fe !important; }
+body.dark-mode #statEarnedRatio { color: #cbd5e1 !important; }
+
+/* Box 4: Chapter Target (Shade of Pink) */
+body.dark-mode .stats-grid > div:nth-child(4) {
+  background: linear-gradient(180deg, #19141f 0%, #130e18 100%) !important;
+  border: 2px solid #ec4899 !important;
+  box-shadow: 0 4px 0px #090e16 !important;
+}
+body.dark-mode .stats-grid > div:nth-child(4):hover {
+  box-shadow: 0 6px 0px #090e16, 0 0 16px rgba(236, 72, 153, 0.22) !important;
+  transform: translateY(-2px);
+}
+body.dark-mode .stats-grid > div:nth-child(4) .stat-title { color: #f472b6 !important; }
+body.dark-mode #targetGoalInput,
+body.dark-mode #targetWeeksInput {
+  background-color: #0f1722 !important;
+  color: #fbcfe8 !important;
+  border: 1.5px solid #ec4899 !important;
+}
+body.dark-mode #statGoalRemaining { color: #f472b6 !important; }
+body.dark-mode #statGoalPerWeek { color: #fbcfe8 !important; }
+
+body.dark-mode .stat-footer {
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  color: #94a3b8 !important;
+}
+
 /* =========================================================
    COMPACT & ELEGANT ITEMS BURNED ANALYTICS MODAL
    ========================================================= */
