@@ -2410,7 +2410,7 @@
 
   <!-- ITEMS BURNED MODAL -->
   <div id="itemsBurnedModal" class="modal">
-    <div class="modal-content" style="max-width: 840px; max-height: 90vh;">
+    <div class="modal-content" style="max-width: 900px; max-height: 90vh;">
       <div class="modal-header">
         <h3 id="itemsBurnedTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC; display: flex; align-items: center; gap: 6px;">
           <span>🔥</span> <span>CHAPTER ITEMS BURNED & SFL COST BREAKDOWN</span>
@@ -2435,14 +2435,10 @@
             <option value="unit_desc">💎 Unit Price</option>
             <option value="name_asc">🔤 Alphabetical (A-Z)</option>
           </select>
-          <select id="itemsCategoryFilter" onchange="renderItemsBurnedList()">
-            <option value="all">🏷️ All Categories</option>
-            <option value="crops">🌾 Crops</option>
-            <option value="food">🍳 Cooked Food</option>
-            <option value="animals">🐄 Animal Products</option>
-            <option value="resources">🪵 Resources & Minerals</option>
-            <option value="other">✨ Other</option>
-          </select>
+          <div class="items-view-toggle">
+            <button type="button" id="btnViewGrid" class="btn-view-toggle active" onclick="toggleBurnedViewMode('grid')" title="Grid Card View">🔲 Grid</button>
+            <button type="button" id="btnViewCompact" class="btn-view-toggle" onclick="toggleBurnedViewMode('compact')" title="Compact List View">📄 List</button>
+          </div>
         </div>
 
         <!-- ITEMS LIST CONTAINER -->
