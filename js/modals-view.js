@@ -915,6 +915,14 @@ export function renderChapterLogsList() {
       day: 'numeric'
     }) : 'Archived';
 
+    const CHAPTER_END_FALLBACK = '2026-11-02T00:00:00.000Z';
+    const endDateRaw = item.chapterEndDate || (item.chapterId === 'ascension_age_15' ? CHAPTER_END_FALLBACK : null);
+    const endDateFormatted = endDateRaw ? new Date(endDateRaw).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }) : null;
+
     const isLocked = Boolean(item.isLocked);
     const badgeHtml = isLocked 
       ? `<span class="chapter-badge-locked" title="Chapter ended. Permanently locked historical archive.">🔒 LOCKED (FINAL ARCHIVE)</span>`
@@ -930,7 +938,8 @@ export function renderChapterLogsList() {
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <strong class="chapter-card-title">🌾 ${item.chapterTitle || 'Archived Chapter'}</strong>
             ${badgeHtml}
-            <span class="chapter-card-date">📅 ${dateFormatted}</span>
+            <span class="chapter-card-date" title="Snapshot Saved Date">📅 Archived: ${dateFormatted}</span>
+            ${endDateFormatted ? `<span class="chapter-card-end-date" title="Season End Date">🏁 Ends: ${endDateFormatted}</span>` : ''}
           </div>
           <div style="display: flex; gap: 6px;">
             <button onclick="exportChapterLog(${idx})" class="btn btn-sm btn-wood" style="padding: 3px 8px; font-size: 10.5px;" title="Export JSON summary">
@@ -1171,6 +1180,7 @@ export async function snapshotCurrentChapter() {
   const newEntry = {
     chapterId: ACTIVE_CHAPTER_ID,
     chapterTitle: chapterTitle.trim(),
+    chapterEndDate: new Date(CHAPTER_END_MS).toISOString(),
     archivedAt: new Date().toISOString(),
     isLocked: isLocked,
     baseTotalTickets: baseTotalTickets,

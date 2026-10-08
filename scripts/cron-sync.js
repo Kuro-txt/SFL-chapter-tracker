@@ -788,6 +788,7 @@ async function runSync() {
           const chapterSnapshot = {
             chapterId: ACTIVE_CHAPTER_ID,
             chapterTitle: ACTIVE_CHAPTER_TITLE,
+            chapterEndDate: new Date(CHAPTER_END_MS).toISOString(),
             archivedAt: new Date().toISOString(),
             isLocked: isChapterEnded,
             baseTotalTickets: baseTotalTickets,

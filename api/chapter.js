@@ -538,12 +538,16 @@ export default async function handler(req, res) {
         'SELECT chapter_id, chapter_title, archived_at, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
         [cleanUser]
       );
-      vaultData.chapterLogs = chapterLogsRes.rows.map(r => ({
-        ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
-        chapterId: r.chapter_id,
-        chapterTitle: r.chapter_title,
-        archivedAt: r.archived_at
-      }));
+      vaultData.chapterLogs = chapterLogsRes.rows.map(r => {
+        const parsed = typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data;
+        return {
+          ...parsed,
+          chapterId: r.chapter_id,
+          chapterTitle: r.chapter_title,
+          chapterEndDate: parsed?.chapterEndDate || (r.chapter_id === 'ascension_age_15' ? '2026-11-02T00:00:00.000Z' : undefined),
+          archivedAt: r.archived_at
+        };
+      });
 
       return res.status(200).json({ success: true, username: cleanUser, vaultData });
     }
@@ -668,13 +672,17 @@ export default async function handler(req, res) {
         [cleanUser]
       );
 
-      const chapterLogs = logsRes.rows.map(r => ({
-        ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
-        chapterId: r.chapter_id,
-        chapterTitle: r.chapter_title,
-        archivedAt: r.archived_at,
-        isLocked: Boolean(r.is_locked)
-      }));
+      const chapterLogs = logsRes.rows.map(r => {
+        const parsed = typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data;
+        return {
+          ...parsed,
+          chapterId: r.chapter_id,
+          chapterTitle: r.chapter_title,
+          chapterEndDate: parsed?.chapterEndDate || (r.chapter_id === 'ascension_age_15' ? '2026-11-02T00:00:00.000Z' : undefined),
+          archivedAt: r.archived_at,
+          isLocked: Boolean(r.is_locked)
+        };
+      });
 
       return res.status(200).json({ success: true, chapterLogs });
     }
@@ -705,6 +713,7 @@ export default async function handler(req, res) {
 
       const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
       const isLocked = Boolean(chapterLog.isLocked || Date.now() >= CHAPTER_END_MS);
+      const chapterEndDate = chapterLog.chapterEndDate || new Date(CHAPTER_END_MS).toISOString();
 
       await client.query(`
         INSERT INTO user_chapter_logs (username, chapter_id, chapter_title, archived_at, is_locked, summary_data)
@@ -722,7 +731,7 @@ export default async function handler(req, res) {
         chapterTitle,
         chapterLog.archivedAt || new Date().toISOString(),
         isLocked,
-        JSON.stringify({ ...chapterLog, isLocked })
+        JSON.stringify({ ...chapterLog, chapterEndDate, isLocked })
       ]);
 
       const logsRes = await client.query(
@@ -730,13 +739,17 @@ export default async function handler(req, res) {
         [cleanUser]
       );
 
-      const chapterLogs = logsRes.rows.map(r => ({
-        ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
-        chapterId: r.chapter_id,
-        chapterTitle: r.chapter_title,
-        archivedAt: r.archived_at,
-        isLocked: Boolean(r.is_locked)
-      }));
+      const chapterLogs = logsRes.rows.map(r => {
+        const parsed = typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data;
+        return {
+          ...parsed,
+          chapterId: r.chapter_id,
+          chapterTitle: r.chapter_title,
+          chapterEndDate: parsed?.chapterEndDate || (r.chapter_id === 'ascension_age_15' ? '2026-11-02T00:00:00.000Z' : undefined),
+          archivedAt: r.archived_at,
+          isLocked: Boolean(r.is_locked)
+        };
+      });
 
       return res.status(200).json({ success: true, chapterLogs });
     }
@@ -947,13 +960,17 @@ export default async function handler(req, res) {
           'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
           [cleanUser]
         );
-        userVault.chapterLogs = chapterLogsRes.rows.map(r => ({
-          ...(typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data),
-          chapterId: r.chapter_id,
-          chapterTitle: r.chapter_title,
-          archivedAt: r.archived_at,
-          isLocked: Boolean(r.is_locked)
-        }));
+        userVault.chapterLogs = chapterLogsRes.rows.map(r => {
+          const parsed = typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data;
+          return {
+            ...parsed,
+            chapterId: r.chapter_id,
+            chapterTitle: r.chapter_title,
+            chapterEndDate: parsed?.chapterEndDate || (r.chapter_id === 'ascension_age_15' ? '2026-11-02T00:00:00.000Z' : undefined),
+            archivedAt: r.archived_at,
+            isLocked: Boolean(r.is_locked)
+          };
+        });
       }
 
     const curWkId = getMondayBasedWeekId(new Date());
