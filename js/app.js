@@ -162,49 +162,6 @@ window.openItemsBurnedModal = openItemsBurnedModal;
 window.closeItemsBurnedModal = closeItemsBurnedModal;
 window.renderItemsBurnedList = renderItemsBurnedList;
 
-export function toggleTrackAuto() {
-  const autoToggle = document.getElementById('trackAutoToggle');
-  const trackTixEl = document.getElementById('trackTicketsInput');
-  const isAuto = Boolean(autoToggle?.checked);
-  localStorage.setItem('sfl_track_auto', isAuto);
-
-  if (isAuto) {
-    const chapterPoints = state.globalData?.chapterPoints || 0;
-    const isVip = Boolean(document.getElementById('vipToggle')?.checked);
-    const autoTickets = calculateTrackTickets(chapterPoints, isVip);
-    if (trackTixEl) trackTixEl.value = autoTickets;
-    if (state.globalData?.cloudHistory) {
-      state.globalData.cloudHistory.trackTickets = autoTickets;
-    }
-  } else {
-    const manualVal = state.currentVaultData?.trackTickets ?? 0;
-    if (trackTixEl) trackTixEl.value = manualVal;
-    if (state.globalData?.cloudHistory) {
-      state.globalData.cloudHistory.trackTickets = manualVal;
-    }
-  }
-
-  recalculateAll();
-}
-window.toggleTrackAuto = toggleTrackAuto;
-
-export function handleManualTrackInput() {
-  const trackTixEl = document.getElementById('trackTicketsInput');
-  const autoToggle = document.getElementById('trackAutoToggle');
-  const val = parseInt(trackTixEl?.value, 10) || 0;
-
-  // If user edits directly while AUTO is ON, automatically uncheck AUTO to preserve manual entry
-  if (autoToggle && autoToggle.checked) {
-    autoToggle.checked = false;
-    localStorage.setItem('sfl_track_auto', 'false');
-  }
-
-  if (state.globalData?.cloudHistory) {
-    state.globalData.cloudHistory.trackTickets = val;
-  }
-}
-window.handleManualTrackInput = handleManualTrackInput;
-
 window.saveAndRecalculate = () => {
   const isVip = Boolean(document.getElementById('vipToggle')?.checked);
   localStorage.setItem('sfl_vip', isVip);
@@ -212,17 +169,14 @@ window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
   localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
 
-  // Dynamically update Track Tickets ONLY if AUTO toggle is checked
-  const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
-  if (isAuto) {
-    const chapterPoints = state.globalData?.chapterPoints || 0;
-    if (chapterPoints > 0) {
-      const autoTrackTickets = calculateTrackTickets(chapterPoints, isVip);
-      const trackTixEl = document.getElementById('trackTicketsInput');
-      if (trackTixEl) trackTixEl.value = autoTrackTickets;
-      if (state.globalData?.cloudHistory) {
-        state.globalData.cloudHistory.trackTickets = autoTrackTickets;
-      }
+  // Automatically update Track Tickets from active chapter points & VIP status
+  const chapterPoints = state.globalData?.chapterPoints || 0;
+  if (chapterPoints > 0) {
+    const autoTrackTickets = calculateTrackTickets(chapterPoints, isVip);
+    const trackTixEl = document.getElementById('trackTicketsInput');
+    if (trackTixEl) trackTixEl.value = autoTrackTickets;
+    if (state.globalData?.cloudHistory) {
+      state.globalData.cloudHistory.trackTickets = autoTrackTickets;
     }
   }
 
@@ -230,21 +184,10 @@ window.saveAndRecalculate = () => {
 };
 
 window.saveTrackAndRecalculate = () => {
-  const trackTixEl = document.getElementById('trackTicketsInput');
-  const autoToggle = document.getElementById('trackAutoToggle');
-  const val = parseInt(trackTixEl?.value, 10) || 0;
-
-  localStorage.setItem('sfl_track_cost', document.getElementById('trackCostInput').value);
-
-  if (autoToggle && autoToggle.checked) {
-    autoToggle.checked = false;
-    localStorage.setItem('sfl_track_auto', 'false');
+  const trackCostEl = document.getElementById('trackCostInput');
+  if (trackCostEl) {
+    localStorage.setItem('sfl_track_cost', trackCostEl.value);
   }
-
-  if (state.globalData?.cloudHistory) {
-    state.globalData.cloudHistory.trackTickets = val;
-  }
-
   recalculateAll();
 };
 
@@ -395,16 +338,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
 
-  // Track Tickets AUTO vs MANUAL setup (manual as default)
-  // Cleanup any legacy local ticket cache
+  // Cleanup legacy local ticket cache
   localStorage.removeItem('sfl_track_manual_tix');
   localStorage.removeItem('sfl_track_tix');
   localStorage.removeItem('sfl_chapter_points');
-
-  // Track Tickets AUTO vs MANUAL setup (manual as default)
-  const isAutoTrack = localStorage.getItem('sfl_track_auto') === 'true';
-  const trackAutoToggle = document.getElementById('trackAutoToggle');
-  if (trackAutoToggle) trackAutoToggle.checked = isAutoTrack;
+  localStorage.removeItem('sfl_track_auto');
 
   const trackTixEl = document.getElementById('trackTicketsInput');
   if (trackTixEl) trackTixEl.value = '0';

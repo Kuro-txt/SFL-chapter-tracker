@@ -206,8 +206,7 @@ export async function loadTrackerData() {
         }
       }
 
-      const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
-      if (!isAuto && data.vaultData.trackTickets !== undefined) {
+      if (data.vaultData.trackTickets !== undefined) {
         const trackTixEl = document.getElementById('trackTicketsInput');
         if (trackTixEl) {
           trackTixEl.value = data.vaultData.trackTickets;
@@ -242,15 +241,12 @@ export async function loadTrackerData() {
     if (activeChapterPoints > 0) {
       state.globalData.chapterPoints = activeChapterPoints;
 
-      const isAuto = Boolean(document.getElementById('trackAutoToggle')?.checked);
-      if (isAuto) {
-        const isVip = Boolean(document.getElementById('vipToggle')?.checked);
-        const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
-        const trackTixEl = document.getElementById('trackTicketsInput');
-        if (trackTixEl) trackTixEl.value = autoTrackTickets;
-        if (state.globalData?.cloudHistory) {
-          state.globalData.cloudHistory.trackTickets = autoTrackTickets;
-        }
+      const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+      const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
+      const trackTixEl = document.getElementById('trackTicketsInput');
+      if (trackTixEl) trackTixEl.value = autoTrackTickets;
+      if (state.globalData?.cloudHistory) {
+        state.globalData.cloudHistory.trackTickets = autoTrackTickets;
       }
     }
 

@@ -6,6 +6,7 @@ import {
   CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
 import { reconcileDeliveriesWithNpcs, preserveCustomTaskEdits } from './chapter.js';
+import { calculateTrackTickets } from './chapter-tracks.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -429,6 +430,12 @@ export default async function handler(req, res) {
             vault.lastDailyLoginDate = todayDateStr;
           }
 
+          // Automatic Track Tickets calculation from active chapter points & VIP status
+          const activeChapterPoints = parsed.chapterPoints || 0;
+          vault.chapterPoints = activeChapterPoints;
+          vault.isVipActive = isVip;
+          vault.trackTickets = calculateTrackTickets(activeChapterPoints, isVip);
+
           let totalCalculatedTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
           let totalCalculatedCost = (vault.trackCost || 0);
 
@@ -849,7 +856,7 @@ export default async function handler(req, res) {
             console.warn(`  ⚠️ Auto chapter snapshot notice for "${username}": ${chapterErr.message}`);
           }
 
-        results.push({ username, farmId, totalTickets: totalCalculatedTickets, status: 'Synced & Saved' });
+        results.push({ username, farmId, totalTickets: totalCalculatedTickets, trackTickets: vault.trackTickets, status: 'Synced & Saved' });
         processedCount++;
       } catch (err) {
         errors.push({ username, farmId, error: err.message });

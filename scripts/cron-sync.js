@@ -5,6 +5,7 @@ import {
   parseFarmData 
 } from '../api/sfl-parser.js';
 import { reconcileDeliveriesWithNpcs, preserveCustomTaskEdits } from '../api/chapter.js';
+import { calculateTrackTickets } from '../api/chapter-tracks.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -432,6 +433,12 @@ async function runSync() {
           vault.lastDailyLoginDate = todayDateStr;
         }
 
+        // Automatic Track Tickets calculation from active chapter points & VIP status
+        const activeChapterPoints = parsed.chapterPoints || 0;
+        vault.chapterPoints = activeChapterPoints;
+        vault.isVipActive = isVip;
+        vault.trackTickets = calculateTrackTickets(activeChapterPoints, isVip);
+
         let totalCalculatedTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
         let totalCalculatedCost = (vault.trackCost || 0);
 
@@ -855,7 +862,7 @@ async function runSync() {
 
         results.push({ username, farmId, totalTickets: totalCalculatedTickets });
         processedCount++;
-        console.log(`  ✔ Successfully saved "${username}" (${totalCalculatedTickets} total tickets)`);
+        console.log(`  ✔ Successfully saved "${username}" (${totalCalculatedTickets} total tickets, track: ${vault.trackTickets} tix)`);
       } catch (err) {
         errors.push({ username, farmId, error: err.message });
         console.error(`  ❌ Parsing error for "${username}": ${err.message}`);
