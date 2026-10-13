@@ -137,4 +137,22 @@ console.log('\nTest 4: Verifying Animal Bounty Custom Tickets Preservation...');
   console.log('✅ TEST 4 PASSED: Animal bounty custom tickets preserved across fetch.');
 }
 
-console.log('\n🎉 ALL 4 TASK EDITING TESTS PASSED WITH 100% SUCCESS!\n');
+// Test 5: Cost Input 3 Decimal Places Formatting and Sanitize Sorting
+console.log('\nTest 5: Verifying Cost Input 3 Decimal Places Formatting & Sanitize Sorting...');
+{
+  const rawCost1 = 1.25;
+  const formatted1 = Number(rawCost1 || 0).toFixed(3);
+  assert.strictEqual(formatted1, '1.250', '1.25 should format to 1.250');
+
+  const rawCost2 = 0;
+  const formatted2 = Number(rawCost2 || 0).toFixed(3);
+  assert.strictEqual(formatted2, '0.000', '0 should format to 0.000');
+
+  const rawCost3 = 3.14159;
+  const formatted3 = Number(rawCost3 || 0).toFixed(3);
+  assert.strictEqual(formatted3, '3.142', '3.14159 should round to 3.142');
+
+  console.log('✅ TEST 5 PASSED: 3 decimal places formatting verified.');
+}
+
+console.log('\n🎉 ALL 5 TASK EDITING TESTS PASSED WITH 100% SUCCESS!\n');

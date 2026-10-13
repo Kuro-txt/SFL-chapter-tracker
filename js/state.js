@@ -214,6 +214,10 @@ export function sanitizeDeliveries(deliveries) {
   const map = new Map();
 
   const sorted = [...deliveries].sort((a, b) => {
+    const aCustom = Boolean(a.isCustomCost || a.userCost !== undefined);
+    const bCustom = Boolean(b.isCustomCost || b.userCost !== undefined);
+    if (aCustom !== bCustom) return aCustom ? -1 : 1;
+
     const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
     const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
     if (aDone !== bDone) return aDone ? -1 : 1;
@@ -283,8 +287,22 @@ export function sanitizeDeliveries(deliveries) {
       if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
         existing.itemDetails = d.itemDetails;
         existing.items = d.items;
-        existing.itemsCost = d.itemsCost;
-        existing.cost = d.cost;
+        if (!existing.isCustomCost && existing.userCost === undefined) {
+          existing.itemsCost = d.itemsCost;
+          existing.cost = d.cost;
+        }
+      }
+      if (d.isCustomCost || d.userCost !== undefined) {
+        existing.cost = d.userCost !== undefined ? d.userCost : d.cost;
+        existing.itemsCost = existing.cost;
+        existing.userCost = existing.cost;
+        existing.isCustomCost = true;
+      }
+      if (d.isCustomTickets || d.userTickets !== undefined) {
+        existing.baseTickets = d.userTickets !== undefined ? d.userTickets : d.baseTickets;
+        existing.tickets = existing.baseTickets;
+        existing.userTickets = existing.baseTickets;
+        existing.isCustomTickets = true;
       }
       if (!existing.activeSince && d.activeSince) {
         existing.activeSince = d.activeSince;
@@ -359,5 +377,79 @@ export function recomputeCoinCosts(ratio) {
     (wk.bounties || []).forEach(updateItem);
     (wk.chores || []).forEach(updateItem);
   });
+}
+
+export function preserveCustomDeliveryEdits(targetDeliveries, sourceDeliveries) {
+  if (!Array.isArray(targetDeliveries) || !Array.isArray(sourceDeliveries)) return targetDeliveries;
+  targetDeliveries.forEach(td => {
+    if (!td) return;
+    const tdNpc = (td.from || td.name || '').toLowerCase().trim();
+    const match = sourceDeliveries.find(sd => {
+      if (!sd) return false;
+      if (td.id && sd.id && td.id === sd.id) return true;
+      const sdNpc = (sd.from || sd.name || '').toLowerCase().trim();
+      return tdNpc && sdNpc && tdNpc === sdNpc;
+    });
+    if (match && (match.isCustomCost || match.userCost !== undefined)) {
+      td.cost = match.userCost !== undefined ? match.userCost : match.cost;
+      td.itemsCost = td.cost;
+      td.userCost = td.cost;
+      td.isCustomCost = true;
+    }
+    if (match && (match.isCustomTickets || match.userTickets !== undefined)) {
+      td.baseTickets = match.userTickets !== undefined ? match.userTickets : td.baseTickets;
+      td.tickets = td.baseTickets;
+      td.userTickets = td.baseTickets;
+      td.isCustomTickets = true;
+    }
+  });
+  return targetDeliveries;
+}
+
+export function preserveCustomTaskEdits(freshList, existingList, isChore = false) {
+  if (!Array.isArray(freshList) || !Array.isArray(existingList)) return freshList;
+  freshList.forEach(freshItem => {
+    if (!freshItem) return;
+    let match = null;
+    if (isChore) {
+      const freshKey = `${(freshItem.npc || '').toLowerCase().trim()}_${(freshItem.task || freshItem.name || '').toLowerCase().trim()}`;
+      match = existingList.find(e => {
+        if (!e) return false;
+        if (freshItem.id && e.id && String(freshItem.id) === String(e.id)) return true;
+        const eKey = `${(e.npc || '').toLowerCase().trim()}_${(e.task || e.name || '').toLowerCase().trim()}`;
+        return eKey === freshKey;
+      });
+    } else {
+      match = existingList.find(e => {
+        if (!e) return false;
+        if (freshItem.id && e.id && String(freshItem.id) === String(e.id)) return true;
+        const freshName = (freshItem.name || '').toLowerCase().trim();
+        const eName = (e.name || '').toLowerCase().trim();
+        if (freshName && eName && freshName === eName) {
+          if (freshItem.level !== undefined && e.level !== undefined) {
+            return Number(freshItem.level) === Number(e.level);
+          }
+          return true;
+        }
+        return false;
+      });
+    }
+
+    if (match) {
+      if (match.isCustomCost || match.userCost !== undefined) {
+        freshItem.cost = match.userCost !== undefined ? match.userCost : match.cost;
+        freshItem.itemsCost = freshItem.cost;
+        freshItem.userCost = freshItem.cost;
+        freshItem.isCustomCost = true;
+      }
+      if (match.isCustomTickets || match.userTickets !== undefined) {
+        freshItem.baseTickets = match.userTickets !== undefined ? match.userTickets : (match.baseTickets || match.tickets);
+        freshItem.tickets = freshItem.baseTickets;
+        freshItem.userTickets = freshItem.baseTickets;
+        freshItem.isCustomTickets = true;
+      }
+    }
+  });
+  return freshList;
 }
 

@@ -36,6 +36,10 @@ export function sanitizeDeliveriesList(deliveries) {
   const map = new Map();
 
   const sorted = [...deliveries].sort((a, b) => {
+    const aCustom = Boolean(a.isCustomCost || a.userCost !== undefined);
+    const bCustom = Boolean(b.isCustomCost || b.userCost !== undefined);
+    if (aCustom !== bCustom) return aCustom ? -1 : 1;
+
     const aDone = Boolean(a.checked !== undefined ? a.checked : a.completed);
     const bDone = Boolean(b.checked !== undefined ? b.checked : b.completed);
     if (aDone !== bDone) return aDone ? -1 : 1;
@@ -95,8 +99,22 @@ export function sanitizeDeliveriesList(deliveries) {
       if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
         existing.itemDetails = d.itemDetails;
         existing.items = d.items;
-        existing.itemsCost = d.itemsCost;
-        existing.cost = d.cost;
+        if (!existing.isCustomCost && existing.userCost === undefined) {
+          existing.itemsCost = d.itemsCost;
+          existing.cost = d.cost;
+        }
+      }
+      if (d.isCustomCost || d.userCost !== undefined) {
+        existing.cost = d.userCost !== undefined ? d.userCost : d.cost;
+        existing.itemsCost = existing.cost;
+        existing.userCost = existing.cost;
+        existing.isCustomCost = true;
+      }
+      if (d.isCustomTickets || d.userTickets !== undefined) {
+        existing.baseTickets = d.userTickets !== undefined ? d.userTickets : d.baseTickets;
+        existing.tickets = existing.baseTickets;
+        existing.userTickets = existing.baseTickets;
+        existing.isCustomTickets = true;
       }
       if (!existing.activeSince && d.activeSince) {
         existing.activeSince = d.activeSince;

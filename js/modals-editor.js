@@ -169,6 +169,7 @@ export function renderColumnHistoryModalList() {
 
       records.push({
         source: 'archive',
+        id: item.id || '',
         itemIdx,
         date: dateDisplay,
         weekNum: itemWeekNum,
@@ -232,6 +233,7 @@ export function renderColumnHistoryModalList() {
 
       records.push({
         weekId,
+        id: item.id ? String(item.id) : '',
         itemIdx: idx,
         mapKey: `${source}_${weekId}_${idx}`,
         name: isChore ? (item.task || item.name || 'Chore') : (item.name || 'Bounty'),
@@ -327,7 +329,7 @@ export function renderColumnHistoryModalList() {
 
       const canEditTickets = (type === 'animalBounty') || r.isManual;
       const ticketsInputHtml = canEditTickets
-        ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
+        ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.id || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
         : `<input type="number" value="${r.displayTickets}" disabled style="width:48px; padding:3px 5px; font-size:11px; opacity:0.75; cursor:not-allowed; background:rgba(0,0,0,0.05);" title="Game-synced ticket yield cannot be edited" />`;
 
       return `<div class="history-card">
@@ -335,7 +337,7 @@ export function renderColumnHistoryModalList() {
           <label style="display:flex; align-items:flex-start; gap:8px; cursor:${r.isManual ? 'pointer' : 'default'}; width:100%;">
             ${checkboxHtml}
             <div style="flex:1; min-width:0; word-break:break-word;">
-              <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
+               <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
               ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}
               ${itemsRow}
             </div>
@@ -344,7 +346,7 @@ export function renderColumnHistoryModalList() {
         <div class="history-controls">
           <div class="history-input-group">
             <span style="font-size:10px; font-weight:bold; color:#5C4033;">SFL:</span>
-            <input type="number" step="0.001" value="${r.cost}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:65px; padding:3px 5px; font-size:11px;" />
+            <input type="number" step="0.001" value="${Number(r.cost || 0).toFixed(3)}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.id || r.itemIdx}', this.value)" style="width:72px; padding:3px 5px; font-size:11px;" />
           </div>
           <div class="history-input-group">
             <span style="font-size:10px; font-weight:bold; color:#5C4033;">Tix:</span>
@@ -550,7 +552,7 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
   }
 }
 
-export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
+export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdxOrId, val) {
   const type = state.activeColumnType;
   const isAnimal = (type === 'animalBounty');
 
@@ -558,11 +560,10 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
   const isChore = (type === 'chore');
 
   if (type === 'delivery') {
-    const itemIdx = parseInt(mapKeyOrIdx, 10);
     const master = getDeliveryRecords();
-    target = master[itemIdx];
+    target = master.find(d => d.id && d.id === mapKeyOrIdxOrId) || master[parseInt(mapKeyOrIdxOrId, 10)];
   } else {
-    const parts = mapKeyOrIdx.split('_');
+    const parts = mapKeyOrIdxOrId.split('_');
     const source = parts[0];
     const wkId = parts[1];
     const idx = parseInt(parts[2], 10);
@@ -596,6 +597,16 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     target.isCustomTickets = true;
   }
 
+  // Ensure current week bounties and chores in cloudHistory.weeks are always synchronized
+  const curWk = getMondayBasedWeekId();
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
+  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+  if (!state.globalData.cloudHistory.weeks[curWk]) {
+    state.globalData.cloudHistory.weeks[curWk] = { weekId: curWk, bounties: [], chores: [] };
+  }
+  state.globalData.cloudHistory.weeks[curWk].bounties = state.globalData.bounties || [];
+  state.globalData.cloudHistory.weeks[curWk].chores = state.globalData.chores || [];
+
   try {
     if (state.globalData?.archiveDeliveries) {
       localStorage.setItem('sfl_archive_deliveries', JSON.stringify(state.globalData.archiveDeliveries));
@@ -610,23 +621,42 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
   await syncCurrentVaultToCloud();
 }
 
-export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
+export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdxOrId, val) {
   const type = state.activeColumnType;
   const costVal = parseFloat(val) || 0;
 
   if (type === 'delivery') {
-    const itemIdx = parseInt(mapKeyOrIdx, 10);
     const master = getDeliveryRecords();
-    const target = master[itemIdx];
+    const target = master.find(d => d.id && d.id === mapKeyOrIdxOrId) || master[parseInt(mapKeyOrIdxOrId, 10)];
 
     if (target) {
       target.cost = costVal;
       target.itemsCost = costVal;
       target.userCost = costVal;
       target.isCustomCost = true;
+
+      // Also ensure board delivery in state.globalData.deliveries is synchronized if matching
+      const boardDeliv = (state.globalData?.deliveries || []).find(d => (d.id && d.id === target.id) || (d.from || d.name || '').toLowerCase() === (target.from || target.name || '').toLowerCase());
+      if (boardDeliv) {
+        boardDeliv.cost = costVal;
+        boardDeliv.itemsCost = costVal;
+        boardDeliv.userCost = costVal;
+        boardDeliv.isCustomCost = true;
+      }
+
+      // Also update in state.globalData.archiveDeliveries
+      if (Array.isArray(state.globalData?.archiveDeliveries)) {
+        const archDeliv = state.globalData.archiveDeliveries.find(d => d.id && d.id === target.id);
+        if (archDeliv) {
+          archDeliv.cost = costVal;
+          archDeliv.itemsCost = costVal;
+          archDeliv.userCost = costVal;
+          archDeliv.isCustomCost = true;
+        }
+      }
     }
   } else {
-    const parts = mapKeyOrIdx.split('_');
+    const parts = mapKeyOrIdxOrId.split('_');
     const source = parts[0];
     const wkId = parts[1];
     const idx = parseInt(parts[2], 10);
@@ -646,6 +676,16 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdx, val) {
       target.isCustomCost = true;
     }
   }
+
+  // Ensure current week bounties and chores in cloudHistory.weeks are always synchronized
+  const curWk = getMondayBasedWeekId();
+  if (!state.globalData.cloudHistory) state.globalData.cloudHistory = { logs: [], weeks: {} };
+  if (!state.globalData.cloudHistory.weeks) state.globalData.cloudHistory.weeks = {};
+  if (!state.globalData.cloudHistory.weeks[curWk]) {
+    state.globalData.cloudHistory.weeks[curWk] = { weekId: curWk, bounties: [], chores: [] };
+  }
+  state.globalData.cloudHistory.weeks[curWk].bounties = state.globalData.bounties || [];
+  state.globalData.cloudHistory.weeks[curWk].chores = state.globalData.chores || [];
 
   try {
     if (state.globalData?.archiveDeliveries) {

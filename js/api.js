@@ -5,7 +5,9 @@ import {
   getMondayBasedWeekId,
   isAnimalBounty,
   hasWeeklyBountiesBonus,
-  getDeliveryRecords
+  getDeliveryRecords,
+  preserveCustomDeliveryEdits,
+  preserveCustomTaskEdits
 } from './state.js';
 import { recalculateAll } from './render.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -104,9 +106,8 @@ export async function loadTrackerData() {
     const data = await res.json();
     isRequestPending = false;
     updateFetchBtn();
-    state.globalData = data;
 
-    // 1. Restore historical deliveries, chores, bounties & manual orders
+    const curWkId = getMondayBasedWeekId();
     let loadedWeeks = {};
     try {
       const localWeeksStr = localStorage.getItem('sfl_cloud_weeks');
@@ -115,6 +116,26 @@ export async function loadTrackerData() {
       }
     } catch (e) {}
 
+    let existingArchiveDelivs = state.globalData?.archiveDeliveries || [];
+    if (!existingArchiveDelivs.length) {
+      try {
+        const localDelivs = localStorage.getItem('sfl_archive_deliveries');
+        if (localDelivs) existingArchiveDelivs = JSON.parse(localDelivs);
+      } catch (e) {}
+    }
+
+    // Preserve custom deliveries onto incoming board deliveries
+    preserveCustomDeliveryEdits(data.deliveries, existingArchiveDelivs);
+
+    const existingCurBounties = (loadedWeeks[curWkId]?.bounties?.length ? loadedWeeks[curWkId].bounties : state.globalData?.bounties) || [];
+    const existingCurChores = (loadedWeeks[curWkId]?.chores?.length ? loadedWeeks[curWkId].chores : state.globalData?.chores) || [];
+
+    preserveCustomTaskEdits(data.bounties, existingCurBounties, false);
+    preserveCustomTaskEdits(data.chores, existingCurChores, true);
+
+    state.globalData = data;
+
+    // 1. Restore historical deliveries, chores, bounties & manual orders
     if (data.vaultData) {
       state.currentVaultData = data.vaultData;
       state.globalData.archiveDeliveries = data.vaultData.archiveDeliveries || [];
@@ -136,8 +157,9 @@ export async function loadTrackerData() {
       const vaultWeeks = data.vaultData.weeks || {};
       loadedWeeks = { ...loadedWeeks, ...vaultWeeks };
 
-      const curWkId = getMondayBasedWeekId();
       if (vaultWeeks[curWkId]) {
+        preserveCustomTaskEdits(vaultWeeks[curWkId].bounties, existingCurBounties, false);
+        preserveCustomTaskEdits(vaultWeeks[curWkId].chores, existingCurChores, true);
         if (Array.isArray(vaultWeeks[curWkId].bounties) && vaultWeeks[curWkId].bounties.length > 0) {
           state.globalData.bounties = vaultWeeks[curWkId].bounties;
         }
@@ -155,21 +177,18 @@ export async function loadTrackerData() {
       };
     } else {
       // Local / Guest persistence fallback
-      try {
-        const localDelivs = localStorage.getItem('sfl_archive_deliveries');
-        if (localDelivs) {
-          state.globalData.archiveDeliveries = JSON.parse(localDelivs);
-        }
-      } catch (e) {}
+      state.globalData.archiveDeliveries = existingArchiveDelivs;
 
-      const curWkId = getMondayBasedWeekId();
       if (loadedWeeks[curWkId]) {
-        if (Array.isArray(loadedWeeks[curWkId].bounties) && loadedWeeks[curWkId].bounties.length > 0) {
-          state.globalData.bounties = loadedWeeks[curWkId].bounties;
-        }
-        if (Array.isArray(loadedWeeks[curWkId].chores) && loadedWeeks[curWkId].chores.length > 0) {
-          state.globalData.chores = loadedWeeks[curWkId].chores;
-        }
+        preserveCustomTaskEdits(state.globalData.bounties, existingCurBounties, false);
+        preserveCustomTaskEdits(state.globalData.chores, existingCurChores, true);
+        const isMan = (x) => Boolean(x?.isManual) || (typeof x?.id === 'string' && x.id.startsWith('manual_'));
+        const savedManualChores = (loadedWeeks[curWkId].chores || []).filter(isMan);
+        const savedManualBounties = (loadedWeeks[curWkId].bounties || []).filter(isMan);
+        state.globalData.bounties = [...(state.globalData.bounties || []), ...savedManualBounties];
+        state.globalData.chores = [...(state.globalData.chores || []), ...savedManualChores];
+        loadedWeeks[curWkId].bounties = state.globalData.bounties;
+        loadedWeeks[curWkId].chores = state.globalData.chores;
       }
 
       state.globalData.cloudHistory = {
@@ -214,7 +233,7 @@ export async function loadTrackerData() {
       }
       if (data.vaultData.trackCost !== undefined) {
         const trackCostEl = document.getElementById('trackCostInput');
-        if (trackCostEl) trackCostEl.value = data.vaultData.trackCost;
+        if (trackCostEl) trackCostEl.value = Number(data.vaultData.trackCost || 0).toFixed(3);
       }
       if (data.vaultData?.coinRatio !== undefined || data.coinRatio !== undefined) {
         const cr = data.vaultData?.coinRatio || data.coinRatio;
