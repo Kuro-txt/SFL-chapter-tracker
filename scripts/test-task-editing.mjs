@@ -1,115 +1,28 @@
 import assert from 'assert';
 import { preserveCustomTaskEdits, reconcileDeliveriesWithNpcs } from '../api/chapter.js';
 
-console.log('🧪 Starting Automated Tests for Task Editing (Way 1)...');
+console.log('🧪 Starting Automated Tests for Task Editing (Cost All + Animal Bounty Tickets Only)...');
 
-// Test 1: Delivery Yield Reverse-Derivation
-console.log('\nTest 1: Verifying Delivery Yield Reverse-Derivation...');
+// Test 1: Animal Bounty Ticket Yield Reverse-Derivation
+console.log('\nTest 1: Verifying Animal Bounty Ticket Yield Derivation...');
 {
-  const vipBonus = 2;
-  const boostCount = 2; // Boost #2
-  const bonusPerUnit = vipBonus + boostCount; // 4
+  const boostCount = 1; // 1 Boost active
+  const desiredYield = 3;
+  const isMan = false;
 
-  const desiredYield = 5;
-  const isDouble = false;
-  const derivedBase = Math.max(0, desiredYield - bonusPerUnit); // 5 - 4 = 1
-  assert.strictEqual(derivedBase, 1, 'Derived base should be 1');
+  const derivedBase = isMan ? desiredYield : Math.max(0, desiredYield - boostCount); // 3 - 1 = 2
+  assert.strictEqual(derivedBase, 2, 'Derived base for animal bounty should be 2');
 
-  // Verify recomputed yield with active bonuses equals desired yield
-  const recomputedYield = derivedBase + vipBonus + boostCount;
-  assert.strictEqual(recomputedYield, 5, 'Recomputed yield must equal desired yield (5)');
+  const recomputedYield = derivedBase + boostCount;
+  assert.strictEqual(recomputedYield, 3, 'Recomputed yield with 1 boost should be 3');
 
-  // Verify Chapter Logs toggle NONE (boost = 0)
-  const toggleNoneYield = derivedBase + vipBonus + 0;
-  assert.strictEqual(toggleNoneYield, 3, 'Under NONE boost toggle, yield must scale to 3');
-
-  // Verify Chapter Logs toggle Boost #3 (boost = 3)
-  const toggleBoost3Yield = derivedBase + vipBonus + 3;
-  assert.strictEqual(toggleBoost3Yield, 6, 'Under Boost #3 toggle, yield must scale to 6');
-  console.log('✅ TEST 1 PASSED: Delivery yield reverse-derivation and toggle scaling verified.');
+  // When boost is 0 (Chapter Logs NONE)
+  assert.strictEqual(derivedBase + 0, 2, 'Yield under 0 boost should scale to 2');
+  console.log('✅ TEST 1 PASSED: Animal bounty ticket derivation verified.');
 }
 
-// Test 2: Double Delivery Event Day Reverse-Derivation
-console.log('\nTest 2: Verifying Double Delivery Event Reverse-Derivation...');
-{
-  const vipBonus = 2;
-  const boostCount = 2;
-  const bonusPerUnit = vipBonus + boostCount; // 4
-  const desiredYield = 10;
-  const isDouble = true;
-
-  const half = Math.round(desiredYield / 2); // 5
-  const derivedBase = Math.max(0, half - bonusPerUnit); // 5 - 4 = 1
-  assert.strictEqual(derivedBase, 1, 'Derived base for double delivery should be 1');
-
-  const recomputedDoubleYield = (derivedBase + vipBonus + boostCount) * 2;
-  assert.strictEqual(recomputedDoubleYield, 10, 'Recomputed double yield must be 10');
-  console.log('✅ TEST 2 PASSED: Double delivery event reverse-derivation verified.');
-}
-
-// Test 3: Bounty and Chore Reverse-Derivation
-console.log('\nTest 3: Verifying Bounty and Chore Reverse-Derivation...');
-{
-  const vipBonus = 2;
-  const boostCount = 1;
-
-  // Chore (VIP + Boost eligible)
-  const choreDesired = 4;
-  const choreDerived = Math.max(0, choreDesired - (vipBonus + boostCount)); // 4 - 3 = 1
-  assert.strictEqual(choreDerived, 1, 'Chore derived base should be 1');
-  assert.strictEqual(choreDerived + vipBonus + boostCount, 4);
-
-  // Bounty (Boost only, no VIP in SFL)
-  const bountyDesired = 3;
-  const bountyDerived = Math.max(0, bountyDesired - boostCount); // 3 - 1 = 2
-  assert.strictEqual(bountyDerived, 2, 'Bounty derived base should be 2');
-  assert.strictEqual(bountyDerived + boostCount, 3);
-  console.log('✅ TEST 3 PASSED: Bounty and chore reverse-derivation verified.');
-}
-
-// Test 4: Preservation Across Fresh Fetch Data (preserveCustomTaskEdits)
-console.log('\nTest 4: Verifying preserveCustomTaskEdits across fetch...');
-{
-  const existingList = [
-    {
-      id: 'bounty_wheat',
-      name: 'Wheat',
-      level: 1,
-      cost: 1.5,
-      userCost: 1.5,
-      isCustomCost: true,
-      baseTickets: 3,
-      tickets: 3,
-      userTickets: 3,
-      isCustomTickets: true,
-      isManual: false
-    }
-  ];
-
-  const freshList = [
-    {
-      id: 'bounty_wheat',
-      name: 'Wheat',
-      level: 1,
-      cost: 2.0,
-      baseTickets: 1,
-      tickets: 1,
-      isManual: false
-    }
-  ];
-
-  preserveCustomTaskEdits(freshList, existingList, false);
-
-  assert.strictEqual(freshList[0].cost, 1.5, 'Cost must be preserved at 1.5');
-  assert.strictEqual(freshList[0].baseTickets, 3, 'Base tickets must be preserved at 3');
-  assert.strictEqual(freshList[0].isCustomCost, true, 'isCustomCost flag must be preserved');
-  assert.strictEqual(freshList[0].isCustomTickets, true, 'isCustomTickets flag must be preserved');
-  assert.strictEqual(freshList[0].isManual, false, 'isManual must remain false');
-  console.log('✅ TEST 4 PASSED: Custom edits successfully preserved across simulated fetch.');
-}
-
-// Test 5: Reconcile Deliveries Skips Overwrite When isCustomCost / isCustomTickets Set
-console.log('\nTest 5: Verifying reconcileDeliveriesWithNpcs skips overwrite...');
+// Test 2: Cost Editing Preservation on Deliveries
+console.log('\nTest 2: Verifying Cost Editing on Deliveries...');
 {
   const vault = {
     archiveDeliveries: [
@@ -119,14 +32,12 @@ console.log('\nTest 5: Verifying reconcileDeliveriesWithNpcs skips overwrite...'
         name: 'Bert',
         completed: true,
         checked: true,
-        cost: 0.8,
-        itemsCost: 0.8,
-        userCost: 0.8,
+        cost: 1.25,
+        itemsCost: 1.25,
+        userCost: 1.25,
         isCustomCost: true,
-        baseTickets: 1,
-        tickets: 1,
-        userTickets: 1,
-        isCustomTickets: true,
+        baseTickets: 2,
+        tickets: 2,
         isManual: false
       }
     ],
@@ -138,7 +49,7 @@ console.log('\nTest 5: Verifying reconcileDeliveriesWithNpcs skips overwrite...'
     {
       from: 'Bert',
       completed: true,
-      itemsCost: 5.0,
+      itemsCost: 4.80,
       baseTickets: 2
     }
   ];
@@ -146,10 +57,84 @@ console.log('\nTest 5: Verifying reconcileDeliveriesWithNpcs skips overwrite...'
   reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData);
 
   const bertOrder = vault.archiveDeliveries.find(d => d.id === 'deliv_bert_d1');
-  assert.strictEqual(bertOrder.cost, 0.8, 'Custom cost must not be overwritten by market price (5.0)');
-  assert.strictEqual(bertOrder.baseTickets, 1, 'Custom base tickets must not be overwritten by default base (2)');
+  assert.strictEqual(bertOrder.cost, 1.25, 'Custom cost (1.25 SFL) must not be overwritten by market price (4.80)');
+  assert.strictEqual(bertOrder.isCustomCost, true, 'isCustomCost must remain true');
   assert.strictEqual(bertOrder.isManual, false, 'isManual must remain false');
-  console.log('✅ TEST 5 PASSED: Reconcile delivery successfully preserved custom edits.');
+  console.log('✅ TEST 2 PASSED: Custom delivery cost successfully preserved.');
 }
 
-console.log('\n🎉 ALL 5 TASK EDITING TESTS PASSED WITH 100% SUCCESS!\n');
+// Test 3: Cost Editing on Regular Bounties and Chores
+console.log('\nTest 3: Verifying Cost Editing on Bounties and Chores...');
+{
+  const existingList = [
+    {
+      id: 'bounty_wheat',
+      name: 'Wheat',
+      level: 1,
+      cost: 0.95,
+      userCost: 0.95,
+      isCustomCost: true,
+      baseTickets: 1,
+      tickets: 1,
+      isManual: false
+    }
+  ];
+
+  const freshList = [
+    {
+      id: 'bounty_wheat',
+      name: 'Wheat',
+      level: 1,
+      cost: 2.50,
+      baseTickets: 1,
+      tickets: 1,
+      isManual: false
+    }
+  ];
+
+  preserveCustomTaskEdits(freshList, existingList, false);
+
+  assert.strictEqual(freshList[0].cost, 0.95, 'Bounty custom cost must be preserved at 0.95 SFL');
+  assert.strictEqual(freshList[0].isCustomCost, true, 'isCustomCost must remain true');
+  assert.strictEqual(freshList[0].isManual, false, 'isManual must remain false');
+  console.log('✅ TEST 3 PASSED: Custom bounty/chore cost successfully preserved.');
+}
+
+// Test 4: Custom Tickets on Animal Bounties Preserved Across Fetch
+console.log('\nTest 4: Verifying Animal Bounty Custom Tickets Preservation...');
+{
+  const existingAnimalBounties = [
+    {
+      id: 'bounty_cow_3',
+      name: 'Cow',
+      level: 3,
+      cost: 3.0,
+      baseTickets: 4,
+      tickets: 4,
+      userTickets: 4,
+      isCustomTickets: true,
+      isManual: false
+    }
+  ];
+
+  const freshAnimalBounties = [
+    {
+      id: 'bounty_cow_3',
+      name: 'Cow',
+      level: 3,
+      cost: 3.0,
+      baseTickets: 3,
+      tickets: 3,
+      isManual: false
+    }
+  ];
+
+  preserveCustomTaskEdits(freshAnimalBounties, existingAnimalBounties, false);
+
+  assert.strictEqual(freshAnimalBounties[0].baseTickets, 4, 'Animal bounty custom tickets preserved at 4');
+  assert.strictEqual(freshAnimalBounties[0].isCustomTickets, true, 'isCustomTickets must remain true');
+  assert.strictEqual(freshAnimalBounties[0].isManual, false, 'isManual must remain false');
+  console.log('✅ TEST 4 PASSED: Animal bounty custom tickets preserved across fetch.');
+}
+
+console.log('\n🎉 ALL 4 TASK EDITING TESTS PASSED WITH 100% SUCCESS!\n');

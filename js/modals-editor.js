@@ -325,6 +325,11 @@ export function renderColumnHistoryModalList() {
         ? `<input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:pointer;" title="Click to toggle status" />`
         : `<input type="checkbox" ${r.checked ? 'checked' : ''} disabled style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:not-allowed; opacity:0.75;" title="Status is synced from Sunflower Land (manual ticking disabled)" />`;
 
+      const canEditTickets = (type === 'animalBounty') || r.isManual;
+      const ticketsInputHtml = canEditTickets
+        ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
+        : `<input type="number" value="${r.displayTickets}" disabled style="width:48px; padding:3px 5px; font-size:11px; opacity:0.75; cursor:not-allowed; background:rgba(0,0,0,0.05);" title="Game-synced ticket yield cannot be edited" />`;
+
       return `<div class="history-card">
         <div class="history-info">
           <label style="display:flex; align-items:flex-start; gap:8px; cursor:${r.isManual ? 'pointer' : 'default'}; width:100%;">
@@ -343,7 +348,7 @@ export function renderColumnHistoryModalList() {
           </div>
           <div class="history-input-group">
             <span style="font-size:10px; font-weight:bold; color:#5C4033;">Tix:</span>
-            <input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />
+            ${ticketsInputHtml}
           </div>
           ${deleteBtn}
         </div>
@@ -547,22 +552,15 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
 
 export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
   const type = state.activeColumnType;
-  const desiredYield = Math.max(0, parseInt(val, 10) || 0);
-  const vipBonus = getActiveVipBonus();
-  const boostCount = getActiveBoostCount();
+  const isAnimal = (type === 'animalBounty');
 
   let target = null;
-  let isDouble = false;
   const isChore = (type === 'chore');
-  const isBounty = (type === 'bounty' || type === 'animalBounty');
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
     const master = getDeliveryRecords();
     target = master[itemIdx];
-    if (target) {
-      isDouble = Boolean(target.hasDoubleBonus) && !Boolean(target.isStacked);
-    }
   } else {
     const parts = mapKeyOrIdx.split('_');
     const source = parts[0];
@@ -581,23 +579,16 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
 
   if (target) {
     const isMan = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
-    let derivedBase = desiredYield;
-
-    if (!isMan) {
-      if (type === 'delivery') {
-        const bonusPerUnit = vipBonus + boostCount;
-        if (isDouble) {
-          const half = Math.round(desiredYield / 2);
-          derivedBase = Math.max(0, half - bonusPerUnit);
-        } else {
-          derivedBase = Math.max(0, desiredYield - bonusPerUnit);
-        }
-      } else if (isChore) {
-        derivedBase = Math.max(0, desiredYield - (vipBonus + boostCount));
-      } else if (isBounty) {
-        derivedBase = Math.max(0, desiredYield - boostCount);
-      }
+    
+    // Only animal bounties and manual items are allowed to edit tickets
+    if (!isAnimal && !isMan) {
+      alert('⚠️ Only animal bounties and manual items can have ticket yield edited.');
+      return;
     }
+
+    const desiredYield = Math.max(0, parseInt(val, 10) || 0);
+    const boostCount = getActiveBoostCount();
+    const derivedBase = isMan ? desiredYield : Math.max(0, desiredYield - boostCount);
 
     target.baseTickets = derivedBase;
     target.tickets = derivedBase;
