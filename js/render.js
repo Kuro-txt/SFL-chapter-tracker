@@ -405,11 +405,95 @@ export function recalculateAll() {
 
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
+  const targetRatio = parseFloat(document.getElementById('targetRatioInput')?.value) || 0;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
   const targetPerWeek = targetWeeks > 0 ? Math.ceil(targetGoal / targetWeeks) : 0;
 
   setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
   setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
+
+  // Target Ratio Matching Calculations
+  let activeDelivMatching = 0;
+  let activeBountiesMatching = 0;
+  let activeAnimalMatching = 0;
+  let activeChoresMatching = 0;
+
+  if (targetRatio > 0) {
+    liveBoardDeliveries.forEach(d => {
+      if (!d || d.isSkipped) return;
+      const isDone = d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed);
+      if (isDone) return;
+      const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const isManual = Boolean(d.isManual);
+      const yieldAmt = isManual ? base : (base + vipBonus + boostCount);
+      const cost = d.itemsCost || d.cost || 0;
+      if (yieldAmt > 0 && (cost / yieldAmt) <= targetRatio) {
+        activeDelivMatching++;
+      }
+    });
+
+    regularBounties.forEach(b => {
+      if (!b) return;
+      const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+      if (isDone) return;
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const cost = b.itemsCost || b.cost || 0;
+      if (yieldAmt > 0 && (cost / yieldAmt) <= targetRatio) {
+        activeBountiesMatching++;
+      }
+    });
+
+    animalBounties.forEach(b => {
+      if (!b) return;
+      const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+      if (isDone) return;
+      const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const cost = b.itemsCost || b.cost || 0;
+      if (yieldAmt > 0 && (cost / yieldAmt) <= targetRatio) {
+        activeAnimalMatching++;
+      }
+    });
+
+    liveChores.forEach(c => {
+      if (!c) return;
+      const isDone = c.checked !== undefined ? Boolean(c.checked) : Boolean(c.completed);
+      if (isDone) return;
+      const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
+      const yieldAmt = c.isManual ? base : (base + vipBonus + boostCount);
+      const cost = c.itemsCost || c.cost || 0;
+      if (yieldAmt > 0 && (cost / yieldAmt) <= targetRatio) {
+        activeChoresMatching++;
+      }
+    });
+  }
+
+  const totalActiveMatching = activeDelivMatching + activeBountiesMatching + activeAnimalMatching + activeChoresMatching;
+  const targetRatioRow = document.getElementById('statTargetRatioMatchesRow');
+  if (targetRatioRow) {
+    if (targetRatio > 0) {
+      targetRatioRow.style.display = 'flex';
+      setElemText('statTargetRatioMatches', `${totalActiveMatching} Tasks`);
+    } else {
+      targetRatioRow.style.display = 'none';
+    }
+  }
+
+  const updateBadge = (id, count) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (targetRatio > 0 && count > 0) {
+      el.style.display = 'inline-flex';
+      el.textContent = `🎯 ${count} ≤ ${targetRatio.toFixed(2)}`;
+    } else {
+      el.style.display = 'none';
+    }
+  };
+  updateBadge('deliveriesTargetBadge', activeDelivMatching);
+  updateBadge('bountiesTargetBadge', activeBountiesMatching);
+  updateBadge('animalBountiesTargetBadge', activeAnimalMatching);
+  updateBadge('choresTargetBadge', activeChoresMatching);
 
   renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek);
 }

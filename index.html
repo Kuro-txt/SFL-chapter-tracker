@@ -626,6 +626,21 @@
       color: #FFFFFF !important;
       border: 1px solid #BF360C;
     }
+    .tag-target-match {
+      background: #8E44AD;
+      color: #FFFFFF !important;
+      border: 1px solid #5B2C6F;
+    }
+    .card-target-match {
+      border: 2px solid #8E44AD !important;
+      box-shadow: 0 0 8px rgba(142, 68, 173, 0.35) !important;
+    }
+    .ratio-pill.ratio-target-match {
+      background-color: #EDE7F6 !important;
+      color: #6A1B9A !important;
+      border: 1.5px solid #8E44AD !important;
+      box-shadow: 0 0 4px rgba(142, 68, 173, 0.4) !important;
+    }
 
     /* Modals Base */
     .modal {
@@ -872,7 +887,8 @@
       color: #f472b6 !important;
     }
     body.dark-mode #targetGoalInput,
-    body.dark-mode #targetWeeksInput {
+    body.dark-mode #targetWeeksInput,
+    body.dark-mode #targetRatioInput {
       background-color: #0f1722 !important;
       color: #fbcfe8 !important;
       border: 1.5px solid #ec4899 !important;
@@ -882,6 +898,21 @@
     }
     body.dark-mode #statGoalPerWeek {
       color: #fbcfe8 !important;
+    }
+    body.dark-mode .tag-target-match {
+      background: #7E22CE !important;
+      border-color: #A855F7 !important;
+      color: #F3E8FF !important;
+    }
+    body.dark-mode .card-target-match {
+      border-color: #C084FC !important;
+      box-shadow: 0 0 10px rgba(192, 132, 252, 0.35) !important;
+    }
+    body.dark-mode .ratio-pill.ratio-target-match {
+      background-color: #2E1065 !important;
+      color: #E9D5FF !important;
+      border: 1.5px solid #C084FC !important;
+      box-shadow: 0 0 6px rgba(192, 132, 252, 0.4) !important;
     }
 
     body.dark-mode .stat-footer {
@@ -2874,18 +2905,29 @@
           <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 48px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
           <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Wks</span>
         </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:2px;">
+          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Avg / Tix:</span>
+          <div style="display:flex; align-items:center; gap:3px;">
+            <input type="number" step="0.001" id="targetRatioInput" placeholder="0.100" oninput="saveGoalAndRecalculate()" onchange="saveGoalAndRecalculate()" style="width: 60px; padding: 2px 4px; font-size: 12px; font-weight: 900; color: #8E44AD; border: 2px solid #8E44AD; border-radius: 4px;" title="Target Max Ratio (SFL / Ticket)" />
+            <span style="font-size: 10px; font-weight: 900; color: #8E44AD;">SFL</span>
+          </div>
+        </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Remaining:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Target / Wk:</span><strong id="statGoalPerWeek" style="color:#8E44AD;">0 Tix/Wk</strong></div>
+          <div id="statTargetRatioMatchesRow" style="display:none; justify-content:space-between;"><span>Under Ratio:</span><strong id="statTargetRatioMatches" style="color:#2E7D32;">0 Tasks</strong></div>
         </div>
       </div>
     </div>
 
     <div class="overview-grid">
-      <div class="overview-card">
+      <div class="overview-card" id="cardDeliveries">
         <div class="overview-header">
           <span>📦 DELIVERIES</span>
-          <span id="deliveriesCount" class="overview-count">0 Orders</span>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span id="deliveriesTargetBadge" class="tag-pill tag-target-match" style="display:none; margin-left:0;">🎯 0</span>
+            <span id="deliveriesCount" class="overview-count">0 Orders</span>
+          </div>
         </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('delivery')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
@@ -2893,10 +2935,13 @@
         </div>
       </div>
 
-      <div class="overview-card">
+      <div class="overview-card" id="cardBounties">
         <div class="overview-header">
           <span>📜 BOUNTIES</span>
-          <span id="bountiesCount" class="overview-count">0 Items</span>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span id="bountiesTargetBadge" class="tag-pill tag-target-match" style="display:none; margin-left:0;">🎯 0</span>
+            <span id="bountiesCount" class="overview-count">0 Items</span>
+          </div>
         </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('bounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
@@ -2904,10 +2949,13 @@
         </div>
       </div>
 
-      <div class="overview-card">
+      <div class="overview-card" id="cardAnimalBounties">
         <div class="overview-header">
           <span>🐄 ANIMAL BOUNTIES</span>
-          <span id="animalBountiesCount" class="overview-count">0 Animals</span>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span id="animalBountiesTargetBadge" class="tag-pill tag-target-match" style="display:none; margin-left:0;">🎯 0</span>
+            <span id="animalBountiesCount" class="overview-count">0 Animals</span>
+          </div>
         </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('animalBounty')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>
@@ -2915,10 +2963,13 @@
         </div>
       </div>
 
-      <div class="overview-card">
+      <div class="overview-card" id="cardChores">
         <div class="overview-header">
           <span>🧹 CHORES</span>
-          <span id="choresCount" class="overview-count">0 Tasks</span>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span id="choresTargetBadge" class="tag-pill tag-target-match" style="display:none; margin-left:0;">🎯 0</span>
+            <span id="choresCount" class="overview-count">0 Tasks</span>
+          </div>
         </div>
         <div class="overview-actions">
           <button onclick="openCategorySummaryModal('chore')" class="btn btn-wood" style="flex:1; padding: 8px 4px;">📋 VIEW</button>

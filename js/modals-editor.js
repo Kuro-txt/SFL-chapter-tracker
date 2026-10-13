@@ -276,6 +276,9 @@ export function renderColumnHistoryModalList() {
 
   let totalTickedTickets = 0;
   let totalTickedCost = 0;
+  const targetRatioRaw = parseFloat(document.getElementById('targetRatioInput')?.value || localStorage.getItem('sfl_target_ratio')) || 0;
+  const targetRatio = targetRatioRaw > 0 ? targetRatioRaw : 0;
+  let targetMatchingCount = 0;
 
   if (records.length === 0) {
     bodyEl.innerHTML = addFormHtml + '<p style="font-size: 12px; color: #8C7853; font-weight: bold; margin-top:10px;">No records found for selected filter.</p>';
@@ -285,6 +288,10 @@ export function renderColumnHistoryModalList() {
         totalTickedTickets += r.displayTickets;
         totalTickedCost += r.cost;
       }
+      const numRatio = r.displayTickets > 0 ? ((r.cost || 0) / r.displayTickets) : 0;
+      const isTargetMatch = (targetRatio > 0) && (r.displayTickets > 0) && (numRatio <= targetRatio);
+      if (isTargetMatch && !r.isSkipped) targetMatchingCount++;
+
       const changeHandler = type === 'delivery'
         ? `toggleDeliveryLogCheck('${r.source}', ${r.itemIdx})`
         : `toggleWeeklyItemCheck('${r.weekId}', '${r.mapKey}')`;
@@ -317,6 +324,12 @@ export function renderColumnHistoryModalList() {
         ? `<span class="tag-pill tag-skipped">✕ SKIPPED</span>`
         : '';
 
+      const targetTag = isTargetMatch
+        ? `<span class="tag-pill tag-target-match" title="Ratio (${numRatio.toFixed(3)}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
+        : '';
+
+      const cardBorderClass = isTargetMatch ? ' card-target-match' : '';
+
       const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
       const itemsRow = type === 'delivery'
         ? (r.requestedItems 
@@ -333,13 +346,13 @@ export function renderColumnHistoryModalList() {
         ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.id || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
         : `<input type="number" value="${r.displayTickets}" disabled style="width:48px; padding:3px 5px; font-size:11px; opacity:0.75; cursor:not-allowed; background:rgba(0,0,0,0.05);" title="Game-synced ticket yield cannot be edited" />`;
 
-      return `<div class="history-card">
+      return `<div class="history-card${cardBorderClass}">
         <div class="history-info">
           <label style="display:flex; align-items:flex-start; gap:8px; cursor:${r.isManual ? 'pointer' : 'default'}; width:100%;">
             ${checkboxHtml}
             <div style="flex:1; min-width:0; word-break:break-word;">
                <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
-              ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}
+              ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}${targetTag}
               ${itemsRow}
             </div>
           </label>
@@ -360,7 +373,13 @@ export function renderColumnHistoryModalList() {
 
   }
 
-  setElemText('columnHistoryStats', `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL`);
+  const targetSummary = targetRatio > 0
+    ? ` | <span class="tag-pill tag-target-match" style="font-size:11px; padding:2px 7px;">🎯 ${targetMatchingCount} ≤ ${targetRatio.toFixed(2)}</span>`
+    : '';
+  const statsElem = document.getElementById('columnHistoryStats');
+  if (statsElem) {
+    statsElem.innerHTML = `${totalTickedTickets} Tickets | ${formatSFL(totalTickedCost)} SFL${targetSummary}`;
+  }
 }
 
 export async function addNewItemFromModal() {

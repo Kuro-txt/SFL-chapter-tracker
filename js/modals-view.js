@@ -283,6 +283,8 @@ export function openCategorySummaryModal(cat) {
 
   let catTickets = 0;
   let catCost = 0;
+  let targetMatchingCount = 0;
+  const targetRatio = parseFloat(document.getElementById('targetRatioInput')?.value || localStorage.getItem('sfl_target_ratio')) || 0;
 
   const isDoubleDeliveryActive = Boolean(state.globalData.isDoubleDeliveryActive);
 
@@ -387,7 +389,17 @@ export function openCategorySummaryModal(cat) {
       }
 
       const itemCost = d.itemsCost || d.cost || 0;
-      const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
+      const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
+      const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
+
+      const isTargetMatch = (targetRatio > 0) && (finalTickets > 0) && (numRatio <= targetRatio);
+      if (isTargetMatch) targetMatchingCount++;
+
+      const targetBadge = isTargetMatch
+        ? `<span class="tag-pill tag-target-match" title="Ratio (${itemRatio}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
+        : '';
+      const cardBorderClass = isTargetMatch ? 'card-target-match' : '';
+      const ratioClass = isTargetMatch ? 'ratio-pill ratio-target-match' : 'ratio-pill';
 
       if (isTicked) {
         catTickets += finalTickets;
@@ -406,16 +418,16 @@ export function openCategorySummaryModal(cat) {
         statusBadge = `<span class="badge" style="background:#FFCDD2; color:#B71C1C;">✕ SKIPPED</span>`;
       }
 
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
+      return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}</span>
+          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}${targetBadge}</span>
           ${statusBadge}
         </div>
         <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || (d.isStacked ? '🥞 Stacked delivery — recipe not synced' : 'No item recipe data')}</div>
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
           <span>Yield: 🎟️ ${finalTickets} Tickets</span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
-          <span class="ratio-pill">
+          <span class="${ratioClass}">
             📊 ${itemRatio} SFL / Ticket
           </span>
         </div>
@@ -437,7 +449,17 @@ export function openCategorySummaryModal(cat) {
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const finalTickets = computeYield(base, false, Boolean(b.isManual));
       const itemCost = b.itemsCost || b.cost || 0;
-      const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
+      const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
+      const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
+
+      const isTargetMatch = (targetRatio > 0) && (finalTickets > 0) && (numRatio <= targetRatio);
+      if (isTargetMatch) targetMatchingCount++;
+
+      const targetBadge = isTargetMatch
+        ? `<span class="tag-pill tag-target-match" title="Ratio (${itemRatio}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
+        : '';
+      const cardBorderClass = isTargetMatch ? 'card-target-match' : '';
+      const ratioClass = isTargetMatch ? 'ratio-pill ratio-target-match' : 'ratio-pill';
 
       if (isTicked) {
         catTickets += finalTickets;
@@ -446,13 +468,13 @@ export function openCategorySummaryModal(cat) {
       const lvl = resolveAnimalLevel(b);
       const lvlTag = lvl ? `<span class="tag-pill tag-lvl">Lvl ${lvl}</span>` : '';
 
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
+      return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
-          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()}</strong>${lvlTag}<br/>
+          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()}</strong>${lvlTag}${targetBadge}<br/>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#8B4513; font-weight:bold;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span class="ratio-pill">
+            <span class="${ratioClass}">
               📊 ${itemRatio} SFL / Tix
             </span>
           </div>
@@ -487,21 +509,31 @@ export function openCategorySummaryModal(cat) {
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const finalTickets = computeYield(base, true, Boolean(c.isManual));
       const itemCost = c.itemsCost || c.cost || 0;
-      const itemRatio = finalTickets > 0 ? formatSFL(itemCost / finalTickets) : "0.000";
+      const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
+      const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
+
+      const isTargetMatch = (targetRatio > 0) && (finalTickets > 0) && (numRatio <= targetRatio);
+      if (isTargetMatch) targetMatchingCount++;
+
+      const targetBadge = isTargetMatch
+        ? `<span class="tag-pill tag-target-match" title="Ratio (${itemRatio}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
+        : '';
+      const cardBorderClass = isTargetMatch ? 'card-target-match' : '';
+      const ratioClass = isTargetMatch ? 'ratio-pill ratio-target-match' : 'ratio-pill';
 
       if (isTicked) {
         catTickets += finalTickets;
         catCost += itemCost;
       }
 
-      return `<div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
+      return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
-          <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong><br/>
+          <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong>${targetBadge}<br/>
           <span style="color:#5C4033; font-weight:bold;">${c.task || c.name}</span><br/>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#2E7D32; font-weight:900;">Yield: 🎟️ ${finalTickets} Tix</span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span class="ratio-pill">
+            <span class="${ratioClass}">
               📊 ${itemRatio} SFL / Tix
             </span>
           </div>
@@ -512,7 +544,10 @@ export function openCategorySummaryModal(cat) {
   }
 
   const overallRatio = catTickets > 0 ? formatSFL(catCost / catTickets) : "0.000";
-  totalsEl.innerHTML = `<span class="sum-stat">${catTickets} Tickets</span> | <span class="sum-stat">${formatSFL(catCost)} SFL</span> | <span class="avg-pill">📊 Avg: ${overallRatio} SFL / Tix</span>`;
+  const targetBadgeSummary = targetRatio > 0 
+    ? ` | <span class="tag-pill tag-target-match" style="font-size:11px; padding:3px 8px; margin-left:0;">🎯 ${targetMatchingCount} Tasks ≤ ${targetRatio.toFixed(2)}</span>` 
+    : '';
+  totalsEl.innerHTML = `<span class="sum-stat">${catTickets} Tickets</span> | <span class="sum-stat">${formatSFL(catCost)} SFL</span> | <span class="avg-pill">📊 Avg: ${overallRatio} SFL / Tix</span>${targetBadgeSummary}`;
   modal.classList.add('show');
 }
 

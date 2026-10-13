@@ -243,6 +243,12 @@ export async function loadTrackerData() {
         if (state.currentVaultData) state.currentVaultData.coinRatio = cr;
         if (state.globalData) state.globalData.coinRatio = cr;
       }
+      if (data.vaultData?.targetRatio !== undefined) {
+        const tr = data.vaultData.targetRatio;
+        const targetRatioEl = document.getElementById('targetRatioInput');
+        if (targetRatioEl) targetRatioEl.value = tr > 0 ? tr : '';
+        localStorage.setItem('sfl_target_ratio', tr > 0 ? tr : '');
+      }
 
       const { checkAndAutoClaimDailyLogin } = await import('./state.js');
       await checkAndAutoClaimDailyLogin();
@@ -528,6 +534,7 @@ export async function saveProgressToCloudKV(silent = false) {
     farmId,
     trackTickets,
     trackCost,
+    targetRatio: parseFloat(document.getElementById('targetRatioInput')?.value) || 0,
     coinRatio: parseFloat(document.getElementById('coinsPerSflInput')?.value) || 1000,
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,

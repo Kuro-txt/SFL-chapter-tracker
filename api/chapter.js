@@ -504,6 +504,7 @@ export default async function handler(req, res) {
         farmId: cleanFarmId,
         trackTickets: 0,
         trackCost: 0,
+        targetRatio: 0,
         dailyLoginTickets: 0,
         lastDailyLoginDate: null,
         weeks: {},
@@ -630,6 +631,7 @@ export default async function handler(req, res) {
         ...body,
         trackTickets: body.trackTickets !== undefined ? body.trackTickets : (existingVault.trackTickets || 0),
         coinRatio: body.coinRatio !== undefined ? (parseFloat(body.coinRatio) || 1000) : (existingVault.coinRatio || 1000),
+        targetRatio: body.targetRatio !== undefined ? (parseFloat(body.targetRatio) || 0) : (existingVault.targetRatio || 0),
         logs: mergedLogs,
         lastSavedAt: new Date().toISOString()
       };
