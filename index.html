@@ -627,19 +627,21 @@
       border: 1px solid #BF360C;
     }
     .tag-target-match {
-      background: #8E44AD;
-      color: #FFFFFF !important;
-      border: 1px solid #5B2C6F;
+      background: #E0F2FE;
+      color: #0369A1 !important;
+      border: 1.5px solid #38BDF8;
+      font-weight: 800;
+      box-shadow: 0 1px 2px rgba(2, 132, 199, 0.2);
     }
     .card-target-match {
-      border: 2px solid #8E44AD !important;
-      box-shadow: 0 0 8px rgba(142, 68, 173, 0.35) !important;
+      border: 2px solid #38BDF8 !important;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4) !important;
     }
     .ratio-pill.ratio-target-match {
-      background-color: #EDE7F6 !important;
-      color: #6A1B9A !important;
-      border: 1.5px solid #8E44AD !important;
-      box-shadow: 0 0 4px rgba(142, 68, 173, 0.4) !important;
+      background-color: #E0F2FE !important;
+      color: #0369A1 !important;
+      border: 1.5px solid #0284C7 !important;
+      box-shadow: 0 0 4px rgba(56, 189, 248, 0.4) !important;
     }
 
     /* Modals Base */
@@ -887,11 +889,15 @@
       color: #f472b6 !important;
     }
     body.dark-mode #targetGoalInput,
-    body.dark-mode #targetWeeksInput,
-    body.dark-mode #targetRatioInput {
+    body.dark-mode #targetWeeksInput {
       background-color: #0f1722 !important;
       color: #fbcfe8 !important;
       border: 1.5px solid #ec4899 !important;
+    }
+    body.dark-mode #targetRatioInput {
+      background-color: #0c2d48 !important;
+      color: #7dd3fc !important;
+      border: 1.5px solid #38bdf8 !important;
     }
     body.dark-mode #statGoalRemaining {
       color: #f472b6 !important;
@@ -900,19 +906,19 @@
       color: #fbcfe8 !important;
     }
     body.dark-mode .tag-target-match {
-      background: #7E22CE !important;
-      border-color: #A855F7 !important;
-      color: #F3E8FF !important;
+      background: #0c4a6e !important;
+      border-color: #38bdf8 !important;
+      color: #e0f2fe !important;
     }
     body.dark-mode .card-target-match {
-      border-color: #C084FC !important;
-      box-shadow: 0 0 10px rgba(192, 132, 252, 0.35) !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4) !important;
     }
     body.dark-mode .ratio-pill.ratio-target-match {
-      background-color: #2E1065 !important;
-      color: #E9D5FF !important;
-      border: 1.5px solid #C084FC !important;
-      box-shadow: 0 0 6px rgba(192, 132, 252, 0.4) !important;
+      background-color: #082f49 !important;
+      color: #7dd3fc !important;
+      border: 1.5px solid #38bdf8 !important;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.4) !important;
     }
 
     body.dark-mode .stat-footer {
@@ -2906,16 +2912,16 @@
           <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Wks</span>
         </div>
         <div style="display:flex; align-items:center; justify-content:space-between; margin-top:2px;">
-          <span style="font-size: 11px; font-weight: 900; color: #8E44AD;">Avg / Tix:</span>
+          <span style="font-size: 11px; font-weight: 900; color: #0284C7;">Avg / Tix:</span>
           <div style="display:flex; align-items:center; gap:3px;">
-            <input type="number" step="0.001" id="targetRatioInput" placeholder="0.100" oninput="saveGoalAndRecalculate()" onchange="saveGoalAndRecalculate()" style="width: 60px; padding: 2px 4px; font-size: 12px; font-weight: 900; color: #8E44AD; border: 2px solid #8E44AD; border-radius: 4px;" title="Target Max Ratio (SFL / Ticket)" />
-            <span style="font-size: 10px; font-weight: 900; color: #8E44AD;">SFL</span>
+            <input type="number" step="0.001" id="targetRatioInput" placeholder="0.100" oninput="saveGoalAndRecalculate()" onchange="saveGoalAndRecalculate()" style="width: 60px; padding: 2px 4px; font-size: 12px; font-weight: 900; color: #0284C7; border: 2px solid #38BDF8; border-radius: 4px; background: #F0F9FF;" title="Target Max Ratio (SFL / Ticket)" />
+            <span style="font-size: 10px; font-weight: 900; color: #0284C7;">SFL</span>
           </div>
         </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Remaining:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Target / Wk:</span><strong id="statGoalPerWeek" style="color:#8E44AD;">0 Tix/Wk</strong></div>
-          <div id="statTargetRatioMatchesRow" style="display:none; justify-content:space-between;"><span>Under Ratio:</span><strong id="statTargetRatioMatches" style="color:#2E7D32;">0 Tasks</strong></div>
+          <div id="statTargetRatioMatchesRow" style="display:none; justify-content:space-between;"><span>Under Ratio:</span><strong id="statTargetRatioMatches" style="color:#0284C7;">0 Tasks</strong></div>
         </div>
       </div>
     </div>

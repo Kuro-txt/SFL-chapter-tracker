@@ -473,28 +473,32 @@ body.dark-mode .stats-grid > div:nth-child(4):hover {
 }
 body.dark-mode .stats-grid > div:nth-child(4) .stat-title { color: #f472b6 !important; }
 body.dark-mode #targetGoalInput,
-body.dark-mode #targetWeeksInput,
-body.dark-mode #targetRatioInput {
+body.dark-mode #targetWeeksInput {
   background-color: #0f1722 !important;
   color: #fbcfe8 !important;
   border: 1.5px solid #ec4899 !important;
 }
+body.dark-mode #targetRatioInput {
+  background-color: #0c2d48 !important;
+  color: #7dd3fc !important;
+  border: 1.5px solid #38bdf8 !important;
+}
 body.dark-mode #statGoalRemaining { color: #f472b6 !important; }
 body.dark-mode #statGoalPerWeek { color: #fbcfe8 !important; }
 body.dark-mode .tag-target-match {
-  background: #7E22CE !important;
-  border-color: #A855F7 !important;
-  color: #F3E8FF !important;
+  background: #0c4a6e !important;
+  border-color: #38bdf8 !important;
+  color: #e0f2fe !important;
 }
 body.dark-mode .card-target-match {
-  border-color: #C084FC !important;
-  box-shadow: 0 0 10px rgba(192, 132, 252, 0.35) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4) !important;
 }
 body.dark-mode .ratio-pill.ratio-target-match {
-  background-color: #2E1065 !important;
-  color: #E9D5FF !important;
-  border: 1.5px solid #C084FC !important;
-  box-shadow: 0 0 6px rgba(192, 132, 252, 0.4) !important;
+  background-color: #082f49 !important;
+  color: #7dd3fc !important;
+  border: 1.5px solid #38bdf8 !important;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.4) !important;
 }
 
 body.dark-mode .stat-footer {
