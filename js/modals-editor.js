@@ -180,7 +180,9 @@ export function renderColumnHistoryModalList() {
         status: isSkipped ? '✕ Skipped' : (isChecked ? '✨ Done' : '⏳ Active'),
         isStacked: item.isStacked || false,
         isSkipped,
-        isManual
+        isManual,
+        isCustomTickets: Boolean(item.isCustomTickets) || item.userTickets !== undefined,
+        isCustomCost: Boolean(item.isCustomCost) || item.userCost !== undefined
       });
     });
   } else {
@@ -241,7 +243,9 @@ export function renderColumnHistoryModalList() {
         status: isChecked ? '✨ Done' : '⏳ Active',
         date: dateDisplay,
         weekNum: itemWeekNum,
-        isManual
+        isManual,
+        isCustomTickets: Boolean(item.isCustomTickets) || item.userTickets !== undefined,
+        isCustomCost: Boolean(item.isCustomCost) || item.userCost !== undefined
       });
     });
   }
@@ -298,6 +302,10 @@ export function renderColumnHistoryModalList() {
         ? `<span class="tag-pill tag-manual">📌 MANUAL</span>`
         : '';
 
+      const editedTag = (!r.isManual && (r.isCustomTickets || r.isCustomCost))
+        ? `<span class="tag-pill tag-edited">✏️ EDITED</span>`
+        : '';
+
       const stackedTag = r.isStacked
         ? `<span class="tag-pill tag-stacked">🥞 STACKED</span>`
         : '';
@@ -323,7 +331,7 @@ export function renderColumnHistoryModalList() {
             ${checkboxHtml}
             <div style="flex:1; min-width:0; word-break:break-word;">
               <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
-              ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${stackedTag}${skippedTag}
+              ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}
               ${itemsRow}
             </div>
           </label>
@@ -539,19 +547,21 @@ export async function toggleWeeklyItemCheck(weekId, mapKey) {
 
 export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
   const type = state.activeColumnType;
-  const inputVal = parseInt(val, 10) || 0;
+  const desiredYield = Math.max(0, parseInt(val, 10) || 0);
+  const vipBonus = getActiveVipBonus();
+  const boostCount = getActiveBoostCount();
+
+  let target = null;
+  let isDouble = false;
+  const isChore = (type === 'chore');
+  const isBounty = (type === 'bounty' || type === 'animalBounty');
 
   if (type === 'delivery') {
     const itemIdx = parseInt(mapKeyOrIdx, 10);
     const master = getDeliveryRecords();
-    const target = master[itemIdx];
-
+    target = master[itemIdx];
     if (target) {
-      const baseVal = Math.max(0, inputVal);
-      target.baseTickets = baseVal;
-      target.tickets = baseVal;
-      target.userTickets = baseVal;
-      target.isCustomTickets = true;
+      isDouble = Boolean(target.hasDoubleBonus) && !Boolean(target.isStacked);
     }
   } else {
     const parts = mapKeyOrIdx.split('_');
@@ -559,21 +569,40 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdx, val) {
     const wkId = parts[1];
     const idx = parseInt(parts[2], 10);
 
-    let target = null;
+    let targetItem = null;
     if (source === 'week') {
       const wk = state.globalData?.cloudHistory?.weeks?.[wkId];
-      target = type === 'chore' ? wk?.chores?.[idx] : wk?.bounties?.[idx];
+      targetItem = isChore ? wk?.chores?.[idx] : wk?.bounties?.[idx];
     } else if (source === 'current') {
-      target = type === 'chore' ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+      targetItem = isChore ? state.globalData?.chores?.[idx] : state.globalData?.bounties?.[idx];
+    }
+    target = targetItem;
+  }
+
+  if (target) {
+    const isMan = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
+    let derivedBase = desiredYield;
+
+    if (!isMan) {
+      if (type === 'delivery') {
+        const bonusPerUnit = vipBonus + boostCount;
+        if (isDouble) {
+          const half = Math.round(desiredYield / 2);
+          derivedBase = Math.max(0, half - bonusPerUnit);
+        } else {
+          derivedBase = Math.max(0, desiredYield - bonusPerUnit);
+        }
+      } else if (isChore) {
+        derivedBase = Math.max(0, desiredYield - (vipBonus + boostCount));
+      } else if (isBounty) {
+        derivedBase = Math.max(0, desiredYield - boostCount);
+      }
     }
 
-    if (target) {
-      const baseVal = Math.max(0, inputVal);
-      target.baseTickets = baseVal;
-      target.tickets = baseVal;
-      target.userTickets = baseVal;
-      target.isCustomTickets = true;
-    }
+    target.baseTickets = derivedBase;
+    target.tickets = derivedBase;
+    target.userTickets = derivedBase;
+    target.isCustomTickets = true;
   }
 
   try {

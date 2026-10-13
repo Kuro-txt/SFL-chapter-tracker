@@ -913,6 +913,8 @@ export default async function handler(req, res) {
         const currentWeekMonday = getMondayBasedWeekId(new Date());
         if (!userVault.weeks) userVault.weeks = {};
         if (!userVault.weeks[currentWeekMonday]) {
+          preserveCustomTaskEdits(parsed.activeBounties, userVault.bounties, false);
+          preserveCustomTaskEdits(parsed.choresList, userVault.chores, true);
           userVault.weeks[currentWeekMonday] = {
             weekId: currentWeekMonday,
             bounties: parsed.activeBounties || [],

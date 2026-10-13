@@ -808,11 +808,7 @@ export function renderChapterLogsList() {
 
     const isManuallyEditedOrAdded = (d) => {
       if (!d) return false;
-      return Boolean(d.isManual) || 
-             (typeof d.id === 'string' && d.id.startsWith('manual_')) || 
-             Boolean(d.isCustomTickets) || 
-             (d.userTickets !== undefined && d.userTickets !== null) ||
-             Boolean(d.isCustom);
+      return Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_'));
     };
 
     const liveWeekUnitsMap = new Map();
@@ -1023,12 +1019,8 @@ export async function snapshotCurrentChapter() {
   const vipBonus = getActiveVipBonus(); // 2 if VIP, 0 otherwise
   const curWeekMonday = getMondayBasedWeekId();
 
-  // Helper to accurately identify manual and manually edited tasks
-  const isManTask = (item) => Boolean(item?.isManual) || 
-                             (typeof item?.id === 'string' && item.id.startsWith('manual_')) || 
-                             Boolean(item?.isCustomTickets) || 
-                             (item?.userTickets !== undefined && item?.userTickets !== null) || 
-                             Boolean(item?.isCustom);
+  // Helper to accurately identify manual tasks
+  const isManTask = (item) => Boolean(item?.isManual) || (typeof item?.id === 'string' && item?.id?.startsWith('manual_'));
 
   // 1. Raw Deliveries (Base without VIP or Boost, and * 2 on double event days)
   const masterDeliveries = getDeliveryRecords().filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped);
