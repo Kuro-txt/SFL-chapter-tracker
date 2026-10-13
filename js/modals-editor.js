@@ -88,7 +88,8 @@ export function openColumnHistoryModal(type) {
   const weekDropdown = document.getElementById('editWeekFilterDropdown');
 
   if (filterContainer) filterContainer.style.display = 'flex';
-  if (weekDropdown) weekDropdown.value = '';
+  const currentWeekNum = getWeekNumber(getMondayBasedWeekId());
+  if (weekDropdown) weekDropdown.value = `w${currentWeekNum}`;
 
   if (type === 'delivery') {
     if (npcDropdown) {
