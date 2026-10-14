@@ -168,6 +168,9 @@ export function renderColumnHistoryModalList() {
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
       const isSkipped = Boolean(item.isSkipped);
 
+      // Hide pending active deliveries from the Edit / History modal display (they belong on the Live Board)
+      if (!isChecked && !isSkipped) return;
+
       records.push({
         source: 'archive',
         id: item.id || '',
