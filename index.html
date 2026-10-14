@@ -644,6 +644,54 @@
       box-shadow: 0 0 4px rgba(56, 189, 248, 0.4) !important;
     }
 
+    /* Floating Toast Notification */
+    .app-toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-30px);
+      background: linear-gradient(135deg, #2E7D32, #1B5E20);
+      color: #FFFFFF;
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 900;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      border: 2px solid #81C784;
+      z-index: 100000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .app-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .app-toast.error {
+      background: linear-gradient(135deg, #C62828, #B71C1C);
+      border-color: #EF5350;
+    }
+    .app-toast.warning {
+      background: linear-gradient(135deg, #EF6C00, #E65100);
+      border-color: #FFB74D;
+    }
+
+    /* Save in Cloud Button Feedback States */
+    .btn-wood.btn-saved {
+      background: linear-gradient(180deg, #388E3C, #2E7D32) !important;
+      color: #FFFFFF !important;
+      border-color: #1B5E20 !important;
+      box-shadow: 0 0 10px rgba(46, 125, 50, 0.6) !important;
+    }
+    .btn-wood.btn-saving {
+      opacity: 0.85;
+      cursor: wait !important;
+    }
+
     /* Modals Base */
     .modal {
       display: none;
@@ -996,6 +1044,29 @@
       color: #4ade80 !important;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35) !important;
       text-shadow: none !important;
+    }
+    body.dark-mode .btn-wood.btn-saved {
+      background: linear-gradient(180deg, #16a34a, #15803d) !important;
+      color: #f0fdf4 !important;
+      border: 1.5px solid #4ade80 !important;
+      box-shadow: 0 0 12px rgba(74, 222, 128, 0.5) !important;
+    }
+
+    body.dark-mode .app-toast {
+      background: linear-gradient(135deg, #15803d, #14532d) !important;
+      border-color: #4ade80 !important;
+      color: #f0fdf4 !important;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+    }
+    body.dark-mode .app-toast.error {
+      background: linear-gradient(135deg, #991b1b, #7f1d1d) !important;
+      border-color: #f87171 !important;
+      color: #fef2f2 !important;
+    }
+    body.dark-mode .app-toast.warning {
+      background: linear-gradient(135deg, #9a3412, #7c2d12) !important;
+      border-color: #fb923c !important;
+      color: #fff7ed !important;
     }
 
     /* Countdown Widget & Badges */
@@ -2843,7 +2914,12 @@
 
         <div class="input-group" style="display:flex; flex-wrap:wrap; gap:8px;">
           <button id="fetchDataBtn" onclick="loadTrackerData()" class="btn btn-wood">🌾 FETCH DATA</button>
-          <button id="saveCloudBtn" onclick="saveProgressToCloudKV()" class="btn btn-wood">☁️ SAVE IN CLOUD</button>
+          <button id="saveCloudBtn" onclick="saveProgressToCloudKV()" class="btn btn-wood save-cloud-btn" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle; flex-shrink:0;">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+            </svg>
+            <span class="save-cloud-text">SAVE IN CLOUD</span>
+          </button>
           <button id="itemsBurnedBtn" onclick="openItemsBurnedModal()" class="btn btn-wood" title="View all items burned/consumed throughout the chapter and their SFL cost">🔥 ITEMS BURNED</button>
           <button id="chapterLogsBtn" onclick="openChapterLogsModal()" class="btn btn-wood">📜 CHAPTER LOGS</button>
           <button id="guideBtn" onclick="toggleGuideModal()" class="btn btn-wood">📖 GUIDE</button>
@@ -3087,7 +3163,15 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="columnHistoryTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC;">📜 EDIT / HISTORY</h3>
-        <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="modalSaveCloudBtn" onclick="saveProgressToCloudKV()" class="btn btn-wood btn-sm save-cloud-btn" style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; font-size:11px; font-weight:900;" title="Save changes directly to Cloud Vault">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle; flex-shrink:0;">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+            </svg>
+            <span class="save-cloud-text">SAVE IN CLOUD</span>
+          </button>
+          <button onclick="closeColumnHistoryModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+        </div>
       </div>
       <div class="modal-body">
         <div style="padding:10px; border:2px solid #D2691E; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">

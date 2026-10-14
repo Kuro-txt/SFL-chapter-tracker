@@ -110,6 +110,52 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
   color: #271207;
 }
 .btn-sm { padding: 4px 10px; font-size: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(210, 105, 30, 0.12); }
+.btn-wood.btn-saved {
+  background: linear-gradient(180deg, #388E3C, #2E7D32) !important;
+  color: #FFFFFF !important;
+  border-color: #1B5E20 !important;
+  box-shadow: 0 0 10px rgba(46, 125, 50, 0.6) !important;
+}
+.btn-wood.btn-saving {
+  opacity: 0.85;
+  cursor: wait !important;
+}
+
+/* Floating Toast Notification */
+.app-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-30px);
+  background: linear-gradient(135deg, #2E7D32, #1B5E20);
+  color: #FFFFFF;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 900;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  border: 2px solid #81C784;
+  z-index: 100000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.app-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.app-toast.error {
+  background: linear-gradient(135deg, #C62828, #B71C1C);
+  border-color: #EF5350;
+}
+.app-toast.warning {
+  background: linear-gradient(135deg, #EF6C00, #E65100);
+  border-color: #FFB74D;
+}
 
 @keyframes btn-spin {
   from { transform: rotate(0deg); }
@@ -499,6 +545,30 @@ body.dark-mode .ratio-pill.ratio-target-match {
   color: #7dd3fc !important;
   border: 1.5px solid #38bdf8 !important;
   box-shadow: 0 0 6px rgba(56, 189, 248, 0.4) !important;
+}
+
+body.dark-mode .btn-wood.btn-saved {
+  background: linear-gradient(180deg, #16a34a, #15803d) !important;
+  color: #f0fdf4 !important;
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.5) !important;
+}
+
+body.dark-mode .app-toast {
+  background: linear-gradient(135deg, #15803d, #14532d) !important;
+  border-color: #4ade80 !important;
+  color: #f0fdf4 !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+}
+body.dark-mode .app-toast.error {
+  background: linear-gradient(135deg, #991b1b, #7f1d1d) !important;
+  border-color: #f87171 !important;
+  color: #fef2f2 !important;
+}
+body.dark-mode .app-toast.warning {
+  background: linear-gradient(135deg, #9a3412, #7c2d12) !important;
+  border-color: #fb923c !important;
+  color: #fff7ed !important;
 }
 
 body.dark-mode .stat-footer {

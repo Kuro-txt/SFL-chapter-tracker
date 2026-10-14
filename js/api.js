@@ -345,13 +345,61 @@ export async function loadTrackerData() {
   }
 }
 
+export function showToast(message, type = 'success', duration = 2500) {
+  if (typeof document === 'undefined') return;
+  let toast = document.getElementById('appToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'appToast';
+    toast.className = 'app-toast';
+    document.body.appendChild(toast);
+  }
+  toast.className = `app-toast ${type} show`;
+  toast.innerHTML = message;
+
+  if (typeof window !== 'undefined') {
+    if (window._toastTimeout) clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(() => {
+      toast.classList.remove('show');
+    }, duration);
+  } else {
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, duration);
+  }
+}
+if (typeof window !== 'undefined') window.showToast = showToast;
+
+function setSaveButtonsState(btnState) {
+  if (typeof document === 'undefined') return;
+  const buttons = document.querySelectorAll('.save-cloud-btn, #saveCloudBtn, #modalSaveCloudBtn');
+  buttons.forEach(btn => {
+    const textSpan = btn.querySelector('.save-cloud-text');
+    if (btnState === 'saving') {
+      btn.disabled = true;
+      btn.classList.add('btn-saving');
+      btn.classList.remove('btn-saved');
+      if (textSpan) textSpan.textContent = 'SAVING...';
+    } else if (btnState === 'saved') {
+      btn.disabled = false;
+      btn.classList.remove('btn-saving');
+      btn.classList.add('btn-saved');
+      if (textSpan) textSpan.textContent = 'SAVED! ✨';
+    } else {
+      btn.disabled = false;
+      btn.classList.remove('btn-saving', 'btn-saved');
+      if (textSpan) textSpan.textContent = 'SAVE IN CLOUD';
+    }
+  });
+}
+
 export async function saveProgressToCloudKV(silent = false) {
   if (!state.currentUser) {
     if (!silent) {
       if (typeof window.showRegistrationGate === 'function') {
         window.showRegistrationGate('register', '⚠️ Please register or log in to save your progress in Cloud Vault.');
       } else {
-        alert('Please login to save your progress in your Cloud Vault.');
+        showToast('⚠️ Please log in to save your progress in Cloud Vault.', 'warning');
       }
     }
     return;
@@ -359,9 +407,11 @@ export async function saveProgressToCloudKV(silent = false) {
 
   const farmId = document.getElementById('farmId')?.value.trim() || state.currentVaultData?.farmId;
   if (!farmId) {
-    if (!silent) alert('Please enter your Sunflower Land Farm ID.');
+    if (!silent) showToast('⚠️ Please enter your Sunflower Land Farm ID.', 'warning');
     return;
   }
+
+  setSaveButtonsState('saving');
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || 0;
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || 0;
   const dailyLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || 0;
@@ -582,11 +632,20 @@ export async function saveProgressToCloudKV(silent = false) {
 
     recalculateAll();
 
+    setSaveButtonsState('saved');
+    if (typeof window !== 'undefined') {
+      if (window._saveCloudTimeout) clearTimeout(window._saveCloudTimeout);
+      window._saveCloudTimeout = setTimeout(() => {
+        setSaveButtonsState('idle');
+      }, 2500);
+    }
+
     if (!silent) {
       const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
-      alert(`☁️ SAVED IN CLOUD!\n• User: ${state.currentUser}\n• Farm ID: ${farmId}\n• Total Tickets: ${totalTix}`);
+      showToast(`☁️ Saved to Cloud! (${totalTix} Total Tickets)`, 'success');
     }
   } catch (err) {
-    if (!silent) alert(`Cloud Save Error: ${err.message}`);
+    setSaveButtonsState('idle');
+    if (!silent) showToast(`❌ Cloud Save Error: ${err.message}`, 'error');
   }
 }

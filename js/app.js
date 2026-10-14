@@ -1,4 +1,4 @@
-import { loadTrackerData, saveProgressToCloudKV } from './api.js';
+import { loadTrackerData, saveProgressToCloudKV, showToast } from './api.js';
 import { 
   userRegister, 
   userLogin, 
@@ -125,6 +125,7 @@ window.copyDonateAddress = copyDonateAddress;
 window.toggleTheme = toggleTheme;
 window.loadTrackerData = loadTrackerData;
 window.saveProgressToCloudKV = saveProgressToCloudKV;
+window.showToast = showToast;
 window.userRegister = userRegister;
 window.userLogin = userLogin;
 window.userLogout = userLogout;
