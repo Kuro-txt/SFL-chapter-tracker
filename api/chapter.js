@@ -6,29 +6,37 @@ import {
   CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
 
+let isSchemaInitialized = false;
+
 async function ensureTableExists(client) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS user_vaults (
-      username VARCHAR(255) PRIMARY KEY,
-      auth_data JSONB NOT NULL,
-      vault_data JSONB NOT NULL
-    );
+  if (isSchemaInitialized) return;
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_vaults (
+        username VARCHAR(255) PRIMARY KEY,
+        auth_data JSONB NOT NULL,
+        vault_data JSONB NOT NULL
+      );
 
-    CREATE TABLE IF NOT EXISTS user_chapter_logs (
-      id SERIAL PRIMARY KEY,
-      username VARCHAR(255) NOT NULL,
-      chapter_id VARCHAR(100) NOT NULL,
-      chapter_title VARCHAR(255) NOT NULL,
-      archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-      is_locked BOOLEAN DEFAULT FALSE,
-      summary_data JSONB NOT NULL,
-      CONSTRAINT unique_user_chapter UNIQUE (username, chapter_id)
-    );
+      CREATE TABLE IF NOT EXISTS user_chapter_logs (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        chapter_id VARCHAR(100) NOT NULL,
+        chapter_title VARCHAR(255) NOT NULL,
+        archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        is_locked BOOLEAN DEFAULT FALSE,
+        summary_data JSONB NOT NULL,
+        CONSTRAINT unique_user_chapter UNIQUE (username, chapter_id)
+      );
 
-    ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
+      ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
 
-    CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);
-  `);
+      CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);
+    `);
+    isSchemaInitialized = true;
+  } catch (err) {
+    console.warn('ensureTableExists warning:', err.message);
+  }
 }
 
 export function sanitizeDeliveriesList(deliveries) {
@@ -474,7 +482,9 @@ export default async function handler(req, res) {
   let client;
   try {
     client = await pool.connect();
-    await ensureTableExists(client);
+    if (action === 'register' || action === 'init') {
+      await ensureTableExists(client);
+    }
 
     // ==========================================
     // ACTION: REGISTER
