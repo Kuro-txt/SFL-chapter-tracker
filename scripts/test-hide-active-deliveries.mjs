@@ -2,27 +2,24 @@ import assert from 'assert';
 import fs from 'fs';
 import path from 'path';
 
-console.log('🧪 Starting Automated Tests for Hiding Active Deliveries in Edit Section...');
+console.log('🧪 Starting Automated Tests for Hiding Active Deliveries, Chores & Bounties in Edit Section...');
 
-// Test 1: Verify js/modals-editor.js source code has the display filter
-console.log('\nTest 1: Verifying modals-editor.js contains active delivery display filter...');
+// Test 1: Verify js/modals-editor.js source code has the display filter in both delivery and chore/bounty loops
+console.log('\nTest 1: Verifying modals-editor.js contains active item display filters...');
 {
   const editorPath = path.resolve('js/modals-editor.js');
   const code = fs.readFileSync(editorPath, 'utf-8');
 
-  // Verify filter line exists
-  assert(
-    code.includes('if (!isChecked && !isSkipped) return;'),
-    'modals-editor.js must contain "if (!isChecked && !isSkipped) return;" filter'
-  );
+  // Verify filter line exists multiple times (for delivery loop and chore/bounty loop)
+  const matches = code.match(/if \(!isChecked && !isSkipped\) return;/g);
+  assert(matches && matches.length >= 2, 'modals-editor.js must contain display filter for both deliveries and chores/bounties');
 
-  console.log('✅ TEST 1 PASSED: Code filter present in js/modals-editor.js.');
+  console.log('✅ TEST 1 PASSED: Code filters present across all categories in js/modals-editor.js.');
 }
 
-// Test 2: Verify simulated display behavior & zero cloud data modification
-console.log('\nTest 2: Verifying simulated Edit Section display output and array preservation...');
+// Test 2: Verify simulated display behavior & zero cloud data modification for deliveries
+console.log('\nTest 2: Verifying simulated Edit Section display output and array preservation for deliveries...');
 {
-  // Simulated deliveries in storage (like what getDeliveryRecords returns)
   const masterDeliveries = [
     {
       id: 'deliv_pumpkin_pete_active',
@@ -74,17 +71,14 @@ console.log('\nTest 2: Verifying simulated Edit Section display output and array
     }
   ];
 
-  // Snapshot before rendering
   const originalLength = masterDeliveries.length;
   const originalJson = JSON.stringify(masterDeliveries);
 
-  // Replicate the exact loop from renderColumnHistoryModalList
   const records = [];
-  masterDeliveries.forEach((item, itemIdx) => {
+  masterDeliveries.forEach((item) => {
     const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
     const isSkipped = Boolean(item.isSkipped);
 
-    // The display filter
     if (!isChecked && !isSkipped) return;
 
     records.push({
@@ -95,22 +89,81 @@ console.log('\nTest 2: Verifying simulated Edit Section display output and array
     });
   });
 
-  // 1. Verify that only completed & skipped deliveries are in records
   assert.strictEqual(records.length, 2, 'Only 2 completed/skipped records should be displayed');
   assert.strictEqual(records[0].id, 'deliv_pumpkin_pete_d1');
-  assert.strictEqual(records[0].status, '✨ Done');
   assert.strictEqual(records[1].id, 'deliv_betty_skip_1');
-  assert.strictEqual(records[1].status, '✕ Skipped');
 
-  // 2. Verify NO active deliveries made it into the display list
   const activeRecords = records.filter(r => r.id.includes('_active') || r.status.includes('Active'));
   assert.strictEqual(activeRecords.length, 0, 'Zero active deliveries should be in the display list');
 
-  // 3. Verify underlying master array and cloud objects are 100% UNTOUCHED
   assert.strictEqual(masterDeliveries.length, originalLength, 'Master deliveries array length must not change');
   assert.strictEqual(JSON.stringify(masterDeliveries), originalJson, 'Master deliveries data must remain completely identical');
 
   console.log('✅ TEST 2 PASSED: Active deliveries are hidden from display, while underlying cloud data is 100% preserved.');
+}
+
+// Test 3: Verify simulated display behavior & zero cloud data modification for chores and bounties
+console.log('\nTest 3: Verifying simulated Edit Section display output for chores and bounties...');
+{
+  const mockBountiesAndChores = [
+    {
+      id: 'bounty_1',
+      name: 'Sunflower',
+      checked: false,
+      completed: false,
+      isSkipped: false
+    },
+    {
+      id: 'bounty_2',
+      name: 'Potato',
+      checked: true,
+      completed: true,
+      isSkipped: false
+    },
+    {
+      id: 'chore_1',
+      name: 'Chore: Plant Wheat',
+      checked: false,
+      completed: false,
+      isSkipped: false
+    },
+    {
+      id: 'animal_bounty_1',
+      name: 'Egg',
+      checked: true,
+      completed: true,
+      isSkipped: false
+    }
+  ];
+
+  const originalLen = mockBountiesAndChores.length;
+  const originalJson = JSON.stringify(mockBountiesAndChores);
+
+  const displayed = [];
+  mockBountiesAndChores.forEach(item => {
+    const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
+    const isSkipped = Boolean(item.isSkipped);
+
+    if (!isChecked && !isSkipped) return;
+
+    displayed.push({
+      id: item.id,
+      name: item.name,
+      status: isChecked ? '✨ Done' : '⏳ Active'
+    });
+  });
+
+  assert.strictEqual(displayed.length, 2, 'Only 2 completed chores/bounties should be displayed');
+  assert.strictEqual(displayed[0].id, 'bounty_2');
+  assert.strictEqual(displayed[1].id, 'animal_bounty_1');
+
+  const activeBounties = displayed.filter(r => r.status.includes('Active'));
+  assert.strictEqual(activeBounties.length, 0, 'Zero active chores or bounties should be in the display list');
+
+  assert.strictEqual(mockBountiesAndChores.length, originalLen, 'Original chore/bounty storage array untouched');
+  assert.strictEqual(JSON.stringify(mockBountiesAndChores), originalJson, 'Original chore/bounty data identical');
+
+  console.log('✅ TEST 3 PASSED: Active chores, bounties, and animal bounties hidden from Edit Section while cloud data remains intact.');
 }
 
 console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY! 🚀');

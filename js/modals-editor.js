@@ -234,6 +234,10 @@ export function renderColumnHistoryModalList() {
 
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
+      const isSkipped = Boolean(item.isSkipped);
+
+      // Hide pending active tasks from the Edit / History modal display (they belong on the live boards)
+      if (!isChecked && !isSkipped) return;
 
       records.push({
         weekId,
