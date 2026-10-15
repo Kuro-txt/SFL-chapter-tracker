@@ -92,27 +92,47 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-    .donate-btn {
+    .header-support-stack {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 3px;
+      justify-content: center;
+      align-items: stretch;
+    }
+    .header-support-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      height: 38px;
-      padding: 4px 12px;
-      font-size: 11.5px;
+      justify-content: center;
+      gap: 5px;
+      height: 19px;
+      min-width: 104px;
+      padding: 1px 8px;
+      font-size: 10px;
       font-weight: 900;
-      letter-spacing: 0.4px;
-      border-radius: 6px;
+      letter-spacing: 0.3px;
+      border-radius: 5px;
       box-sizing: border-box;
       cursor: pointer;
       user-select: none;
       white-space: nowrap;
-      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+      text-decoration: none;
+      color: inherit;
+      line-height: 1;
+      box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.3), 0 2px 0px #24140E;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, filter 0.15s ease;
+    }
+    .header-support-btn:hover {
+      filter: brightness(1.08);
+    }
+    .header-support-btn:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 0px #24140E !important;
     }
     .donate-btn.copied {
       background: linear-gradient(180deg, #2E7D32 0%, #1B5E20 100%) !important;
       border-color: #4ADE80 !important;
       color: #FFFFFF !important;
-      box-shadow: 0 3px 0px #0F3813 !important;
+      box-shadow: 0 2px 0px #0F3813 !important;
       text-shadow: 1px 1px 0px #0A260D !important;
     }
     .chapter-week-badge {
@@ -1037,6 +1057,12 @@
     body.dark-mode .btn-indigo:active {
       transform: translateY(1px);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+    }
+    body.dark-mode .header-support-btn {
+      box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.15), 0 2px 0px #080e1a !important;
+    }
+    body.dark-mode .header-support-btn:active {
+      box-shadow: 0 1px 0px #080e1a !important;
     }
     body.dark-mode .donate-btn.copied {
       background: linear-gradient(180deg, #1e293b 0%, #151e2b 100%) !important;
@@ -2786,10 +2812,16 @@
   <div class="wrapper">
     <header>
       <div class="header-left-group">
-        <button id="donateBtn" type="button" onclick="copyDonateAddress()" class="btn btn-wood donate-btn" title="Copy donation address (0x55b9...0511)">
-          <span style="font-size: 13px; line-height: 1;">💖</span>
-          <span id="donateBtnText">DONATE</span>
-        </button>
+        <div class="header-support-stack">
+          <button id="donateBtn" type="button" onclick="copyDonateAddress()" class="btn btn-wood header-support-btn donate-btn" title="Copy donation address (0x55b9...0511)">
+            <span style="font-size: 11px; line-height: 1;">💖</span>
+            <span id="donateBtnText">DONATE</span>
+          </button>
+          <a id="cheerHelpBtn" href="https://sunflower-land.com/play/#/visit/8472883706403914" target="_blank" rel="noopener noreferrer" class="btn btn-wood header-support-btn cheer-btn" title="Visit Farm #8472883706403914 in Sunflower Land to Cheer &amp; Help!">
+            <span style="font-size: 11px; line-height: 1;">🌻</span>
+            <span>CHEER &amp; HELP</span>
+          </a>
+        </div>
 
         <div id="chapterCountdownWidget" class="chapter-countdown-widget" title="Chapter ends on Nov 2, 2026 at 00:00 UTC">
           <div class="countdown-icon">
