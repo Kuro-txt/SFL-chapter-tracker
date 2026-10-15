@@ -383,9 +383,10 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
       const isCompleted = typeof order.completedAt === 'number' || order.status === 'completed' || order.completed === true;
       const npcStat = npcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
       
+      const cleanSlug = String(npcClean).replace(/['"`]/g, '').replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').trim();
       const canonicalId = isCompleted 
-        ? `deliv_${npcClean}_d${npcStat.deliveryCount}` 
-        : `deliv_${npcClean}_active`;
+        ? `deliv_${cleanSlug}_d${npcStat.deliveryCount}` 
+        : `deliv_${cleanSlug}_active`;
 
       const compTimestamp = typeof order.completedAt === 'number' ? order.completedAt : null;
       let compDateStr = null;

@@ -39,6 +39,15 @@ async function ensureTableExists(client) {
   }
 }
 
+export function slugifyNpc(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/['"`]/g, '')
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 export function sanitizeDeliveriesList(deliveries) {
   if (!Array.isArray(deliveries)) return [];
   const map = new Map();
@@ -54,37 +63,52 @@ export function sanitizeDeliveriesList(deliveries) {
     return (b.itemsCost || b.cost || 0) - (a.itemsCost || a.cost || 0);
   });
 
-  for (const d of sorted) {
+  for (let idx = 0; idx < sorted.length; idx++) {
+    const d = sorted[idx];
     if (!d) continue;
-    const npc = (d.from || d.name || '').toLowerCase().trim();
+    const rawNpc = (d.from || d.name || '').trim();
+    if (!rawNpc) continue;
+    const npc = slugifyNpc(rawNpc);
     if (!npc) continue;
 
     const isMan = Boolean(d.isManual);
     const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped;
     const isSkip = Boolean(d.isSkipped);
 
-    let canonicalId = d.id || '';
+    let dateStr = d.completedDate || '';
+    if (!dateStr && d.completedAt) {
+      const ts = typeof d.completedAt === 'number' ? d.completedAt : Number(d.completedAt);
+      if (!isNaN(ts) && ts > 0) {
+        dateStr = new Date(ts < 1e11 ? ts * 1000 : ts).toISOString().split('T')[0];
+      }
+    }
+    if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
+    d.completedDate = dateStr;
+
+    let rawId = d.id ? String(d.id).replace(/['"`]/g, '').replace(/\s+/g, '_') : '';
+    let canonicalId = rawId;
+
     if (isMan) {
-      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
+      canonicalId = (rawId && rawId.startsWith('manual_')) ? rawId : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
     } else if (isDone) {
-      if (d.id && d.id.startsWith(`deliv_${npc}_d`)) {
-        canonicalId = d.id;
+      if (rawId && rawId.startsWith(`deliv_${npc}_d`)) {
+        canonicalId = rawId;
       } else {
         const count = d.deliveryCountAtCreation;
         canonicalId = (count !== undefined && count !== null && count !== '') 
           ? `deliv_${npc}_d${count}` 
-          : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+          : `deliv_${npc}_d${d.completedAt || d.completedDate || (idx + 1)}`;
       }
       d.completed = true;
       d.checked = true;
       d.isSkipped = false;
       d.status = 'completed';
     } else if (isSkip) {
-      if (d.id && d.id.startsWith(`deliv_${npc}_skip_`)) {
-        canonicalId = d.id;
+      if (rawId && rawId.startsWith(`deliv_${npc}_skip_`)) {
+        canonicalId = rawId;
       } else {
         const skipCount = d.skippedCountAtCreation;
-        canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+        canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || (idx + 1)}`;
       }
       d.completed = false;
       d.checked = false;
@@ -98,10 +122,26 @@ export function sanitizeDeliveriesList(deliveries) {
       d.status = 'active';
     }
 
-    d.id = canonicalId;
+    let finalId = canonicalId;
+    if (map.has(finalId)) {
+      const existing = map.get(finalId);
+      const isSameDelivery = existing === d || 
+        (existing.completedAt && d.completedAt && existing.completedAt === d.completedAt) ||
+        (existing.status === 'active' && d.status === 'active');
 
-    if (!map.has(canonicalId)) {
-      map.set(canonicalId, d);
+      if (!isSameDelivery && (isDone || isSkip)) {
+        let suffix = 2;
+        while (map.has(`${canonicalId}_${suffix}`)) {
+          suffix++;
+        }
+        finalId = `${canonicalId}_${suffix}`;
+      }
+    }
+
+    d.id = finalId;
+
+    if (!map.has(finalId)) {
+      map.set(finalId, d);
     } else {
       const existing = map.get(canonicalId);
       if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {

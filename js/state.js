@@ -208,9 +208,17 @@ export async function syncCurrentVaultToCloud() {
   }
 }
 
+export function slugifyNpc(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/['"`]/g, '')
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 export function sanitizeDeliveries(deliveries) {
   if (!Array.isArray(deliveries)) return [];
-
   const map = new Map();
 
   const sorted = [...deliveries].sort((a, b) => {
@@ -224,9 +232,12 @@ export function sanitizeDeliveries(deliveries) {
     return (b.itemsCost || b.cost || 0) - (a.itemsCost || a.cost || 0);
   });
 
-  for (const d of sorted) {
+  for (let idx = 0; idx < sorted.length; idx++) {
+    const d = sorted[idx];
     if (!d) continue;
-    const npc = (d.from || d.name || '').toLowerCase().trim();
+    const rawNpc = (d.from || d.name || '').trim();
+    if (!rawNpc) continue;
+    const npc = slugifyNpc(rawNpc);
     if (!npc) continue;
 
     const isMan = Boolean(d.isManual);
@@ -243,28 +254,31 @@ export function sanitizeDeliveries(deliveries) {
     if (!dateStr) dateStr = d.weekId || new Date().toISOString().split('T')[0];
     d.completedDate = dateStr;
 
-    let canonicalId = d.id || '';
+    // Normalize any legacy ID to be clean and alphanumeric
+    let rawId = d.id ? String(d.id).replace(/['"`]/g, '').replace(/\s+/g, '_') : '';
+
+    let canonicalId = rawId;
     if (isMan) {
-      canonicalId = (d.id && d.id.startsWith('manual_')) ? d.id : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
+      canonicalId = (rawId && rawId.startsWith('manual_')) ? rawId : `manual_${npc}_${d.completedAt || d.completedDate || Date.now()}`;
     } else if (isDone) {
-      if (d.id && d.id.startsWith(`deliv_${npc}_d`)) {
-        canonicalId = d.id;
+      if (rawId && rawId.startsWith(`deliv_${npc}_d`)) {
+        canonicalId = rawId;
       } else {
         const count = d.deliveryCountAtCreation;
         canonicalId = (count !== undefined && count !== null && count !== '') 
           ? `deliv_${npc}_d${count}` 
-          : `deliv_${npc}_d${d.completedAt || d.completedDate || '1'}`;
+          : `deliv_${npc}_d${d.completedAt || d.completedDate || (idx + 1)}`;
       }
       d.completed = true;
       d.checked = true;
       d.isSkipped = false;
       d.status = 'completed';
     } else if (isSkip) {
-      if (d.id && d.id.startsWith(`deliv_${npc}_skip_`)) {
-        canonicalId = d.id;
+      if (rawId && rawId.startsWith(`deliv_${npc}_skip_`)) {
+        canonicalId = rawId;
       } else {
         const skipCount = d.skippedCountAtCreation;
-        canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || '1'}`;
+        canonicalId = `deliv_${npc}_skip_${skipCount || d.completedDate || (idx + 1)}`;
       }
       d.completed = false;
       d.checked = false;
@@ -278,12 +292,29 @@ export function sanitizeDeliveries(deliveries) {
       d.status = 'active';
     }
 
-    d.id = canonicalId;
+    // Disambiguate if two distinct completed deliveries share the same ID
+    let finalId = canonicalId;
+    if (map.has(finalId)) {
+      const existing = map.get(finalId);
+      const isSameDelivery = existing === d || 
+        (existing.completedAt && d.completedAt && existing.completedAt === d.completedAt) ||
+        (existing.status === 'active' && d.status === 'active');
 
-    if (!map.has(canonicalId)) {
-      map.set(canonicalId, d);
+      if (!isSameDelivery && (isDone || isSkip)) {
+        let suffix = 2;
+        while (map.has(`${canonicalId}_${suffix}`)) {
+          suffix++;
+        }
+        finalId = `${canonicalId}_${suffix}`;
+      }
+    }
+
+    d.id = finalId;
+
+    if (!map.has(finalId)) {
+      map.set(finalId, d);
     } else {
-      const existing = map.get(canonicalId);
+      const existing = map.get(finalId);
       if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
         existing.itemDetails = d.itemDetails;
         existing.items = d.items;
@@ -382,14 +413,8 @@ export function recomputeCoinCosts(ratio) {
 export function preserveCustomDeliveryEdits(targetDeliveries, sourceDeliveries) {
   if (!Array.isArray(targetDeliveries) || !Array.isArray(sourceDeliveries)) return targetDeliveries;
   targetDeliveries.forEach(td => {
-    if (!td) return;
-    const tdNpc = (td.from || td.name || '').toLowerCase().trim();
-    const match = sourceDeliveries.find(sd => {
-      if (!sd) return false;
-      if (td.id && sd.id && td.id === sd.id) return true;
-      const sdNpc = (sd.from || sd.name || '').toLowerCase().trim();
-      return tdNpc && sdNpc && tdNpc === sdNpc;
-    });
+    if (!td || !td.id) return;
+    const match = sourceDeliveries.find(sd => sd && sd.id && sd.id === td.id);
     if (match && (match.isCustomCost || match.userCost !== undefined)) {
       td.cost = match.userCost !== undefined ? match.userCost : match.cost;
       td.itemsCost = td.cost;

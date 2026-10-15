@@ -348,9 +348,12 @@ export function renderColumnHistoryModalList() {
         ? `<input type="checkbox" ${r.checked ? 'checked' : ''} onchange="${changeHandler}" style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:pointer;" title="Click to toggle status" />`
         : `<input type="checkbox" ${r.checked ? 'checked' : ''} disabled style="accent-color:#D2691E; width:16px; height:16px; margin-top:2px; flex-shrink:0; cursor:not-allowed; opacity:0.75;" title="Status is synced from Sunflower Land (manual ticking disabled)" />`;
 
+      const itemTargetKey = String(r.mapKey || r.id || r.itemIdx).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      const sourceKey = String(r.source || r.weekId || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
       const canEditTickets = (type === 'animalBounty') || r.isManual;
       const ticketsInputHtml = canEditTickets
-        ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${r.source || r.weekId}', '${r.mapKey || r.id || r.itemIdx}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
+        ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${sourceKey}', '${itemTargetKey}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
         : `<input type="number" value="${r.displayTickets}" disabled style="width:48px; padding:3px 5px; font-size:11px; opacity:0.75; cursor:not-allowed; background:rgba(0,0,0,0.05);" title="Game-synced ticket yield cannot be edited" />`;
 
       return `<div class="history-card${cardBorderClass}">
@@ -367,7 +370,7 @@ export function renderColumnHistoryModalList() {
         <div class="history-controls">
           <div class="history-input-group">
             <span style="font-size:10px; font-weight:bold; color:#5C4033;">SFL:</span>
-            <input type="number" step="0.001" value="${Number(r.cost || 0).toFixed(3)}" onchange="updateHistoryItemCost('${r.source || r.weekId}', '${r.mapKey || r.id || r.itemIdx}', this.value)" style="width:72px; padding:3px 5px; font-size:11px;" />
+            <input type="number" step="0.001" value="${Number(r.cost || 0).toFixed(3)}" onchange="updateHistoryItemCost('${sourceKey}', '${itemTargetKey}', this.value)" style="width:72px; padding:3px 5px; font-size:11px;" />
           </div>
           <div class="history-input-group">
             <span style="font-size:10px; font-weight:bold; color:#5C4033;">Tix:</span>
@@ -662,8 +665,8 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdxOrId, val) 
       target.userCost = costVal;
       target.isCustomCost = true;
 
-      // Also ensure board delivery in state.globalData.deliveries is synchronized if matching
-      const boardDeliv = (state.globalData?.deliveries || []).find(d => (d.id && d.id === target.id) || (d.from || d.name || '').toLowerCase() === (target.from || target.name || '').toLowerCase());
+      // Also ensure board delivery in state.globalData.deliveries is synchronized if matching exactly by unique ID
+      const boardDeliv = (state.globalData?.deliveries || []).find(d => d.id && target.id && d.id === target.id);
       if (boardDeliv) {
         boardDeliv.cost = costVal;
         boardDeliv.itemsCost = costVal;
@@ -671,9 +674,9 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdxOrId, val) 
         boardDeliv.isCustomCost = true;
       }
 
-      // Also update in state.globalData.archiveDeliveries
+      // Also update in state.globalData.archiveDeliveries strictly by unique ID
       if (Array.isArray(state.globalData?.archiveDeliveries)) {
-        const archDeliv = state.globalData.archiveDeliveries.find(d => d.id && d.id === target.id);
+        const archDeliv = state.globalData.archiveDeliveries.find(d => d.id && target.id && d.id === target.id);
         if (archDeliv) {
           archDeliv.cost = costVal;
           archDeliv.itemsCost = costVal;
