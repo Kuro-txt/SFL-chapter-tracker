@@ -626,15 +626,16 @@ async function runSync() {
             if (isDone) {
               const bTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
               const bCost = (b.itemsCost || b.cost || 0);
-              const isAnimal = Boolean(b.isAnimal || (b.name && /egg|milk|wool|feather|leather|honey|animal/i.test(b.name)));
+              const isAnimal = isAnimalBountyHelper(b);
+              const isMan = isManualBountyHelper(b);
               if (isAnimal) {
                 animalBountyCount++;
-                autoAnimalBountyCount++;
+                if (!isMan) autoAnimalBountyCount++;
                 animalBountyTix += bTix;
                 animalBountyCost += bCost;
               } else {
                 bountyCount++;
-                autoBountyCount++;
+                if (!isMan) autoBountyCount++;
                 bountyTix += bTix;
                 bountyCost += bCost;
               }
@@ -650,7 +651,7 @@ async function runSync() {
             const isDone = c.checked !== undefined ? c.checked : Boolean(c.completed);
             if (isDone) {
               choreCount++;
-              const isMan = Boolean(c.isManual);
+              const isMan = isManualBountyHelper(c);
               if (isMan) manualChoreCount++;
               else autoChoreCount++;
               const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
@@ -666,24 +667,28 @@ async function runSync() {
               if (b.completed || b.checked) {
                 const bTix = (b.baseTickets || b.tickets || 0);
                 const bCost = (b.itemsCost || b.cost || 0);
-                const isAnimal = Boolean(b.isAnimal || (b.name && /egg|milk|wool|feather|leather|honey|animal/i.test(b.name)));
+                const isAnimal = isAnimalBountyHelper(b);
+                const isMan = isManualBountyHelper(b);
                 if (isAnimal) {
                   animalBountyCount++;
-                  autoAnimalBountyCount++;
+                  if (!isMan) autoAnimalBountyCount++;
                   animalBountyTix += bTix;
                   animalBountyCost += bCost;
                 } else {
                   bountyCount++;
-                  autoBountyCount++;
+                  if (!isMan) autoBountyCount++;
                   bountyTix += bTix;
                   bountyCost += bCost;
                 }
               }
             });
+            if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+              bountyTix += 100;
+            }
             (wk.chores || []).forEach(c => {
               if (c.completed || c.checked) {
                 choreCount++;
-                const isMan = Boolean(c.isManual);
+                const isMan = isManualBountyHelper(c);
                 if (isMan) manualChoreCount++;
                 else autoChoreCount++;
                 const baseTix = (c.baseTickets || c.tickets || 1);
