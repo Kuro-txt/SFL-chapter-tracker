@@ -23,7 +23,7 @@ export const SFL_RECIPES = {
   // CRAFTING BOX & MATERIALS
   // ==========================================
   "synthetic fibre": { "wool": 3, "oil /1": 6 },
-  "timber": { "wood": 90 },
+  "timber": { "wood": 9 },
   "bee box": { "honey": 8 },
   "crimsteel": { "crimstone": 3, "iron": 3 },
   "cushion": { "feather": 9 },
