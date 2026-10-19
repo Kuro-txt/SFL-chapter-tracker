@@ -63,8 +63,8 @@ console.log('\nTest 2: Verifying Cost Editing on Deliveries...');
   console.log('✅ TEST 2 PASSED: Custom delivery cost successfully preserved.');
 }
 
-// Test 3: Cost Editing on Regular Bounties and Chores
-console.log('\nTest 3: Verifying Cost Editing on Bounties and Chores...');
+// Test 3: Cost Editing on Regular Bounties and Chores (Completed only, Active isolated)
+console.log('\nTest 3: Verifying Cost Editing on Bounties and Chores (Completed preserved, Active isolated)...');
 {
   const existingList = [
     {
@@ -76,11 +76,13 @@ console.log('\nTest 3: Verifying Cost Editing on Bounties and Chores...');
       isCustomCost: true,
       baseTickets: 1,
       tickets: 1,
+      completed: true,
+      checked: true,
       isManual: false
     }
   ];
 
-  const freshList = [
+  const completedFreshList = [
     {
       id: 'bounty_wheat',
       name: 'Wheat',
@@ -88,16 +90,35 @@ console.log('\nTest 3: Verifying Cost Editing on Bounties and Chores...');
       cost: 2.50,
       baseTickets: 1,
       tickets: 1,
+      completed: true,
+      checked: true,
       isManual: false
     }
   ];
 
-  preserveCustomTaskEdits(freshList, existingList, false);
+  preserveCustomTaskEdits(completedFreshList, existingList, false);
+  assert.strictEqual(completedFreshList[0].cost, 0.95, 'Completed bounty custom cost must be preserved at 0.95 SFL');
+  assert.strictEqual(completedFreshList[0].isCustomCost, true, 'isCustomCost must remain true on completed task');
 
-  assert.strictEqual(freshList[0].cost, 0.95, 'Bounty custom cost must be preserved at 0.95 SFL');
-  assert.strictEqual(freshList[0].isCustomCost, true, 'isCustomCost must remain true');
-  assert.strictEqual(freshList[0].isManual, false, 'isManual must remain false');
-  console.log('✅ TEST 3 PASSED: Custom bounty/chore cost successfully preserved.');
+  const activeFreshList = [
+    {
+      id: 'bounty_wheat',
+      name: 'Wheat',
+      level: 1,
+      cost: 2.50,
+      baseTickets: 1,
+      tickets: 1,
+      completed: false,
+      checked: false,
+      isManual: false
+    }
+  ];
+
+  preserveCustomTaskEdits(activeFreshList, existingList, false);
+  assert.strictEqual(activeFreshList[0].cost, 2.50, 'Active bounty must NOT inherit old custom cost, must remain 2.50 SFL');
+  assert.strictEqual(activeFreshList[0].isCustomCost, undefined, 'Active bounty must NOT have isCustomCost');
+
+  console.log('✅ TEST 3 PASSED: Completed task cost preserved; Active task cost isolated from carryover.');
 }
 
 // Test 4: Custom Tickets on Animal Bounties Preserved Across Fetch

@@ -660,6 +660,14 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdxOrId, val) 
     const target = master.find(d => d.id && d.id === mapKeyOrIdxOrId) || master[parseInt(mapKeyOrIdxOrId, 10)];
 
     if (target) {
+      const isDone = Boolean(target.checked !== undefined ? target.checked : target.completed);
+      const isMan = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
+      if (!isDone && !isMan) {
+        alert('⚠️ Active deliveries cannot have manual costs. Their costs are calculated dynamically from current recipes and prices.');
+        renderColumnHistoryModalList();
+        return;
+      }
+
       target.cost = costVal;
       target.itemsCost = costVal;
       target.userCost = costVal;
@@ -700,6 +708,14 @@ export async function updateHistoryItemCost(sourceOrWkId, mapKeyOrIdxOrId, val) 
     }
 
     if (target) {
+      const isDone = Boolean(target.checked !== undefined ? target.checked : target.completed);
+      const isMan = Boolean(target.isManual) || (typeof target.id === 'string' && target.id.startsWith('manual_'));
+      if (!isDone && !isMan) {
+        alert(`⚠️ Active ${type === 'chore' ? 'chores' : 'bounties'} cannot have manual costs. Their costs are calculated dynamically from current recipes and prices.`);
+        renderColumnHistoryModalList();
+        return;
+      }
+
       target.cost = costVal;
       target.itemsCost = costVal;
       target.userCost = costVal;

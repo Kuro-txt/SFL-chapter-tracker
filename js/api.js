@@ -204,7 +204,27 @@ export async function loadTrackerData() {
       localStorage.setItem('sfl_cloud_weeks', JSON.stringify(loadedWeeks));
     } catch (e) {}
 
-    // 2. Merge historical archive with live board deliveries without dropping past/manual orders
+    // 2. Active tasks must NEVER retain or carry over custom manual costs
+    (state.globalData.deliveries || []).forEach(d => {
+      if (!d.completed && !d.checked) {
+        delete d.isCustomCost;
+        delete d.userCost;
+      }
+    });
+    (state.globalData.chores || []).forEach(c => {
+      if (!c.completed && !c.checked && !c.isManual) {
+        delete c.isCustomCost;
+        delete c.userCost;
+      }
+    });
+    (state.globalData.bounties || []).forEach(b => {
+      if (!b.completed && !b.checked && !b.isManual) {
+        delete b.isCustomCost;
+        delete b.userCost;
+      }
+    });
+
+    // 3. Merge historical archive with live board deliveries without dropping past/manual orders
     state.globalData.archiveDeliveries = getDeliveryRecords();
     try {
       localStorage.setItem('sfl_archive_deliveries', JSON.stringify(state.globalData.archiveDeliveries));

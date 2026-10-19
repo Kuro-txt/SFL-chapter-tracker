@@ -115,4 +115,56 @@ console.log('\nTest 4: Verifying collision disambiguation for deliveries of the 
   console.log('✅ TEST 4 PASSED: Distinct deliveries are preserved with unique IDs and never collapsed.');
 }
 
+// Test 5: Active deliveries must NEVER have or inherit custom costs
+console.log('\nTest 5: Verifying Active Deliveries NEVER inherit or retain custom costs...');
+{
+  const testActive = [
+    {
+      id: 'deliv_bert_active',
+      from: 'Bert',
+      name: 'Bert',
+      completed: false,
+      checked: false,
+      cost: 0.10,
+      itemsCost: 0.10,
+      userCost: 0.50,
+      isCustomCost: true
+    }
+  ];
+
+  const sanitized = sanitizeDeliveries(testActive);
+  assert.strictEqual(sanitized[0].cost, 0.10);
+  assert.strictEqual(sanitized[0].isCustomCost, undefined, 'Active delivery must have isCustomCost stripped');
+  assert.strictEqual(sanitized[0].userCost, undefined, 'Active delivery must have userCost stripped');
+
+  // Also verify preserveCustomDeliveryEdits does not apply onto active delivery
+  const targetList = [
+    {
+      id: 'deliv_bert_active',
+      from: 'Bert',
+      name: 'Bert',
+      completed: false,
+      checked: false,
+      cost: 0.10,
+      itemsCost: 0.10
+    }
+  ];
+  const sourceList = [
+    {
+      id: 'deliv_bert_active',
+      from: 'Bert',
+      name: 'Bert',
+      cost: 0.99,
+      isCustomCost: true,
+      userCost: 0.99
+    }
+  ];
+
+  preserveCustomDeliveryEdits(targetList, sourceList);
+  assert.strictEqual(targetList[0].cost, 0.10, 'Active delivery must NOT inherit custom cost from source');
+  assert.strictEqual(targetList[0].isCustomCost, undefined, 'Active delivery must NOT be marked isCustomCost');
+
+  console.log('✅ TEST 5 PASSED: Active deliveries are completely immune to custom cost carryover.');
+}
+
 console.log('\n🎉 ALL INDEPENDENT DELIVERY COST TESTS PASSED SUCCESSFULLY! 🚀');

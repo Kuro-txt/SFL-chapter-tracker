@@ -120,6 +120,8 @@ export function sanitizeDeliveriesList(deliveries) {
       d.checked = false;
       d.isSkipped = false;
       d.status = 'active';
+      delete d.isCustomCost;
+      delete d.userCost;
     }
 
     let finalId = canonicalId;
@@ -143,7 +145,7 @@ export function sanitizeDeliveriesList(deliveries) {
     if (!map.has(finalId)) {
       map.set(finalId, d);
     } else {
-      const existing = map.get(canonicalId);
+      const existing = map.get(finalId);
       if ((!existing.itemDetails || existing.itemDetails.length === 0) && d.itemDetails && d.itemDetails.length > 0) {
         existing.itemDetails = d.itemDetails;
         existing.items = d.items;
@@ -152,7 +154,10 @@ export function sanitizeDeliveriesList(deliveries) {
           existing.cost = d.cost;
         }
       }
-      if (d.isCustomCost || d.userCost !== undefined) {
+      if ((!existing.completed && !existing.checked) || finalId.endsWith('_active')) {
+        delete existing.isCustomCost;
+        delete existing.userCost;
+      } else if (d.isCustomCost || d.userCost !== undefined) {
         existing.cost = d.userCost !== undefined ? d.userCost : d.cost;
         existing.itemsCost = existing.cost;
         existing.userCost = existing.cost;
@@ -177,6 +182,15 @@ export function preserveCustomTaskEdits(freshList, existingList, isChore = false
   if (!Array.isArray(freshList) || !Array.isArray(existingList)) return freshList;
   freshList.forEach(freshItem => {
     if (!freshItem) return;
+    const isDone = Boolean(freshItem.checked !== undefined ? freshItem.checked : freshItem.completed);
+    const isMan = Boolean(freshItem.isManual) || (typeof freshItem.id === 'string' && freshItem.id.startsWith('manual_'));
+
+    // Active tasks must NEVER have or inherit manual costs
+    if (!isDone && !isMan) {
+      delete freshItem.isCustomCost;
+      delete freshItem.userCost;
+    }
+
     let match = null;
     if (isChore) {
       const freshKey = `${(freshItem.npc || '').toLowerCase().trim()}_${(freshItem.task || freshItem.name || '').toLowerCase().trim()}`;
@@ -203,7 +217,8 @@ export function preserveCustomTaskEdits(freshList, existingList, isChore = false
     }
 
     if (match) {
-      if (match.isCustomCost || match.userCost !== undefined) {
+      // ONLY preserve custom cost on completed or manual items, NEVER onto active tasks
+      if ((isDone || isMan) && (match.isCustomCost || match.userCost !== undefined)) {
         freshItem.cost = match.userCost !== undefined ? match.userCost : match.cost;
         freshItem.itemsCost = freshItem.cost;
         freshItem.userCost = freshItem.cost;
@@ -394,10 +409,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         target.deliveryCountAtCreation = currStat.deliveryCount;
         target.isStacked = isStackedOrder;
         target.items = order.items || target.items;
-        if (!target.isCustomCost && target.userCost === undefined) {
-          target.itemsCost = order.itemsCost || target.itemsCost;
-          target.cost = order.itemsCost || target.cost;
-        }
+        target.itemsCost = order.itemsCost || target.itemsCost;
+        target.cost = order.itemsCost || target.cost;
+        delete target.isCustomCost;
+        delete target.userCost;
         target.itemDetails = order.itemDetails || target.itemDetails;
         if (!target.isCustomTickets && target.userTickets === undefined) {
           target.baseTickets = order.baseTickets || target.baseTickets;
@@ -463,10 +478,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           const isStaleCard = Boolean(target.activeSince && target.activeSince < todayDateStr);
           if (!isStaleCard) {
             target.items = order.items || target.items;
-            if (!target.isCustomCost && target.userCost === undefined) {
-              target.itemsCost = order.itemsCost || target.itemsCost;
-              target.cost = order.itemsCost || target.cost;
-            }
+            target.itemsCost = order.itemsCost || target.itemsCost;
+            target.cost = order.itemsCost || target.cost;
+            delete target.isCustomCost;
+            delete target.userCost;
             target.itemDetails = order.itemDetails || target.itemDetails;
             if (!target.isCustomTickets && target.userTickets === undefined) {
               target.baseTickets = order.baseTickets || target.baseTickets;

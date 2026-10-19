@@ -290,6 +290,8 @@ export function sanitizeDeliveries(deliveries) {
       d.checked = false;
       d.isSkipped = false;
       d.status = 'active';
+      delete d.isCustomCost;
+      delete d.userCost;
     }
 
     // Disambiguate if two distinct completed deliveries share the same ID
@@ -323,7 +325,10 @@ export function sanitizeDeliveries(deliveries) {
           existing.cost = d.cost;
         }
       }
-      if (d.isCustomCost || d.userCost !== undefined) {
+      if ((!existing.completed && !existing.checked) || finalId.endsWith('_active')) {
+        delete existing.isCustomCost;
+        delete existing.userCost;
+      } else if (d.isCustomCost || d.userCost !== undefined) {
         existing.cost = d.userCost !== undefined ? d.userCost : d.cost;
         existing.itemsCost = existing.cost;
         existing.userCost = existing.cost;
@@ -414,6 +419,13 @@ export function preserveCustomDeliveryEdits(targetDeliveries, sourceDeliveries) 
   if (!Array.isArray(targetDeliveries) || !Array.isArray(sourceDeliveries)) return targetDeliveries;
   targetDeliveries.forEach(td => {
     if (!td || !td.id) return;
+    const isDone = Boolean(td.checked !== undefined ? td.checked : td.completed);
+    // Active deliveries must NEVER have or inherit custom costs
+    if (!isDone || td.id.endsWith('_active')) {
+      delete td.isCustomCost;
+      delete td.userCost;
+      return;
+    }
     const match = sourceDeliveries.find(sd => sd && sd.id && sd.id === td.id);
     if (match && (match.isCustomCost || match.userCost !== undefined)) {
       td.cost = match.userCost !== undefined ? match.userCost : match.cost;
@@ -435,6 +447,15 @@ export function preserveCustomTaskEdits(freshList, existingList, isChore = false
   if (!Array.isArray(freshList) || !Array.isArray(existingList)) return freshList;
   freshList.forEach(freshItem => {
     if (!freshItem) return;
+    const isDone = Boolean(freshItem.checked !== undefined ? freshItem.checked : freshItem.completed);
+    const isMan = Boolean(freshItem.isManual) || (typeof freshItem.id === 'string' && freshItem.id.startsWith('manual_'));
+
+    // Active tasks must NEVER have or inherit manual costs
+    if (!isDone && !isMan) {
+      delete freshItem.isCustomCost;
+      delete freshItem.userCost;
+    }
+
     let match = null;
     if (isChore) {
       const freshKey = `${(freshItem.npc || '').toLowerCase().trim()}_${(freshItem.task || freshItem.name || '').toLowerCase().trim()}`;
@@ -461,7 +482,8 @@ export function preserveCustomTaskEdits(freshList, existingList, isChore = false
     }
 
     if (match) {
-      if (match.isCustomCost || match.userCost !== undefined) {
+      // ONLY preserve custom cost on completed or manual items, NEVER onto active tasks
+      if ((isDone || isMan) && (match.isCustomCost || match.userCost !== undefined)) {
         freshItem.cost = match.userCost !== undefined ? match.userCost : match.cost;
         freshItem.itemsCost = freshItem.cost;
         freshItem.userCost = freshItem.cost;
