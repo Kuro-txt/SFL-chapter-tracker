@@ -6,9 +6,10 @@ import {
   hasWeeklyBountiesBonus,
   getActiveBoostCount,
   getActiveVipBonus,
-  getDeliveryRecords
+  getDeliveryRecords,
+  getMondayBasedWeekId
 } from './state.js';
-import { getMondayBasedWeekId } from '../functions/utils/dates.js';
+
 
 function computeYield(base, isVipEligible = true, isManual = false) {
   const raw = Number(base) || 0;

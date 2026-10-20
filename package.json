@@ -5,7 +5,8 @@
   "description": "Sun-Forge - Sunflower Land Chapter Progress & Order Tracker",
   "main": "js/app.js",
   "scripts": {
-    "sync": "node scripts/cron-sync.js"
+    "sync": "node scripts/cron-sync.js",
+    "test": "node scripts/test-task-editing.mjs && node scripts/test-cron-snapshot-parity.mjs && node scripts/test-independent-delivery-costs.mjs"
   },
   "dependencies": {
     "pg": "^8.13.1",
