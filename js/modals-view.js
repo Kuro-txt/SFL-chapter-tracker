@@ -1467,25 +1467,28 @@ export function updateBoostModalPreview() {
   const b1Badge = document.getElementById('boost1ActiveBadge');
   if (b1Badge) {
     b1Badge.textContent = isB1 ? `ACTIVE (+${formatSFL(b1Sfl)} SFL)` : 'INACTIVE';
-    b1Badge.style.background = isB1 ? '#C8E6C9' : '#EEEEEE';
-    b1Badge.style.color = isB1 ? '#2E7D32' : '#757575';
-    b1Badge.style.border = isB1 ? '1px solid #4CAF50' : '1px solid #BDBDBD';
+    b1Badge.className = isB1 ? 'boost-cost-badge badge-active' : 'boost-cost-badge badge-inactive';
+    b1Badge.style.background = '';
+    b1Badge.style.color = '';
+    b1Badge.style.border = '';
   }
 
   const b2Badge = document.getElementById('boost2ActiveBadge');
   if (b2Badge) {
     b2Badge.textContent = isB2 ? `ACTIVE (+${formatSFL(b2Sfl)} SFL)` : 'INACTIVE';
-    b2Badge.style.background = isB2 ? '#C8E6C9' : '#EEEEEE';
-    b2Badge.style.color = isB2 ? '#2E7D32' : '#757575';
-    b2Badge.style.border = isB2 ? '1px solid #4CAF50' : '1px solid #BDBDBD';
+    b2Badge.className = isB2 ? 'boost-cost-badge badge-active' : 'boost-cost-badge badge-inactive';
+    b2Badge.style.background = '';
+    b2Badge.style.color = '';
+    b2Badge.style.border = '';
   }
 
   const b3Badge = document.getElementById('boost3ActiveBadge');
   if (b3Badge) {
     b3Badge.textContent = isB3 ? `ACTIVE (+${formatSFL(b3Sfl)} SFL)` : 'INACTIVE';
-    b3Badge.style.background = isB3 ? '#C8E6C9' : '#EEEEEE';
-    b3Badge.style.color = isB3 ? '#2E7D32' : '#757575';
-    b3Badge.style.border = isB3 ? '1px solid #4CAF50' : '1px solid #BDBDBD';
+    b3Badge.className = isB3 ? 'boost-cost-badge badge-active' : 'boost-cost-badge badge-inactive';
+    b3Badge.style.background = '';
+    b3Badge.style.color = '';
+    b3Badge.style.border = '';
   }
 
   let totalActive = 0;
