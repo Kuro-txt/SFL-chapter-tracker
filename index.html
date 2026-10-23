@@ -852,221 +852,6 @@
     }
 
     /* ==========================================
-       PANEL CONTROLS (Boosts, Track, Coins)
-       ========================================== */
-    .panel-control-box {
-      padding: 6px 10px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-    }
-    .boosts-box {
-      border: 2px solid #D2691E;
-      background: rgba(210, 105, 30, 0.04);
-    }
-    .boosts-label {
-      color: #8B4513;
-      font-weight: 900;
-      margin: 0;
-      cursor: pointer;
-    }
-    .boosts-gear-btn {
-      padding: 1px 5px !important;
-      font-size: 11px !important;
-      line-height: 1 !important;
-      min-height: 0 !important;
-      height: 20px !important;
-      border-radius: 4px !important;
-      cursor: pointer;
-    }
-    .boost-cb-label {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: bold;
-      color: #5C4033;
-    }
-    .boost-cb-label input[type="checkbox"] {
-      accent-color: #D2691E;
-      width: 15px;
-      height: 15px;
-    }
-    .boosts-login-sep {
-      border-left: 2px dashed #D2B48C;
-      padding-left: 8px;
-      margin-left: 4px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .track-box {
-      border: 2px solid #2E7D32;
-      border-radius: 10px;
-      background: rgba(46, 125, 50, 0.04);
-    }
-    .track-title {
-      color: #1B5E20;
-      font-weight: 900;
-      font-size: 12px;
-    }
-    .track-label {
-      color: #2E7D32;
-      font-weight: bold;
-      font-size: 12px;
-    }
-    .track-input-tix {
-      width: 58px;
-      padding: 3px 6px;
-      font-size: 12px;
-      font-weight: bold;
-      border-radius: 6px;
-      background: rgba(46, 125, 50, 0.1);
-      border: 1.5px solid #2E7D32;
-      color: #1B5E20;
-      text-align: center;
-      cursor: default;
-    }
-    .track-input-cost {
-      width: 70px;
-      padding: 3px 6px;
-      font-size: 12px;
-      border-radius: 6px;
-      border: 1.5px solid #2E7D32;
-      text-align: center;
-    }
-
-    .coins-box {
-      border: 2px solid #D2691E;
-      border-radius: 10px;
-      background: rgba(210, 105, 30, 0.04);
-    }
-    .coins-label {
-      color: #8B4513;
-      font-weight: 900;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-    .coins-input {
-      width: 72px;
-      padding: 3px 6px;
-      font-size: 12px;
-      font-weight: bold;
-      text-align: center;
-      border-radius: 6px;
-      border: 1.5px solid #D2691E;
-    }
-    .coins-subtext {
-      font-size: 11px;
-      font-weight: bold;
-      color: #8B4513;
-    }
-
-    /* Boost Cost Modal Specifics */
-    .boost-modal-desc {
-      font-size: 12px;
-      color: #5D4037;
-      margin: 0;
-      line-height: 1.45;
-    }
-    .boost-cost-card {
-      background: #FFF8DC;
-      border: 2px solid #D2B48C;
-      border-radius: 8px;
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .boost-cost-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .boost-cost-title {
-      color: #8B4513;
-      font-size: 12.5px;
-      font-weight: 900;
-    }
-    .boost-cost-badge {
-      font-size: 10px;
-      padding: 2px 7px;
-      border-radius: 4px;
-      font-weight: bold;
-      letter-spacing: 0.3px;
-    }
-    .boost-cost-badge.badge-inactive {
-      background: #EEEEEE;
-      color: #757575;
-      border: 1px solid #BDBDBD;
-    }
-    .boost-cost-badge.badge-active {
-      background: #C8E6C9;
-      color: #2E7D32;
-      border: 1px solid #4CAF50;
-    }
-    .boost-cost-input {
-      flex: 1;
-      padding: 5px 8px;
-      font-size: 13px;
-      font-weight: bold;
-      text-align: right;
-      border-radius: 6px;
-      border: 1.5px solid #8B5A2B;
-      background: #FFFDF7;
-      color: #3E2723;
-    }
-    .boost-currency-select {
-      padding: 5px 8px;
-      font-size: 12px;
-      font-weight: bold;
-      border-radius: 6px;
-      border: 1.5px solid #8B5A2B;
-      background: #FFFDF7;
-      color: #3E2723;
-    }
-    .boost-cost-preview {
-      font-size: 11px;
-      color: #6D4C41;
-      text-align: right;
-      font-weight: 500;
-    }
-    .boost-cost-summary {
-      background: #E8F5E9;
-      border: 2px solid #4CAF50;
-      border-radius: 8px;
-      padding: 8px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: #2E7D32;
-    }
-    .boost-cost-summary-label {
-      font-size: 12px;
-      font-weight: bold;
-    }
-    .boost-cost-summary-val {
-      font-size: 13.5px;
-      color: #1B5E20;
-      font-weight: 900;
-    }
-    .btn-save-boosts {
-      background: linear-gradient(180deg, #388E3C, #2E7D32);
-      color: #FFFFFF !important;
-      font-size: 11.5px;
-      padding: 6px 14px;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      border: 1.5px solid #1B5E20;
-      box-shadow: 0 2px 4px rgba(46, 125, 50, 0.25);
-    }
-
-    /* ==========================================
        DARK MODE THEME (Vibrant RPG Night Harvest)
        ========================================== */
     body.dark-mode {
@@ -1967,149 +1752,6 @@
       background: #1e293b !important;
       border-color: #475569 !important;
       color: #94a3b8 !important;
-    }
-
-    /* ==========================================
-       DARK MODE: PANEL CONTROLS (Boosts, Track, Coins)
-       ========================================== */
-    body.dark-mode .boosts-box {
-      border: 2px solid #f59e0b !important;
-      background: #0f172a !important;
-      box-shadow: 0 3px 0px #090e16 !important;
-    }
-    body.dark-mode .boosts-label {
-      color: #fbbf24 !important;
-    }
-    body.dark-mode .boosts-gear-btn {
-      background: linear-gradient(180deg, #1e293b, #151e2b) !important;
-      border: 1px solid #38bdf8 !important;
-      color: #f1f5f9 !important;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
-    }
-    body.dark-mode .boosts-gear-btn:hover {
-      background: linear-gradient(180deg, #27364b, #1a2536) !important;
-      border-color: #60a5fa !important;
-      box-shadow: 0 0 8px rgba(56, 189, 248, 0.4) !important;
-    }
-    body.dark-mode .boost-cb-label {
-      color: #cbd5e1 !important;
-    }
-    body.dark-mode .boost-cb-label input[type="checkbox"] {
-      accent-color: #f59e0b !important;
-    }
-    body.dark-mode .boosts-login-sep {
-      border-left: 2px dashed #33445c !important;
-    }
-
-    body.dark-mode .track-box {
-      border: 2px solid #22c55e !important;
-      background: #0f172a !important;
-      box-shadow: 0 3px 0px #090e16 !important;
-    }
-    body.dark-mode .track-title {
-      color: #4ade80 !important;
-    }
-    body.dark-mode .track-label {
-      color: #86efac !important;
-    }
-    body.dark-mode .track-input-tix {
-      background: rgba(34, 197, 94, 0.15) !important;
-      border: 1.5px solid #22c55e !important;
-      color: #4ade80 !important;
-    }
-    body.dark-mode .track-input-cost {
-      background: #0b1118 !important;
-      border: 1.5px solid #22c55e !important;
-      color: #f8fafc !important;
-    }
-
-    body.dark-mode .coins-box {
-      border: 2px solid #38bdf8 !important;
-      background: #0f172a !important;
-      box-shadow: 0 3px 0px #090e16 !important;
-    }
-    body.dark-mode .coins-label {
-      color: #38bdf8 !important;
-    }
-    body.dark-mode .coins-input {
-      background: #0b1118 !important;
-      border: 1.5px solid #38bdf8 !important;
-      color: #f8fafc !important;
-    }
-    body.dark-mode .coins-subtext {
-      color: #7dd3fc !important;
-    }
-
-    /* ==========================================
-       DARK MODE: +1 BOOSTS COST MODAL
-       ========================================== */
-    body.dark-mode #boostsCostModal .modal-content {
-      background: #131b26 !important;
-      border: 2px solid #28374d !important;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.7) !important;
-    }
-    body.dark-mode #boostsCostModal .modal-header {
-      background: linear-gradient(180deg, #1e293b, #141c28) !important;
-      border-bottom: 2px solid #f59e0b !important;
-      color: #fde047 !important;
-    }
-    body.dark-mode .boost-modal-desc {
-      color: #cbd5e1 !important;
-    }
-    body.dark-mode .boost-modal-desc strong {
-      color: #fde047 !important;
-    }
-    body.dark-mode .boost-cost-card {
-      background: #0f172a !important;
-      border: 1.5px solid #28374d !important;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.4) !important;
-    }
-    body.dark-mode .boost-cost-title {
-      color: #f8fafc !important;
-    }
-    body.dark-mode .boost-cost-badge.badge-inactive {
-      background: #1e293b !important;
-      color: #94a3b8 !important;
-      border: 1px solid #475569 !important;
-    }
-    body.dark-mode .boost-cost-badge.badge-active {
-      background: rgba(34, 197, 94, 0.22) !important;
-      color: #4ade80 !important;
-      border: 1px solid #22c55e !important;
-      box-shadow: 0 0 8px rgba(34, 197, 94, 0.3) !important;
-    }
-    body.dark-mode .boost-cost-input,
-    body.dark-mode .boost-currency-select {
-      background: #0b1118 !important;
-      border: 1.5px solid #33445c !important;
-      color: #f8fafc !important;
-    }
-    body.dark-mode .boost-cost-input:focus,
-    body.dark-mode .boost-currency-select:focus {
-      border-color: #38bdf8 !important;
-      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3) !important;
-    }
-    body.dark-mode .boost-cost-preview {
-      color: #94a3b8 !important;
-    }
-    body.dark-mode .boost-cost-summary {
-      background: linear-gradient(135deg, #064e3b, #022c22) !important;
-      border: 1.5px solid #22c55e !important;
-      color: #86efac !important;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
-    }
-    body.dark-mode .boost-cost-summary-val {
-      color: #4ade80 !important;
-    }
-    body.dark-mode .btn-save-boosts {
-      background: linear-gradient(180deg, #16a34a, #15803d) !important;
-      border: 1.5px solid #4ade80 !important;
-      color: #f0fdf4 !important;
-      box-shadow: 0 0 10px rgba(74, 222, 128, 0.4) !important;
-    }
-    body.dark-mode .btn-save-boosts:hover {
-      background: linear-gradient(180deg, #22c55e, #16a34a) !important;
-      box-shadow: 0 0 14px rgba(74, 222, 128, 0.6) !important;
     }
 
     /* Mobile Adaptations */
@@ -3296,16 +2938,16 @@
           <span id="priceBadge" style="display:none; font-size:11px; padding:4px 8px; background:#E8F5E9; color: #2E7D32; border:2px solid #4CAF50; border-radius:6px; font-weight:900;">FETCHING...</span>
         </form>
 
-        <div class="input-group panel-control-box boosts-box">
+        <div class="input-group panel-group-boosts" style="padding:6px 10px; border:2px solid #D2691E; border-radius:8px; display:flex; align-items:center; gap:6px;">
           <span style="display:flex; align-items:center; gap:4px;">
-            <label class="boosts-label" onclick="openBoostsCostModal()">+1 BOOSTS:</label>
-            <button type="button" id="boostsCostBtn" onclick="openBoostsCostModal()" title="Configure Boosts Cost (⚙️)" class="btn btn-wood boosts-gear-btn">⚙️</button>
+            <label style="color:#8B4513; margin:0; cursor:pointer;" onclick="openBoostsCostModal()">+1 BOOSTS:</label>
+            <button type="button" id="boostsCostBtn" onclick="openBoostsCostModal()" title="Configure Boosts Cost (⚙️)" class="boosts-gear-btn">⚙️</button>
           </span>
-          <label class="boost-cb-label"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" /> #1</label>
-          <label class="boost-cb-label"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" /> #2</label>
-          <label class="boost-cb-label"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" /> #3</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost1" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #1</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost2" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #2</label>
+          <label style="display:flex; align-items:center; gap:4px; cursor:pointer;"><input type="checkbox" id="boost3" onchange="saveAndRecalculate()" style="accent-color:#D2691E; width:15px; height:15px;" /> #3</label>
           
-          <div class="boosts-login-sep">
+          <div class="boosts-login-sep" style="border-left: 2px dashed #D2B48C; padding-left: 8px; margin-left: 4px; display: flex; align-items: center; gap: 6px;">
             <label class="checkbox-label" style="padding: 4px 8px; font-size: 11.5px;" title="Auto-increments +1 ticket every calendar day">
               <input type="checkbox" id="dailyLoginCheck" onchange="toggleDailyLogin()" style="accent-color: #2E7D32; width: 15px; height: 15px;" />
               🎁 LOGIN
@@ -3314,18 +2956,18 @@
           </div>
         </div>
 
-        <div class="input-group panel-control-box track-box">
-          <span class="track-title">🛤️ TRACK:</span>
-          <label for="trackTicketsInput" class="track-label">Tix:</label>
-          <input type="number" id="trackTicketsInput" value="0" readonly class="track-input-tix" title="Automatically calculated from Ascension Age chapter points and VIP status" />
-          <label for="trackCostInput" class="track-label">SFL:</label>
-          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" class="track-input-cost" title="Total Track SFL Cost" />
+        <div class="input-group panel-group-track" style="padding:6px 10px; border:2px solid #2E7D32; border-radius:10px; display:flex; align-items:center; gap:6px;">
+          <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
+          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
+          <input type="number" id="trackTicketsInput" value="0" readonly style="width: 58px; padding: 3px 6px; font-size: 12px; font-weight: bold; border-radius:6px; background: rgba(46, 125, 50, 0.1); border: 1.5px solid #2E7D32; color: #1B5E20; text-align: center; cursor: default;" title="Automatically calculated from Ascension Age chapter points and VIP status" />
+          <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
+          <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 3px 6px; font-size: 12px; border-radius:6px;" title="Total Track SFL Cost" />
         </div>
 
-        <div class="input-group panel-control-box coins-box">
-          <label for="coinsPerSflInput" class="coins-label" title="Coin to Flower (SFL) ratio: number of Coins equal to 1 SFL (Default: 1000 Coins = 1 SFL)">🪙 COIN / FLOWER:</label>
-          <input type="number" id="coinsPerSflInput" value="1000" min="1" step="any" onchange="handleCoinRatioChange()" class="coins-input" title="Coins per 1 SFL (Flower). Default: 1000" />
-          <span class="coins-subtext">= 1 SFL</span>
+        <div class="input-group panel-group-coins" style="padding:6px 10px; border:2px solid #D2691E; border-radius:10px; display:flex; align-items:center; gap:6px;">
+          <label for="coinsPerSflInput" style="color:#8B4513; font-weight:900; font-size:12px; white-space:nowrap;" title="Coin to Flower (SFL) ratio: number of Coins equal to 1 SFL (Default: 1000 Coins = 1 SFL)">🪙 COIN / FLOWER:</label>
+          <input type="number" id="coinsPerSflInput" value="1000" min="1" step="any" onchange="handleCoinRatioChange()" style="width: 72px; padding: 3px 6px; font-size: 12px; font-weight: bold; text-align: center; border-radius:6px;" title="Coins per 1 SFL (Flower). Default: 1000" />
+          <span style="font-size:11px; font-weight:bold; color:#8B4513;">= 1 SFL</span>
         </div>
 
         <div class="input-group" style="display:flex; flex-wrap:wrap; gap:8px;">
@@ -3722,68 +3364,68 @@
         <button onclick="closeBoostsCostModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
       <div class="modal-body" style="gap: 12px; padding: 16px;">
-        <p class="boost-modal-desc">
+        <p class="guide-card-text" style="font-size: 12px; margin: 0; line-height: 1.45;">
           Configure the purchase / unlock cost for each +1 Boost item. The cost of any active (checked) boost will be automatically added to your <strong>Total Vault Cost</strong>.
         </p>
 
         <!-- Boost 1 Card -->
-        <div class="boost-cost-card">
-          <div class="boost-cost-card-header">
-            <strong class="boost-cost-title">⚡ Boost #1 Cost:</strong>
-            <span id="boost1ActiveBadge" class="boost-cost-badge badge-inactive">INACTIVE</span>
+        <div class="guide-card" style="padding: 10px 12px; gap: 6px;">
+          <div class="guide-card-title" style="justify-content: space-between; font-size: 12.5px; border-bottom: none; padding-bottom: 0;">
+            <span>⚡ Boost #1 Cost:</span>
+            <span id="boost1ActiveBadge" class="badge badge-inactive">INACTIVE</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="boost1CostInput" min="0" step="any" value="5000" class="boost-cost-input" oninput="updateBoostModalPreview()" onkeydown="if(event.key==='Enter') saveBoostCostsFromModal()" />
-            <select id="boost1CurrencySelect" class="boost-currency-select" onchange="updateBoostModalPreview()">
+            <input type="number" id="boost1CostInput" min="0" step="any" value="5000" style="flex: 1; padding: 5px 8px; font-size: 13px; font-weight: bold; text-align: right;" oninput="updateBoostModalPreview()" onkeydown="if(event.key==='Enter') saveBoostCostsFromModal()" />
+            <select id="boost1CurrencySelect" style="padding: 5px 8px; font-size: 12px; font-weight: bold;" onchange="updateBoostModalPreview()">
               <option value="coins">🪙 Coins</option>
               <option value="sfl">🌻 SFL</option>
             </select>
           </div>
-          <div id="boost1ConvertedPreview" class="boost-cost-preview">
+          <div id="boost1ConvertedPreview" class="boost-cost-preview" style="font-size: 11px; text-align: right; font-weight: 500;">
             = 5.000 SFL (at 1000 Coins / SFL)
           </div>
         </div>
 
         <!-- Boost 2 Card -->
-        <div class="boost-cost-card">
-          <div class="boost-cost-card-header">
-            <strong class="boost-cost-title">⚡ Boost #2 Cost:</strong>
-            <span id="boost2ActiveBadge" class="boost-cost-badge badge-inactive">INACTIVE</span>
+        <div class="guide-card" style="padding: 10px 12px; gap: 6px;">
+          <div class="guide-card-title" style="justify-content: space-between; font-size: 12.5px; border-bottom: none; padding-bottom: 0;">
+            <span>⚡ Boost #2 Cost:</span>
+            <span id="boost2ActiveBadge" class="badge badge-inactive">INACTIVE</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="boost2CostInput" min="0" step="any" value="5" class="boost-cost-input" oninput="updateBoostModalPreview()" onkeydown="if(event.key==='Enter') saveBoostCostsFromModal()" />
-            <select id="boost2CurrencySelect" class="boost-currency-select" onchange="updateBoostModalPreview()">
+            <input type="number" id="boost2CostInput" min="0" step="any" value="5" style="flex: 1; padding: 5px 8px; font-size: 13px; font-weight: bold; text-align: right;" oninput="updateBoostModalPreview()" onkeydown="if(event.key==='Enter') saveBoostCostsFromModal()" />
+            <select id="boost2CurrencySelect" style="padding: 5px 8px; font-size: 12px; font-weight: bold;" onchange="updateBoostModalPreview()">
               <option value="coins">🪙 Coins</option>
               <option value="sfl" selected>🌻 SFL</option>
             </select>
           </div>
-          <div id="boost2ConvertedPreview" class="boost-cost-preview">
+          <div id="boost2ConvertedPreview" class="boost-cost-preview" style="font-size: 11px; text-align: right; font-weight: 500;">
             = 5.000 SFL
           </div>
         </div>
 
         <!-- Boost 3 Card -->
-        <div class="boost-cost-card">
-          <div class="boost-cost-card-header">
-            <strong class="boost-cost-title">⚡ Boost #3 Cost:</strong>
-            <span id="boost3ActiveBadge" class="boost-cost-badge badge-inactive">INACTIVE</span>
+        <div class="guide-card" style="padding: 10px 12px; gap: 6px;">
+          <div class="guide-card-title" style="justify-content: space-between; font-size: 12.5px; border-bottom: none; padding-bottom: 0;">
+            <span>⚡ Boost #3 Cost:</span>
+            <span id="boost3ActiveBadge" class="badge badge-inactive">INACTIVE</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="number" id="boost3CostInput" min="0" step="any" value="25" class="boost-cost-input" oninput="updateBoostModalPreview()" onkeydown="if(event.key==='Enter') saveBoostCostsFromModal()" />
-            <select id="boost3CurrencySelect" class="boost-currency-select" onchange="updateBoostModalPreview()">
+            <input type="number" id="boost3CostInput" min="0" step="any" value="25" style="flex: 1; padding: 5px 8px; font-size: 13px; font-weight: bold; text-align: right;" oninput="updateBoostModalPreview()" onkeydown="if(event.key==='Enter') saveBoostCostsFromModal()" />
+            <select id="boost3CurrencySelect" style="padding: 5px 8px; font-size: 12px; font-weight: bold;" onchange="updateBoostModalPreview()">
               <option value="coins">🪙 Coins</option>
               <option value="sfl" selected>🌻 SFL</option>
             </select>
           </div>
-          <div id="boost3ConvertedPreview" class="boost-cost-preview">
+          <div id="boost3ConvertedPreview" class="boost-cost-preview" style="font-size: 11px; text-align: right; font-weight: 500;">
             = 25.000 SFL
           </div>
         </div>
 
         <!-- Active Boosts Contribution Summary -->
-        <div class="boost-cost-summary">
-          <span class="boost-cost-summary-label">Active Boosts Total:</span>
-          <strong id="boostsModalTotalActiveCost" class="boost-cost-summary-val">0.000 SFL</strong>
+        <div class="guide-card highlight" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px;">
+          <span style="font-size: 12px; font-weight: bold;">Active Boosts Total:</span>
+          <strong id="boostsModalTotalActiveCost" style="font-size: 13.5px;">0.000 SFL</strong>
         </div>
 
         <!-- Action Buttons -->
@@ -3795,7 +3437,7 @@
             <button type="button" onclick="closeBoostsCostModal()" class="btn btn-wood" style="font-size: 11.5px; padding: 5px 10px;">
               CANCEL
             </button>
-            <button type="button" onclick="saveBoostCostsFromModal()" class="btn btn-save-boosts">
+            <button type="button" onclick="saveBoostCostsFromModal()" class="btn btn-emerald" style="font-size: 11.5px; padding: 6px 14px; font-weight: bold; cursor: pointer;">
               💾 SAVE CONFIG
             </button>
           </div>

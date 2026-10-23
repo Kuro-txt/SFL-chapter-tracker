@@ -1467,7 +1467,7 @@ export function updateBoostModalPreview() {
   const b1Badge = document.getElementById('boost1ActiveBadge');
   if (b1Badge) {
     b1Badge.textContent = isB1 ? `ACTIVE (+${formatSFL(b1Sfl)} SFL)` : 'INACTIVE';
-    b1Badge.className = isB1 ? 'boost-cost-badge badge-active' : 'boost-cost-badge badge-inactive';
+    b1Badge.className = isB1 ? 'badge badge-done' : 'badge badge-inactive';
     b1Badge.style.background = '';
     b1Badge.style.color = '';
     b1Badge.style.border = '';
@@ -1476,7 +1476,7 @@ export function updateBoostModalPreview() {
   const b2Badge = document.getElementById('boost2ActiveBadge');
   if (b2Badge) {
     b2Badge.textContent = isB2 ? `ACTIVE (+${formatSFL(b2Sfl)} SFL)` : 'INACTIVE';
-    b2Badge.className = isB2 ? 'boost-cost-badge badge-active' : 'boost-cost-badge badge-inactive';
+    b2Badge.className = isB2 ? 'badge badge-done' : 'badge badge-inactive';
     b2Badge.style.background = '';
     b2Badge.style.color = '';
     b2Badge.style.border = '';
@@ -1485,7 +1485,7 @@ export function updateBoostModalPreview() {
   const b3Badge = document.getElementById('boost3ActiveBadge');
   if (b3Badge) {
     b3Badge.textContent = isB3 ? `ACTIVE (+${formatSFL(b3Sfl)} SFL)` : 'INACTIVE';
-    b3Badge.className = isB3 ? 'boost-cost-badge badge-active' : 'boost-cost-badge badge-inactive';
+    b3Badge.className = isB3 ? 'badge badge-done' : 'badge badge-inactive';
     b3Badge.style.background = '';
     b3Badge.style.color = '';
     b3Badge.style.border = '';
