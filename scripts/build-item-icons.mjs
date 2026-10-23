@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-// 1. Collect all available icon files
+// 1. Collect all available icon files from public/icons recursively
 const publicFiles = [];
 function walk(dir) {
   if (!fs.existsSync(dir)) return;
@@ -12,10 +12,6 @@ function walk(dir) {
   }
 }
 walk('public/icons');
-
-const assetItems = fs.existsSync('assets/items')
-  ? fs.readdirSync('assets/items').filter(f => /\.(webp|png)$/i.test(f)).map(f => `assets/items/${f}`)
-  : [];
 
 const assetIcons = fs.existsSync('assets/icons')
   ? fs.readdirSync('assets/icons').filter(f => /\.(webp|png)$/i.test(f)).map(f => `assets/icons/${f}`)
@@ -37,20 +33,10 @@ for (const file of publicFiles) {
   }
 }
 
-// Register assets/items (ERC1155 sprites)
-for (const file of assetItems) {
-  const baseName = path.basename(file).replace(/\.(webp|png)$/i, '');
-  const key = normalizeKey(baseName);
-  if (!map[key]) {
-    map[key] = file;
-  }
-}
-
-// Register assets/icons
+// Register assets/icons (priority for tickets, currency & chapter UI)
 for (const file of assetIcons) {
   const baseName = path.basename(file).replace(/\.(webp|png)$/i, '');
   const key = normalizeKey(baseName);
-  // Special keys prioritize assets/icons
   map[key] = file;
 }
 
@@ -99,17 +85,17 @@ const overrides = {
   "merinowool": "public/icons/animals/merino_wool.webp",
 
   // Recipe typo & variant aliases
-  "chioggia": map["chiogga"] || "assets/items/chiogga.webp",
-  "spaghetttiallimone": map["spaghettiallimone"] || "assets/items/spaghetti_al_limone.webp",
-  "powersmothie": map["powersmoothie"] || "assets/items/power_smoothie.webp",
-  "purplesmoothies": map["purplesmoothie"] || "assets/items/purple_smoothie.webp",
-  "olivefounder": map["oliveflounder"] || "assets/items/olive_flounder.webp",
+  "chioggia": map["chiogga"] || "public/icons/chiogga.png",
+  "spaghetttiallimone": map["spaghettiallimone"] || "public/icons/spaghetti_al_limone.webp",
+  "powersmothie": map["powersmoothie"] || "public/icons/food/power_smoothie.png",
+  "purplesmoothies": map["purplesmoothie"] || "public/icons/food/purple_smoothie.png",
+  "olivefounder": map["oliveflounder"] || "public/icons/fish/olive_flounder.png",
   "syntheticfibre": map["syntheticfabric"] || "public/icons/processed/crab_stick.webp",
-  "treasurecrab": map["bluecrab"] || "assets/items/blue_crab.webp",
-  "goblinsbrunch": map["goblinbrunch"] || "assets/items/bumpkin_roast.webp",
+  "treasurecrab": map["bluecrab"] || "public/icons/blue_crab.webp",
+  "goblinsbrunch": map["goblinbrunch"] || map["bumpkinroast"] || "public/icons/food/bumpkin_roast.png",
   "oil1": "public/icons/oil.webp",
   "oil503harvest": "public/icons/oil.webp",
-  "mackerel": "assets/items/horse_mackerel.webp"
+  "mackerel": map["horsemackerel"] || "public/icons/horse_mackerel.png"
 };
 
 for (const [k, v] of Object.entries(overrides)) {

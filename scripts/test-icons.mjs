@@ -119,4 +119,27 @@ if (!ticketHtml.includes('shiny_feather.webp')) {
 }
 console.log('✅ TEST 7 PASSED: Current ticket (Shiny Feather) and next chapter ticket (Beetle Wing) correctly verified on disk.');
 
-console.log('\n🎉 ALL 7 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');
+// Test 8: Formerly green-background items resolve to clean transparent public/icons
+const formerlyGreenItems = [
+  'Blue Crab', 'Lobster', 'Crab Pot', 'Mariner Pot', 'Sand Drill', 'Timber',
+  'Bee Box', 'Crimsteel', 'Cushion', 'Hardened Leather', 'Merino Cushion',
+  'Wild Grass', 'Hermit Crab', 'Shrimp', 'Mussel', 'Sea Slug', 'Sea Snail',
+  'Chewed Bone', 'Garden Eel', 'Dewberry', 'Sea Grapes', 'Lunara', 'Octopus',
+  'Barnacle', 'Oyster', 'Anemone', 'Sea Urchin', 'Horseshoe Crab', 'Cobia',
+  'Kale & Mushroom Pie', 'Honey Cheddar', 'Pizza Margherita', 'Spaghetti al Limone',
+  'Steamed Red Rice', 'Mushroom Jacket Potatoes', 'Sizzle Doll', 'Cluck Doll',
+  'Celestine', 'Duskberry', 'Aged Tuna', 'Aged Red Snapper'
+];
+
+for (const it of formerlyGreenItems) {
+  const url = getItemIconUrl(it);
+  if (!url || !url.startsWith('public/icons/')) {
+    throw new Error(`Expected clean transparent public/icons/ for ${it}, got: ${url}`);
+  }
+  if (!fs.existsSync(url)) {
+    throw new Error(`Clean sprite missing on disk for ${it}: ${url}`);
+  }
+}
+console.log(`✅ TEST 8 PASSED: All ${formerlyGreenItems.length} formerly green items resolve to clean transparent sprites in public/icons/ without NFT frames.`);
+
+console.log('\n🎉 ALL 8 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');
