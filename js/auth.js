@@ -230,6 +230,9 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
       if (coinRatioEl) coinRatioEl.value = data.vaultData.coinRatio;
       localStorage.setItem('sfl_coin_ratio', data.vaultData.coinRatio);
     }
+    if (data.vaultData?.boostCosts) {
+      localStorage.setItem('sfl_boost_costs', JSON.stringify(data.vaultData.boostCosts));
+    }
 
     if (state.globalData) {
       state.globalData.cloudHistory = data.vaultData;
@@ -333,6 +336,9 @@ export async function checkSavedAuth() {
         const coinRatioEl = document.getElementById('coinsPerSflInput');
         if (coinRatioEl) coinRatioEl.value = data.vaultData.coinRatio;
         localStorage.setItem('sfl_coin_ratio', data.vaultData.coinRatio);
+      }
+      if (data.vaultData?.boostCosts) {
+        localStorage.setItem('sfl_boost_costs', JSON.stringify(data.vaultData.boostCosts));
       }
 
       if (state.globalData) {

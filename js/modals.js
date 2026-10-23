@@ -13,7 +13,12 @@ export {
   setChapterLogVip,
   snapshotCurrentChapter,
   deleteChapterLog,
-  exportChapterLog
+  exportChapterLog,
+  openBoostsCostModal,
+  closeBoostsCostModal,
+  updateBoostModalPreview,
+  saveBoostCostsFromModal,
+  resetBoostCostsToDefault
 } from './modals-view.js';
 
 export {

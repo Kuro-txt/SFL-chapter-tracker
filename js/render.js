@@ -7,7 +7,10 @@ import {
   getMondayBasedWeekId, 
   isAnimalBounty, 
   hasWeeklyBountiesBonus,
-  getDeliveryRecords 
+  getDeliveryRecords,
+  getActiveBoostsCostSfl,
+  getBoostCostsConfig,
+  getCoinRatio
 } from './state.js';
 
 export function recalculateAll() {
@@ -73,6 +76,7 @@ export function recalculateAll() {
   const trackTickets = parseInt(document.getElementById('trackTicketsInput')?.value, 10) || (state.globalData.cloudHistory?.trackTickets || 0);
   const trackCost = parseFloat(document.getElementById('trackCostInput')?.value) || (state.globalData.cloudHistory?.trackCost || 0);
   const totalLoginTickets = parseInt(document.getElementById('dailyLoginCount')?.value, 10) || (state.globalData.cloudHistory?.dailyLoginTickets || 0);
+  const activeBoostsCost = getActiveBoostsCostSfl();
 
   const weeklyStats = {};
   const addWeeklyStat = (mondayKey, tix, cost, category = 'deliv') => {
@@ -110,7 +114,7 @@ export function recalculateAll() {
   let totalBountyTix = 0;
   let totalAnimalBountyTix = 0;
   let totalChoreTix = 0;
-  let totalSflCostAll = trackCost;
+  let totalSflCostAll = trackCost + activeBoostsCost;
 
   let weekDelivTix = 0;
   let weekBountyTix = 0;
@@ -395,6 +399,21 @@ export function recalculateAll() {
   setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
   setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
   setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
+  setElemText('tipTotalBoosts', `⚡ Boosts: ${formatSFL(activeBoostsCost)} SFL`);
+
+  // Update Boost checkbox hover tooltips with cost information
+  const boostCfg = getBoostCostsConfig();
+  const coinRatio = getCoinRatio();
+  const b1Sfl = boostCfg.boost1.currency === 'coins' ? (boostCfg.boost1.amount / coinRatio) : boostCfg.boost1.amount;
+  const b2Sfl = boostCfg.boost2.currency === 'coins' ? (boostCfg.boost2.amount / coinRatio) : boostCfg.boost2.amount;
+  const b3Sfl = boostCfg.boost3.currency === 'coins' ? (boostCfg.boost3.amount / coinRatio) : boostCfg.boost3.amount;
+
+  const b1El = document.getElementById('boost1');
+  if (b1El?.parentElement) b1El.parentElement.title = `Boost #1: ${boostCfg.boost1.amount.toLocaleString()} ${boostCfg.boost1.currency.toUpperCase()} (${formatSFL(b1Sfl)} SFL)`;
+  const b2El = document.getElementById('boost2');
+  if (b2El?.parentElement) b2El.parentElement.title = `Boost #2: ${boostCfg.boost2.amount.toLocaleString()} ${boostCfg.boost2.currency.toUpperCase()} (${formatSFL(b2Sfl)} SFL)`;
+  const b3El = document.getElementById('boost3');
+  if (b3El?.parentElement) b3El.parentElement.title = `Boost #3: ${boostCfg.boost3.amount.toLocaleString()} ${boostCfg.boost3.currency.toUpperCase()} (${formatSFL(b3Sfl)} SFL)`;
 
   setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
   setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);

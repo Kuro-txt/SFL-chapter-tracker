@@ -34,7 +34,12 @@ import {
   exportChapterLog,
   openItemsBurnedModal,
   closeItemsBurnedModal,
-  renderItemsBurnedList
+  renderItemsBurnedList,
+  openBoostsCostModal,
+  closeBoostsCostModal,
+  updateBoostModalPreview,
+  saveBoostCostsFromModal,
+  resetBoostCostsToDefault
 } from './modals.js';
 import { 
   recalculateAll,
@@ -162,6 +167,11 @@ window.exportChapterLog = exportChapterLog;
 window.openItemsBurnedModal = openItemsBurnedModal;
 window.closeItemsBurnedModal = closeItemsBurnedModal;
 window.renderItemsBurnedList = renderItemsBurnedList;
+window.openBoostsCostModal = openBoostsCostModal;
+window.closeBoostsCostModal = closeBoostsCostModal;
+window.updateBoostModalPreview = updateBoostModalPreview;
+window.saveBoostCostsFromModal = saveBoostCostsFromModal;
+window.resetBoostCostsToDefault = resetBoostCostsToDefault;
 
 window.saveAndRecalculate = () => {
   const isVip = Boolean(document.getElementById('vipToggle')?.checked);

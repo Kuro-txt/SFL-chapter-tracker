@@ -2,12 +2,14 @@ import {
   state, 
   getActiveBoostCount, 
   getActiveVipBonus, 
-  getMondayBasedWeekId,
-  isAnimalBounty,
-  hasWeeklyBountiesBonus,
-  getDeliveryRecords,
-  preserveCustomDeliveryEdits,
-  preserveCustomTaskEdits
+  getMondayBasedWeekId, 
+  isAnimalBounty, 
+  hasWeeklyBountiesBonus, 
+  getDeliveryRecords, 
+  preserveCustomDeliveryEdits, 
+  preserveCustomTaskEdits,
+  getActiveBoostsCostSfl,
+  getBoostCostsConfig
 } from './state.js';
 import { recalculateAll } from './render.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -269,6 +271,9 @@ export async function loadTrackerData() {
         if (targetRatioEl) targetRatioEl.value = tr > 0 ? tr : '';
         localStorage.setItem('sfl_target_ratio', tr > 0 ? tr : '');
       }
+      if (data.vaultData?.boostCosts) {
+        localStorage.setItem('sfl_boost_costs', JSON.stringify(data.vaultData.boostCosts));
+      }
 
       const { checkAndAutoClaimDailyLogin } = await import('./state.js');
       await checkAndAutoClaimDailyLogin();
@@ -450,7 +455,7 @@ export async function saveProgressToCloudKV(silent = false) {
   const todayCompletedDeliveries = [];
 
   let calculatedTotalTickets = trackTickets + dailyLoginTickets;
-  let calculatedTotalCost = trackCost;
+  let calculatedTotalCost = trackCost + getActiveBoostsCostSfl();
 
   // 1. Deliveries Calculation
   const masterDeliveries = getDeliveryRecords();
@@ -606,6 +611,7 @@ export async function saveProgressToCloudKV(silent = false) {
     trackCost,
     targetRatio: parseFloat(document.getElementById('targetRatioInput')?.value) || 0,
     coinRatio: parseFloat(document.getElementById('coinsPerSflInput')?.value) || 1000,
+    boostCosts: getBoostCostsConfig(),
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,
     cumulativeCost: calculatedTotalCost,

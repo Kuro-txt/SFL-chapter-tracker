@@ -6,6 +6,9 @@ export function detectItemCategory(name) {
   if (!name) return 'other';
   const clean = name.toLowerCase().trim();
 
+  // 0. Dolls, Toys & Collectibles (Checked first so 'Wooly Doll', 'Cluck Doll', 'Moo Doll', etc. are 'other', not animals/crops)
+  if (clean.includes('doll') || clean.includes('plushie')) return 'other';
+
   // 1. Cooked Foods / Bakery / Deli (Check before crops so 'Pumpkin Soup' is Food, not Crop)
   const FOODS = [
     'soup', 'stew', 'salad', 'pie', 'cake', 'tart', 'bread', 'sandwich',

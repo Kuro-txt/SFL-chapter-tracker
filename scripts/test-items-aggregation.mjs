@@ -139,7 +139,7 @@ if (soup && soup.completedQty === 1 && soup.bountyCount === 1 && soup.completedC
 // Check Category Detection
 if (detectItemCategory('Zucchini') === 'crops' &&
     detectItemCategory('Pumpkin Soup') === 'food' &&
-    detectItemCategory('Egg') === 'animals' &&
+    detectItemCategory('Egg') === 'animals' && detectItemCategory('Wooly Doll') === 'other' && detectItemCategory('Wool') === 'animals' &&
     detectItemCategory('Gold') === 'resources') {
   console.log('✅ TEST 6 PASSED: Category detection accurate (crops, food, animals, resources).');
 } else {

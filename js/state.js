@@ -28,10 +28,108 @@ export function setElemText(id, text) {
 
 export function getActiveBoostCount() {
   let count = 0;
-  if (document.getElementById('boost1')?.checked) count++;
-  if (document.getElementById('boost2')?.checked) count++;
-  if (document.getElementById('boost3')?.checked) count++;
+  if (typeof document !== 'undefined') {
+    if (document.getElementById('boost1')?.checked) count++;
+    if (document.getElementById('boost2')?.checked) count++;
+    if (document.getElementById('boost3')?.checked) count++;
+  }
   return count;
+}
+
+export const DEFAULT_BOOST_COSTS = {
+  boost1: { amount: 5000, currency: 'coins' },
+  boost2: { amount: 5, currency: 'sfl' },
+  boost3: { amount: 25, currency: 'sfl' }
+};
+
+export function getCoinRatio() {
+  if (typeof document !== 'undefined') {
+    const elVal = parseFloat(document.getElementById('coinsPerSflInput')?.value);
+    if (elVal && elVal > 0) return elVal;
+  }
+  const stateVal = parseFloat(state.currentVaultData?.coinRatio || state.globalData?.coinRatio);
+  if (stateVal && stateVal > 0) return stateVal;
+  if (typeof localStorage !== 'undefined') {
+    const localVal = parseFloat(localStorage.getItem('sfl_coin_ratio'));
+    if (localVal && localVal > 0) return localVal;
+  }
+  return 1000;
+}
+
+export function sanitizeBoostCosts(cfg) {
+  const result = {
+    boost1: { amount: 5000, currency: 'coins' },
+    boost2: { amount: 5, currency: 'sfl' },
+    boost3: { amount: 25, currency: 'sfl' }
+  };
+  if (!cfg || typeof cfg !== 'object') return result;
+
+  ['boost1', 'boost2', 'boost3'].forEach(k => {
+    if (cfg[k] && typeof cfg[k] === 'object') {
+      const amt = parseFloat(cfg[k].amount);
+      const curr = String(cfg[k].currency || '').toLowerCase();
+      result[k] = {
+        amount: !isNaN(amt) && amt >= 0 ? amt : result[k].amount,
+        currency: (curr === 'sfl' || curr === 'coins') ? curr : result[k].currency
+      };
+    }
+  });
+  return result;
+}
+
+export function getBoostCostsConfig() {
+  try {
+    const fromVault = state.currentVaultData?.boostCosts || state.globalData?.boostCosts;
+    if (fromVault && typeof fromVault === 'object') {
+      return sanitizeBoostCosts(fromVault);
+    }
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('sfl_boost_costs') : null;
+    if (raw) {
+      return sanitizeBoostCosts(JSON.parse(raw));
+    }
+  } catch (e) {}
+  return {
+    boost1: { amount: 5000, currency: 'coins' },
+    boost2: { amount: 5, currency: 'sfl' },
+    boost3: { amount: 25, currency: 'sfl' }
+  };
+}
+
+export function saveBoostCostsConfig(config) {
+  const sanitized = sanitizeBoostCosts(config);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('sfl_boost_costs', JSON.stringify(sanitized));
+    }
+  } catch (e) {}
+  if (state.currentVaultData) state.currentVaultData.boostCosts = sanitized;
+  if (state.globalData) state.globalData.boostCosts = sanitized;
+  return sanitized;
+}
+
+export function getActiveBoostsCostSfl() {
+  const config = getBoostCostsConfig();
+  const ratio = getCoinRatio();
+  let totalCost = 0;
+
+  const isB1 = typeof document !== 'undefined' ? Boolean(document.getElementById('boost1')?.checked) : false;
+  const isB2 = typeof document !== 'undefined' ? Boolean(document.getElementById('boost2')?.checked) : false;
+  const isB3 = typeof document !== 'undefined' ? Boolean(document.getElementById('boost3')?.checked) : false;
+
+  if (isB1 && config.boost1) {
+    const amt = parseFloat(config.boost1.amount) || 0;
+    totalCost += config.boost1.currency === 'coins' ? (ratio > 0 ? amt / ratio : 0) : amt;
+  }
+  if (isB2 && config.boost2) {
+    const amt = parseFloat(config.boost2.amount) || 0;
+    totalCost += config.boost2.currency === 'coins' ? (ratio > 0 ? amt / ratio : 0) : amt;
+  }
+  if (isB3 && config.boost3) {
+    const amt = parseFloat(config.boost3.amount) || 0;
+    totalCost += config.boost3.currency === 'coins' ? (ratio > 0 ? amt / ratio : 0) : amt;
+  }
+
+  return totalCost;
 }
 
 export function getActiveVipBonus() {
