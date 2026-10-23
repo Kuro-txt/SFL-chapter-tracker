@@ -31,9 +31,14 @@ export function extractRewardTickets(rewardObj) {
         cleanKey === 'shiny feather' ||
         cleanKey === 'shiny_feather' ||
         cleanKey === 'feather' ||
+        cleanKey === 'beetle wing' ||
+        cleanKey === 'beetle_wing' ||
+        cleanKey === 'bettle wing' ||
+        cleanKey === 'wing' ||
         cleanKey === 'chapter ticket' ||
         cleanKey === 'seasonal ticket' ||
         cleanKey.includes('feather') ||
+        cleanKey.includes('wing') ||
         cleanKey.includes('ticket')
       ) {
         if (typeof val === 'number' && val > 0) {
@@ -292,6 +297,14 @@ export function extractChapterPoints(farm, payload = null) {
       const v = Number(src["Ascension Age Points"]);
       if (!isNaN(v) && v > 0) return v;
     }
+    if (src["Cave Dwellers Points Earned"] !== undefined) {
+      const v = Number(src["Cave Dwellers Points Earned"]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+    if (src["Cave Dwellers Points"] !== undefined) {
+      const v = Number(src["Cave Dwellers Points"]);
+      if (!isNaN(v) && v > 0) return v;
+    }
   }
 
   for (const src of candidateSources) {
@@ -303,6 +316,10 @@ export function extractChapterPoints(farm, payload = null) {
         cleanK === "ascension age points" ||
         cleanK === "ascension points earned" ||
         cleanK === "ascension points" ||
+        cleanK === "cave dwellers points earned" ||
+        cleanK === "cave dwellers points" ||
+        cleanK === "cave points earned" ||
+        cleanK === "cave points" ||
         cleanK === "chapter points earned" ||
         cleanK === "chapter points"
       ) {
@@ -321,7 +338,11 @@ export function extractChapterPoints(farm, payload = null) {
         cleanK === "ascension age points earned" ||
         cleanK === "ascension age points" ||
         cleanK === "ascension points earned" ||
-        cleanK === "ascension points"
+        cleanK === "ascension points" ||
+        cleanK === "cave dwellers points earned" ||
+        cleanK === "cave dwellers points" ||
+        cleanK === "cave points earned" ||
+        cleanK === "cave points"
       ) {
         const num = Number(typeof val === 'object' && val !== null ? (val.value ?? val.amount ?? val.count) : val);
         if (!isNaN(num) && num > 0) {
