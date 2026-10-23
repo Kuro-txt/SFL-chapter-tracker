@@ -1,5 +1,5 @@
 import { getNpcIconHtml } from './npc-icons.js';
-import { renderItemIcon, renderRequestedItemsHtml } from './item-icons.js';
+import { renderItemIcon, renderRequestedItemsHtml, renderChapterTicketIcon } from './item-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -430,7 +430,7 @@ export function openCategorySummaryModal(cat) {
         </div>
         <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows}</div>
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
-          <span style="display:inline-flex; align-items:center; gap:3px;">Yield: ${renderItemIcon('beetle_wing', '🎟️', 16)} <strong>${finalTickets} Tickets</strong></span>
+          <span style="display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(16)} <strong>${finalTickets} Tickets</strong></span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
           <span class="${ratioClass}">
             📊 ${itemRatio} SFL / Ticket
@@ -481,7 +481,7 @@ export function openCategorySummaryModal(cat) {
         <div style="flex:1;">
           <div style="color:#3E2723; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">${bountyHeaderHtml}${lvlTag}${targetBadge}</div>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
-            <span style="color:#8B4513; font-weight:bold; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderItemIcon('beetle_wing', '🎟️', 14)} <strong>${finalTickets} Tix</strong></span>
+            <span style="color:#8B4513; font-weight:bold; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(14)} <strong>${finalTickets} Tix</strong></span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
             <span class="${ratioClass}">
               📊 ${itemRatio} SFL / Tix
@@ -542,7 +542,7 @@ export function openCategorySummaryModal(cat) {
           </div>
           <span style="color:#5C4033; font-weight:bold; margin-top:2px; display:inline-block;">${c.task || c.name}</span><br/>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
-            <span style="color:#2E7D32; font-weight:900; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderItemIcon('beetle_wing', '🎟️', 14)} <strong>${finalTickets} Tix</strong></span>
+            <span style="color:#2E7D32; font-weight:900; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(14)} <strong>${finalTickets} Tix</strong></span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
             <span class="${ratioClass}">
               📊 ${itemRatio} SFL / Tix

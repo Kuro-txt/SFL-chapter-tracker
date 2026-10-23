@@ -1,5 +1,13 @@
 import fs from 'fs';
-import { renderItemIcon, getItemIconUrl, normalizeItemKey, AVAILABLE_SLUGS, renderRequestedItemsHtml } from '../js/item-icons.js';
+import { 
+  renderItemIcon, 
+  getItemIconUrl, 
+  normalizeItemKey, 
+  AVAILABLE_SLUGS, 
+  renderRequestedItemsHtml,
+  renderChapterTicketIcon,
+  getChapterTicketName
+} from '../js/item-icons.js';
 import { getNpcIconHtml, getNpcIconPath, getNpcCdnUrl, normalizeNpcKey, AVAILABLE_NPCS, NPC_TOKENS } from '../js/npc-icons.js';
 
 console.log('🧪 Starting Automated Tests for Item & NPC Icons...');
@@ -92,4 +100,23 @@ for (const dNpc of deliveryNpcNames) {
 }
 console.log('✅ TEST 6 PASSED: All 11 chapter delivery NPCs resolve official animation CDN URLs.');
 
-console.log('\n🎉 ALL 6 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');
+// Test 7: Current Chapter Ticket (Shiny Feather) & Next Chapter (Beetle Wing)
+const currentTicketName = getChapterTicketName();
+if (currentTicketName !== 'shiny_feather') {
+  throw new Error(`Expected current chapter ticket to be shiny_feather, got: ${currentTicketName}`);
+}
+const shinyFeatherUrl = getItemIconUrl('shiny_feather');
+if (!fs.existsSync(shinyFeatherUrl)) {
+  throw new Error(`Shiny feather asset missing on disk: ${shinyFeatherUrl}`);
+}
+const beetleWingUrl = getItemIconUrl('beetle_wing');
+if (!fs.existsSync(beetleWingUrl)) {
+  throw new Error(`Beetle wing asset missing on disk: ${beetleWingUrl}`);
+}
+const ticketHtml = renderChapterTicketIcon(16);
+if (!ticketHtml.includes('shiny_feather.webp')) {
+  throw new Error(`renderChapterTicketIcon did not render shiny_feather: ${ticketHtml}`);
+}
+console.log('✅ TEST 7 PASSED: Current ticket (Shiny Feather) and next chapter ticket (Beetle Wing) correctly verified on disk.');
+
+console.log('\n🎉 ALL 7 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');
