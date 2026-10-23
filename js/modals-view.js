@@ -1,3 +1,4 @@
+import { getNpcIconHtml } from './npc-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -243,7 +244,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
         <div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:6px;">
           <div style="flex:1;">
             <div style="font-weight:900; color:#3E2723; display:flex; align-items:center; gap:4px;">
-              <span>${it.catIcon} ${it.name.toUpperCase()}</span>
+              <span>${it.type === 'delivery' ? getNpcIconHtml(it.name, { size: 18 }) : it.catIcon} ${it.name.toUpperCase()}</span>
               ${it.level ? `<span class="tag-pill tag-lvl">Lvl ${it.level}</span>` : ''}
             </div>
             ${it.details ? `<div style="font-size:9.5px; color:#5C4033; font-weight:bold; margin-top:2px;">${it.details}</div>` : ''}
@@ -421,7 +422,7 @@ export function openCategorySummaryModal(cat) {
 
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900;">
-          <span style="color:#8B4513;">👤 ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}${targetBadge}</span>
+          <span style="color:#8B4513; display:inline-flex; align-items:center; gap:5px;">${getNpcIconHtml(d.from || d.name, { size: 22 })} ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}${targetBadge}</span>
           ${statusBadge}
         </div>
         <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || (d.isStacked ? '🥞 Stacked delivery — recipe not synced' : 'No item recipe data')}</div>

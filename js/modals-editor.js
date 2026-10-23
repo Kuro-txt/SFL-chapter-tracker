@@ -1,3 +1,4 @@
+import { getNpcIconHtml } from './npc-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -362,7 +363,7 @@ export function renderColumnHistoryModalList() {
             ${checkboxHtml}
             <div style="flex:1; min-width:0; word-break:break-word;">
                <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
-              ${npcHeader}<strong style="color:#3E2723; font-size:12px;">${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}${targetTag}
+              ${npcHeader}<strong style="color:#3E2723; font-size:12px; display:inline-flex; align-items:center; gap:4px;">${type === 'delivery' ? getNpcIconHtml(r.name, { size: 18 }) : ''} ${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}${targetTag}
               ${itemsRow}
             </div>
           </label>

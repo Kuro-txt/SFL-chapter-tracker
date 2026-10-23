@@ -938,13 +938,12 @@ body.dark-mode .stat-footer {
 .card-emoji-box {
   width: 28px;
   height: 28px;
-  background: #FFFACD;
-  border: 1.5px solid #C49A6C;
-  border-radius: 5px;
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
@@ -1276,8 +1275,8 @@ body.dark-mode #itemsBurnedModal .item-burn-compact-row:hover {
 }
 
 body.dark-mode #itemsBurnedModal .card-emoji-box {
-  background: #0b1118 !important;
-  border-color: #27384e !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 body.dark-mode #itemsBurnedModal .card-name,
@@ -1320,3 +1319,10 @@ body.dark-mode #itemsBurnedModal .cat-animals { background: rgba(59, 130, 246, 0
 body.dark-mode #itemsBurnedModal .cat-resources { background: rgba(168, 85, 247, 0.15) !important; color: #c084fc !important; border-color: rgba(168, 85, 247, 0.3) !important; }
 body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.15) !important; color: #cbd5e1 !important; border-color: rgba(148, 163, 184, 0.3) !important; }
 
+
+.sfl-item-icon {
+  background: transparent !important;
+  border: none !important;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
