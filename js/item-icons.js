@@ -24,6 +24,7 @@ export const ITEM_IMAGE_PATHS = {
   "anemone": "public/icons/anemone.webp",
   "angelfish": "public/icons/fish/angel_fish.png",
   "anglerdoll": "public/icons/dolls/angler_doll.webp",
+  "animalbounty": "public/icons/animals/cow.webp",
   "antipasto": "public/icons/food/antipasto.webp",
   "apple": "public/icons/fruit/apple.png",
   "applejuice": "public/icons/food/apple_juice.png",
@@ -87,6 +88,8 @@ export const ITEM_IMAGE_PATHS = {
   "boneyardbetty": "public/icons/npcs/boneyard_betty.webp",
   "broccoli": "public/icons/crops/broccoli.png",
   "bruce": "public/icons/npcs/bruce.webp",
+  "bull": "public/icons/animals/cow.webp",
+  "bulls": "public/icons/animals/cow.webp",
   "bumpkinbroth": "public/icons/food/bumpkin_broth.png",
   "bumpkindetox": "public/icons/food/bumpkin_detox.png",
   "bumpkinemblem": "public/icons/bumpkin_emblem.webp",
@@ -135,8 +138,9 @@ export const ITEM_IMAGE_PATHS = {
   "cheftuck": "public/icons/npcs/chef_tuck.webp",
   "chest": "public/icons/chest.png",
   "chewedbone": "public/icons/chewed_bone.webp",
-  "chicken": "public/icons/npcs/chicken.webp",
+  "chicken": "public/icons/animals/chicken.png",
   "chickendrumstick": "public/icons/food/chicken_drumstick.png",
+  "chickens": "public/icons/animals/chicken.png",
   "chiogga": "public/icons/chiogga.png",
   "chioggia": "public/icons/chiogga.png",
   "chores": "assets/icons/chores.webp",
@@ -161,8 +165,10 @@ export const ITEM_IMAGE_PATHS = {
   "cornbread": "public/icons/food/corn_bread.png",
   "cornwell": "public/icons/npcs/cornwell.webp",
   "cosmodoll": "public/icons/dolls/cosmo_doll.webp",
+  "cow": "public/icons/animals/cow.webp",
   "cowbed": "public/icons/beds/cow_bed.webp",
   "cowfish": "public/icons/fish/cow_fish.webp",
+  "cows": "public/icons/animals/cow.webp",
   "crabpot": "public/icons/crab_pot.webp",
   "crabstick": "public/icons/processed/crab_stick.webp",
   "craftingbox": "public/icons/buildings/crafting_box.webp",
@@ -536,6 +542,8 @@ export const ITEM_IMAGE_PATHS = {
   "sfl": "assets/icons/sfl.webp",
   "shadow": "public/icons/npcs/shadow.webp",
   "shadowdoll": "public/icons/dolls/shadow_doll.webp",
+  "sheep": "public/icons/animals/sheep.webp",
+  "sheeps": "public/icons/animals/sheep.webp",
   "shinyfeather": "assets/icons/shiny_feather.webp",
   "shinyfeathers": "assets/icons/shiny_feather.webp",
   "shrimp": "public/icons/shrimp.webp",
@@ -827,8 +835,31 @@ export function renderRequestedItemsHtml(items, iconSize = 16) {
   }).join(' ');
 }
 
+/**
+ * Renders the official in-game animal sprite (Chicken, Cow, Sheep) for Animal Bounties.
+ *
+ * @param {string|object} nameOrItem - e.g. "Cow Level 2", "Sheep Lvl 1", "Chicken"
+ * @param {number} size - Desired pixel size (default 22)
+ * @returns {string} HTML string
+ */
+export function renderAnimalIcon(nameOrItem, size = 22) {
+  const raw = typeof nameOrItem === 'object' && nameOrItem !== null ? (nameOrItem.name || '') : String(nameOrItem || '');
+  const clean = raw.toLowerCase();
+  if (clean.includes('chicken')) {
+    return renderItemIcon('chicken', '🐔', size);
+  }
+  if (clean.includes('sheep')) {
+    return renderItemIcon('sheep', '🐑', size);
+  }
+  if (clean.includes('cow') || clean.includes('bull')) {
+    return renderItemIcon('cow', '🐄', size);
+  }
+  return renderItemIcon('cow', '🐄', size);
+}
+
 if (typeof window !== 'undefined') {
   window.renderItemIcon = renderItemIcon;
+  window.renderAnimalIcon = renderAnimalIcon;
   window.renderRequestedItemsHtml = renderRequestedItemsHtml;
   window.renderChapterTicketIcon = renderChapterTicketIcon;
   window.getChapterTicketName = getChapterTicketName;

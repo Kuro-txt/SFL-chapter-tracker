@@ -84,6 +84,17 @@ const overrides = {
   "leather": "public/icons/animals/leather.webp",
   "merinowool": "public/icons/animals/merino_wool.webp",
 
+  // Animals (Cow, Sheep, Chicken for Animal Bounties)
+  "chicken": "public/icons/animals/chicken.png",
+  "chickens": "public/icons/animals/chicken.png",
+  "cow": "public/icons/animals/cow.webp",
+  "cows": "public/icons/animals/cow.webp",
+  "sheep": "public/icons/animals/sheep.webp",
+  "sheeps": "public/icons/animals/sheep.webp",
+  "bull": "public/icons/animals/cow.webp",
+  "bulls": "public/icons/animals/cow.webp",
+  "animalbounty": "public/icons/animals/cow.webp",
+
   // Recipe typo & variant aliases
   "chioggia": map["chiogga"] || "public/icons/chiogga.png",
   "spaghetttiallimone": map["spaghettiallimone"] || "public/icons/spaghetti_al_limone.webp",
@@ -244,8 +255,31 @@ export function renderRequestedItemsHtml(items, iconSize = 16) {
   }).join(' ');
 }
 
+/**
+ * Renders the official in-game animal sprite (Chicken, Cow, Sheep) for Animal Bounties.
+ *
+ * @param {string|object} nameOrItem - e.g. "Cow Level 2", "Sheep Lvl 1", "Chicken"
+ * @param {number} size - Desired pixel size (default 22)
+ * @returns {string} HTML string
+ */
+export function renderAnimalIcon(nameOrItem, size = 22) {
+  const raw = typeof nameOrItem === 'object' && nameOrItem !== null ? (nameOrItem.name || '') : String(nameOrItem || '');
+  const clean = raw.toLowerCase();
+  if (clean.includes('chicken')) {
+    return renderItemIcon('chicken', '🐔', size);
+  }
+  if (clean.includes('sheep')) {
+    return renderItemIcon('sheep', '🐑', size);
+  }
+  if (clean.includes('cow') || clean.includes('bull')) {
+    return renderItemIcon('cow', '🐄', size);
+  }
+  return renderItemIcon('cow', '🐄', size);
+}
+
 if (typeof window !== 'undefined') {
   window.renderItemIcon = renderItemIcon;
+  window.renderAnimalIcon = renderAnimalIcon;
   window.renderRequestedItemsHtml = renderRequestedItemsHtml;
   window.renderChapterTicketIcon = renderChapterTicketIcon;
   window.getChapterTicketName = getChapterTicketName;

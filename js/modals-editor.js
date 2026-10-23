@@ -1,5 +1,5 @@
 import { getNpcIconHtml } from './npc-icons.js';
-import { renderItemIcon, renderRequestedItemsHtml } from './item-icons.js';
+import { renderItemIcon, renderAnimalIcon, renderRequestedItemsHtml } from './item-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -364,9 +364,9 @@ export function renderColumnHistoryModalList() {
       } else if (type === 'chore') {
         itemTitleHtml = `${getNpcIconHtml(r.npc || 'Hank', { size: 22, className: 'npc-avatar-sm' })} <span style="margin-left:4px;">${r.name}</span>`;
       } else if (type === 'bounty') {
-        itemTitleHtml = `${getNpcIconHtml('poppy', { size: 22, className: 'npc-avatar-sm' })} ${renderItemIcon(r.name, '📜', 18)} <span style="margin-left:4px;">${r.name}</span>`;
+        itemTitleHtml = `${renderItemIcon(r.name, '📜', 22)} <span style="margin-left:4px;">${r.name}</span>`;
       } else if (type === 'animalBounty') {
-        itemTitleHtml = `${renderItemIcon(r.name || 'cow', '🐄', 20)} <span style="margin-left:4px;">${r.name}</span>`;
+        itemTitleHtml = `${renderAnimalIcon(r.name, 22)} <span style="margin-left:4px;">${r.name}</span>`;
       } else {
         itemTitleHtml = `<span>${r.name}</span>`;
       }

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { 
   renderItemIcon, 
+  renderAnimalIcon,
   getItemIconUrl, 
   normalizeItemKey, 
   AVAILABLE_SLUGS, 
@@ -142,4 +143,19 @@ for (const it of formerlyGreenItems) {
 }
 console.log(`✅ TEST 8 PASSED: All ${formerlyGreenItems.length} formerly green items resolve to clean transparent sprites in public/icons/ without NFT frames.`);
 
-console.log('\n🎉 ALL 8 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');
+// Test 9: Animal Bounty Sprites (Chicken, Cow, Sheep)
+const animalTests = [
+  { input: 'Chicken Lvl 1', expectedFile: 'chicken.png' },
+  { input: 'Cow Level 2', expectedFile: 'cow.webp' },
+  { input: 'Sheep (Lvl 3)', expectedFile: 'sheep.webp' }
+];
+
+for (const a of animalTests) {
+  const html = renderAnimalIcon(a.input, 22);
+  if (!html.includes(a.expectedFile)) {
+    throw new Error(`Expected ${a.input} to render ${a.expectedFile}, got: ${html}`);
+  }
+}
+console.log('✅ TEST 9 PASSED: Animal bounties correctly render official chicken, cow, and sheep sprites.');
+
+console.log('\n🎉 ALL 9 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');

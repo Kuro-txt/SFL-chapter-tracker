@@ -1,5 +1,5 @@
 import { getNpcIconHtml } from './npc-icons.js';
-import { renderItemIcon, renderRequestedItemsHtml, renderChapterTicketIcon } from './item-icons.js';
+import { renderItemIcon, renderAnimalIcon, renderRequestedItemsHtml, renderChapterTicketIcon } from './item-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -245,7 +245,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
         <div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:6px;">
           <div style="flex:1;">
             <div style="font-weight:900; color:#3E2723; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <span style="display:inline-flex; align-items:center; gap:4px;">${it.type === 'delivery' ? getNpcIconHtml(it.name, { size: 22 }) : it.type === 'chore' ? getNpcIconHtml(it.npc || 'Hank', { size: 22 }) : it.type === 'bounty' ? (getNpcIconHtml('poppy', { size: 20 }) + ' ' + renderItemIcon(it.name, '📜', 18)) : renderItemIcon(it.name || 'cow', '🐄', 20)} <span>${it.name.toUpperCase()}</span></span>
+              <span style="display:inline-flex; align-items:center; gap:4px;">${it.type === 'delivery' ? getNpcIconHtml(it.name, { size: 22 }) : it.type === 'chore' ? getNpcIconHtml(it.npc || 'Hank', { size: 22 }) : it.type === 'bounty' ? renderItemIcon(it.name, '📜', 22) : renderAnimalIcon(it.name, 22)} <span>${it.name.toUpperCase()}</span></span>
               ${it.level ? `<span class="tag-pill tag-lvl">Lvl ${it.level}</span>` : ''}
             </div>
             ${it.details ? `<div style="font-size:9.5px; color:#5C4033; font-weight:bold; margin-top:2px;">${it.details}</div>` : ''}
@@ -474,8 +474,8 @@ export function openCategorySummaryModal(cat) {
       const lvlTag = lvl ? `<span class="tag-pill tag-lvl">Lvl ${lvl}</span>` : '';
 
       const bountyHeaderHtml = isAnimal
-        ? `<span style="display:inline-flex; align-items:center; gap:5px;">${renderItemIcon(b.name || 'cow', '🐄', 22)} <strong>${(b.name || '').toUpperCase()}</strong></span>`
-        : `<span style="display:inline-flex; align-items:center; gap:5px;">${getNpcIconHtml('poppy', { size: 24 })} ${renderItemIcon(b.name, '📜', 18)} <strong>${(b.name || '').toUpperCase()}</strong></span>`;
+        ? `<span style="display:inline-flex; align-items:center; gap:5px;">${renderAnimalIcon(b.name, 24)} <strong>${(b.name || '').toUpperCase()}</strong></span>`
+        : `<span style="display:inline-flex; align-items:center; gap:5px;">${renderItemIcon(b.name, '📜', 24)} <strong>${(b.name || '').toUpperCase()}</strong></span>`;
 
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
