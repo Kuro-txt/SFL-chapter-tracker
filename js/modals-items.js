@@ -1,4 +1,5 @@
 import { state, formatSFL } from './state.js';
+import { renderItemIcon } from './item-icons.js';
 
 // Item Categorization Heuristic
 export function detectItemCategory(name) {
@@ -465,7 +466,7 @@ export function renderItemsBurnedList() {
         </div>
 
         <div class="summary-metric-chip chip-top-item" title="${topItem ? `${topItem.name} (${formatSFL(topCost)} SFL)` : 'None'}">
-          <span class="chip-icon">👑</span>
+          <span class="chip-icon">${topItem ? renderItemIcon(topItem.name, '👑', 20) : '👑'}</span>
           <div class="chip-content">
             <span class="chip-label">Top Expense</span>
             <span class="chip-val text-purple">${topItem ? `${topItem.name}` : '---'}</span>
@@ -529,7 +530,7 @@ export function renderItemsBurnedList() {
       return `
         <div class="item-burn-compact-row">
           <div class="compact-left">
-            <span class="compact-emoji">${emoji}</span>
+            <span class="compact-emoji">${renderItemIcon(item.name, emoji, 18)}</span>
             <strong class="compact-name" title="${item.name}">${item.name}</strong>
             <span class="cat-pill cat-${item.category}">${catLabel}</span>
           </div>
@@ -551,7 +552,7 @@ export function renderItemsBurnedList() {
       <div class="item-burn-grid-card">
         <div class="card-row-top">
           <div class="card-left">
-            <div class="card-emoji-box">${emoji}</div>
+            <div class="card-emoji-box">${renderItemIcon(item.name, emoji, 22)}</div>
             <div class="card-name-wrap">
               <strong class="card-name" title="${item.name}">${item.name}</strong>
               <span class="cat-pill cat-${item.category}">${catLabel}</span>
