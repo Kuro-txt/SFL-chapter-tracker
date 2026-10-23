@@ -188,7 +188,7 @@ export function renderItemIcon(name, fallbackEmoji = '✨', size = 20, extraClas
   const escapedFallback = safeFallback.replace(/'/g, "\\\\'");
   const onErrorJs = \`if(!this.dataset.triedAlt){this.dataset.triedAlt='1';if(this.src.includes('public/icons/')){this.src=this.src.replace('public/icons/','icons/');}else{this.onerror=null;this.replaceWith(document.createTextNode('\${escapedFallback}'));}}else{this.onerror=null;this.replaceWith(document.createTextNode('\${escapedFallback}'));}\`;
 
-  return \`<img src="\${url}" alt="\${name}" width="\${numSize}" height="\${numSize}" class="sfl-item-icon \${extraClass}" onerror="\${onErrorJs}" style="width:\${numSize}px; height:\${numSize}px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" loading="lazy" />\`;
+  return \`<img src="\${url}" alt="\${name}" width="\${numSize}" height="\${numSize}" class="sfl-item-icon \${extraClass}" decoding="async" onerror="\${onErrorJs}" style="width:\${numSize}px; height:\${numSize}px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" />\`;
 }
 
 /**

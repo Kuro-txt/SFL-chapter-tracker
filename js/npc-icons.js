@@ -193,7 +193,7 @@ export function getNpcIconHtml(nameOrId, options = {}) {
     const escapedFallback = fallback.replace(/'/g, "\\'");
     const onErrorJs = `if(!this.dataset.triedFallback){this.dataset.triedFallback='1';if(this.src.includes('public/icons/')){this.src=this.src.replace('public/icons/','icons/');}else if('${cdnUrl}' && !this.src.includes('animations.sunflower-land.com')){this.src='${cdnUrl}';}else{this.onerror=null;this.replaceWith(document.createTextNode('${escapedFallback}'));}}else if(!this.dataset.triedCdn && '${cdnUrl}' && !this.src.includes('animations.sunflower-land.com')){this.dataset.triedCdn='1';this.src='${cdnUrl}';}else{this.onerror=null;this.replaceWith(document.createTextNode('${escapedFallback}'));}`;
 
-    return `<img src="${primarySrc}" class="sfl-npc-avatar ${sizeClass}" width="${size}" height="${size}" alt="${nameOrId}" loading="lazy" onerror="${onErrorJs}" style="width:${size}px; height:${size}px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" />`;
+    return `<img src="${primarySrc}" class="sfl-npc-avatar ${sizeClass}" width="${size}" height="${size}" alt="${nameOrId}" decoding="async" onerror="${onErrorJs}" style="width:${size}px; height:${size}px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" />`;
   }
 
   return `<span class="${sizeClass}" style="display:inline-block; vertical-align:middle; font-size:${Math.round(size * 0.75)}px;">${fallback}</span>`;

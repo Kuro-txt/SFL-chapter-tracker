@@ -7,6 +7,32 @@ import {
 } from './sfl-parser.js';
 
 let isSchemaInitialized = false;
+let cachedPriceMap = null;
+let cachedPriceMapExpiresAt = 0;
+
+export async function getLivePriceMap() {
+  const now = Date.now();
+  if (cachedPriceMap && now < cachedPriceMapExpiresAt) {
+    return cachedPriceMap;
+  }
+  try {
+    const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+      signal: AbortSignal.timeout(6000)
+    });
+    if (pricesRes.ok) {
+      const rawPricesData = await pricesRes.json();
+      if (rawPricesData) {
+        cachedPriceMap = extractPricesRecursive(rawPricesData);
+        cachedPriceMapExpiresAt = now + 5 * 60 * 1000; // 5 minute in-memory cache
+        return cachedPriceMap;
+      }
+    }
+  } catch (e) {
+    console.warn('Live price fetch warning:', e.message);
+  }
+  return cachedPriceMap || {};
+}
 
 async function ensureTableExists(client) {
   if (isSchemaInitialized) return;
@@ -886,65 +912,60 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Farm ID is required.' });
     }
 
-    let priceMap = {};
-    try {
-      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        signal: AbortSignal.timeout(8000)
-      });
-      if (pricesRes.ok) {
-        const rawPricesData = await pricesRes.json();
-        if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
-      }
-    } catch (e) {
-      console.warn('Live price fetch warning:', e.message);
-    }
+    // Parallelize live prices and farm data fetching for maximum performance
+    const [priceMap, sflFetchResult] = await Promise.all([
+      getLivePriceMap(),
+      (async () => {
+        const sflHeaders = {
+          'Accept': 'application/json, text/plain, */*',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Referer': 'https://sunflower-land.com/',
+          'Origin': 'https://sunflower-land.com'
+        };
+        if (apiKey) sflHeaders['x-api-key'] = apiKey;
 
-    const sflHeaders = {
-      'Accept': 'application/json, text/plain, */*',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer': 'https://sunflower-land.com/',
-      'Origin': 'https://sunflower-land.com'
-    };
-    if (apiKey) sflHeaders['x-api-key'] = apiKey;
-
-    let sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
-      headers: sflHeaders,
-      signal: AbortSignal.timeout(10000)
-    });
-
-    let usedBackupKey = false;
-    let apiKeyInvalid = false;
-
-    // Backup route: if user's API key returned an error (e.g. 401 Unauthorized or 403 Forbidden), use our system API key
-    if (!sflRes.ok && apiKey) {
-      apiKeyInvalid = (sflRes.status === 401 || sflRes.status === 403);
-      console.warn(`User-provided API key returned status ${sflRes.status}. Attempting backup route with system API key...`);
-
-      const backupHeaders = {
-        'Accept': 'application/json, text/plain, */*',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Referer': 'https://sunflower-land.com/',
-        'Origin': 'https://sunflower-land.com'
-      };
-      if (process.env.SFL_API_KEY) {
-        backupHeaders['x-api-key'] = process.env.SFL_API_KEY;
-      }
-
-      try {
-        const backupRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, {
-          headers: backupHeaders,
+        let sflRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, { 
+          headers: sflHeaders,
           signal: AbortSignal.timeout(10000)
         });
-        if (backupRes.ok) {
-          sflRes = backupRes;
-          usedBackupKey = true;
-          console.log(`Backup route succeeded for farm #${farmId}!`);
+
+        let usedBackupKey = false;
+        let apiKeyInvalid = false;
+
+        // Backup route: if user's API key returned an error (e.g. 401 Unauthorized or 403 Forbidden), use our system API key
+        if (!sflRes.ok && apiKey) {
+          apiKeyInvalid = (sflRes.status === 401 || sflRes.status === 403);
+          console.warn(`User-provided API key returned status ${sflRes.status}. Attempting backup route with system API key...`);
+
+          const backupHeaders = {
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://sunflower-land.com/',
+            'Origin': 'https://sunflower-land.com'
+          };
+          if (process.env.SFL_API_KEY) {
+            backupHeaders['x-api-key'] = process.env.SFL_API_KEY;
+          }
+
+          try {
+            const backupRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, {
+              headers: backupHeaders,
+              signal: AbortSignal.timeout(10000)
+            });
+            if (backupRes.ok) {
+              sflRes = backupRes;
+              usedBackupKey = true;
+              console.log(`Backup route succeeded for farm #${farmId}!`);
+            }
+          } catch (backupErr) {
+            console.warn('Backup fetch warning:', backupErr.message);
+          }
         }
-      } catch (backupErr) {
-        console.warn('Backup fetch warning:', backupErr.message);
-      }
-    }
+        return { sflRes, usedBackupKey, apiKeyInvalid };
+      })()
+    ]);
+
+    const { sflRes, usedBackupKey, apiKeyInvalid } = sflFetchResult;
 
     if (!sflRes.ok) {
       if (sflRes.status === 401 || apiKeyInvalid) {
