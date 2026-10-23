@@ -428,12 +428,58 @@ export function renderItemIcon(name, fallbackEmoji = '✨', size = 20, extraClas
   }
 
   const escapedFallback = safeFallback.replace(/'/g, "\\'");
+  const onErrorJs = `if(!this.dataset.triedAlt){this.dataset.triedAlt='1';if(this.src.includes('public/icons/')){this.src=this.src.replace('public/icons/','icons/');}else{this.onerror=null;this.replaceWith(document.createTextNode('${escapedFallback}'));}}else{this.onerror=null;this.replaceWith(document.createTextNode('${escapedFallback}'));}`;
 
-  return `<img src="${url}" alt="${name}" width="${numSize}" height="${numSize}" class="sfl-item-icon ${extraClass}" onerror="this.onerror=null;this.replaceWith(document.createTextNode('${escapedFallback}'));" style="width:${numSize}px; height:${numSize}px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" loading="lazy" />`;
+  return `<img src="${url}" alt="${name}" width="${numSize}" height="${numSize}" class="sfl-item-icon ${extraClass}" onerror="${onErrorJs}" style="width:${numSize}px; height:${numSize}px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" loading="lazy" />`;
+}
+
+/**
+ * Renders a structured or string recipe of required items with inline pixel-art sprites.
+ * Matches the delivery ingredient format from eliasSFL/sunflower-land-overview.
+ *
+ * @param {string|Array|Object} items - e.g. "20x Wood, 10x Stone" or [{ name: "Wood", qty: 20 }] or { Wood: 20 }
+ * @param {number} iconSize - Size of each inline icon in px (default 16)
+ * @returns {string} HTML string
+ */
+export function renderRequestedItemsHtml(items, iconSize = 16) {
+  if (!items) return '';
+
+  let parsedItems = [];
+
+  if (Array.isArray(items)) {
+    parsedItems = items.map(it => {
+      if (typeof it === 'string') {
+        const m = it.trim().match(/^(\d+(?:\.\d+)?)\s*(?:x\s*)?(.+)$/i);
+        return m ? { qty: m[1], name: m[2].trim() } : { qty: '', name: it.trim() };
+      }
+      return { qty: it.qty || it.amount || 1, name: it.name || it.item || '' };
+    });
+  } else if (typeof items === 'object') {
+    parsedItems = Object.entries(items).map(([name, qty]) => ({
+      qty,
+      name
+    }));
+  } else if (typeof items === 'string') {
+    const parts = items.split(/[,;]/);
+    parsedItems = parts.map(p => {
+      const trimmed = p.trim();
+      const m = trimmed.match(/^(\d+(?:\.\d+)?)\s*(?:x\s*)?(.+)$/i);
+      return m ? { qty: m[1], name: m[2].trim() } : { qty: '', name: trimmed };
+    }).filter(p => p.name);
+  }
+
+  if (parsedItems.length === 0) return '';
+
+  return parsedItems.map(it => {
+    const iconHtml = renderItemIcon(it.name, '📦', iconSize, 'ingredient-icon');
+    const qtyText = it.qty ? `${it.qty}x ` : '';
+    return `<span class="delivery-ingredient-badge" style="display:inline-flex; align-items:center; gap:3px; background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px; font-size:10.5px; font-weight:600; color:#5D4037; border:1px solid rgba(139,69,19,0.12); margin-right:4px; margin-bottom:2px;">${iconHtml}<span>${qtyText}${it.name}</span></span>`;
+  }).join(' ');
 }
 
 if (typeof window !== 'undefined') {
   window.renderItemIcon = renderItemIcon;
+  window.renderRequestedItemsHtml = renderRequestedItemsHtml;
   window.getItemIconUrl = getItemIconUrl;
   window.normalizeItemKey = normalizeItemKey;
 }

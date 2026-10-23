@@ -1,6 +1,6 @@
 import fs from 'fs';
-import { renderItemIcon, getItemIconUrl, normalizeItemKey, AVAILABLE_SLUGS } from '../js/item-icons.js';
-import { getNpcIconHtml, getNpcIconPath, normalizeNpcKey, AVAILABLE_NPCS } from '../js/npc-icons.js';
+import { renderItemIcon, getItemIconUrl, normalizeItemKey, AVAILABLE_SLUGS, renderRequestedItemsHtml } from '../js/item-icons.js';
+import { getNpcIconHtml, getNpcIconPath, getNpcCdnUrl, normalizeNpcKey, AVAILABLE_NPCS, NPC_TOKENS } from '../js/npc-icons.js';
 
 console.log('🧪 Starting Automated Tests for Item & NPC Icons...');
 
@@ -65,4 +65,31 @@ if (!npcFallback.includes('👾')) {
 }
 console.log('✅ TEST 4 PASSED: Graceful emoji fallback for unknown NPCs verified.');
 
-console.log('\n🎉 ALL 4 ICON TESTS PASSED WITH 100% SUCCESS!');
+// Test 5: Ingredient Recipe Parser & Inline Sprites (renderRequestedItemsHtml)
+const testRecipeStr = "20x Wood, 10x Stone, 5 Gold";
+const renderedStr = renderRequestedItemsHtml(testRecipeStr, 14);
+if (!renderedStr.includes('delivery-ingredient-badge') || !renderedStr.includes('20x Wood') || !renderedStr.includes('10x Stone')) {
+  throw new Error(`renderRequestedItemsHtml failed on string input: ${renderedStr}`);
+}
+
+const testRecipeArr = [{ name: 'Sunflower', qty: 100 }, { name: 'Potato', qty: 50 }];
+const renderedArr = renderRequestedItemsHtml(testRecipeArr, 16);
+if (!renderedArr.includes('100x Sunflower') || !renderedArr.includes('50x Potato')) {
+  throw new Error(`renderRequestedItemsHtml failed on array input: ${renderedArr}`);
+}
+console.log('✅ TEST 5 PASSED: Delivery ingredient parser renders inline pixel-art badges for strings and arrays.');
+
+// Test 6: Sunflower Land CDN Token Generator for all 11 Delivery NPCs
+const deliveryNpcNames = [
+  "pumpkin_pete", "bert", "finley", "miranda", "cornwell",
+  "raven", "jester", "finn", "timmy", "pharaoh", "tywin"
+];
+for (const dNpc of deliveryNpcNames) {
+  const cdnUrl = getNpcCdnUrl(dNpc);
+  if (!cdnUrl || !cdnUrl.startsWith('https://animations.sunflower-land.com/animated_webp/0_v1_')) {
+    throw new Error(`Invalid CDN URL for ${dNpc}: ${cdnUrl}`);
+  }
+}
+console.log('✅ TEST 6 PASSED: All 11 chapter delivery NPCs resolve official animation CDN URLs.');
+
+console.log('\n🎉 ALL 6 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');

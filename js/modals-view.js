@@ -1,4 +1,5 @@
 import { getNpcIconHtml } from './npc-icons.js';
+import { renderItemIcon, renderRequestedItemsHtml } from './item-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -243,8 +244,8 @@ export function openWeekBreakdownModal(mondayKey, label) {
       return `
         <div style="background:#FFF8DC; border:2px solid #8B5A2B; padding:8px 10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:6px;">
           <div style="flex:1;">
-            <div style="font-weight:900; color:#3E2723; display:flex; align-items:center; gap:4px;">
-              <span>${it.type === 'delivery' ? getNpcIconHtml(it.name, { size: 18 }) : it.catIcon} ${it.name.toUpperCase()}</span>
+            <div style="font-weight:900; color:#3E2723; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <span style="display:inline-flex; align-items:center; gap:4px;">${it.type === 'delivery' ? getNpcIconHtml(it.name, { size: 22 }) : it.type === 'chore' ? getNpcIconHtml(it.npc || 'Hank', { size: 22 }) : it.type === 'bounty' ? (getNpcIconHtml('poppy', { size: 20 }) + ' ' + renderItemIcon(it.name, '📜', 18)) : renderItemIcon(it.name || 'cow', '🐄', 20)} <span>${it.name.toUpperCase()}</span></span>
               ${it.level ? `<span class="tag-pill tag-lvl">Lvl ${it.level}</span>` : ''}
             </div>
             ${it.details ? `<div style="font-size:9.5px; color:#5C4033; font-weight:bold; margin-top:2px;">${it.details}</div>` : ''}
@@ -413,7 +414,9 @@ export function openCategorySummaryModal(cat) {
         : '';
       const isStackedBadge = d.isStacked ? '<span class="tag-pill tag-stacked">🥞 STACKED</span>' : '';
       const isSkippedBadge = d.isSkipped ? '<span class="tag-pill tag-skipped">✕ SKIPPED</span>' : '';
-      const itemRows = (d.itemDetails || []).map(it => `• ${it.qty}x ${it.name} (${formatSFL(it.lineCost)} SFL)`).join('<br/>');
+      const itemRows = (d.itemDetails && d.itemDetails.length > 0)
+        ? d.itemDetails.map(it => `<span style="display:inline-flex; align-items:center; gap:4px; margin-bottom:2px;">${renderItemIcon(it.name, '•', 16)} <strong>${it.qty}x ${it.name}</strong> (${formatSFL(it.lineCost)} SFL)</span>`).join('<br/>')
+        : (d.items ? renderRequestedItemsHtml(d.items, 16) : (d.isStacked ? '🥞 Stacked delivery — recipe not synced' : 'No item recipe data'));
 
       let statusBadge = `<span class="badge ${isTicked ? 'badge-done' : 'badge-active'}">${isTicked ? '✨ DONE' : '⏳ ACTIVE'}</span>`;
       if (d.isSkipped) {
@@ -422,12 +425,12 @@ export function openCategorySummaryModal(cat) {
 
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900;">
-          <span style="color:#8B4513; display:inline-flex; align-items:center; gap:5px;">${getNpcIconHtml(d.from || d.name, { size: 22 })} ${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}${doubleBadge}${isStackedBadge}${isSkippedBadge}${targetBadge}</span>
+          <span style="color:#8B4513; display:inline-flex; align-items:center; gap:6px;">${getNpcIconHtml(d.from || d.name, { size: 26, className: 'npc-avatar-md' })} <span>${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>${doubleBadge}${isStackedBadge}${isSkippedBadge}${targetBadge}</span>
           ${statusBadge}
         </div>
-        <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows || (d.isStacked ? '🥞 Stacked delivery — recipe not synced' : 'No item recipe data')}</div>
+        <div style="color:#5C4033; font-weight:bold; line-height:1.4;">${itemRows}</div>
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
-          <span>Yield: 🎟️ ${finalTickets} Tickets</span>
+          <span style="display:inline-flex; align-items:center; gap:3px;">Yield: ${renderItemIcon('beetle_wing', '🎟️', 16)} <strong>${finalTickets} Tickets</strong></span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
           <span class="${ratioClass}">
             📊 ${itemRatio} SFL / Ticket
@@ -470,11 +473,15 @@ export function openCategorySummaryModal(cat) {
       const lvl = resolveAnimalLevel(b);
       const lvlTag = lvl ? `<span class="tag-pill tag-lvl">Lvl ${lvl}</span>` : '';
 
+      const bountyHeaderHtml = isAnimal
+        ? `<span style="display:inline-flex; align-items:center; gap:5px;">${renderItemIcon(b.name || 'cow', '🐄', 22)} <strong>${(b.name || '').toUpperCase()}</strong></span>`
+        : `<span style="display:inline-flex; align-items:center; gap:5px;">${getNpcIconHtml('poppy', { size: 24 })} ${renderItemIcon(b.name, '📜', 18)} <strong>${(b.name || '').toUpperCase()}</strong></span>`;
+
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
-          <strong style="color:#3E2723;">${isAnimal ? '🐄' : '📜'} ${(b.name || '').toUpperCase()}</strong>${lvlTag}${targetBadge}<br/>
+          <div style="color:#3E2723; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">${bountyHeaderHtml}${lvlTag}${targetBadge}</div>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
-            <span style="color:#8B4513; font-weight:bold;">Yield: 🎟️ ${finalTickets} Tix</span>
+            <span style="color:#8B4513; font-weight:bold; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderItemIcon('beetle_wing', '🎟️', 14)} <strong>${finalTickets} Tix</strong></span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
             <span class="${ratioClass}">
               📊 ${itemRatio} SFL / Tix
@@ -530,10 +537,12 @@ export function openCategorySummaryModal(cat) {
 
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
-          <strong style="color:#3E2723;">🧹 ${(c.npc || 'NPC').toUpperCase()}</strong>${targetBadge}<br/>
-          <span style="color:#5C4033; font-weight:bold;">${c.task || c.name}</span><br/>
+          <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+            <strong style="color:#3E2723; display:inline-flex; align-items:center; gap:5px;">${getNpcIconHtml(c.npc || 'Hank', { size: 24, className: 'npc-avatar-sm' })} <span>${(c.npc || 'NPC').toUpperCase()}</span></strong>${targetBadge}
+          </div>
+          <span style="color:#5C4033; font-weight:bold; margin-top:2px; display:inline-block;">${c.task || c.name}</span><br/>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
-            <span style="color:#2E7D32; font-weight:900;">Yield: 🎟️ ${finalTickets} Tix</span>
+            <span style="color:#2E7D32; font-weight:900; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderItemIcon('beetle_wing', '🎟️', 14)} <strong>${finalTickets} Tix</strong></span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
             <span class="${ratioClass}">
               📊 ${itemRatio} SFL / Tix

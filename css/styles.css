@@ -1326,3 +1326,52 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+
+.sfl-npc-avatar {
+  background: transparent !important;
+  border: none !important;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  object-fit: contain;
+  vertical-align: middle;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.npc-avatar-sm {
+  width: 22px;
+  height: 22px;
+}
+
+.npc-avatar-md {
+  width: 26px;
+  height: 26px;
+}
+
+.delivery-ingredient-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #5D4037;
+  border: 1px solid rgba(139, 69, 19, 0.12);
+}
+
+body.dark-mode .delivery-ingredient-badge {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #E2E8F0 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.ingredient-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  vertical-align: middle;
+}
+

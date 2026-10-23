@@ -1,4 +1,5 @@
 import { getNpcIconHtml } from './npc-icons.js';
+import { renderItemIcon, renderRequestedItemsHtml } from './item-icons.js';
 import { 
   state, 
   formatSFL, 
@@ -341,7 +342,7 @@ export function renderColumnHistoryModalList() {
       const npcHeader = r.npc ? `<span style="color:#8B4513; font-weight:900;">[${r.npc.toUpperCase()}] </span>` : '';
       const itemsRow = type === 'delivery'
         ? (r.requestedItems 
-            ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:2px;">📦 Needs: ${r.requestedItems}</div>` 
+            ? `<div style="font-size:10px; color:#6D4C41; font-weight:bold; margin-top:4px; display:flex; align-items:center; flex-wrap:wrap; gap:2px;"><span style="margin-right:2px;">📦 Needs:</span> ${renderRequestedItemsHtml(r.requestedItems, 14)}</div>` 
             : (r.isStacked ? `<div style="font-size:10px; color:#8D6E63; margin-top:2px;">📦 Needs: Recipe not available (historical stacked delivery)</div>` : ''))
         : '';
 
@@ -357,13 +358,26 @@ export function renderColumnHistoryModalList() {
         ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${sourceKey}', '${itemTargetKey}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
         : `<input type="number" value="${r.displayTickets}" disabled style="width:48px; padding:3px 5px; font-size:11px; opacity:0.75; cursor:not-allowed; background:rgba(0,0,0,0.05);" title="Game-synced ticket yield cannot be edited" />`;
 
+      let itemTitleHtml = '';
+      if (type === 'delivery') {
+        itemTitleHtml = `${getNpcIconHtml(r.name, { size: 22, className: 'npc-avatar-sm' })} <span style="margin-left:4px;">${r.name}</span>`;
+      } else if (type === 'chore') {
+        itemTitleHtml = `${getNpcIconHtml(r.npc || 'Hank', { size: 22, className: 'npc-avatar-sm' })} <span style="margin-left:4px;">${r.name}</span>`;
+      } else if (type === 'bounty') {
+        itemTitleHtml = `${getNpcIconHtml('poppy', { size: 22, className: 'npc-avatar-sm' })} ${renderItemIcon(r.name, '📜', 18)} <span style="margin-left:4px;">${r.name}</span>`;
+      } else if (type === 'animalBounty') {
+        itemTitleHtml = `${renderItemIcon(r.name || 'cow', '🐄', 20)} <span style="margin-left:4px;">${r.name}</span>`;
+      } else {
+        itemTitleHtml = `<span>${r.name}</span>`;
+      }
+
       return `<div class="history-card${cardBorderClass}">
         <div class="history-info">
           <label style="display:flex; align-items:flex-start; gap:8px; cursor:${r.isManual ? 'pointer' : 'default'}; width:100%;">
             ${checkboxHtml}
             <div style="flex:1; min-width:0; word-break:break-word;">
                <span style="font-weight:bold; color:#8B4513; font-size:10.5px;">📅 ${r.date} (Week ${r.weekNum}) — ${r.status}</span><br/>
-              ${npcHeader}<strong style="color:#3E2723; font-size:12px; display:inline-flex; align-items:center; gap:4px;">${type === 'delivery' ? getNpcIconHtml(r.name, { size: 18 }) : ''} ${r.name}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}${targetTag}
+              ${npcHeader}<strong style="color:#3E2723; font-size:12px; display:inline-flex; align-items:center; gap:4px; flex-wrap:wrap;">${itemTitleHtml}</strong>${animalLevelTag}${manualTag}${editedTag}${stackedTag}${skippedTag}${targetTag}
               ${itemsRow}
             </div>
           </label>
