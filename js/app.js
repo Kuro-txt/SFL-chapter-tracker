@@ -35,6 +35,7 @@ import {
   openItemsBurnedModal,
   closeItemsBurnedModal,
   renderItemsBurnedList,
+  toggleBurnedViewMode,
   openBoostsCostModal,
   closeBoostsCostModal,
   updateBoostModalPreview,
@@ -167,6 +168,7 @@ window.exportChapterLog = exportChapterLog;
 window.openItemsBurnedModal = openItemsBurnedModal;
 window.closeItemsBurnedModal = closeItemsBurnedModal;
 window.renderItemsBurnedList = renderItemsBurnedList;
+window.toggleBurnedViewMode = toggleBurnedViewMode;
 window.openBoostsCostModal = openBoostsCostModal;
 window.closeBoostsCostModal = closeBoostsCostModal;
 window.updateBoostModalPreview = updateBoostModalPreview;

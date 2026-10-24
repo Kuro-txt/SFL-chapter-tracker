@@ -37,7 +37,8 @@ export {
 export {
   openItemsBurnedModal,
   closeItemsBurnedModal,
-  renderItemsBurnedList
+  renderItemsBurnedList,
+  toggleBurnedViewMode
 } from './modals-items.js';
 
 export { syncCurrentVaultToCloud } from './state.js';
