@@ -26,6 +26,11 @@ export function setElemText(id, text) {
   if (el) el.textContent = text;
 }
 
+export function setElemHtml(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
 export function getActiveBoostCount() {
   let count = 0;
   if (typeof document !== 'undefined') {

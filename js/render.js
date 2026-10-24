@@ -2,6 +2,7 @@ import {
   state, 
   formatSFL, 
   setElemText, 
+  setElemHtml,
   getActiveBoostCount, 
   getActiveVipBonus, 
   getMondayBasedWeekId, 
@@ -12,6 +13,7 @@ import {
   getBoostCostsConfig,
   getCoinRatio
 } from './state.js';
+import { renderChapterTicketIcon } from './item-icons.js';
 
 export function recalculateAll() {
   if (!state.globalData) return;
@@ -379,26 +381,26 @@ export function recalculateAll() {
   setElemText('choresCount', `${activeChoresCount} Tasks`);
 
   // Main Metric Counters
-  setElemText('statTotalTickets', `${totalTicketsAll} Tickets`);
+  setElemHtml('statTotalTickets', `<span style="display:inline-flex; align-items:center; gap:6px;">${renderChapterTicketIcon(24)} <span>${totalTicketsAll.toLocaleString()} Tickets</span></span>`);
   setElemText('statTotalCost', `${formatSFL(totalSflCostAll)} SFL`);
-  setElemText('statTotalRatio', `${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.000"} SFL / Ticket`);
+  setElemHtml('statTotalRatio', `<span style="display:inline-flex; align-items:center; gap:3px;">${totalTicketsAll > 0 ? formatSFL(totalSflCostAll / totalTicketsAll) : "0.000"} SFL / ${renderChapterTicketIcon(13)} Tix</span>`);
 
-  setElemText('statWeekTickets', `${weekTicketsAll} Tickets`);
+  setElemHtml('statWeekTickets', `<span style="display:inline-flex; align-items:center; gap:6px;">${renderChapterTicketIcon(24)} <span>${weekTicketsAll.toLocaleString()} Tickets</span></span>`);
   setElemText('statWeekCost', `${formatSFL(weekCostAll)} SFL`);
-  setElemText('statWeekRatio', `${weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.000"} SFL / Ticket`);
+  setElemHtml('statWeekRatio', `<span style="display:inline-flex; align-items:center; gap:3px;">${weekTicketsAll > 0 ? formatSFL(weekCostAll / weekTicketsAll) : "0.000"} SFL / ${renderChapterTicketIcon(13)} Tix</span>`);
 
-  setElemText('statEarnedTickets', `${todayTicketsAll} Tickets`);
+  setElemHtml('statEarnedTickets', `<span style="display:inline-flex; align-items:center; gap:6px;">${renderChapterTicketIcon(24)} <span>${todayTicketsAll.toLocaleString()} Tickets</span></span>`);
   setElemText('statEarnedCost', `${formatSFL(todayCostAll)} SFL`);
   const todayRatioVal = todayTicketsAll > 0 ? (todayCostAll / todayTicketsAll) : 0;
-  setElemText('statEarnedRatio', `${formatSFL(todayRatioVal)} SFL / Ticket`);
+  setElemHtml('statEarnedRatio', `<span style="display:inline-flex; align-items:center; gap:3px;">${formatSFL(todayRatioVal)} SFL / ${renderChapterTicketIcon(13)} Tix</span>`);
 
   // Tooltips Breakdown
-  setElemText('tipTotalDeliv', `📦 Deliveries: ${totalDelivTix} Tix`);
-  setElemText('tipTotalBounty', `📜 Bounties: ${totalBountyTix} Tix`);
-  setElemText('tipTotalAnimalBounty', `🐄 Animal Bounties: ${totalAnimalBountyTix} Tix`);
-  setElemText('tipTotalChore', `🧹 Chores: ${totalChoreTix} Tix`);
-  setElemText('tipTotalTrack', `🛤️ Track: ${trackTickets} Tix (${formatSFL(trackCost)} SFL)`);
-  setElemText('tipTotalLogin', `🎁 Daily Login: ${totalLoginTickets} Tix`);
+  setElemHtml('tipTotalDeliv', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>📦 Deliveries:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${totalDelivTix} Tix</strong></span></div>`);
+  setElemHtml('tipTotalBounty', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>📜 Bounties:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${totalBountyTix} Tix</strong></span></div>`);
+  setElemHtml('tipTotalAnimalBounty', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>🐄 Animal Bounties:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${totalAnimalBountyTix} Tix</strong></span></div>`);
+  setElemHtml('tipTotalChore', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>🧹 Chores:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${totalChoreTix} Tix</strong></span></div>`);
+  setElemHtml('tipTotalTrack', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>🛤️ Track:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${trackTickets} Tix</strong> (${formatSFL(trackCost)} SFL)</span></div>`);
+  setElemHtml('tipTotalLogin', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>🎁 Daily Login:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${totalLoginTickets} Tix</strong></span></div>`);
   setElemText('tipTotalBoosts', `⚡ Boosts: ${formatSFL(activeBoostsCost)} SFL`);
 
   // Update Boost checkbox hover tooltips with cost information
@@ -415,12 +417,12 @@ export function recalculateAll() {
   const b3El = document.getElementById('boost3');
   if (b3El?.parentElement) b3El.parentElement.title = `Boost #3: ${boostCfg.boost3.amount.toLocaleString()} ${boostCfg.boost3.currency.toUpperCase()} (${formatSFL(b3Sfl)} SFL)`;
 
-  setElemText('tipWeekDeliv', `📦 Deliveries: ${weekDelivTix} Tix`);
-  setElemText('tipWeekBounty', `📜 Bounties: ${weekBountyTix} Tix`);
-  setElemText('tipWeekAnimalBounty', `🐄 Animal Bounties: ${weekAnimalBountyTix} Tix`);
-  setElemText('tipWeekChore', `🧹 Chores: ${weekChoreTix} Tix`);
+  setElemHtml('tipWeekDeliv', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>📦 Deliveries:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${weekDelivTix} Tix</strong></span></div>`);
+  setElemHtml('tipWeekBounty', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>📜 Bounties:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${weekBountyTix} Tix</strong></span></div>`);
+  setElemHtml('tipWeekAnimalBounty', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>🐄 Animal Bounties:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${weekAnimalBountyTix} Tix</strong></span></div>`);
+  setElemHtml('tipWeekChore', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>🧹 Chores:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${weekChoreTix} Tix</strong></span></div>`);
 
-  setElemText('tipTodayDeliv', `📦 Deliveries: ${todayDelivTix} Tix`);
+  setElemHtml('tipTodayDeliv', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>📦 Deliveries:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${todayDelivTix} Tix</strong></span></div>`);
 
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
   const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
@@ -428,8 +430,8 @@ export function recalculateAll() {
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
   const targetPerWeek = targetWeeks > 0 ? Math.ceil(targetGoal / targetWeeks) : 0;
 
-  setElemText('statGoalRemaining', `${remainingNeeded} Tickets`);
-  setElemText('statGoalPerWeek', `${targetPerWeek} Tickets / Wk`);
+  setElemHtml('statGoalRemaining', `<span style="display:inline-flex; align-items:center; gap:4px;">${renderChapterTicketIcon(14)} <span>${remainingNeeded.toLocaleString()} Tickets</span></span>`);
+  setElemHtml('statGoalPerWeek', `<span style="display:inline-flex; align-items:center; gap:4px;">${renderChapterTicketIcon(14)} <span>${targetPerWeek.toLocaleString()} Tix/Wk</span></span>`);
 
   // Target Ratio Matching Calculations
   let activeDelivMatching = 0;
@@ -744,13 +746,13 @@ export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, anima
       📅 <strong>${(label || 'WEEK').toUpperCase()} BREAKDOWN:</strong>
     </div>
     <div style="display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:bold;">
-      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📦 Deliveries:</span><strong style="color:#FFFFFF; font-size:12.5px;">${delivTix || 0} Tix</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>📜 Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${bountyTix || 0} Tix${bonusBadgeHtml}</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>🐄 Animal Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px;">${animalBountyTix || 0} Tix</strong></div>
-      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC;"><span>🧹 Chores:</span><strong style="color:#FFFFFF; font-size:12.5px;">${choreTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC; align-items:center;"><span>📦 Deliveries:</span><strong style="color:#FFFFFF; font-size:12.5px; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} ${delivTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC; align-items:center;"><span>📜 Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} ${bountyTix || 0} Tix${bonusBadgeHtml}</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC; align-items:center;"><span>🐄 Animal Bounties:</span><strong style="color:#FFFFFF; font-size:12.5px; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} ${animalBountyTix || 0} Tix</strong></div>
+      <div style="display:flex; justify-content:space-between; gap:14px; color:#FFF8DC; align-items:center;"><span>🧹 Chores:</span><strong style="color:#FFFFFF; font-size:12.5px; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} ${choreTix || 0} Tix</strong></div>
     </div>
     <div style="border-top:1px dashed #d2b48c; padding-top:5px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:900;">
-      <span style="color:#81C784;">🎟️ Total: +${totalTix || 0} Tix</span>
+      <span style="color:#81C784; display:inline-flex; align-items:center; gap:4px;">${renderChapterTicketIcon(14)} Total: +${totalTix || 0} Tix</span>
       <span style="color:#FFD54F;">💰 ${sflCostStr} SFL</span>
     </div>
   `;

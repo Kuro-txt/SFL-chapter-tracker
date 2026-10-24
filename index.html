@@ -2958,7 +2958,7 @@
 
         <div class="input-group panel-group-track" style="padding:6px 10px; border:2px solid #2E7D32; border-radius:10px; display:flex; align-items:center; gap:6px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
-          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">Tix:</label>
+          <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px; display:inline-flex; align-items:center; gap:3px;"><img src="public/icons/shiny_feather.webp" alt="Tix" width="14" height="14" class="sfl-item-icon" style="width:14px; height:14px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" /> Tix:</label>
           <input type="number" id="trackTicketsInput" value="0" readonly style="width: 58px; padding: 3px 6px; font-size: 12px; font-weight: bold; border-radius:6px; background: rgba(46, 125, 50, 0.1); border: 1.5px solid #2E7D32; color: #1B5E20; text-align: center; cursor: default;" title="Automatically calculated from Ascension Age chapter points and VIP status" />
           <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
           <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 3px 6px; font-size: 12px; border-radius:6px;" title="Total Track SFL Cost" />
@@ -2999,7 +2999,10 @@
           <div id="tipTotalBoosts">⚡ Boosts: 0.000 SFL</div>
         </div>
         <div class="stat-title">🏆 TOTAL TICKETS</div>
-        <div id="statTotalTickets" class="stat-val">0</div>
+        <div id="statTotalTickets" class="stat-val" style="display:flex; align-items:center; gap:6px;">
+          <img src="public/icons/shiny_feather.webp" alt="Ticket" width="24" height="24" class="sfl-item-icon" style="width:24px; height:24px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
+          <span>0 Tickets</span>
+        </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Vault Cost:</span><strong id="statTotalCost" style="color:#8B4513;">0.000 SFL</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Avg / Tix:</span><strong id="statTotalRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
@@ -3016,7 +3019,10 @@
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK</div>
-        <div id="statWeekTickets" class="stat-val" style="color: #D2691E;">0 Tickets</div>
+        <div id="statWeekTickets" class="stat-val" style="color: #D2691E; display:flex; align-items:center; gap:6px;">
+          <img src="public/icons/shiny_feather.webp" alt="Ticket" width="24" height="24" class="sfl-item-icon" style="width:24px; height:24px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
+          <span>0 Tickets</span>
+        </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Week Cost:</span><strong id="statWeekCost" style="color:#8B4513;">0.000 SFL</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Efficiency:</span><strong id="statWeekRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
@@ -3030,7 +3036,10 @@
           <div id="tipTodayDeliv">📦 Deliveries: 0 Tix</div>
         </div>
         <div class="stat-title" style="color: #2E7D32;">✨ DONE TODAY</div>
-        <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32;">0 Tickets</div>
+        <div id="statEarnedTickets" class="stat-val" style="color: #2E7D32; display:flex; align-items:center; gap:6px;">
+          <img src="public/icons/shiny_feather.webp" alt="Ticket" width="24" height="24" class="sfl-item-icon" style="width:24px; height:24px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
+          <span>0 Tickets</span>
+        </div>
         <div class="stat-footer">
           <div style="display:flex; justify-content:space-between;"><span>Today Cost:</span><strong id="statEarnedCost" style="color:#2E7D32;">0.000 SFL</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Ratio:</span><strong id="statEarnedRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
@@ -3054,8 +3063,20 @@
           </div>
         </div>
         <div class="stat-footer">
-          <div style="display:flex; justify-content:space-between;"><span>Remaining:</span><strong id="statGoalRemaining" style="color:#E65100;">0 Tickets</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span>Target / Wk:</span><strong id="statGoalPerWeek" style="color:#8E44AD;">0 Tix/Wk</strong></div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Remaining:</span>
+            <strong id="statGoalRemaining" style="color:#E65100; display:inline-flex; align-items:center; gap:4px;">
+              <img src="public/icons/shiny_feather.webp" alt="Ticket" width="14" height="14" class="sfl-item-icon" style="width:14px; height:14px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
+              <span>0 Tickets</span>
+            </strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Target / Wk:</span>
+            <strong id="statGoalPerWeek" style="color:#8E44AD; display:inline-flex; align-items:center; gap:4px;">
+              <img src="public/icons/shiny_feather.webp" alt="Ticket" width="14" height="14" class="sfl-item-icon" style="width:14px; height:14px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
+              <span>0 Tix/Wk</span>
+            </strong>
+          </div>
           <div id="statTargetRatioMatchesRow" style="display:none; justify-content:space-between;"><span>Under Ratio:</span><strong id="statTargetRatioMatches" style="color:#0284C7;">0 Tasks</strong></div>
         </div>
       </div>
@@ -3331,7 +3352,7 @@
           </div>
           
           <div id="chapterActiveStatsRow" class="chapter-active-stats">
-            <span>🏆 Total: <strong id="chapterActiveTix" style="color:#2E7D32;">0 Tix</strong></span>
+            <span>🏆 Total: <strong id="chapterActiveTix" style="color:#2E7D32; display:inline-flex; align-items:center; gap:3px;"><img src="public/icons/shiny_feather.webp" alt="Tix" width="14" height="14" class="sfl-item-icon" style="width:14px; height:14px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" /> <span>0 Tix</span></strong></span>
             <span>💰 Vault Cost: <strong id="chapterActiveCost" style="color:#B71C1C;">0.000 SFL</strong></span>
             <span>📊 Efficiency: <strong id="chapterActiveRatio" style="color:#1B5E20;">0.000 SFL/Tix</strong></span>
             <span style="margin-left: auto; font-size: 10.5px; opacity: 0.9;">💡 Auto-saved daily on 01:30 & 23:30 UTC cron</span>

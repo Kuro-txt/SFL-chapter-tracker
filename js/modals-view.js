@@ -201,7 +201,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
 
   totalsEl.innerHTML = `
     <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:6px;">
-      <span class="sum-stat" style="color:#2E7D32; font-size:13px;">🎟️ ${totalWeekTickets} Tickets</span>
+      <span class="sum-stat" style="color:#2E7D32; font-size:13px; display:inline-flex; align-items:center; gap:4px;">${renderChapterTicketIcon(16)} <span>${totalWeekTickets} Tickets</span></span>
       <span class="sum-stat" style="color:#D2691E; font-size:13px;">💰 ${formatSFL(totalWeekCost)} SFL</span>
       <span class="avg-pill" style="font-size:12px;">📊 Avg: ${overallRatio} SFL / Tix</span>
     </div>
@@ -211,22 +211,22 @@ export function openWeekBreakdownModal(mondayKey, label) {
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-bottom:12px;">
       <div style="background:#FFF8DC; border:2px solid #8B5A2B; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:3px;">
         <span style="font-size:11px; font-weight:900; color:#8B4513;">📦 DELIVERIES</span>
-        <span style="font-size:14px; font-weight:900; color:#2E7D32;">+${delivTickets} Tix</span>
+        <span style="font-size:14px; font-weight:900; color:#2E7D32; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} +${delivTickets} Tix</span>
         <span style="font-size:10px; font-weight:bold; color:#795548;">${formatSFL(delivCost)} SFL (${weekDeliveries.filter(d => d.isDone).length}/${weekDeliveries.length})</span>
       </div>
       <div style="background:#FFF8DC; border:2px solid #8B5A2B; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:3px;">
         <span style="font-size:11px; font-weight:900; color:#8B4513;">📜 BOUNTIES</span>
-        <span style="font-size:14px; font-weight:900; color:#2E7D32;">+${bountyTickets} Tix</span>
+        <span style="font-size:14px; font-weight:900; color:#2E7D32; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} +${bountyTickets} Tix</span>
         <span style="font-size:10px; font-weight:bold; color:#795548;">${formatSFL(bountyCost)} SFL (${weekBounties.filter(b => b.isDone).length}/${weekBounties.length})${hasBountyBonus ? ' <span style="color:#2E7D32; font-weight:900;">(+100 Bonus)</span>' : ''}</span>
       </div>
       <div style="background:#FFF8DC; border:2px solid #8B5A2B; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:3px;">
         <span style="font-size:11px; font-weight:900; color:#8B4513;">🐄 ANIMAL BOUNTIES</span>
-        <span style="font-size:14px; font-weight:900; color:#2E7D32;">+${animalBountyTickets} Tix</span>
+        <span style="font-size:14px; font-weight:900; color:#2E7D32; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} +${animalBountyTickets} Tix</span>
         <span style="font-size:10px; font-weight:bold; color:#795548;">${formatSFL(animalBountyCost)} SFL (${weekAnimalBounties.filter(b => b.isDone).length}/${weekAnimalBounties.length})</span>
       </div>
       <div style="background:#FFF8DC; border:2px solid #8B5A2B; border-radius:8px; padding:8px 10px; display:flex; flex-direction:column; gap:3px;">
         <span style="font-size:11px; font-weight:900; color:#8B4513;">🧹 CHORES</span>
-        <span style="font-size:14px; font-weight:900; color:#2E7D32;">+${choreTickets} Tix</span>
+        <span style="font-size:14px; font-weight:900; color:#2E7D32; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} +${choreTickets} Tix</span>
         <span style="font-size:10px; font-weight:bold; color:#795548;">${formatSFL(choreCost)} SFL (${weekChores.filter(c => c.isDone).length}/${weekChores.length})</span>
       </div>
     </div>
@@ -254,7 +254,7 @@ export function openWeekBreakdownModal(mondayKey, label) {
             </div>
             ${it.details ? `<div style="font-size:9.5px; color:#5C4033; font-weight:bold; margin-top:2px;">${it.details}</div>` : ''}
             <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
-              <span style="color:#2E7D32; font-weight:900;">🎟️ +${it.tickets} Tix</span>
+              <span style="color:#2E7D32; font-weight:900; display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} +${it.tickets} Tix</span>
               <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(it.cost)} SFL</span>
               <span class="ratio-pill" style="font-size:9.5px;">📊 ${ratio} SFL/Tix</span>
             </div>
@@ -562,7 +562,7 @@ export function openCategorySummaryModal(cat) {
   const targetBadgeSummary = targetRatio > 0 
     ? ` | <span class="tag-pill tag-target-match" style="font-size:11px; padding:3px 8px; margin-left:0;">🎯 ${targetMatchingCount} Tasks ≤ ${targetRatio.toFixed(2)}</span>` 
     : '';
-  totalsEl.innerHTML = `<span class="sum-stat">${catTickets} Tickets</span> | <span class="sum-stat">${formatSFL(catCost)} SFL</span> | <span class="avg-pill">📊 Avg: ${overallRatio} SFL / Tix</span>${targetBadgeSummary}`;
+  totalsEl.innerHTML = `<span class="sum-stat" style="display:inline-flex; align-items:center; gap:4px;">${renderChapterTicketIcon(16)} <span>${catTickets} Tickets</span></span> | <span class="sum-stat">${formatSFL(catCost)} SFL</span> | <span class="avg-pill">📊 Avg: ${overallRatio} SFL / Tix</span>${targetBadgeSummary}`;
   modal.classList.add('show');
 }
 
@@ -681,7 +681,10 @@ export function openChapterLogsModal() {
   const activeCostEl = document.getElementById('chapterActiveCost');
   const activeRatioEl = document.getElementById('chapterActiveRatio');
 
-  if (activeTixEl && tixEl) activeTixEl.textContent = `${tixEl.textContent || '0'} Tix`;
+  if (activeTixEl && tixEl) {
+    const rawNum = (tixEl.textContent || '0').replace(/[^0-9]/g, '');
+    activeTixEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} <span>${(parseInt(rawNum, 10) || 0).toLocaleString()} Tix</span></span>`;
+  }
   if (activeCostEl && costEl) activeCostEl.textContent = costEl.textContent || '0.000 SFL';
   if (activeRatioEl && ratioEl) activeRatioEl.textContent = ratioEl.textContent || '0.000 SFL/Tix';
 
@@ -949,7 +952,7 @@ export function renderChapterLogsList() {
             const extraWeekVip = vipMultiplier * (weekVipUnits || 0);
             const extraWeekBoost = boostLevel * (weekBoostUnits || 0);
             const displayWeekTix = weekBaseTix + extraWeekVip + extraWeekBoost;
-            return `<span class="chapter-week-pill">W${w.week}: ${displayWeekTix} Tix (${formatSFL(w.cost)} SFL)</span>`;
+            return `<span class="chapter-week-pill" style="display:inline-flex; align-items:center; gap:3px;">W${w.week}: ${renderChapterTicketIcon(12)} ${displayWeekTix} Tix (${formatSFL(w.cost)} SFL)</span>`;
           }).join('')}
         </div>
       </div>
@@ -1020,7 +1023,7 @@ export function renderChapterLogsList() {
         <div class="chapter-metrics-row">
           <div class="chapter-metric-box">
             <span class="chapter-metric-label">TOTAL TICKETS</span>
-            <strong class="chapter-metric-val val-tix">${displayTotalTickets} Tix</strong>
+            <strong class="chapter-metric-val val-tix" style="display:inline-flex; align-items:center; gap:4px;">${renderChapterTicketIcon(16)} <span>${displayTotalTickets} Tix</span></strong>
             ${(extraTotalBoost + extraTotalVip) > 0 ? `<span class="chapter-metric-subtext">+${extraTotalBoost + extraTotalVip} bonus (${extraTotalBoost > 0 ? `${boostLevel} Boost${boostLevel > 1 ? 's' : ''}` : ''}${extraTotalBoost > 0 && extraTotalVip > 0 ? ' + ' : ''}${extraTotalVip > 0 ? 'VIP' : ''})</span>` : ''}
           </div>
           <div class="chapter-metric-box">
@@ -1034,12 +1037,12 @@ export function renderChapterLogsList() {
         </div>
 
         <div class="chapter-breakdown-list">
-          <div class="chapter-breakdown-item">📦 <strong>Deliveries:</strong> ${displayDelivTix} Tix ${(extraDelivVip + extraDelivBoost) > 0 ? `<span class="chapter-boost-pill">+${extraDelivVip + extraDelivBoost}</span>` : ''} | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
-          <div class="chapter-breakdown-item">📜 <strong>Bounties:</strong> ${displayBountyTix} Tix ${extraBountyBoost > 0 ? `<span class="chapter-boost-pill">+${extraBountyBoost}</span>` : ''} | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
-          <div class="chapter-breakdown-item">🐄 <strong>Animal Bounties:</strong> ${displayAnimalTix} Tix ${extraAnimalBoost > 0 ? `<span class="chapter-boost-pill">+${extraAnimalBoost}</span>` : ''} | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
-          <div class="chapter-breakdown-item">🧹 <strong>Chores:</strong> ${displayChoreTix} Tix ${(extraChoreVip + extraChoreBoost) > 0 ? `<span class="chapter-boost-pill">+${extraChoreVip + extraChoreBoost}</span>` : ''} | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
-          <div class="chapter-breakdown-item">🎁 <strong>Daily Login:</strong> ${login.tickets || 0} Tix (${login.count || 0} collected)</div>
-          <div class="chapter-breakdown-item">🛤️ <strong>Manual Track:</strong> ${tracked.tickets || 0} Tix | ${formatSFL(tracked.cost)} SFL</div>
+          <div class="chapter-breakdown-item">📦 <strong>Deliveries:</strong> <span style="display:inline-flex; align-items:center; gap:2px;">${renderChapterTicketIcon(12)} ${displayDelivTix} Tix</span> ${(extraDelivVip + extraDelivBoost) > 0 ? `<span class="chapter-boost-pill">+${extraDelivVip + extraDelivBoost}</span>` : ''} | ${formatSFL(deliv.cost)} SFL (${deliv.count || 0} done)</div>
+          <div class="chapter-breakdown-item">📜 <strong>Bounties:</strong> <span style="display:inline-flex; align-items:center; gap:2px;">${renderChapterTicketIcon(12)} ${displayBountyTix} Tix</span> ${extraBountyBoost > 0 ? `<span class="chapter-boost-pill">+${extraBountyBoost}</span>` : ''} | ${formatSFL(bounty.cost)} SFL (${bounty.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🐄 <strong>Animal Bounties:</strong> <span style="display:inline-flex; align-items:center; gap:2px;">${renderChapterTicketIcon(12)} ${displayAnimalTix} Tix</span> ${extraAnimalBoost > 0 ? `<span class="chapter-boost-pill">+${extraAnimalBoost}</span>` : ''} | ${formatSFL(animal.cost)} SFL (${animal.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🧹 <strong>Chores:</strong> <span style="display:inline-flex; align-items:center; gap:2px;">${renderChapterTicketIcon(12)} ${displayChoreTix} Tix</span> ${(extraChoreVip + extraChoreBoost) > 0 ? `<span class="chapter-boost-pill">+${extraChoreVip + extraChoreBoost}</span>` : ''} | ${formatSFL(chore.cost)} SFL (${chore.count || 0} done)</div>
+          <div class="chapter-breakdown-item">🎁 <strong>Daily Login:</strong> <span style="display:inline-flex; align-items:center; gap:2px;">${renderChapterTicketIcon(12)} ${login.tickets || 0} Tix</span> (${login.count || 0} collected)</div>
+          <div class="chapter-breakdown-item">🛤️ <strong>Manual Track:</strong> <span style="display:inline-flex; align-items:center; gap:2px;">${renderChapterTicketIcon(12)} ${tracked.tickets || 0} Tix</span> | ${formatSFL(tracked.cost)} SFL</div>
         </div>
 
         ${weeksHtml}
