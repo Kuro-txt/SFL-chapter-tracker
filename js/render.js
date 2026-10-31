@@ -630,9 +630,10 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
   const nowMs = Date.now();
+  const isPreSeason = nowMs < baseEpoch.getTime();
   const diffDays = Math.max(0, (nowMs - baseEpoch.getTime()) / (1000 * 60 * 60 * 24));
-  const activeWeekNum = currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.max(1, Math.floor(diffDays / 7) + 1));
-  const weekLabelText = `WEEK ${activeWeekNum} OF ${TOTAL_CHAPTER_WEEKS} WEEKS (UTC)`;
+  const activeWeekNum = isPreSeason ? 0 : (currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.max(1, Math.floor(diffDays / 7) + 1)));
+  const weekLabelText = isPreSeason ? 'WEEK 0 (PRE-SEASON)' : `WEEK ${activeWeekNum} OF ${TOTAL_CHAPTER_WEEKS} WEEKS (UTC)`;
   if (badgeEl) {
     badgeEl.textContent = weekLabelText;
   }
@@ -642,18 +643,19 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
 
   // Calculate Current Pace (Weekly Average Pace based on time elapsed so far)
   let currentPace = 0;
-  if (currentIndex !== -1) {
-    const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
-    const nowMs = Date.now();
-    const daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
-    const elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
-    const totalEarnedSoFar = displayItems.slice(0, currentIndex + 1).reduce((sum, d) => sum + (d.tickets || 0), 0);
-    if (elapsedWeeks > 0 && totalEarnedSoFar > 0) {
-      currentPace = Math.round(totalEarnedSoFar / elapsedWeeks);
+  if (!isPreSeason) {
+    if (currentIndex !== -1) {
+      const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
+      const daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
+      const elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
+      const totalEarnedSoFar = displayItems.slice(0, currentIndex + 1).reduce((sum, d) => sum + (d.tickets || 0), 0);
+      if (elapsedWeeks > 0 && totalEarnedSoFar > 0) {
+        currentPace = Math.round(totalEarnedSoFar / elapsedWeeks);
+      }
+    } else {
+      const activeWeeks = displayItems.filter(d => d.tickets > 0);
+      currentPace = activeWeeks.length > 0 ? Math.round(activeWeeks.reduce((sum, d) => sum + d.tickets, 0) / activeWeeks.length) : 0;
     }
-  } else {
-    const activeWeeks = displayItems.filter(d => d.tickets > 0);
-    currentPace = activeWeeks.length > 0 ? Math.round(activeWeeks.reduce((sum, d) => sum + d.tickets, 0) / activeWeeks.length) : 0;
   }
 
   const barWidth = 52;

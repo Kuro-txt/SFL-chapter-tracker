@@ -31,6 +31,7 @@ export const CORE_CHAPTER_NPCS = [
 /** Default Planner Routine Template */
 export const DEFAULT_PLANNER_TEMPLATE = {
   doubleDeliveryDays: 1, // 1 day per week gives 2x tickets
+  mondayStackedDeliveries: true, // Week 1 Sunday pre-season rollover (+1 delivery per enabled NPC)
   npcs: {
     pumpkin_pete: { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
     bert:         { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
@@ -108,9 +109,13 @@ export function getPlannerTemplate() {
       }
       chores.trackTix = initialTrack;
     }
+    const mondayStackedDeliveries = parsed.mondayStackedDeliveries !== undefined
+      ? Boolean(parsed.mondayStackedDeliveries)
+      : DEFAULT_PLANNER_TEMPLATE.mondayStackedDeliveries;
     return {
       ...DEFAULT_PLANNER_TEMPLATE,
       ...parsed,
+      mondayStackedDeliveries,
       npcs: { ...DEFAULT_PLANNER_TEMPLATE.npcs, ...(parsed.npcs || {}) },
       bounties,
       chores,
@@ -207,6 +212,24 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     };
   });
 
+  // Week 1 Monday Stacked Deliveries from Sunday Rollover (+1 delivery per enabled NPC)
+  const isWeek1 = (weekNum === 1 || weekNum === '1');
+  const hasStackedRollover = config.mondayStackedDeliveries !== false;
+  let stackedTix = 0;
+
+  CORE_CHAPTER_NPCS.forEach(npc => {
+    const npcConf = config.npcs[npc.id] || { enabled: false };
+    if (npcConf.enabled) {
+      const yieldPerOrder = npc.baseTickets + perOrderBonus;
+      stackedTix += yieldPerOrder; // 1x yield, excluded from 2x double delivery bonus
+    }
+  });
+
+  // Week 1 specifically receives the stacked delivery windfall added to delivTix
+  if (isWeek1 && hasStackedRollover) {
+    delivTix += stackedTix;
+  }
+
   // Bounties calculations (User direct input: Regular Bounties + Board Bonus + Animal Bounties)
   const bConf = config.bounties || DEFAULT_PLANNER_TEMPLATE.bounties;
   const regularTixVal = (bConf.regularTix !== undefined && bConf.regularTix !== null && bConf.regularTix !== '')
@@ -277,6 +300,8 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     bountiesTix,
     choresTix,
     loginsTix,
+    stackedTix,
+    mondayStackedDeliveries: hasStackedRollover,
     totalWeeklyTix,
     npcBreakdown,
     config
@@ -306,12 +331,17 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
   const nowMs = Date.now();
+  const isPreSeason = nowMs < BASE_EPOCH.getTime();
 
   let elapsedWeeks = 0;
   let taskEarned = 0;
   let daysPassedInWeek = 0;
 
-  if (currentIndex !== -1) {
+  if (isPreSeason) {
+    elapsedWeeks = 0;
+    daysPassedInWeek = 0;
+    taskEarned = 0;
+  } else if (currentIndex !== -1) {
     const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
     daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
     elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
@@ -325,7 +355,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   // Total tickets earned so far strictly includes task tickets + actual login tickets + actual track tickets
   const totalEarned = taskEarned + actualLoginTix + actualTrackTix;
 
-  const activeWeekNum = currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.floor(elapsedWeeks) + 1);
+  const activeWeekNum = isPreSeason ? 0 : (currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.floor(elapsedWeeks) + 1));
   const weeksRemaining12 = Math.max(0, TOTAL_CHAPTER_WEEKS - elapsedWeeks);
   const weeksRemainingAuction = Math.max(0, AUCTION_WEEK - elapsedWeeks);
   const daysRemaining12 = weeksRemaining12 * 7;
@@ -481,7 +511,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
           type: 'actual',
           taskTix: actualTasks,
           loginTix: weekLogins,
-          trackBonus: 0
+          trackBonus: 0,
+          stackedBonus: 0
         };
       } else if (isCurrent) {
         const weekLogins = loginDist[i] || 0;
@@ -496,7 +527,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
           type: 'current',
           taskTix: actualTasks,
           loginTix: weekLogins,
-          trackBonus
+          trackBonus,
+          stackedBonus: 0
         };
       } else {
         const weekPlan = isPlannedMode
@@ -508,7 +540,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
         const loginTix = isPlannedMode
           ? weekPlan.loginsTix
           : Math.min(7, Math.round(templatePlan.loginsTix || 7));
-        const trackBonus = (weekNum === 1 && currentIndex === -1) ? effectiveTotalTrack : 0;
+        const trackBonus = (weekNum === 1 && (currentIndex === -1 || isPreSeason)) ? effectiveTotalTrack : 0;
+        const stackedBonus = (weekNum === 1 && isPlannedMode) ? (weekPlan?.stackedTix || 0) : 0;
         const weekVal = weekTix + trackBonus;
         cumulative += weekVal;
         return {
@@ -518,7 +551,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
           type: 'projected',
           taskTix: weekTix - loginTix,
           loginTix,
-          trackBonus
+          trackBonus,
+          stackedBonus
         };
       }
     });
@@ -672,6 +706,22 @@ export function togglePlannerDoubleDelivery(weekVal) {
     const ov = getPlannerOverrides();
     if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     ov[w].doubleDeliveryDays = ov[w].doubleDeliveryDays > 0 ? 0 : 1;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function togglePlannerStackedDeliveries(checked, weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    t.mondayStackedDeliveries = Boolean(checked);
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    ov[w].mondayStackedDeliveries = Boolean(checked);
     savePlannerOverrides(ov);
   }
   reRenderProjections();
@@ -943,7 +993,10 @@ export function renderProjectionsView(proj) {
     const trackBadgeHtml = row.trackBonus > 0
       ? `<span class="roadmap-track-badge" title="Includes +${row.trackBonus} One-Time Chapter Track Tickets">+${row.trackBonus}🎟️</span>`
       : '';
-    const rowTitle = `Week ${row.weekNum}: Tasks: ${row.taskTix} | Logins: ${row.loginTix}${row.trackBonus > 0 ? ` | Track: ${row.trackBonus}` : ''}`;
+    const stackedBadgeHtml = row.stackedBonus > 0
+      ? `<span class="roadmap-stacked-badge" title="Includes +${row.stackedBonus} tickets from Monday Stacked Deliveries (Sunday Rollover)">+${row.stackedBonus}📦</span>`
+      : '';
+    const rowTitle = `Week ${row.weekNum}: Tasks: ${row.taskTix} | Logins: ${row.loginTix}${row.trackBonus > 0 ? ` | Track: ${row.trackBonus}` : ''}${row.stackedBonus > 0 ? ` | Stacked: ${row.stackedBonus}` : ''}`;
     return `<tr class="${isAuction || isFinale ? 'roadmap-highlight-row' : ''}${isDark ? ' dark' : ''}">
       <td class="roadmap-cell roadmap-week-cell">W${row.weekNum}${milestoneHtml}</td>
       <td class="roadmap-cell"><span class="roadmap-type-badge ${typeClass}">${typeLabel}</span></td>
@@ -951,6 +1004,7 @@ export function renderProjectionsView(proj) {
         ${ticketIconHtml} ${row.value.toLocaleString()}
         ${loginBadgeHtml}
         ${trackBadgeHtml}
+        ${stackedBadgeHtml}
       </td>
       <td class="roadmap-cell roadmap-cumul-cell">${row.cumulative.toLocaleString()} total</td>
     </tr>`;
@@ -1039,7 +1093,28 @@ export function renderProjectionsView(proj) {
     `;
   }).join('');
 
+  const isStackedEligibleWeek = currentWeekVal === 'template' || currentWeekVal === '1' || currentWeekVal === 1;
+  const mondayStackedActive = activePlan.config.mondayStackedDeliveries !== false;
+  const stackedTixPreview = activePlan.stackedTix || 0;
+
+  const stackedBarHtml = isStackedEligibleWeek ? `
+    <div class="planner-stacked-bar${isDark ? ' dark' : ''}">
+      <div class="planner-stacked-left">
+        <label class="planner-stacked-label">
+          <input
+            type="checkbox"
+            ${mondayStackedActive ? 'checked' : ''}
+            onchange="togglePlannerStackedDeliveries(this.checked, '${currentWeekVal}')"
+          />
+          <span class="planner-stacked-text">📦 Week 1 Monday Stacked Deliveries (+${stackedTixPreview} Tix Sunday Rollover)</span>
+        </label>
+        <span class="planner-stacked-hint">Pre-season deliveries appearing on Sunday roll over to Monday, adding <strong>+1 extra delivery per active NPC</strong> (+${stackedTixPreview} Tix in Week 1, excluded from 2x double delivery).</span>
+      </div>
+    </div>
+  ` : '';
+
   const deliveriesSectionHtml = `
+    ${stackedBarHtml}
     <div class="planner-double-bar${isDark ? ' dark' : ''}">
       <div class="planner-double-left">
         <label class="planner-double-label">

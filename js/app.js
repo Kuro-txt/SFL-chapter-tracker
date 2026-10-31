@@ -72,7 +72,8 @@ import {
   togglePlannerChoreCustom,
   togglePlannerLogin,
   togglePlannerTrack,
-  setPlannerTrackTix
+  setPlannerTrackTix,
+  togglePlannerStackedDeliveries
 } from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -195,6 +196,7 @@ window.togglePlannerChoreCustom = togglePlannerChoreCustom;
 window.togglePlannerLogin = togglePlannerLogin;
 window.togglePlannerTrack = togglePlannerTrack;
 window.setPlannerTrackTix = setPlannerTrackTix;
+window.togglePlannerStackedDeliveries = togglePlannerStackedDeliveries;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;
 window.hideChartTooltip = hideChartTooltip;
@@ -366,14 +368,19 @@ export function updateChapterCountdown() {
 export function updateCurrentWeekBadge() {
   const baseEpoch = new Date('2026-08-10T00:00:00.000Z').getTime();
   const now = Date.now();
-  const diffDays = Math.max(0, (now - baseEpoch) / (1000 * 60 * 60 * 24));
-  const weekNum = Math.min(12, Math.floor(diffDays / 7) + 1);
-  const text = `WEEK ${weekNum} OF 12 WEEKS (UTC)`;
+  let text = '';
+  if (now < baseEpoch) {
+    text = 'WEEK 0 (PRE-SEASON)';
+  } else {
+    const diffDays = Math.max(0, (now - baseEpoch) / (1000 * 60 * 60 * 24));
+    const weekNum = Math.min(12, Math.floor(diffDays / 7) + 1);
+    text = `WEEK ${weekNum} OF 12 WEEKS (UTC)`;
+  }
 
   const headerBadgeEl = document.getElementById('chapterWeekText');
   if (headerBadgeEl) headerBadgeEl.textContent = text;
   const chartBadgeEl = document.getElementById('chartSummaryBadge');
-  if (chartBadgeEl && (chartBadgeEl.textContent.includes('0 WEEKS') || !chartBadgeEl.textContent)) {
+  if (chartBadgeEl && (chartBadgeEl.textContent.includes('0 WEEKS') || !chartBadgeEl.textContent || chartBadgeEl.textContent.includes('PRE-SEASON') || chartBadgeEl.textContent.includes('WEEK 1'))) {
     chartBadgeEl.textContent = text;
   }
 }

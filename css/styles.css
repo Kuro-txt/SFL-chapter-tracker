@@ -4851,6 +4851,51 @@ body.dark-mode .proj-no-data-note {
 }
 
 /* Double Delivery Bar */
+.planner-stacked-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #FFF7ED;
+  border: 1.5px solid #FDBA74;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.planner-stacked-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planner-stacked-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.planner-stacked-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #EA580C;
+}
+
+.planner-stacked-text {
+  font-size: 12px;
+  font-weight: 900;
+  color: #9A3412;
+}
+
+.planner-stacked-hint {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #C2410C;
+}
+
 .planner-double-bar {
   display: flex;
   align-items: center;
@@ -5127,6 +5172,19 @@ body.dark-mode .planner-week-select {
   background: #0F172A !important;
   border-color: #334155 !important;
   color: #F8FAFC !important;
+}
+
+body.dark-mode .planner-stacked-bar {
+  background: #2D1A0E !important;
+  border-color: #EA580C !important;
+}
+
+body.dark-mode .planner-stacked-text {
+  color: #FFD8A8 !important;
+}
+
+body.dark-mode .planner-stacked-hint {
+  color: #FFA94D !important;
 }
 
 body.dark-mode .planner-double-bar {
@@ -5770,6 +5828,19 @@ body.dark-mode .planner-direct-unit {
   vertical-align: middle;
 }
 
+.roadmap-stacked-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #EA580C;
+  background: rgba(234, 88, 12, 0.12);
+  border: 1px solid rgba(234, 88, 12, 0.35);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
 .planner-summary-track-bonus {
   font-size: 11.5px;
   font-weight: 800;
@@ -5793,6 +5864,12 @@ body.dark-mode .roadmap-track-badge {
   color: #FDE68A !important;
   background: rgba(180, 83, 9, 0.25) !important;
   border-color: #B45309 !important;
+}
+
+body.dark-mode .roadmap-stacked-badge {
+  color: #FFD8A8 !important;
+  background: rgba(234, 88, 12, 0.25) !important;
+  border-color: #EA580C !important;
 }
 
 body.dark-mode .planner-summary-track-bonus {
