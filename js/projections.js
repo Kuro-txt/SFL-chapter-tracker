@@ -11,7 +11,7 @@ import { getActiveVipBonus, getActiveBoostCount } from './state.js';
 /** Chapter constants — must match render.js */
 const TOTAL_CHAPTER_WEEKS = 12;
 const BASE_EPOCH = new Date('2026-08-10T00:00:00.000Z');
-const AUCTION_WEEK = 8;
+const AUCTION_WEEK = 9;
 
 /** Core 11 Chapter Delivery NPCs with base tickets & official avatars */
 export const CORE_CHAPTER_NPCS = [
@@ -45,6 +45,8 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     tywin:        { enabled: false, daysPerWeek: 1, doubleDelivery: false }
   },
   bounties: {
+    useCustom: false,
+    customTix: 28,
     regularEnabled: true,
     regularCount: 4,
     regularAvgTix: 3,
@@ -54,6 +56,8 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     animalAvgTix: 8
   },
   chores: {
+    useCustom: false,
+    customTix: 7,
     enabled: true,
     choresPerWeek: 7,
     baseTixPerChore: 1
@@ -180,17 +184,27 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     };
   });
 
-  // Bounties calculations (Regular + Board Bonus + Animal)
+  // Bounties calculations (Regular + Board Bonus + Animal OR Custom User Input)
   const bConf = config.bounties || DEFAULT_PLANNER_TEMPLATE.bounties;
   const regularBountiesTix = bConf.regularEnabled ? ((parseInt(bConf.regularCount, 10) || 4) * (parseInt(bConf.regularAvgTix, 10) || 3)) : 0;
   const boardBonusTix = bConf.boardBonusEnabled ? 100 : 0;
   const animalBountiesTix = bConf.animalEnabled ? ((parseInt(bConf.animalCount, 10) || 2) * (parseInt(bConf.animalAvgTix, 10) || 8)) : 0;
-  const bountiesTix = regularBountiesTix + boardBonusTix + animalBountiesTix;
+  const calculatedBountiesTix = regularBountiesTix + boardBonusTix + animalBountiesTix;
+  const useCustomBounties = Boolean(bConf.useCustom);
+  const customBountiesTix = (bConf.customTix !== undefined && bConf.customTix !== null && bConf.customTix !== '')
+    ? Math.max(0, parseInt(bConf.customTix, 10) || 0)
+    : calculatedBountiesTix;
+  const bountiesTix = useCustomBounties ? customBountiesTix : calculatedBountiesTix;
 
-  // Chores calculations (Hank: VIP adds +2 tickets per chore)
+  // Chores calculations (Hank: VIP adds +2 tickets per chore OR Custom User Input)
   const cConf = config.chores || DEFAULT_PLANNER_TEMPLATE.chores;
   const choreYield = (parseInt(cConf.baseTixPerChore, 10) || 1) + (vipBonus > 0 ? 2 : 0);
-  const choresTix = cConf.enabled ? ((parseInt(cConf.choresPerWeek, 10) || 7) * choreYield) : 0;
+  const calculatedChoresTix = cConf.enabled ? ((parseInt(cConf.choresPerWeek, 10) || 7) * choreYield) : 0;
+  const useCustomChores = Boolean(cConf.useCustom);
+  const customChoresTix = (cConf.customTix !== undefined && cConf.customTix !== null && cConf.customTix !== '')
+    ? Math.max(0, parseInt(cConf.customTix, 10) || 0)
+    : calculatedChoresTix;
+  const choresTix = useCustomChores ? customChoresTix : calculatedChoresTix;
 
   // Logins calculations
   const lConf = config.logins || DEFAULT_PLANNER_TEMPLATE.logins;
@@ -204,6 +218,9 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     delivTix,
     doubleBonusTix,
     bountiesBreakdown: {
+      useCustom: useCustomBounties,
+      customTix: customBountiesTix,
+      calculatedTix: calculatedBountiesTix,
       regularEnabled: Boolean(bConf.regularEnabled),
       regularCount: parseInt(bConf.regularCount, 10) || 4,
       regularAvgTix: parseInt(bConf.regularAvgTix, 10) || 3,
@@ -217,6 +234,9 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
       totalBountiesTix: bountiesTix
     },
     choresBreakdown: {
+      useCustom: useCustomChores,
+      customTix: customChoresTix,
+      calculatedTix: calculatedChoresTix,
       enabled: Boolean(cConf.enabled),
       choresPerWeek: parseInt(cConf.choresPerWeek, 10) || 7,
       baseTixPerChore: parseInt(cConf.baseTixPerChore, 10) || 1,
@@ -284,7 +304,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
     _customPace = Math.round(pPlanned);
   }
 
-  const goalAtWeek8 = targetGoal > 0 ? Math.round((targetGoal * AUCTION_WEEK) / TOTAL_CHAPTER_WEEKS) : 0;
+  const goalAtAuctionWeek = targetGoal > 0 ? Math.round((targetGoal * AUCTION_WEEK) / TOTAL_CHAPTER_WEEKS) : 0;
 
   function buildMilestone(pace, milestoneWeek, milestoneDaysRemaining, milestoneGoal) {
     const projected = Math.round(totalEarned + pace * Math.max(0, milestoneWeek - elapsedWeeks));
@@ -319,25 +339,38 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
     return { projected, gapVsGoal, dailyRequired };
   }
 
+  const plannedAuctionMilestone = buildPlannedMilestone(AUCTION_WEEK, goalAtAuctionWeek);
+  const currentAuctionMilestone = buildMilestone(pCurrent, AUCTION_WEEK, daysRemainingAuction, goalAtAuctionWeek);
+  const targetAuctionMilestone = buildMilestone(pTarget, AUCTION_WEEK, daysRemainingAuction, goalAtAuctionWeek);
+  const customAuctionMilestone = buildMilestone(pCustom, AUCTION_WEEK, daysRemainingAuction, goalAtAuctionWeek);
+
   const scenarios = {
     planned: {
       pace: pPlanned,
-      week8: buildPlannedMilestone(AUCTION_WEEK, goalAtWeek8),
+      auctionWeek: plannedAuctionMilestone,
+      week9: plannedAuctionMilestone,
+      week8: plannedAuctionMilestone,
       week12: buildPlannedMilestone(TOTAL_CHAPTER_WEEKS, targetGoal)
     },
     current: {
       pace: pCurrent,
-      week8: buildMilestone(pCurrent, AUCTION_WEEK, daysRemainingAuction, goalAtWeek8),
+      auctionWeek: currentAuctionMilestone,
+      week9: currentAuctionMilestone,
+      week8: currentAuctionMilestone,
       week12: buildMilestone(pCurrent, TOTAL_CHAPTER_WEEKS, daysRemaining12, targetGoal)
     },
     target: {
       pace: pTarget,
-      week8: buildMilestone(pTarget, AUCTION_WEEK, daysRemainingAuction, goalAtWeek8),
+      auctionWeek: targetAuctionMilestone,
+      week9: targetAuctionMilestone,
+      week8: targetAuctionMilestone,
       week12: buildMilestone(pTarget, TOTAL_CHAPTER_WEEKS, daysRemaining12, targetGoal)
     },
     custom: {
       pace: pCustom,
-      week8: buildMilestone(pCustom, AUCTION_WEEK, daysRemainingAuction, goalAtWeek8),
+      auctionWeek: customAuctionMilestone,
+      week9: customAuctionMilestone,
+      week8: customAuctionMilestone,
       week12: buildMilestone(pCustom, TOTAL_CHAPTER_WEEKS, daysRemaining12, targetGoal)
     }
   };
@@ -386,7 +419,9 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
     totalEarned,
     elapsedWeeks,
     activeWeekNum,
-    goalAtWeek8,
+    goalAtAuctionWeek,
+    goalAtWeek9: goalAtAuctionWeek,
+    goalAtWeek8: goalAtAuctionWeek,
     targetGoal,
     scenarios,
     activeScenario: _activeScenario,
@@ -618,6 +653,84 @@ export function togglePlannerLogin(weekVal) {
   reRenderProjections();
 }
 
+export function setPlannerBountyCustomTix(val, weekVal) {
+  const parsed = Math.max(0, parseInt(val, 10) || 0);
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    t.bounties.customTix = parsed;
+    t.bounties.useCustom = true;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    ov[w].bounties.customTix = parsed;
+    ov[w].bounties.useCustom = true;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function togglePlannerBountyCustom(weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    t.bounties.useCustom = !t.bounties.useCustom;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    ov[w].bounties.useCustom = !ov[w].bounties.useCustom;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function setPlannerChoreCustomTix(val, weekVal) {
+  const parsed = Math.max(0, parseInt(val, 10) || 0);
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    t.chores.customTix = parsed;
+    t.chores.useCustom = true;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    ov[w].chores.customTix = parsed;
+    ov[w].chores.useCustom = true;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function togglePlannerChoreCustom(weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    t.chores.useCustom = !t.chores.useCustom;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    ov[w].chores.useCustom = !ov[w].chores.useCustom;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
 export function resetPlannerOverride(weekVal) {
   const w = parseInt(weekVal, 10);
   const ov = getPlannerOverrides();
@@ -630,10 +743,27 @@ export function resetPlannerOverride(weekVal) {
 
 function reRenderProjections() {
   if (_lastProjectionInput) {
+    const activeElem = (typeof document !== 'undefined') ? document.activeElement : null;
+    const activeId = activeElem ? activeElem.id : null;
+    const selStart = (activeElem && typeof activeElem.selectionStart === 'number') ? activeElem.selectionStart : null;
+    const selEnd = (activeElem && typeof activeElem.selectionEnd === 'number') ? activeElem.selectionEnd : null;
+
     const { displayItems, currentMondayKey, targetGoal, targetWeeks } = _lastProjectionInput;
     renderProjectionsView(
       calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks)
     );
+
+    if (activeId && typeof document !== 'undefined') {
+      const restoredElem = document.getElementById(activeId);
+      if (restoredElem && typeof restoredElem.focus === 'function') {
+        restoredElem.focus();
+        if (selStart !== null && selEnd !== null && typeof restoredElem.setSelectionRange === 'function') {
+          try {
+            restoredElem.setSelectionRange(selStart, selEnd);
+          } catch (e) {}
+        }
+      }
+    }
   }
 }
 
@@ -659,7 +789,7 @@ export function renderProjectionsView(proj) {
   }
 
   const active = proj.scenarios[proj.activeScenario];
-  const w8 = active.week8;
+  const wAuction = active.auctionWeek || active.week9 || active.week8;
   const w12 = active.week12;
   const pace = active.pace;
   const dailyPace = pace > 0 ? Math.round(pace / 7) : 0;
@@ -826,6 +956,42 @@ export function renderProjectionsView(proj) {
   ).join('');
 
   const bountiesSectionHtml = `
+    <!-- Custom Weekly Bounties Direct Input Banner -->
+    <div class="planner-custom-banner ${bData.useCustom ? 'active-override' : ''}${isDark ? ' dark' : ''}">
+      <div class="planner-custom-banner-left">
+        <label class="planner-custom-toggle-label">
+          <input
+            type="checkbox"
+            ${bData.useCustom ? 'checked' : ''}
+            onchange="togglePlannerBountyCustom('${currentWeekVal}')"
+          />
+          <span class="planner-custom-banner-title">✏️ Custom Weekly Bounties Estimate</span>
+        </label>
+        <span class="planner-custom-banner-hint">
+          ${bData.useCustom
+            ? `Overriding with custom input (calculated board: ${bData.calculatedTix} Tix)`
+            : `Using board formula below (${bData.calculatedTix} Tix). Enter custom tickets to override.`}
+        </span>
+      </div>
+      <div class="planner-custom-banner-right">
+        <div class="planner-custom-input-wrap${isDark ? ' dark' : ''}">
+          <input
+            id="bountyCustomInput"
+            type="number"
+            min="0"
+            max="9999"
+            step="1"
+            value="${bData.useCustom ? bData.customTix : (bData.customTix !== undefined && bData.customTix !== null ? bData.customTix : bData.calculatedTix)}"
+            class="planner-custom-tix-input${isDark ? ' dark' : ''}"
+            oninput="setPlannerBountyCustomTix(this.value, '${currentWeekVal}')"
+            placeholder="Tix"
+            title="Custom weekly bounty tickets"
+          />
+          <span class="planner-custom-tix-unit">Tix / Wk</span>
+        </div>
+      </div>
+    </div>
+
     <div class="planner-sub-cards">
       <!-- Regular Bounties Card -->
       <div class="planner-sub-card${isDark ? ' dark' : ''}">
@@ -913,6 +1079,42 @@ export function renderProjectionsView(proj) {
   ).join('');
 
   const choresSectionHtml = `
+    <!-- Custom Weekly Chores Direct Input Banner -->
+    <div class="planner-custom-banner ${cData.useCustom ? 'active-override' : ''}${isDark ? ' dark' : ''}">
+      <div class="planner-custom-banner-left">
+        <label class="planner-custom-toggle-label">
+          <input
+            type="checkbox"
+            ${cData.useCustom ? 'checked' : ''}
+            onchange="togglePlannerChoreCustom('${currentWeekVal}')"
+          />
+          <span class="planner-custom-banner-title">✏️ Custom Weekly Hank Chores Estimate</span>
+        </label>
+        <span class="planner-custom-banner-hint">
+          ${cData.useCustom
+            ? `Overriding with custom input (calculated chores: ${cData.calculatedTix} Tix)`
+            : `Using Hank chores formula below (${cData.calculatedTix} Tix). Enter custom tickets to override.`}
+        </span>
+      </div>
+      <div class="planner-custom-banner-right">
+        <div class="planner-custom-input-wrap${isDark ? ' dark' : ''}">
+          <input
+            id="choreCustomInput"
+            type="number"
+            min="0"
+            max="9999"
+            step="1"
+            value="${cData.useCustom ? cData.customTix : (cData.customTix !== undefined && cData.customTix !== null ? cData.customTix : cData.calculatedTix)}"
+            class="planner-custom-tix-input${isDark ? ' dark' : ''}"
+            oninput="setPlannerChoreCustomTix(this.value, '${currentWeekVal}')"
+            placeholder="Tix"
+            title="Custom weekly chore tickets"
+          />
+          <span class="planner-custom-tix-unit">Tix / Wk</span>
+        </div>
+      </div>
+    </div>
+
     <div class="planner-sub-cards">
       <!-- Hank's Chores Card -->
       <div class="planner-sub-card${isDark ? ' dark' : ''}">
@@ -976,14 +1178,14 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏁</span>
-          <span class="proj-milestone-title">WEEK 8 — AUCTION WEEK</span>
+          <span class="proj-milestone-title">WEEK 9 — AUCTION WEEK</span>
         </div>
-        <div class="proj-card-tix">${ticketIconHtml} <strong>${w8.projected.toLocaleString()}</strong> Tickets</div>
-        <div class="proj-card-gap">${gapBadge(w8.gapVsGoal, isDark)}</div>
+        <div class="proj-card-tix">${ticketIconHtml} <strong>${wAuction.projected.toLocaleString()}</strong> Tickets</div>
+        <div class="proj-card-gap">${gapBadge(wAuction.gapVsGoal, isDark)}</div>
         <div class="proj-card-meta">
           Pace: ${Math.round(pace).toLocaleString()} Tix/Wk (~${dailyPace}/day)
         </div>
-        ${w8.dailyRequired > 0 ? `<div class="proj-card-daily">Need <strong>${w8.dailyRequired}</strong> ${ticketIconHtml}/day to hit goal</div>` : ''}
+        ${wAuction.dailyRequired > 0 ? `<div class="proj-card-daily">Need <strong>${wAuction.dailyRequired}</strong> ${ticketIconHtml}/day to hit goal</div>` : ''}
       </div>
 
       <div class="projection-metric-card${isDark ? ' dark' : ''}">

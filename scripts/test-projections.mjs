@@ -60,17 +60,18 @@ console.log('Test 1: Verifying projection math at Week 3 (2 completed weeks + pa
   const currentPace = proj.scenarios.current.pace;
   assert.ok(currentPace > 100 && currentPace < 200, `Expected pace between 100 and 200, got ${currentPace}`);
 
-  // Week 8 projected should be totalEarned + pace * (8 - elapsed)
-  const w8 = proj.scenarios.current.week8;
-  assert.ok(w8.projected > 375, `Week 8 projected should be greater than total earned`);
-  assert.strictEqual(typeof w8.gapVsGoal, 'number');
-  assert.strictEqual(typeof w8.dailyRequired, 'number');
+  // Week 9 (Auction Week) projected should be totalEarned + pace * (9 - elapsed)
+  const wAuction = proj.scenarios.current.auctionWeek;
+  assert.ok(wAuction.projected > 375, `Auction Week projected should be greater than total earned`);
+  assert.strictEqual(typeof wAuction.gapVsGoal, 'number');
+  assert.strictEqual(typeof wAuction.dailyRequired, 'number');
+  assert.strictEqual(proj.scenarios.current.week9.projected, wAuction.projected);
 
   // Week 12 projected should be totalEarned + pace * (12 - elapsed)
   const w12 = proj.scenarios.current.week12;
-  assert.ok(w12.projected > w8.projected, `Week 12 projection should be greater than Week 8`);
+  assert.ok(w12.projected > wAuction.projected, `Week 12 projection should be greater than Week 9`);
   console.log(`  ✓ Total earned: ${proj.totalEarned}, Current Pace: ${Math.round(currentPace)} Tix/Wk`);
-  console.log(`  ✓ Week 8 Proj: ${w8.projected} Tix, Week 12 Proj: ${w12.projected} Tix`);
+  console.log(`  ✓ Week 9 (Auction) Proj: ${wAuction.projected} Tix, Week 12 Proj: ${w12.projected} Tix`);
   console.log('✅ TEST 1 PASSED: Baseline projection math verified.\n');
 }
 
@@ -110,7 +111,7 @@ console.log('Test 3: Verifying daily tickets needed & boundary edge cases...');
   const itemsEmpty = buildMockDisplayItems(0, 0, 0);
   const projEmpty = calculateProjections(itemsEmpty, itemsEmpty[0].mondayKey, 1000, 12);
   assert.ok(projEmpty.scenarios.current.pace >= 0, 'Zero elapsed time should safely compute pace without NaN or throw');
-  assert.ok(!isNaN(projEmpty.scenarios.current.week8.projected), 'Week 8 projection should not be NaN');
+  assert.ok(!isNaN(projEmpty.scenarios.current.auctionWeek.projected), 'Auction Week 9 projection should not be NaN');
 
   console.log('✅ TEST 3 PASSED: Edge cases handled safely.\n');
 }
@@ -397,4 +398,57 @@ console.log('Test 12: Verifying Hank Chores calculation with VIP (+2) buff...');
   console.log('✅ TEST 12 PASSED: Hank Chores & VIP bonus verified.\n');
 }
 
-console.log('🎉 ALL 12 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');
+
+// -------------------------------------------------------------
+// Test 13: Direct Custom Ticket Input for Bounties and Chores
+// -------------------------------------------------------------
+console.log('Test 13: Verifying direct custom ticket inputs for Bounties & Chores...');
+{
+  const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
+  Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
+  template.logins.enabled = false;
+
+  // Case A: Default calculated values (useCustom = false)
+  // Bounties: 4*3 (12) + 2*8 (16) = 28 tix
+  // Chores: 7*1 = 7 tix
+  const planDefault = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planDefault.bountiesTix, 28);
+  assert.strictEqual(planDefault.choresTix, 7);
+  assert.strictEqual(planDefault.totalWeeklyTix, 35);
+
+  // Case B: User inputs direct custom amounts in template
+  template.bounties.useCustom = true;
+  template.bounties.customTix = 50; // User estimates 50 tix from bounties
+  template.chores.useCustom = true;
+  template.chores.customTix = 14;   // User estimates 14 tix from chores
+  const planCustom = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planCustom.bountiesTix, 50, `Expected 50 custom bounties tix, got ${planCustom.bountiesTix}`);
+  assert.strictEqual(planCustom.choresTix, 14, `Expected 14 custom chores tix, got ${planCustom.choresTix}`);
+  assert.strictEqual(planCustom.totalWeeklyTix, 64, `Expected 64 total weekly tix, got ${planCustom.totalWeeklyTix}`);
+
+  // Case C: Week 9 (Auction Week) specific override with higher custom input
+  const overrides = {
+    9: {
+      ...template,
+      bounties: { ...template.bounties, customTix: 90 },
+      chores: { ...template.chores, customTix: 21 }
+    }
+  };
+
+  const planW8 = calculateWeekNpcPlan(8, template, overrides, 0, 0);
+  assert.strictEqual(planW8.isOverride, false);
+  assert.strictEqual(planW8.bountiesTix, 50);
+
+  const planW9 = calculateWeekNpcPlan(9, template, overrides, 0, 0);
+  assert.strictEqual(planW9.isOverride, true);
+  assert.strictEqual(planW9.bountiesTix, 90, `Week 9 auction override bounties should be 90, got ${planW9.bountiesTix}`);
+  assert.strictEqual(planW9.choresTix, 21, `Week 9 auction override chores should be 21, got ${planW9.choresTix}`);
+  assert.strictEqual(planW9.totalWeeklyTix, 111, `Week 9 auction total should be 111, got ${planW9.totalWeeklyTix}`);
+
+  console.log(`  ✓ Default Calculated: Bounties ${planDefault.bountiesTix} Tix, Chores ${planDefault.choresTix} Tix (Total: ${planDefault.totalWeeklyTix})`);
+  console.log(`  ✓ Template Custom Input: Bounties ${planCustom.bountiesTix} Tix, Chores ${planCustom.choresTix} Tix (Total: ${planCustom.totalWeeklyTix})`);
+  console.log(`  ✓ Week 9 (Auction) Custom Override: Bounties ${planW9.bountiesTix} Tix, Chores ${planW9.choresTix} Tix (Total: ${planW9.totalWeeklyTix})`);
+  console.log('✅ TEST 13 PASSED: Custom ticket inputs for bounties and chores verified.\n');
+}
+
+console.log('🎉 ALL 13 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');

@@ -61,8 +61,12 @@ import {
   setPlannerSectionTab,
   togglePlannerBounty,
   setPlannerBountyCount,
+  setPlannerBountyCustomTix,
+  togglePlannerBountyCustom,
   togglePlannerChore,
   setPlannerChoreCount,
+  setPlannerChoreCustomTix,
+  togglePlannerChoreCustom,
   togglePlannerLogin
 } from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
@@ -174,8 +178,12 @@ window.toggleAllNpcDouble = toggleAllNpcDouble;
 window.setPlannerSectionTab = setPlannerSectionTab;
 window.togglePlannerBounty = togglePlannerBounty;
 window.setPlannerBountyCount = setPlannerBountyCount;
+window.setPlannerBountyCustomTix = setPlannerBountyCustomTix;
+window.togglePlannerBountyCustom = togglePlannerBountyCustom;
 window.togglePlannerChore = togglePlannerChore;
 window.setPlannerChoreCount = setPlannerChoreCount;
+window.setPlannerChoreCustomTix = setPlannerChoreCustomTix;
+window.togglePlannerChoreCustom = togglePlannerChoreCustom;
 window.togglePlannerLogin = togglePlannerLogin;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;

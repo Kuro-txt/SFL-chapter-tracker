@@ -5549,3 +5549,138 @@ body.dark-mode .board-bonus-card.active {
 body.dark-mode .bonus-glow {
   color: #A5B4FC !important;
 }
+/* Custom Weekly Ticket Override Banner (Bounties & Chores) */
+.planner-custom-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #FFFDF8;
+  border: 1.5px solid #E2D4C0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  transition: all 0.15s ease;
+}
+
+.planner-custom-banner.active-override {
+  border-color: #D97706;
+  background: #FEF3C7;
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+}
+
+.planner-custom-banner-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.planner-custom-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 900;
+  color: #5C4033;
+}
+
+.planner-custom-toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #8B5A2B;
+  cursor: pointer;
+}
+
+.planner-custom-banner-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.planner-custom-banner-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8C7853;
+  padding-left: 24px;
+}
+
+.planner-custom-banner-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.planner-custom-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  border: 1.5px solid #C49A6C;
+  border-radius: 8px;
+  padding: 4px 8px;
+  transition: all 0.12s ease;
+}
+
+.planner-custom-input-wrap:focus-within {
+  border-color: #8B5A2B;
+  box-shadow: 0 0 0 2px rgba(139, 90, 43, 0.2);
+}
+
+.planner-custom-tix-input {
+  width: 65px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #5C4033;
+  text-align: right;
+}
+
+.planner-custom-tix-unit {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8C7853;
+}
+
+/* Dark Mode Overrides for Custom Banners */
+body.dark-mode .planner-custom-banner {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .planner-custom-banner.active-override {
+  background: #1E1B4B !important;
+  border-color: #6366F1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+}
+
+body.dark-mode .planner-custom-toggle-label {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .planner-custom-banner-hint {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .planner-custom-input-wrap {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .planner-custom-input-wrap:focus-within {
+  border-color: #38BDF8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
+}
+
+body.dark-mode .planner-custom-tix-input {
+  color: #38BDF8 !important;
+}
+
+body.dark-mode .planner-custom-tix-unit {
+  color: #94A3B8 !important;
+}
