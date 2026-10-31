@@ -1,7 +1,7 @@
 /**
  * projections.js — Ticket Projections & Deterministic NPC Planner Engine
  * Provides calculateProjections(), renderProjectionsView(), setProjectionScenario(),
- * and interactive NPC delivery planner with weekly 2x Double Delivery support.
+ * and interactive NPC delivery planner with per-NPC 2x Double Delivery support.
  */
 
 import { renderChapterTicketIcon } from './item-icons.js';
@@ -31,17 +31,17 @@ export const CORE_CHAPTER_NPCS = [
 export const DEFAULT_PLANNER_TEMPLATE = {
   doubleDeliveryDays: 1, // 1 day per week gives 2x tickets
   npcs: {
-    pumpkin_pete: { enabled: true,  daysPerWeek: 7 },
-    bert:         { enabled: true,  daysPerWeek: 7 },
-    finley:       { enabled: true,  daysPerWeek: 7 },
-    miranda:      { enabled: true,  daysPerWeek: 7 },
-    cornwell:     { enabled: true,  daysPerWeek: 7 },
-    raven:        { enabled: false, daysPerWeek: 3 },
-    jester:       { enabled: false, daysPerWeek: 3 },
-    finn:         { enabled: false, daysPerWeek: 1 },
-    timmy:        { enabled: false, daysPerWeek: 1 },
-    pharaoh:      { enabled: false, daysPerWeek: 1 },
-    tywin:        { enabled: false, daysPerWeek: 1 }
+    pumpkin_pete: { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
+    bert:         { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
+    finley:       { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
+    miranda:      { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
+    cornwell:     { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
+    raven:        { enabled: false, daysPerWeek: 3, doubleDelivery: false },
+    jester:       { enabled: false, daysPerWeek: 3, doubleDelivery: false },
+    finn:         { enabled: false, daysPerWeek: 1, doubleDelivery: false },
+    timmy:        { enabled: false, daysPerWeek: 1, doubleDelivery: false },
+    pharaoh:      { enabled: false, daysPerWeek: 1, doubleDelivery: false },
+    tywin:        { enabled: false, daysPerWeek: 1, doubleDelivery: false }
   },
   includeBounties: true,
   bountiesTixPerWeek: 35,
@@ -107,12 +107,7 @@ export function savePlannerOverrides(overrides) {
 
 /**
  * Calculate planned tickets for a specific week or template.
- * @param {number|'template'} weekNum
- * @param {object} template
- * @param {object} overrides
- * @param {number} vipBonus
- * @param {number} boostCount
- * @returns {object} detailed week plan breakdown
+ * Supports individual per-NPC double delivery ticks.
  */
 export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0, boostCount = 0) {
   const isWeekOverride = weekNum !== 'template' && overrides && Boolean(overrides[weekNum]);
@@ -130,11 +125,19 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
   const npcBreakdown = {};
 
   CORE_CHAPTER_NPCS.forEach(npc => {
-    const npcConf = config.npcs[npc.id] || { enabled: false, daysPerWeek: 7 };
+    const npcConf = config.npcs[npc.id] || { enabled: false, daysPerWeek: 7, doubleDelivery: false };
     const enabled = Boolean(npcConf.enabled);
     const days = Math.max(1, Math.min(7, parseInt(npcConf.daysPerWeek, 10) || 7));
     const yieldPerOrder = npc.baseTickets + perOrderBonus;
-    const doubleDays = config.doubleDeliveryDays ? Math.min(days, config.doubleDeliveryDays) : 0;
+
+    // Per-NPC Double Delivery tick: must have global double day enabled AND NPC double checked
+    const isDoubleTicked = (npcConf.doubleDelivery !== undefined)
+      ? Boolean(npcConf.doubleDelivery)
+      : (Boolean(config.doubleDeliveryDays > 0) && enabled);
+
+    const doubleDays = (config.doubleDeliveryDays > 0 && isDoubleTicked)
+      ? Math.min(days, config.doubleDeliveryDays)
+      : 0;
 
     // Delivery math: (days + doubleDays) * yieldPerOrder
     const totalNpcTix = enabled ? (days + doubleDays) * yieldPerOrder : 0;
@@ -152,6 +155,7 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
       enabled,
       days,
       yieldPerOrder,
+      isDoubleTicked,
       doubleDays,
       totalTix: totalNpcTix,
       doubleBonusTix: npcDoubleBonus
@@ -211,9 +215,9 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const daysRemaining12 = weeksRemaining12 * 7;
   const daysRemainingAuction = weeksRemainingAuction * 7;
 
-  // Retrieve player buffs & planner configurations
-  const vipBonus = typeof document !== 'undefined' && typeof getActiveVipBonus === 'function' ? getActiveVipBonus() : 0;
-  const boostCount = typeof document !== 'undefined' && typeof getActiveBoostCount === 'function' ? getActiveBoostCount() : 0;
+  // Retrieve player buffs & planner configurations defensively
+  const vipBonus = (typeof document !== 'undefined' && typeof getActiveVipBonus === 'function') ? getActiveVipBonus() : 0;
+  const boostCount = (typeof document !== 'undefined' && typeof getActiveBoostCount === 'function') ? getActiveBoostCount() : 0;
   const template = getPlannerTemplate();
   const overrides = getPlannerOverrides();
 
@@ -378,7 +382,7 @@ export function togglePlannerNpc(npcId, weekVal) {
   const isTemplate = weekVal === 'template' || !weekVal;
   if (isTemplate) {
     const t = getPlannerTemplate();
-    if (!t.npcs[npcId]) t.npcs[npcId] = { enabled: false, daysPerWeek: 7 };
+    if (!t.npcs[npcId]) t.npcs[npcId] = { enabled: false, daysPerWeek: 7, doubleDelivery: true };
     t.npcs[npcId].enabled = !t.npcs[npcId].enabled;
     savePlannerTemplate(t);
   } else {
@@ -387,8 +391,54 @@ export function togglePlannerNpc(npcId, weekVal) {
     if (!ov[w]) {
       ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     }
-    if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: false, daysPerWeek: 7 };
+    if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: false, daysPerWeek: 7, doubleDelivery: true };
     ov[w].npcs[npcId].enabled = !ov[w].npcs[npcId].enabled;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function togglePlannerNpcDouble(npcId, weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.npcs[npcId]) t.npcs[npcId] = { enabled: true, daysPerWeek: 7, doubleDelivery: false };
+    const cur = t.npcs[npcId].doubleDelivery !== undefined ? t.npcs[npcId].doubleDelivery : true;
+    t.npcs[npcId].doubleDelivery = !cur;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) {
+      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    }
+    if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: true, daysPerWeek: 7, doubleDelivery: false };
+    const cur = ov[w].npcs[npcId].doubleDelivery !== undefined ? ov[w].npcs[npcId].doubleDelivery : true;
+    ov[w].npcs[npcId].doubleDelivery = !cur;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function toggleAllNpcDouble(enableAll, weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    CORE_CHAPTER_NPCS.forEach(npc => {
+      if (!t.npcs[npc.id]) t.npcs[npc.id] = { enabled: false, daysPerWeek: 7, doubleDelivery: false };
+      t.npcs[npc.id].doubleDelivery = Boolean(enableAll);
+    });
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) {
+      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    }
+    CORE_CHAPTER_NPCS.forEach(npc => {
+      if (!ov[w].npcs[npc.id]) ov[w].npcs[npc.id] = { enabled: false, daysPerWeek: 7, doubleDelivery: false };
+      ov[w].npcs[npc.id].doubleDelivery = Boolean(enableAll);
+    });
     savePlannerOverrides(ov);
   }
   reRenderProjections();
@@ -399,7 +449,7 @@ export function setPlannerNpcDays(npcId, daysVal, weekVal) {
   const isTemplate = weekVal === 'template' || !weekVal;
   if (isTemplate) {
     const t = getPlannerTemplate();
-    if (!t.npcs[npcId]) t.npcs[npcId] = { enabled: true, daysPerWeek: 7 };
+    if (!t.npcs[npcId]) t.npcs[npcId] = { enabled: true, daysPerWeek: 7, doubleDelivery: true };
     t.npcs[npcId].daysPerWeek = days;
     savePlannerTemplate(t);
   } else {
@@ -408,7 +458,7 @@ export function setPlannerNpcDays(npcId, daysVal, weekVal) {
     if (!ov[w]) {
       ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     }
-    if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: true, daysPerWeek: 7 };
+    if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: true, daysPerWeek: 7, doubleDelivery: true };
     ov[w].npcs[npcId].daysPerWeek = days;
     savePlannerOverrides(ov);
   }
@@ -561,21 +611,19 @@ export function renderProjectionsView(proj) {
     weekOptions.push(`<option value="${w}" ${currentWeekVal === w ? 'selected' : ''}>${label}${badge}</option>`);
   }
 
-  // NPC Rows
+  // NPC Rows with Per-NPC 2x Double Delivery checkbox
   const npcRowsHtml = CORE_CHAPTER_NPCS.map(npc => {
     const item = activePlan.npcBreakdown[npc.id];
     const isChecked = item.enabled;
     const days = item.days;
     const yieldPerOrder = item.yieldPerOrder;
+    const isDoubleTicked = item.isDoubleTicked;
     const totalTix = item.totalTix;
     const doubleBonus = item.doubleBonusTix;
 
     const daysOptions = [7, 6, 5, 4, 3, 2, 1].map(d =>
       `<option value="${d}" ${days === d ? 'selected' : ''}>${d === 7 ? 'Daily (7x/wk)' : `${d}x / week`}</option>`
     ).join('');
-
-    const doubleBadge = doubleActive && isChecked && doubleBonus > 0
-      ? `<span class="npc-double-tag" title="Includes 2x Double Delivery bonus">+${doubleBonus} ⚡</span>` : '';
 
     return `
       <div class="npc-planner-row ${isChecked ? 'active' : 'inactive'}${isDark ? ' dark' : ''}">
@@ -586,6 +634,7 @@ export function renderProjectionsView(proj) {
             class="npc-planner-checkbox"
             ${isChecked ? 'checked' : ''}
             onchange="togglePlannerNpc('${npc.id}', '${currentWeekVal}')"
+            title="Include ${npc.name} in weekly deliveries"
           />
         </div>
         <div class="npc-col-info">
@@ -600,13 +649,26 @@ export function renderProjectionsView(proj) {
             class="npc-freq-select${isDark ? ' dark' : ''}"
             ${!isChecked ? 'disabled' : ''}
             onchange="setPlannerNpcDays('${npc.id}', this.value, '${currentWeekVal}')"
+            title="Weekly delivery frequency"
           >
             ${daysOptions}
           </select>
         </div>
+        <div class="npc-col-double">
+          <label class="npc-double-toggle-label ${!isChecked ? 'disabled' : ''}" title="Enable 2x Double Delivery bonus for ${npc.name}">
+            <input
+              type="checkbox"
+              class="npc-double-chk"
+              ${isDoubleTicked ? 'checked' : ''}
+              ${!isChecked || !doubleActive ? 'disabled' : ''}
+              onchange="togglePlannerNpcDouble('${npc.id}', '${currentWeekVal}')"
+            />
+            <span class="npc-double-pill ${isDoubleTicked && isChecked && doubleActive ? 'active' : ''}">⚡ 2x</span>
+          </label>
+        </div>
         <div class="npc-col-subtotal">
-          ${doubleBadge}
           <span class="npc-subtotal-val">${ticketIconHtml} <strong>${totalTix}</strong></span>
+          ${doubleBonus > 0 && doubleActive ? `<span class="npc-double-sub-tag" title="Includes +${doubleBonus} Double Delivery bonus">+${doubleBonus}⚡</span>` : ''}
         </div>
       </div>
     `;
@@ -673,7 +735,7 @@ export function renderProjectionsView(proj) {
       <div class="planner-header">
         <div class="planner-title-wrap">
           <span class="planner-title">📋 WEEKLY NPC DELIVERY PLANNER</span>
-          <span class="planner-subtitle">Select which NPCs you complete each week for 100% deterministic projections</span>
+          <span class="planner-subtitle">Select which NPCs you complete each week & tick ⚡ 2x Double Delivery for 100% deterministic projections</span>
         </div>
         <div class="planner-week-switcher">
           <select class="planner-week-select${isDark ? ' dark' : ''}" onchange="setPlannerOverrideWeek(this.value)">
@@ -684,15 +746,21 @@ export function renderProjectionsView(proj) {
       </div>
 
       <div class="planner-double-bar${isDark ? ' dark' : ''}">
-        <label class="planner-double-label">
-          <input
-            type="checkbox"
-            ${doubleActive ? 'checked' : ''}
-            onchange="togglePlannerDoubleDelivery('${currentWeekVal}')"
-          />
-          <span class="planner-double-text">⚡ Include 2x Double Delivery Day (+${activePlan.doubleBonusTix} Tix Bonus/Week)</span>
-        </label>
-        <span class="planner-double-hint">Gives 2x tickets on each ticked NPC's first delivery during the weekly 2x event.</span>
+        <div class="planner-double-left">
+          <label class="planner-double-label">
+            <input
+              type="checkbox"
+              ${doubleActive ? 'checked' : ''}
+              onchange="togglePlannerDoubleDelivery('${currentWeekVal}')"
+            />
+            <span class="planner-double-text">⚡ Weekly 2x Double Delivery Day (+${activePlan.doubleBonusTix} Tix Bonus/Week)</span>
+          </label>
+          <span class="planner-double-hint">Tick ⚡ 2x on each NPC below that you complete on the weekly 2x event day.</span>
+        </div>
+        <div class="planner-double-actions">
+          <button class="btn-wood-sm" onclick="toggleAllNpcDouble(true, '${currentWeekVal}')" title="Enable 2x on all active NPCs">All 2x</button>
+          <button class="btn-wood-sm" onclick="toggleAllNpcDouble(false, '${currentWeekVal}')" title="Disable 2x on all NPCs">Clear 2x</button>
+        </div>
       </div>
 
       <div class="npc-planner-grid">

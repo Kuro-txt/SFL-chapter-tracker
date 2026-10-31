@@ -4901,7 +4901,7 @@ body.dark-mode .proj-no-data-note {
 
 .npc-planner-row {
   display: grid;
-  grid-template-columns: 32px 1fr 140px 100px;
+  grid-template-columns: 32px 1fr 130px 65px 85px;
   align-items: center;
   gap: 8px;
   background: #FFFFFF;
@@ -5204,4 +5204,122 @@ body.dark-mode .planner-summary-sep {
 
 body.dark-mode .planner-summary-total {
   color: #38BDF8 !important;
+}
+/* Per-NPC Double Delivery Toggle Styles */
+.planner-double-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planner-double-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-wood-sm {
+  background: #FFF8DC;
+  border: 1.5px solid #8B5A2B;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #5C4033;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s ease;
+}
+
+.btn-wood-sm:hover {
+  background: #FFFACD;
+  border-color: #5C4033;
+}
+
+.npc-col-double {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.npc-double-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.npc-double-toggle-label.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.npc-double-chk {
+  display: none;
+}
+
+.npc-double-pill {
+  font-size: 10px;
+  font-weight: 900;
+  color: #94A3B8;
+  background: #F1F5F9;
+  border: 1.5px solid #CBD5E1;
+  border-radius: 12px;
+  padding: 2px 7px;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+
+.npc-double-pill:hover {
+  border-color: #F59E0B;
+  color: #D97706;
+}
+
+.npc-double-pill.active {
+  background: #FEF3C7 !important;
+  color: #B45309 !important;
+  border-color: #F59E0B !important;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.25);
+}
+
+.npc-double-sub-tag {
+  font-size: 9.5px;
+  font-weight: 900;
+  color: #B45309;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-top: 2px;
+}
+
+/* Dark mode additions */
+body.dark-mode .btn-wood-sm {
+  background: #1E293B !important;
+  border-color: #475569 !important;
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .btn-wood-sm:hover {
+  background: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .npc-double-pill {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #64748B !important;
+}
+
+body.dark-mode .npc-double-pill.active {
+  background: #451A03 !important;
+  border-color: #D97706 !important;
+  color: #FDE68A !important;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.4) !important;
+}
+
+body.dark-mode .npc-double-sub-tag {
+  background: #451A03 !important;
+  border-color: #78350F !important;
+  color: #FDE68A !important;
 }

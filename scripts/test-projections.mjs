@@ -281,4 +281,47 @@ console.log('Test 9: Verifying Template Routine vs Week 8 Custom Override...');
   console.log('✅ TEST 9 PASSED: Template vs week override resolution verified.\n');
 }
 
-console.log('🎉 ALL 9 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');
+
+// -------------------------------------------------------------
+// Test 10: Per-NPC Double Delivery Toggle
+// -------------------------------------------------------------
+console.log('Test 10: Verifying Per-NPC Double Delivery selective toggling...');
+{
+  const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
+  Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
+
+  // Pete has 2x checked, Bert has 2x UNCHECKED
+  template.doubleDeliveryDays = 1;
+  template.npcs.pumpkin_pete = { enabled: true, daysPerWeek: 7, doubleDelivery: true };
+  template.npcs.bert = { enabled: true, daysPerWeek: 7, doubleDelivery: false };
+  template.includeBounties = false;
+  template.includeChores = false;
+  template.includeLogins = false;
+
+  const plan = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(plan.npcBreakdown.pumpkin_pete.isDoubleTicked, true);
+  assert.strictEqual(plan.npcBreakdown.pumpkin_pete.doubleBonusTix, 1);
+  assert.strictEqual(plan.npcBreakdown.pumpkin_pete.totalTix, 8); // (7 + 1) * 1
+
+  assert.strictEqual(plan.npcBreakdown.bert.isDoubleTicked, false);
+  assert.strictEqual(plan.npcBreakdown.bert.doubleBonusTix, 0); // No 2x bonus
+  assert.strictEqual(plan.npcBreakdown.bert.totalTix, 14); // 7 * 2
+
+  assert.strictEqual(plan.delivTix, 22); // 8 + 14 = 22
+  assert.strictEqual(plan.doubleBonusTix, 1);
+
+  // Now toggle Bert to 2x checked
+  template.npcs.bert.doubleDelivery = true;
+  const planUpdated = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planUpdated.npcBreakdown.bert.isDoubleTicked, true);
+  assert.strictEqual(planUpdated.npcBreakdown.bert.doubleBonusTix, 2);
+  assert.strictEqual(planUpdated.npcBreakdown.bert.totalTix, 16); // (7 + 1) * 2
+  assert.strictEqual(planUpdated.delivTix, 24); // 8 + 16 = 24
+  assert.strictEqual(planUpdated.doubleBonusTix, 3);
+
+  console.log('  ✓ Selective 2x: Pete (8 Tix, +1 ⚡) + Bert (14 Tix, no 2x) = ' + plan.delivTix + ' Tix');
+  console.log('  ✓ Both 2x: Pete (8 Tix, +1 ⚡) + Bert (16 Tix, +2 ⚡) = ' + planUpdated.delivTix + ' Tix');
+  console.log('✅ TEST 10 PASSED: Individual NPC double delivery toggling verified.\n');
+}
+
+console.log('🎉 ALL 10 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');

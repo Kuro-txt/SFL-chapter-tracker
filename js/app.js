@@ -56,7 +56,9 @@ import {
   togglePlannerDoubleDelivery,
   setPlannerOverrideWeek,
   togglePlannerBaseline,
-  resetPlannerOverride
+  resetPlannerOverride,
+  togglePlannerNpcDouble,
+  toggleAllNpcDouble
 } from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -163,6 +165,8 @@ window.togglePlannerDoubleDelivery = togglePlannerDoubleDelivery;
 window.setPlannerOverrideWeek = setPlannerOverrideWeek;
 window.togglePlannerBaseline = togglePlannerBaseline;
 window.resetPlannerOverride = resetPlannerOverride;
+window.togglePlannerNpcDouble = togglePlannerNpcDouble;
+window.toggleAllNpcDouble = toggleAllNpcDouble;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;
 window.hideChartTooltip = hideChartTooltip;
