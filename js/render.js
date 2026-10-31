@@ -542,7 +542,13 @@ export function recalculateAll() {
 
   const chartData = renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek);
   if (chartData) {
-    const projData = calculateProjections(chartData.displayItems, chartData.currentMondayKey, targetGoal, targetWeeks);
+    const projData = calculateProjections(
+      chartData.displayItems,
+      chartData.currentMondayKey,
+      targetGoal,
+      targetWeeks,
+      { trackTickets, loginTickets: totalLoginTickets }
+    );
     renderProjectionsView(projData);
   }
 }

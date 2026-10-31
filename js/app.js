@@ -70,7 +70,9 @@ import {
   setPlannerChoreTix,
   setPlannerChoreCustomTix,
   togglePlannerChoreCustom,
-  togglePlannerLogin
+  togglePlannerLogin,
+  togglePlannerTrack,
+  setPlannerTrackTix
 } from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -191,6 +193,8 @@ window.setPlannerChoreTix = setPlannerChoreTix;
 window.setPlannerChoreCustomTix = setPlannerChoreCustomTix;
 window.togglePlannerChoreCustom = togglePlannerChoreCustom;
 window.togglePlannerLogin = togglePlannerLogin;
+window.togglePlannerTrack = togglePlannerTrack;
+window.setPlannerTrackTix = setPlannerTrackTix;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;
 window.hideChartTooltip = hideChartTooltip;

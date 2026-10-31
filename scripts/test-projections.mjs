@@ -4,7 +4,9 @@ import {
   setProjectionScenario, 
   calculateWeekNpcPlan, 
   CORE_CHAPTER_NPCS, 
-  DEFAULT_PLANNER_TEMPLATE 
+  DEFAULT_PLANNER_TEMPLATE,
+  togglePlannerTrack,
+  setPlannerTrackTix
 } from '../js/projections.js';
 
 console.log('🧪 Starting Verification Tests for Ticket Projections & Forecasting Engine...\n');
@@ -458,4 +460,106 @@ console.log('Test 13: Verifying direct ticket inputs & Week 9 Auction overrides.
   console.log('✅ TEST 13 PASSED: Custom ticket inputs for bounties and chores verified.\n');
 }
 
-console.log('🎉 ALL 13 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');
+// -------------------------------------------------------------
+// Test 14: Week-by-Week Roadmap with Track Tickets and Daily Logins
+// -------------------------------------------------------------
+console.log('Test 14: Verifying Week-by-Week Roadmap with Track Tickets and Daily Logins...');
+{
+  // 2 completed weeks (100 tix each) + Week 3 current (40 tix)
+  const displayItems = buildMockDisplayItems(2, 100, 40);
+  const currentMondayKey = displayItems[2].mondayKey;
+  const targetGoal = 1000;
+  const targetWeeks = 12;
+
+  // Simulate user with 17 daily login tickets and 100 track tickets earned
+  const externalActuals = {
+    loginTickets: 17,
+    trackTickets: 100
+  };
+
+  const proj = calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks, externalActuals);
+
+  // Total earned must strictly be: taskEarned (240) + actualLogins (17) + actualTrack (100) = 357
+  assert.strictEqual(proj.taskEarned, 240);
+  assert.strictEqual(proj.actualLoginTix, 17);
+  assert.strictEqual(proj.actualTrackTix, 100);
+  assert.strictEqual(proj.totalEarned, 357, `Expected totalEarned 357, got ${proj.totalEarned}`);
+
+  // Week-by-week roadmap verification
+  const roadmap = proj.roadmap;
+  assert.strictEqual(roadmap.length, 12);
+
+  // Week 1 (past): 100 tasks + 7 logins = 107
+  assert.strictEqual(roadmap[0].type, 'actual');
+  assert.strictEqual(roadmap[0].taskTix, 100);
+  assert.strictEqual(roadmap[0].loginTix, 7);
+  assert.strictEqual(roadmap[0].trackBonus, 0);
+  assert.strictEqual(roadmap[0].value, 107);
+  assert.strictEqual(roadmap[0].cumulative, 107);
+
+  // Week 2 (past): 100 tasks + 7 logins = 107 (cumul: 214)
+  assert.strictEqual(roadmap[1].type, 'actual');
+  assert.strictEqual(roadmap[1].taskTix, 100);
+  assert.strictEqual(roadmap[1].loginTix, 7);
+  assert.strictEqual(roadmap[1].trackBonus, 0);
+  assert.strictEqual(roadmap[1].value, 107);
+  assert.strictEqual(roadmap[1].cumulative, 214);
+
+  // Week 3 (current): 40 tasks + 3 remaining logins + 100 track tickets = 143 (cumul: 357)
+  assert.strictEqual(roadmap[2].type, 'current');
+  assert.strictEqual(roadmap[2].taskTix, 40);
+  assert.strictEqual(roadmap[2].loginTix, 3);
+  assert.strictEqual(roadmap[2].trackBonus, 100);
+  assert.strictEqual(roadmap[2].value, 143);
+  assert.strictEqual(roadmap[2].cumulative, 357);
+
+  // Week 4 (projected): Track tickets strictly do NOT repeat! (trackBonus === 0)
+  assert.strictEqual(roadmap[3].type, 'projected');
+  assert.strictEqual(roadmap[3].trackBonus, 0, 'Track tickets must not repeat in Week 4');
+  assert.ok(roadmap[3].loginTix > 0, 'Projected week includes planned login tickets');
+
+  console.log(`  ✓ Total Earned strictly includes all categories: Tasks (${proj.taskEarned}) + Logins (${proj.actualLoginTix}) + Track (${proj.actualTrackTix}) = ${proj.totalEarned}`);
+  console.log(`  ✓ Week 1: ${roadmap[0].value} Tix (Tasks: ${roadmap[0].taskTix}, Logins: ${roadmap[0].loginTix})`);
+  console.log(`  ✓ Week 2: ${roadmap[1].value} Tix (Tasks: ${roadmap[1].taskTix}, Logins: ${roadmap[1].loginTix})`);
+  console.log(`  ✓ Week 3 (Live): ${roadmap[2].value} Tix (Tasks: ${roadmap[2].taskTix}, Logins: ${roadmap[2].loginTix}, Track: +${roadmap[2].trackBonus})`);
+  console.log(`  ✓ Week 4 (Proj): ${roadmap[3].value} Tix (Track bonus cleanly 0, does not repeat)`);
+  console.log('✅ TEST 14 PASSED: Week-by-Week Roadmap accurately incorporates track and login tickets.\n');
+}
+
+// -------------------------------------------------------------
+// Test 15: Chapter Track Tickets in Chores Section & One-Time Property
+// -------------------------------------------------------------
+console.log('Test 15: Verifying Chapter Track Tickets in Chores section & one-time property...');
+{
+  const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
+  template.chores = {
+    enabled: true,
+    choresTix: 10,
+    trackEnabled: true,
+    trackTix: 150
+  };
+
+  const plan = calculateWeekNpcPlan('template', template, {}, 0, 0);
+
+  // Chores breakdown must contain track tickets
+  assert.strictEqual(plan.choresBreakdown.trackEnabled, true);
+  assert.strictEqual(plan.choresBreakdown.trackTix, 150);
+  assert.strictEqual(plan.trackTix, 150);
+
+  // Weekly routine total MUST NOT add one-time track tickets
+  // delivTix (default) + bountiesTix (default 28) + choresTix (10) + loginsTix (7)
+  const expectedWeekly = plan.delivTix + plan.bountiesTix + 10 + 7;
+  assert.strictEqual(plan.totalWeeklyTix, expectedWeekly, `Weekly total (${plan.totalWeeklyTix}) must NOT add one-time track tickets`);
+
+  // When disabled
+  template.chores.trackEnabled = false;
+  const planDisabled = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planDisabled.choresBreakdown.trackEnabled, false);
+  assert.strictEqual(planDisabled.trackTix, 0);
+
+  console.log(`  ✓ Weekly Routine Rate: ${plan.totalWeeklyTix} Tix/Wk (does NOT multiply track tickets)`);
+  console.log(`  ✓ One-Time Track Bonus: +${plan.trackTix} Tix`);
+  console.log('✅ TEST 15 PASSED: Track tickets configured under chores and verified as one-time.\n');
+}
+
+console.log('🎉 ALL 15 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');

@@ -5703,7 +5703,7 @@ body.dark-mode .planner-custom-tix-unit {
 }
 
 .planner-direct-num-input {
-  width: 65px;
+  width: 72px;
   border: none;
   outline: none;
   background: transparent;
@@ -5741,4 +5741,62 @@ body.dark-mode .planner-direct-num-input {
 
 body.dark-mode .planner-direct-unit {
   color: #94A3B8 !important;
+}
+
+/* Roadmap badges for Login & Track tickets */
+.roadmap-login-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #15803D;
+  background: #DCFCE7;
+  border: 1px solid #86EFAC;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.roadmap-track-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #92400E;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.planner-summary-track-bonus {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #B45309;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 2px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+body.dark-mode .roadmap-login-badge {
+  color: #86EFAC !important;
+  background: rgba(22, 163, 74, 0.25) !important;
+  border-color: #15803D !important;
+}
+
+body.dark-mode .roadmap-track-badge {
+  color: #FDE68A !important;
+  background: rgba(180, 83, 9, 0.25) !important;
+  border-color: #B45309 !important;
+}
+
+body.dark-mode .planner-summary-track-bonus {
+  color: #FDE68A !important;
+  background: rgba(180, 83, 9, 0.25) !important;
+  border-color: #B45309 !important;
 }

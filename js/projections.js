@@ -53,7 +53,9 @@ export const DEFAULT_PLANNER_TEMPLATE = {
   },
   chores: {
     enabled: true,
-    choresTix: 7
+    choresTix: 7,
+    trackEnabled: true,
+    trackTix: 0
   },
   logins: {
     enabled: true,
@@ -94,6 +96,17 @@ export function getPlannerTemplate() {
       chores.choresTix = chores.customTix !== undefined
         ? chores.customTix
         : DEFAULT_PLANNER_TEMPLATE.chores.choresTix;
+    }
+    if (chores.trackEnabled === undefined) {
+      chores.trackEnabled = DEFAULT_PLANNER_TEMPLATE.chores.trackEnabled !== false;
+    }
+    if (chores.trackTix === undefined) {
+      let initialTrack = 0;
+      if (typeof document !== 'undefined') {
+        const docTrack = parseInt(document.getElementById('trackTicketsInput')?.value, 10);
+        if (!isNaN(docTrack) && docTrack > 0) initialTrack = docTrack;
+      }
+      chores.trackTix = initialTrack;
     }
     return {
       ...DEFAULT_PLANNER_TEMPLATE,
@@ -217,10 +230,18 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     : (cConf.customTix !== undefined ? Math.max(0, parseInt(cConf.customTix, 10) || 0) : 7);
   const choresTix = cConf.enabled !== false ? choreTixVal : 0;
 
+  // Chapter Track Tickets calculations (One-Time Milestone, does NOT repeat weekly)
+  const trackEnabled = cConf.trackEnabled !== false;
+  const trackTixVal = (cConf.trackTix !== undefined && cConf.trackTix !== null && cConf.trackTix !== '')
+    ? Math.max(0, parseInt(cConf.trackTix, 10) || 0)
+    : 0;
+  const trackTix = trackEnabled ? trackTixVal : 0;
+
   // Logins calculations
   const lConf = config.logins || DEFAULT_PLANNER_TEMPLATE.logins;
   const loginsTix = lConf.enabled !== false ? (parseInt(lConf.daysPerWeek, 10) || 7) : 0;
 
+  // Total weekly routine strictly excludes one-time track tickets because track tickets do NOT repeat weekly
   const totalWeeklyTix = delivTix + bountiesTix + choresTix + loginsTix;
 
   return {
@@ -242,8 +263,12 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     choresBreakdown: {
       enabled: cConf.enabled !== false,
       choresTix,
-      choreInputVal: choreTixVal
+      choreInputVal: choreTixVal,
+      trackEnabled,
+      trackTix,
+      trackInputVal: trackTixVal
     },
+    trackTix,
     loginsBreakdown: {
       enabled: lConf.enabled !== false,
       daysPerWeek: parseInt(lConf.daysPerWeek, 10) || 7,
@@ -262,26 +287,43 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
 // Projection Calculation Engine
 // ---------------------------------------------------------------------------
 
-export function calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks) {
-  _lastProjectionInput = { displayItems, currentMondayKey, targetGoal, targetWeeks };
+export function calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks, externalActuals = {}) {
+  _lastProjectionInput = { displayItems, currentMondayKey, targetGoal, targetWeeks, externalActuals };
+
+  let actualTrackTix = externalActuals ? externalActuals.trackTickets : undefined;
+  let actualLoginTix = externalActuals ? externalActuals.loginTickets : undefined;
+
+  if (actualTrackTix === undefined && typeof document !== 'undefined') {
+    const el = document.getElementById('trackTicketsInput');
+    actualTrackTix = parseInt(el?.value, 10) || 0;
+  }
+  if (actualLoginTix === undefined && typeof document !== 'undefined') {
+    const el = document.getElementById('dailyLoginCount');
+    actualLoginTix = parseInt(el?.value, 10) || 0;
+  }
+  actualTrackTix = Math.max(0, parseInt(actualTrackTix, 10) || 0);
+  actualLoginTix = Math.max(0, parseInt(actualLoginTix, 10) || 0);
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
   const nowMs = Date.now();
 
   let elapsedWeeks = 0;
-  let totalEarned = 0;
+  let taskEarned = 0;
   let daysPassedInWeek = 0;
 
   if (currentIndex !== -1) {
     const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
     daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
     elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
-    totalEarned = displayItems.slice(0, currentIndex + 1).reduce((s, d) => s + (d.tickets || 0), 0);
+    taskEarned = displayItems.slice(0, currentIndex + 1).reduce((s, d) => s + (d.tickets || 0), 0);
   } else {
     const diffDays = Math.max(0, (nowMs - BASE_EPOCH.getTime()) / (24 * 60 * 60 * 1000));
     elapsedWeeks = Math.min(TOTAL_CHAPTER_WEEKS, diffDays / 7);
-    totalEarned = displayItems.reduce((s, d) => s + (d.tickets || 0), 0);
+    taskEarned = displayItems.reduce((s, d) => s + (d.tickets || 0), 0);
   }
+
+  // Total tickets earned so far strictly includes task tickets + actual login tickets + actual track tickets
+  const totalEarned = taskEarned + actualLoginTix + actualTrackTix;
 
   const activeWeekNum = currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.floor(elapsedWeeks) + 1);
   const weeksRemaining12 = Math.max(0, TOTAL_CHAPTER_WEEKS - elapsedWeeks);
@@ -297,6 +339,12 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const templatePlan = calculateWeekNpcPlan('template', template, overrides, vipBonus, boostCount);
   const pPlanned = templatePlan.totalWeeklyTix;
 
+  // Track tickets planned in Chores section (one-time chapter milestone)
+  const isTrackEnabled = templatePlan.choresBreakdown.trackEnabled !== false;
+  const plannedTrackTix = isTrackEnabled ? templatePlan.trackTix : 0;
+  const effectiveTotalTrack = isTrackEnabled ? Math.max(actualTrackTix, plannedTrackTix) : actualTrackTix;
+  const pendingTrackTix = Math.max(0, effectiveTotalTrack - actualTrackTix);
+
   const pCurrent = elapsedWeeks > 0 && totalEarned > 0 ? totalEarned / elapsedWeeks : 0;
   const pTarget = targetGoal > 0 && targetWeeks > 0 ? targetGoal / targetWeeks : 0;
   const pCustom = _customPace > 0 ? _customPace : (pPlanned > 0 ? pPlanned : pCurrent);
@@ -308,16 +356,16 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const goalAtAuctionWeek = targetGoal > 0 ? Math.round((targetGoal * AUCTION_WEEK) / TOTAL_CHAPTER_WEEKS) : 0;
 
   function buildMilestone(pace, milestoneWeek, milestoneDaysRemaining, milestoneGoal) {
-    const projected = Math.round(totalEarned + pace * Math.max(0, milestoneWeek - elapsedWeeks));
+    const projected = Math.round(totalEarned + pace * Math.max(0, milestoneWeek - elapsedWeeks) + pendingTrackTix);
     const gapVsGoal = projected - milestoneGoal;
     const dailyRequired = milestoneDaysRemaining > 0.1
-      ? Math.max(0, Math.ceil((milestoneGoal - totalEarned) / milestoneDaysRemaining))
+      ? Math.max(0, Math.ceil((milestoneGoal - totalEarned - pendingTrackTix) / milestoneDaysRemaining))
       : 0;
     return { projected, gapVsGoal, dailyRequired };
   }
 
   function buildPlannedMilestone(milestoneWeek, milestoneGoal) {
-    let projected = totalEarned;
+    let projected = totalEarned + pendingTrackTix;
 
     if (activeWeekNum <= milestoneWeek) {
       const curPlan = calculateWeekNpcPlan(activeWeekNum, template, overrides, vipBonus, boostCount);
@@ -334,7 +382,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
     const daysRemaining = Math.max(0, (milestoneWeek - elapsedWeeks) * 7);
     const gapVsGoal = projected - milestoneGoal;
     const dailyRequired = daysRemaining > 0.1
-      ? Math.max(0, Math.ceil((milestoneGoal - totalEarned) / daysRemaining))
+      ? Math.max(0, Math.ceil((milestoneGoal - totalEarned - pendingTrackTix) / daysRemaining))
       : 0;
 
     return { projected, gapVsGoal, dailyRequired };
@@ -379,8 +427,9 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const activePace = scenarios[_activeScenario]?.pace ?? pPlanned;
 
   function estimateGoalDate(pace) {
-    if (pace <= 0 || totalEarned >= targetGoal) return null;
-    const weeksToGoal = elapsedWeeks + (targetGoal - totalEarned) / pace;
+    const effectiveEarned = totalEarned + pendingTrackTix;
+    if (pace <= 0 || effectiveEarned >= targetGoal) return null;
+    const weeksToGoal = elapsedWeeks + (targetGoal - effectiveEarned) / pace;
     const msToGoal = weeksToGoal * 7 * 24 * 60 * 60 * 1000;
     const goalDate = new Date(BASE_EPOCH.getTime() + msToGoal);
     const weekNum = Math.ceil(weeksToGoal);
@@ -393,24 +442,84 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
     };
   }
 
+  function distributeActualLogins(totalLogins, curIdx, totalWeeks) {
+    const result = Array(totalWeeks).fill(0);
+    let remaining = totalLogins;
+    const maxIdx = curIdx >= 0 ? curIdx : 0;
+    for (let i = 0; i <= maxIdx; i++) {
+      if (i < maxIdx) {
+        const take = Math.min(7, remaining);
+        result[i] = take;
+        remaining -= take;
+      } else {
+        result[i] = Math.max(0, remaining);
+        remaining = 0;
+      }
+    }
+    return result;
+  }
+
   function buildRoadmap(pace, isPlannedMode) {
+    const loginDist = distributeActualLogins(actualLoginTix, currentIndex, TOTAL_CHAPTER_WEEKS);
     let cumulative = 0;
+
     return Array.from({ length: TOTAL_CHAPTER_WEEKS }, (_, i) => {
       const weekNum = i + 1;
       const item = displayItems[i];
       const isPast = item ? (!item.isCurrent && item.hasData) : false;
       const isCurrent = item ? item.isCurrent : false;
-      const actual = item ? (item.tickets || 0) : 0;
+      const actualTasks = item ? (item.tickets || 0) : 0;
 
-      if (isPast || isCurrent) {
-        cumulative += actual;
-        return { weekNum, value: actual, cumulative, type: isCurrent ? 'current' : 'actual' };
+      if (isPast) {
+        const weekLogins = loginDist[i] || 0;
+        const weekVal = actualTasks + weekLogins;
+        cumulative += weekVal;
+        return {
+          weekNum,
+          value: weekVal,
+          cumulative,
+          type: 'actual',
+          taskTix: actualTasks,
+          loginTix: weekLogins,
+          trackBonus: 0
+        };
+      } else if (isCurrent) {
+        const weekLogins = loginDist[i] || 0;
+        // The active week incorporates current task actuals, login actuals, AND track tickets
+        const trackBonus = effectiveTotalTrack;
+        const weekVal = actualTasks + weekLogins + trackBonus;
+        cumulative += weekVal;
+        return {
+          weekNum,
+          value: weekVal,
+          cumulative,
+          type: 'current',
+          taskTix: actualTasks,
+          loginTix: weekLogins,
+          trackBonus
+        };
       } else {
+        const weekPlan = isPlannedMode
+          ? calculateWeekNpcPlan(weekNum, template, overrides, vipBonus, boostCount)
+          : null;
         const weekTix = isPlannedMode
-          ? calculateWeekNpcPlan(weekNum, template, overrides, vipBonus, boostCount).totalWeeklyTix
+          ? weekPlan.totalWeeklyTix
           : Math.round(pace);
-        cumulative += weekTix;
-        return { weekNum, value: weekTix, cumulative, type: 'projected' };
+        const loginTix = isPlannedMode
+          ? weekPlan.loginsTix
+          : Math.min(7, Math.round(templatePlan.loginsTix || 7));
+        const trackBonus = (weekNum === 1 && currentIndex === -1) ? effectiveTotalTrack : 0;
+        const weekVal = weekTix + trackBonus;
+        cumulative += weekVal;
+        return {
+          weekNum,
+          value: weekVal,
+          cumulative,
+          type: 'projected',
+          taskTix: weekTix - loginTix,
+          loginTix,
+          trackBonus
+        };
       }
     });
   }
@@ -419,6 +528,11 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
 
   return {
     totalEarned,
+    taskEarned,
+    actualLoginTix,
+    actualTrackTix,
+    effectiveTotalTrack,
+    pendingTrackTix,
     elapsedWeeks,
     activeWeekNum,
     goalAtAuctionWeek,
@@ -669,6 +783,43 @@ export function setPlannerChoreTix(val, weekVal) {
   reRenderProjections();
 }
 
+export function togglePlannerTrack(weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    t.chores.trackEnabled = t.chores.trackEnabled !== false ? false : true;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    ov[w].chores.trackEnabled = ov[w].chores.trackEnabled !== false ? false : true;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function setPlannerTrackTix(val, weekVal) {
+  const parsed = Math.max(0, parseInt(val, 10) || 0);
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    t.chores.trackTix = parsed;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    ov[w].chores.trackTix = parsed;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
 export function setPlannerChoreCount(val, weekVal) {
   return setPlannerChoreTix(val, weekVal);
 }
@@ -711,27 +862,10 @@ export function resetPlannerOverride(weekVal) {
 
 function reRenderProjections() {
   if (_lastProjectionInput) {
-    const activeElem = (typeof document !== 'undefined') ? document.activeElement : null;
-    const activeId = activeElem ? activeElem.id : null;
-    const selStart = (activeElem && typeof activeElem.selectionStart === 'number') ? activeElem.selectionStart : null;
-    const selEnd = (activeElem && typeof activeElem.selectionEnd === 'number') ? activeElem.selectionEnd : null;
-
-    const { displayItems, currentMondayKey, targetGoal, targetWeeks } = _lastProjectionInput;
+    const { displayItems, currentMondayKey, targetGoal, targetWeeks, externalActuals } = _lastProjectionInput;
     renderProjectionsView(
-      calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks)
+      calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks, externalActuals)
     );
-
-    if (activeId && typeof document !== 'undefined') {
-      const restoredElem = document.getElementById(activeId);
-      if (restoredElem && typeof restoredElem.focus === 'function') {
-        restoredElem.focus();
-        if (selStart !== null && selEnd !== null && typeof restoredElem.setSelectionRange === 'function') {
-          try {
-            restoredElem.setSelectionRange(selStart, selEnd);
-          } catch (e) {}
-        }
-      }
-    }
   }
 }
 
@@ -803,10 +937,21 @@ export function renderProjectionsView(proj) {
       : isFinale
       ? `<span class="roadmap-milestone">🏆 Finale</span>`
       : '';
+    const loginBadgeHtml = row.loginTix > 0
+      ? `<span class="roadmap-login-badge" title="${row.loginTix} Daily Login Tickets">+${row.loginTix}🎁</span>`
+      : '';
+    const trackBadgeHtml = row.trackBonus > 0
+      ? `<span class="roadmap-track-badge" title="Includes +${row.trackBonus} One-Time Chapter Track Tickets">+${row.trackBonus}🎟️</span>`
+      : '';
+    const rowTitle = `Week ${row.weekNum}: Tasks: ${row.taskTix} | Logins: ${row.loginTix}${row.trackBonus > 0 ? ` | Track: ${row.trackBonus}` : ''}`;
     return `<tr class="${isAuction || isFinale ? 'roadmap-highlight-row' : ''}${isDark ? ' dark' : ''}">
       <td class="roadmap-cell roadmap-week-cell">W${row.weekNum}${milestoneHtml}</td>
       <td class="roadmap-cell"><span class="roadmap-type-badge ${typeClass}">${typeLabel}</span></td>
-      <td class="roadmap-cell roadmap-tix-cell">${ticketIconHtml} ${row.value.toLocaleString()}</td>
+      <td class="roadmap-cell roadmap-tix-cell" title="${rowTitle}">
+        ${ticketIconHtml} ${row.value.toLocaleString()}
+        ${loginBadgeHtml}
+        ${trackBadgeHtml}
+      </td>
       <td class="roadmap-cell roadmap-cumul-cell">${row.cumulative.toLocaleString()} total</td>
     </tr>`;
   }).join('');
@@ -948,7 +1093,9 @@ export function renderProjectionsView(proj) {
               value="${bData.regularInputVal}"
               class="planner-direct-num-input${isDark ? ' dark' : ''}"
               ${!bData.regularEnabled ? 'disabled' : ''}
-              oninput="setPlannerRegularBountyTix(this.value, '${currentWeekVal}')"
+              onfocus="this.select()"
+              onkeydown="if(event.key === 'Enter') this.blur()"
+              onchange="setPlannerRegularBountyTix(this.value, '${currentWeekVal}')"
               placeholder="0"
             />
             <span class="planner-direct-unit">Tix / Week</span>
@@ -999,7 +1146,9 @@ export function renderProjectionsView(proj) {
               value="${bData.animalInputVal}"
               class="planner-direct-num-input${isDark ? ' dark' : ''}"
               ${!bData.animalEnabled ? 'disabled' : ''}
-              oninput="setPlannerAnimalBountyTix(this.value, '${currentWeekVal}')"
+              onfocus="this.select()"
+              onkeydown="if(event.key === 'Enter') this.blur()"
+              onchange="setPlannerAnimalBountyTix(this.value, '${currentWeekVal}')"
               placeholder="0"
             />
             <span class="planner-direct-unit">Tix / Week</span>
@@ -1040,7 +1189,9 @@ export function renderProjectionsView(proj) {
               value="${cData.choreInputVal}"
               class="planner-direct-num-input${isDark ? ' dark' : ''}"
               ${!cData.enabled ? 'disabled' : ''}
-              oninput="setPlannerChoreTix(this.value, '${currentWeekVal}')"
+              onfocus="this.select()"
+              onkeydown="if(event.key === 'Enter') this.blur()"
+              onchange="setPlannerChoreTix(this.value, '${currentWeekVal}')"
               placeholder="0"
             />
             <span class="planner-direct-unit">Tix / Week</span>
@@ -1063,6 +1214,41 @@ export function renderProjectionsView(proj) {
         </div>
         <div class="planner-sub-body">
           <span class="planner-sub-desc">Free +1 ticket credited on your first visit each calendar day (+7 tix/week).</span>
+        </div>
+      </div>
+
+      <!-- Chapter Track Tickets Card (One-Time Milestone) -->
+      <div class="planner-sub-card track-tix-card ${cData.trackEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
+        <div class="planner-sub-card-header">
+          <label class="planner-sub-label">
+            <input
+              type="checkbox"
+              ${cData.trackEnabled ? 'checked' : ''}
+              onchange="togglePlannerTrack('${currentWeekVal}')"
+            />
+            <span class="planner-sub-title">🎟️ Chapter Track Tickets</span>
+          </label>
+          <span class="planner-sub-tix bonus-glow">${ticketIconHtml} <strong>+${cData.trackTix}</strong> Tix</span>
+        </div>
+        <div class="planner-sub-body">
+          <span class="planner-sub-desc">Total tickets earned from Ascension Age milestone track. <strong>Awarded once across the season (does not repeat weekly):</strong></span>
+          <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
+            <input
+              id="trackTixInput"
+              type="number"
+              min="0"
+              max="9999"
+              step="1"
+              value="${cData.trackInputVal}"
+              class="planner-direct-num-input${isDark ? ' dark' : ''}"
+              ${!cData.trackEnabled ? 'disabled' : ''}
+              onfocus="this.select()"
+              onkeydown="if(event.key === 'Enter') this.blur()"
+              onchange="setPlannerTrackTix(this.value, '${currentWeekVal}')"
+              placeholder="0"
+            />
+            <span class="planner-direct-unit">One-Time Tix</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1122,7 +1308,9 @@ export function renderProjectionsView(proj) {
           step="1"
           value="${Math.round(proj.customPace) || 100}"
           class="scenario-custom-input${isDark ? ' dark' : ''}"
-          oninput="setProjectionScenario('custom', this.value)"
+          onfocus="this.select()"
+          onkeydown="if(event.key === 'Enter') this.blur()"
+          onchange="setProjectionScenario('custom', this.value)"
           placeholder="Tix/Wk"
         />
         <span class="scenario-custom-unit">Tix/Wk</span>
@@ -1159,7 +1347,7 @@ export function renderProjectionsView(proj) {
         <button
           class="planner-nav-btn ${activeSection === 'chores' ? 'active' : ''}${isDark ? ' dark' : ''}"
           onclick="setPlannerSectionTab('chores')"
-        >🧹 Chores & Logins (${activePlan.choresTix + activePlan.loginsTix} Tix)</button>
+        >🧹 Chores, Logins & Track (${activePlan.choresTix + activePlan.loginsTix} Tix/Wk${activePlan.trackTix > 0 ? ` +${activePlan.trackTix} 🎟️` : ''})</button>
       </div>
 
       <div class="planner-tab-content">
@@ -1180,8 +1368,13 @@ export function renderProjectionsView(proj) {
         </div>
         <div class="planner-summary-sep">=</div>
         <div class="planner-summary-total">
-          Planned Total: <strong>${activePlan.totalWeeklyTix}</strong> ${ticketIconHtml} / Week
+          Planned Routine: <strong>${activePlan.totalWeeklyTix}</strong> ${ticketIconHtml} / Week
         </div>
+        ${activePlan.trackTix > 0 ? `
+          <div class="planner-summary-track-bonus" title="One-time Chapter Track milestone reward added once to season totals">
+            (+<strong>${activePlan.trackTix}</strong> 🎟️ One-Time Track)
+          </div>
+        ` : ''}
       </div>
     </div>
 
