@@ -61,10 +61,13 @@ import {
   setPlannerSectionTab,
   togglePlannerBounty,
   setPlannerBountyCount,
+  setPlannerRegularBountyTix,
+  setPlannerAnimalBountyTix,
   setPlannerBountyCustomTix,
   togglePlannerBountyCustom,
   togglePlannerChore,
   setPlannerChoreCount,
+  setPlannerChoreTix,
   setPlannerChoreCustomTix,
   togglePlannerChoreCustom,
   togglePlannerLogin
@@ -178,10 +181,13 @@ window.toggleAllNpcDouble = toggleAllNpcDouble;
 window.setPlannerSectionTab = setPlannerSectionTab;
 window.togglePlannerBounty = togglePlannerBounty;
 window.setPlannerBountyCount = setPlannerBountyCount;
+window.setPlannerRegularBountyTix = setPlannerRegularBountyTix;
+window.setPlannerAnimalBountyTix = setPlannerAnimalBountyTix;
 window.setPlannerBountyCustomTix = setPlannerBountyCustomTix;
 window.togglePlannerBountyCustom = togglePlannerBountyCustom;
 window.togglePlannerChore = togglePlannerChore;
 window.setPlannerChoreCount = setPlannerChoreCount;
+window.setPlannerChoreTix = setPlannerChoreTix;
 window.setPlannerChoreCustomTix = setPlannerChoreCustomTix;
 window.togglePlannerChoreCustom = togglePlannerChoreCustom;
 window.togglePlannerLogin = togglePlannerLogin;

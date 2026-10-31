@@ -121,13 +121,25 @@ console.log('Test 3: Verifying daily tickets needed & boundary edge cases...');
 // -------------------------------------------------------------
 console.log('Test 4: Verifying goal completion date estimator...');
 {
+  setProjectionScenario('current');
   const displayItems = buildMockDisplayItems(4, 150, 0);
   const proj = calculateProjections(displayItems, displayItems[4].mondayKey, 1000, 12);
 
   assert.ok(proj.goalDate !== null, 'Should estimate a goal date when pace is healthy');
   assert.ok(proj.goalDate.weekNum >= 6 && proj.goalDate.weekNum <= 10, `Goal estimated at Week ${proj.goalDate.weekNum}`);
   assert.strictEqual(typeof proj.goalDate.label, 'string');
+  assert.strictEqual(proj.goalDate.isAfterWeek12, false, 'Healthy pace should hit goal within week 12');
   console.log(`  ✓ Predicted Goal Completion: ${proj.goalDate.label} (Week ${proj.goalDate.weekNum})`);
+
+  // Case B: Slow pace where goal is estimated after week 12
+  const slowItems = buildMockDisplayItems(2, 20, 0); // 40 earned in 2 weeks => ~13 tix/wk
+  const projSlow = calculateProjections(slowItems, slowItems[2].mondayKey, 1000, 12);
+  assert.ok(projSlow.goalDate !== null);
+  assert.strictEqual(projSlow.goalDate.isAfterWeek12, true, 'Goal after week 12 should flag isAfterWeek12: true');
+  assert.ok(projSlow.goalDate.weekNum > 12, `Week num should be > 12, got ${projSlow.goalDate.weekNum}`);
+  console.log(`  ✓ Slow Pace (Goal after W12): Week ${projSlow.goalDate.weekNum} (isAfterWeek12: true)`);
+
+  setProjectionScenario('planned');
   console.log('✅ TEST 4 PASSED: Goal date estimation accurate.\n');
 }
 
@@ -327,9 +339,9 @@ console.log('Test 10: Verifying Per-NPC Double Delivery selective toggling...');
 
 
 // -------------------------------------------------------------
-// Test 11: Deterministic Bounties (Regular, Board Bonus +100, Animal)
+// Test 11: Direct Bounties Input (Regular, Board Bonus +100, Animals)
 // -------------------------------------------------------------
-console.log('Test 11: Verifying Bounties breakdown (Regular, Board Bonus +100, Animals)...');
+console.log('Test 11: Verifying Bounties input (Regular, Board Bonus +100, Animals)...');
 {
   const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
   // Disable deliveries and chores
@@ -339,36 +351,34 @@ console.log('Test 11: Verifying Bounties breakdown (Regular, Board Bonus +100, A
 
   template.bounties = {
     regularEnabled: true,
-    regularCount: 4,
-    regularAvgTix: 3,
+    regularTix: 15,
     boardBonusEnabled: false,
     animalEnabled: true,
-    animalCount: 3,
-    animalAvgTix: 8
+    animalTix: 20
   };
 
-  // Regular (4*3=12) + Animals (3*8=24) = 36 tix (no bonus)
+  // Regular (15) + Animals (20) = 35 tix (no bonus)
   const planNoBonus = calculateWeekNpcPlan('template', template, {}, 0, 0);
-  assert.strictEqual(planNoBonus.bountiesBreakdown.regularTix, 12);
+  assert.strictEqual(planNoBonus.bountiesBreakdown.regularTix, 15);
   assert.strictEqual(planNoBonus.bountiesBreakdown.boardBonusTix, 0);
-  assert.strictEqual(planNoBonus.bountiesBreakdown.animalTix, 24);
-  assert.strictEqual(planNoBonus.bountiesTix, 36);
+  assert.strictEqual(planNoBonus.bountiesBreakdown.animalTix, 20);
+  assert.strictEqual(planNoBonus.bountiesTix, 35);
 
   // Now enable +100 Board Bonus
   template.bounties.boardBonusEnabled = true;
   const planWithBonus = calculateWeekNpcPlan('template', template, {}, 0, 0);
   assert.strictEqual(planWithBonus.bountiesBreakdown.boardBonusTix, 100);
-  assert.strictEqual(planWithBonus.bountiesTix, 136);
+  assert.strictEqual(planWithBonus.bountiesTix, 135);
 
   console.log('  ✓ Bounties (No Bonus): ' + planNoBonus.bountiesTix + ' Tix');
   console.log('  ✓ Bounties (+100 Board Bonus): ' + planWithBonus.bountiesTix + ' Tix');
-  console.log('✅ TEST 11 PASSED: Bounties breakdown & +100 Board Bonus verified.\n');
+  console.log('✅ TEST 11 PASSED: Bounties direct inputs & +100 Board Bonus verified.\n');
 }
 
 // -------------------------------------------------------------
-// Test 12: Hank Chores Calculation with VIP (+2) Buff
+// Test 12: Weekly Chores Direct Ticket Input
 // -------------------------------------------------------------
-console.log('Test 12: Verifying Hank Chores calculation with VIP (+2) buff...');
+console.log('Test 12: Verifying Weekly Chores direct ticket input...');
 {
   const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
   Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
@@ -379,75 +389,72 @@ console.log('Test 12: Verifying Hank Chores calculation with VIP (+2) buff...');
 
   template.chores = {
     enabled: true,
-    choresPerWeek: 7,
-    baseTixPerChore: 1
+    choresTix: 18
   };
 
-  // Case A: 0 VIP => 7 * 1 = 7 tix
-  const planNoVip = calculateWeekNpcPlan('template', template, {}, 0, 0);
-  assert.strictEqual(planNoVip.choresBreakdown.choreYield, 1);
-  assert.strictEqual(planNoVip.choresTix, 7);
+  const plan = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(plan.choresBreakdown.enabled, true);
+  assert.strictEqual(plan.choresTix, 18);
 
-  // Case B: VIP (+2) => 7 * (1 + 2) = 21 tix
-  const planWithVip = calculateWeekNpcPlan('template', template, {}, 2, 0);
-  assert.strictEqual(planWithVip.choresBreakdown.choreYield, 3);
-  assert.strictEqual(planWithVip.choresTix, 21);
+  // When disabled
+  template.chores.enabled = false;
+  const planDisabled = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planDisabled.choresTix, 0);
 
-  console.log('  ✓ Chores (0 VIP): ' + planNoVip.choresTix + ' Tix (1 tix/chore)');
-  console.log('  ✓ Chores (VIP +2): ' + planWithVip.choresTix + ' Tix (3 tix/chore)');
-  console.log('✅ TEST 12 PASSED: Hank Chores & VIP bonus verified.\n');
+  console.log('  ✓ Weekly Chores Enabled: ' + plan.choresTix + ' Tix');
+  console.log('  ✓ Weekly Chores Disabled: ' + planDisabled.choresTix + ' Tix');
+  console.log('✅ TEST 12 PASSED: Weekly Chores direct input verified.\n');
 }
 
-
 // -------------------------------------------------------------
-// Test 13: Direct Custom Ticket Input for Bounties and Chores
+// Test 13: Direct Custom Ticket Inputs & Week 9 Auction Overrides
 // -------------------------------------------------------------
-console.log('Test 13: Verifying direct custom ticket inputs for Bounties & Chores...');
+console.log('Test 13: Verifying direct ticket inputs & Week 9 Auction overrides...');
 {
   const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
   Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
   template.logins.enabled = false;
 
-  // Case A: Default calculated values (useCustom = false)
-  // Bounties: 4*3 (12) + 2*8 (16) = 28 tix
-  // Chores: 7*1 = 7 tix
+  // Case A: Default values
+  // Bounties: 12 (regular) + 16 (animals) = 28 tix
+  // Chores: 7 tix
   const planDefault = calculateWeekNpcPlan('template', template, {}, 0, 0);
   assert.strictEqual(planDefault.bountiesTix, 28);
   assert.strictEqual(planDefault.choresTix, 7);
   assert.strictEqual(planDefault.totalWeeklyTix, 35);
 
-  // Case B: User inputs direct custom amounts in template
-  template.bounties.useCustom = true;
-  template.bounties.customTix = 50; // User estimates 50 tix from bounties
-  template.chores.useCustom = true;
-  template.chores.customTix = 14;   // User estimates 14 tix from chores
+  // Case B: User enters custom amounts in template
+  template.bounties.regularTix = 25;
+  template.bounties.animalTix = 30;
+  template.chores.choresTix = 14;
   const planCustom = calculateWeekNpcPlan('template', template, {}, 0, 0);
-  assert.strictEqual(planCustom.bountiesTix, 50, `Expected 50 custom bounties tix, got ${planCustom.bountiesTix}`);
-  assert.strictEqual(planCustom.choresTix, 14, `Expected 14 custom chores tix, got ${planCustom.choresTix}`);
-  assert.strictEqual(planCustom.totalWeeklyTix, 64, `Expected 64 total weekly tix, got ${planCustom.totalWeeklyTix}`);
+  assert.strictEqual(planCustom.bountiesTix, 55, `Expected 55 bounties tix, got ${planCustom.bountiesTix}`);
+  assert.strictEqual(planCustom.choresTix, 14, `Expected 14 chores tix, got ${planCustom.choresTix}`);
+  assert.strictEqual(planCustom.totalWeeklyTix, 69, `Expected 69 total weekly tix, got ${planCustom.totalWeeklyTix}`);
 
-  // Case C: Week 9 (Auction Week) specific override with higher custom input
+  // Case C: Week 9 (Auction Week) specific override with higher custom input & board bonus
   const overrides = {
     9: {
       ...template,
-      bounties: { ...template.bounties, customTix: 90 },
-      chores: { ...template.chores, customTix: 21 }
+      bounties: { ...template.bounties, regularTix: 40, animalTix: 45, boardBonusEnabled: true },
+      chores: { ...template.chores, choresTix: 25 }
     }
   };
 
   const planW8 = calculateWeekNpcPlan(8, template, overrides, 0, 0);
   assert.strictEqual(planW8.isOverride, false);
-  assert.strictEqual(planW8.bountiesTix, 50);
+  assert.strictEqual(planW8.bountiesTix, 55);
 
   const planW9 = calculateWeekNpcPlan(9, template, overrides, 0, 0);
   assert.strictEqual(planW9.isOverride, true);
-  assert.strictEqual(planW9.bountiesTix, 90, `Week 9 auction override bounties should be 90, got ${planW9.bountiesTix}`);
-  assert.strictEqual(planW9.choresTix, 21, `Week 9 auction override chores should be 21, got ${planW9.choresTix}`);
-  assert.strictEqual(planW9.totalWeeklyTix, 111, `Week 9 auction total should be 111, got ${planW9.totalWeeklyTix}`);
+  // 40 regular + 45 animal + 100 bonus = 185
+  assert.strictEqual(planW9.bountiesTix, 185, `Week 9 auction bounties should be 185, got ${planW9.bountiesTix}`);
+  assert.strictEqual(planW9.choresTix, 25, `Week 9 auction chores should be 25, got ${planW9.choresTix}`);
+  assert.strictEqual(planW9.totalWeeklyTix, 210, `Week 9 auction total should be 210, got ${planW9.totalWeeklyTix}`);
 
-  console.log(`  ✓ Default Calculated: Bounties ${planDefault.bountiesTix} Tix, Chores ${planDefault.choresTix} Tix (Total: ${planDefault.totalWeeklyTix})`);
-  console.log(`  ✓ Template Custom Input: Bounties ${planCustom.bountiesTix} Tix, Chores ${planCustom.choresTix} Tix (Total: ${planCustom.totalWeeklyTix})`);
-  console.log(`  ✓ Week 9 (Auction) Custom Override: Bounties ${planW9.bountiesTix} Tix, Chores ${planW9.choresTix} Tix (Total: ${planW9.totalWeeklyTix})`);
+  console.log(`  ✓ Default: Bounties ${planDefault.bountiesTix} Tix, Chores ${planDefault.choresTix} Tix (Total: ${planDefault.totalWeeklyTix})`);
+  console.log(`  ✓ Template Inputs: Bounties ${planCustom.bountiesTix} Tix, Chores ${planCustom.choresTix} Tix (Total: ${planCustom.totalWeeklyTix})`);
+  console.log(`  ✓ Week 9 (Auction) Override: Bounties ${planW9.bountiesTix} Tix, Chores ${planW9.choresTix} Tix (Total: ${planW9.totalWeeklyTix})`);
   console.log('✅ TEST 13 PASSED: Custom ticket inputs for bounties and chores verified.\n');
 }
 

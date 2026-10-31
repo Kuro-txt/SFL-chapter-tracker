@@ -5684,3 +5684,61 @@ body.dark-mode .planner-custom-tix-input {
 body.dark-mode .planner-custom-tix-unit {
   color: #94A3B8 !important;
 }
+
+/* Direct input wrap inside sub-cards */
+.planner-direct-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  border: 1.5px solid #C49A6C;
+  border-radius: 8px;
+  padding: 3px 8px;
+  transition: all 0.12s ease;
+}
+
+.planner-direct-input-wrap:focus-within {
+  border-color: #8B5A2B;
+  box-shadow: 0 0 0 2px rgba(139, 90, 43, 0.2);
+}
+
+.planner-direct-num-input {
+  width: 65px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #5C4033;
+  text-align: right;
+}
+
+.planner-direct-num-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.planner-direct-unit {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8C7853;
+}
+
+body.dark-mode .planner-direct-input-wrap {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .planner-direct-input-wrap:focus-within {
+  border-color: #38BDF8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
+}
+
+body.dark-mode .planner-direct-num-input {
+  color: #38BDF8 !important;
+}
+
+body.dark-mode .planner-direct-unit {
+  color: #94A3B8 !important;
+}

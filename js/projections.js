@@ -45,22 +45,15 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     tywin:        { enabled: false, daysPerWeek: 1, doubleDelivery: false }
   },
   bounties: {
-    useCustom: false,
-    customTix: 28,
     regularEnabled: true,
-    regularCount: 4,
-    regularAvgTix: 3,
+    regularTix: 12,
     boardBonusEnabled: false, // +100 Tix Board Bonus
     animalEnabled: true,
-    animalCount: 2,
-    animalAvgTix: 8
+    animalTix: 16
   },
   chores: {
-    useCustom: false,
-    customTix: 7,
     enabled: true,
-    choresPerWeek: 7,
-    baseTixPerChore: 1
+    choresTix: 7
   },
   logins: {
     enabled: true,
@@ -85,12 +78,29 @@ export function getPlannerTemplate() {
     const raw = localStorage.getItem('sfl_npc_planner_template');
     if (!raw) return JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
     const parsed = JSON.parse(raw);
+    const bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties, ...(parsed.bounties || {}) };
+    if (bounties.regularTix === undefined) {
+      bounties.regularTix = (bounties.regularCount && bounties.regularAvgTix)
+        ? (bounties.regularCount * bounties.regularAvgTix)
+        : DEFAULT_PLANNER_TEMPLATE.bounties.regularTix;
+    }
+    if (bounties.animalTix === undefined) {
+      bounties.animalTix = (bounties.animalCount && bounties.animalAvgTix)
+        ? (bounties.animalCount * bounties.animalAvgTix)
+        : DEFAULT_PLANNER_TEMPLATE.bounties.animalTix;
+    }
+    const chores = { ...DEFAULT_PLANNER_TEMPLATE.chores, ...(parsed.chores || {}) };
+    if (chores.choresTix === undefined) {
+      chores.choresTix = chores.customTix !== undefined
+        ? chores.customTix
+        : DEFAULT_PLANNER_TEMPLATE.chores.choresTix;
+    }
     return {
       ...DEFAULT_PLANNER_TEMPLATE,
       ...parsed,
       npcs: { ...DEFAULT_PLANNER_TEMPLATE.npcs, ...(parsed.npcs || {}) },
-      bounties: { ...DEFAULT_PLANNER_TEMPLATE.bounties, ...(parsed.bounties || {}) },
-      chores: { ...DEFAULT_PLANNER_TEMPLATE.chores, ...(parsed.chores || {}) },
+      bounties,
+      chores,
       logins: { ...DEFAULT_PLANNER_TEMPLATE.logins, ...(parsed.logins || {}) }
     };
   } catch (e) {
@@ -184,31 +194,32 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     };
   });
 
-  // Bounties calculations (Regular + Board Bonus + Animal OR Custom User Input)
+  // Bounties calculations (User direct input: Regular Bounties + Board Bonus + Animal Bounties)
   const bConf = config.bounties || DEFAULT_PLANNER_TEMPLATE.bounties;
-  const regularBountiesTix = bConf.regularEnabled ? ((parseInt(bConf.regularCount, 10) || 4) * (parseInt(bConf.regularAvgTix, 10) || 3)) : 0;
-  const boardBonusTix = bConf.boardBonusEnabled ? 100 : 0;
-  const animalBountiesTix = bConf.animalEnabled ? ((parseInt(bConf.animalCount, 10) || 2) * (parseInt(bConf.animalAvgTix, 10) || 8)) : 0;
-  const calculatedBountiesTix = regularBountiesTix + boardBonusTix + animalBountiesTix;
-  const useCustomBounties = Boolean(bConf.useCustom);
-  const customBountiesTix = (bConf.customTix !== undefined && bConf.customTix !== null && bConf.customTix !== '')
-    ? Math.max(0, parseInt(bConf.customTix, 10) || 0)
-    : calculatedBountiesTix;
-  const bountiesTix = useCustomBounties ? customBountiesTix : calculatedBountiesTix;
+  const regularTixVal = (bConf.regularTix !== undefined && bConf.regularTix !== null && bConf.regularTix !== '')
+    ? Math.max(0, parseInt(bConf.regularTix, 10) || 0)
+    : (bConf.regularCount && bConf.regularAvgTix ? bConf.regularCount * bConf.regularAvgTix : 12);
+  const regularBountiesTix = bConf.regularEnabled !== false ? regularTixVal : 0;
 
-  // Chores calculations (Hank: VIP adds +2 tickets per chore OR Custom User Input)
+  const boardBonusTix = bConf.boardBonusEnabled ? 100 : 0;
+
+  const animalTixVal = (bConf.animalTix !== undefined && bConf.animalTix !== null && bConf.animalTix !== '')
+    ? Math.max(0, parseInt(bConf.animalTix, 10) || 0)
+    : (bConf.animalCount && bConf.animalAvgTix ? bConf.animalCount * bConf.animalAvgTix : 16);
+  const animalBountiesTix = bConf.animalEnabled !== false ? animalTixVal : 0;
+
+  const bountiesTix = regularBountiesTix + boardBonusTix + animalBountiesTix;
+
+  // Chores calculations (User direct input for weekly chores)
   const cConf = config.chores || DEFAULT_PLANNER_TEMPLATE.chores;
-  const choreYield = (parseInt(cConf.baseTixPerChore, 10) || 1) + (vipBonus > 0 ? 2 : 0);
-  const calculatedChoresTix = cConf.enabled ? ((parseInt(cConf.choresPerWeek, 10) || 7) * choreYield) : 0;
-  const useCustomChores = Boolean(cConf.useCustom);
-  const customChoresTix = (cConf.customTix !== undefined && cConf.customTix !== null && cConf.customTix !== '')
-    ? Math.max(0, parseInt(cConf.customTix, 10) || 0)
-    : calculatedChoresTix;
-  const choresTix = useCustomChores ? customChoresTix : calculatedChoresTix;
+  const choreTixVal = (cConf.choresTix !== undefined && cConf.choresTix !== null && cConf.choresTix !== '')
+    ? Math.max(0, parseInt(cConf.choresTix, 10) || 0)
+    : (cConf.customTix !== undefined ? Math.max(0, parseInt(cConf.customTix, 10) || 0) : 7);
+  const choresTix = cConf.enabled !== false ? choreTixVal : 0;
 
   // Logins calculations
   const lConf = config.logins || DEFAULT_PLANNER_TEMPLATE.logins;
-  const loginsTix = lConf.enabled ? (parseInt(lConf.daysPerWeek, 10) || 7) : 0;
+  const loginsTix = lConf.enabled !== false ? (parseInt(lConf.daysPerWeek, 10) || 7) : 0;
 
   const totalWeeklyTix = delivTix + bountiesTix + choresTix + loginsTix;
 
@@ -218,33 +229,23 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     delivTix,
     doubleBonusTix,
     bountiesBreakdown: {
-      useCustom: useCustomBounties,
-      customTix: customBountiesTix,
-      calculatedTix: calculatedBountiesTix,
-      regularEnabled: Boolean(bConf.regularEnabled),
-      regularCount: parseInt(bConf.regularCount, 10) || 4,
-      regularAvgTix: parseInt(bConf.regularAvgTix, 10) || 3,
+      regularEnabled: bConf.regularEnabled !== false,
       regularTix: regularBountiesTix,
+      regularInputVal: regularTixVal,
       boardBonusEnabled: Boolean(bConf.boardBonusEnabled),
       boardBonusTix,
-      animalEnabled: Boolean(bConf.animalEnabled),
-      animalCount: parseInt(bConf.animalCount, 10) || 2,
-      animalAvgTix: parseInt(bConf.animalAvgTix, 10) || 8,
+      animalEnabled: bConf.animalEnabled !== false,
       animalTix: animalBountiesTix,
+      animalInputVal: animalTixVal,
       totalBountiesTix: bountiesTix
     },
     choresBreakdown: {
-      useCustom: useCustomChores,
-      customTix: customChoresTix,
-      calculatedTix: calculatedChoresTix,
-      enabled: Boolean(cConf.enabled),
-      choresPerWeek: parseInt(cConf.choresPerWeek, 10) || 7,
-      baseTixPerChore: parseInt(cConf.baseTixPerChore, 10) || 1,
-      choreYield,
-      choresTix
+      enabled: cConf.enabled !== false,
+      choresTix,
+      choreInputVal: choreTixVal
     },
     loginsBreakdown: {
-      enabled: Boolean(lConf.enabled),
+      enabled: lConf.enabled !== false,
       daysPerWeek: parseInt(lConf.daysPerWeek, 10) || 7,
       loginsTix
     },
@@ -380,13 +381,14 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   function estimateGoalDate(pace) {
     if (pace <= 0 || totalEarned >= targetGoal) return null;
     const weeksToGoal = elapsedWeeks + (targetGoal - totalEarned) / pace;
-    if (weeksToGoal > TOTAL_CHAPTER_WEEKS + 1) return null;
     const msToGoal = weeksToGoal * 7 * 24 * 60 * 60 * 1000;
     const goalDate = new Date(BASE_EPOCH.getTime() + msToGoal);
-    const weekNum = Math.min(TOTAL_CHAPTER_WEEKS, Math.ceil(weeksToGoal));
+    const weekNum = Math.ceil(weeksToGoal);
+    const isAfterWeek12 = weeksToGoal > TOTAL_CHAPTER_WEEKS;
     return {
       date: goalDate,
       weekNum,
+      isAfterWeek12,
       label: goalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     };
   }
@@ -579,22 +581,54 @@ export function togglePlannerBounty(field, weekVal) {
   reRenderProjections();
 }
 
-export function setPlannerBountyCount(field, val, weekVal) {
+export function setPlannerRegularBountyTix(val, weekVal) {
   const parsed = Math.max(0, parseInt(val, 10) || 0);
   const isTemplate = weekVal === 'template' || !weekVal;
   if (isTemplate) {
     const t = getPlannerTemplate();
     if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
-    t.bounties[field] = parsed;
+    t.bounties.regularTix = parsed;
     savePlannerTemplate(t);
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
     if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
-    ov[w].bounties[field] = parsed;
+    ov[w].bounties.regularTix = parsed;
     savePlannerOverrides(ov);
   }
+  reRenderProjections();
+}
+
+export function setPlannerAnimalBountyTix(val, weekVal) {
+  const parsed = Math.max(0, parseInt(val, 10) || 0);
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    t.bounties.animalTix = parsed;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    ov[w].bounties.animalTix = parsed;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function setPlannerBountyCount(field, val, weekVal) {
+  if (field === 'animalCount') return setPlannerAnimalBountyTix(val, weekVal);
+  return setPlannerRegularBountyTix(val, weekVal);
+}
+
+export function setPlannerBountyCustomTix(val, weekVal) {
+  return setPlannerRegularBountyTix(val, weekVal);
+}
+
+export function togglePlannerBountyCustom(weekVal) {
   reRenderProjections();
 }
 
@@ -616,22 +650,34 @@ export function togglePlannerChore(weekVal) {
   reRenderProjections();
 }
 
-export function setPlannerChoreCount(val, weekVal) {
+export function setPlannerChoreTix(val, weekVal) {
   const parsed = Math.max(0, parseInt(val, 10) || 0);
   const isTemplate = weekVal === 'template' || !weekVal;
   if (isTemplate) {
     const t = getPlannerTemplate();
     if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
-    t.chores.choresPerWeek = parsed;
+    t.chores.choresTix = parsed;
     savePlannerTemplate(t);
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
     if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
-    ov[w].chores.choresPerWeek = parsed;
+    ov[w].chores.choresTix = parsed;
     savePlannerOverrides(ov);
   }
+  reRenderProjections();
+}
+
+export function setPlannerChoreCount(val, weekVal) {
+  return setPlannerChoreTix(val, weekVal);
+}
+
+export function setPlannerChoreCustomTix(val, weekVal) {
+  return setPlannerChoreTix(val, weekVal);
+}
+
+export function togglePlannerChoreCustom(weekVal) {
   reRenderProjections();
 }
 
@@ -648,84 +694,6 @@ export function togglePlannerLogin(weekVal) {
     if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     if (!ov[w].logins) ov[w].logins = { ...DEFAULT_PLANNER_TEMPLATE.logins };
     ov[w].logins.enabled = !ov[w].logins.enabled;
-    savePlannerOverrides(ov);
-  }
-  reRenderProjections();
-}
-
-export function setPlannerBountyCustomTix(val, weekVal) {
-  const parsed = Math.max(0, parseInt(val, 10) || 0);
-  const isTemplate = weekVal === 'template' || !weekVal;
-  if (isTemplate) {
-    const t = getPlannerTemplate();
-    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
-    t.bounties.customTix = parsed;
-    t.bounties.useCustom = true;
-    savePlannerTemplate(t);
-  } else {
-    const w = parseInt(weekVal, 10);
-    const ov = getPlannerOverrides();
-    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
-    ov[w].bounties.customTix = parsed;
-    ov[w].bounties.useCustom = true;
-    savePlannerOverrides(ov);
-  }
-  reRenderProjections();
-}
-
-export function togglePlannerBountyCustom(weekVal) {
-  const isTemplate = weekVal === 'template' || !weekVal;
-  if (isTemplate) {
-    const t = getPlannerTemplate();
-    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
-    t.bounties.useCustom = !t.bounties.useCustom;
-    savePlannerTemplate(t);
-  } else {
-    const w = parseInt(weekVal, 10);
-    const ov = getPlannerOverrides();
-    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
-    ov[w].bounties.useCustom = !ov[w].bounties.useCustom;
-    savePlannerOverrides(ov);
-  }
-  reRenderProjections();
-}
-
-export function setPlannerChoreCustomTix(val, weekVal) {
-  const parsed = Math.max(0, parseInt(val, 10) || 0);
-  const isTemplate = weekVal === 'template' || !weekVal;
-  if (isTemplate) {
-    const t = getPlannerTemplate();
-    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
-    t.chores.customTix = parsed;
-    t.chores.useCustom = true;
-    savePlannerTemplate(t);
-  } else {
-    const w = parseInt(weekVal, 10);
-    const ov = getPlannerOverrides();
-    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
-    ov[w].chores.customTix = parsed;
-    ov[w].chores.useCustom = true;
-    savePlannerOverrides(ov);
-  }
-  reRenderProjections();
-}
-
-export function togglePlannerChoreCustom(weekVal) {
-  const isTemplate = weekVal === 'template' || !weekVal;
-  if (isTemplate) {
-    const t = getPlannerTemplate();
-    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
-    t.chores.useCustom = !t.chores.useCustom;
-    savePlannerTemplate(t);
-  } else {
-    const w = parseInt(weekVal, 10);
-    const ov = getPlannerOverrides();
-    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
-    ov[w].chores.useCustom = !ov[w].chores.useCustom;
     savePlannerOverrides(ov);
   }
   reRenderProjections();
@@ -809,14 +777,18 @@ export function renderProjectionsView(proj) {
     goalDateHtml = `<div class="proj-goal-date${isDark ? ' dark' : ''}">
       🎉 Chapter Goal Already Reached! (${proj.totalEarned.toLocaleString()} / ${proj.targetGoal.toLocaleString()} ${ticketIconHtml})
     </div>`;
+  } else if (proj.goalDate && proj.goalDate.isAfterWeek12) {
+    goalDateHtml = `<div class="proj-goal-date proj-goal-miss${isDark ? ' dark' : ''}">
+      ⚠️ Can't reach goal (Predicted at Week ${proj.goalDate.weekNum} — after Week 12)
+    </div>`;
   } else if (proj.goalDate) {
     goalDateHtml = `<div class="proj-goal-date${isDark ? ' dark' : ''}">
       📅 Predicted Goal Hit: <strong>${proj.goalDate.label}</strong>
       <span class="proj-goal-week-badge">Week ${proj.goalDate.weekNum}</span>
     </div>`;
-  } else if (proj.targetGoal > 0 && pace > 0) {
+  } else if (proj.targetGoal > 0) {
     goalDateHtml = `<div class="proj-goal-date proj-goal-miss${isDark ? ' dark' : ''}">
-      ⚠️ At selected pace, goal may not be reached before Week 12.
+      ⚠️ Can't reach goal
     </div>`;
   }
 
@@ -948,53 +920,11 @@ export function renderProjectionsView(proj) {
 
   // 2. Bounties HTML
   const bData = activePlan.bountiesBreakdown;
-  const regCountOptions = [1, 2, 3, 4, 5, 6].map(c =>
-    `<option value="${c}" ${bData.regularCount === c ? 'selected' : ''}>${c} Bounties</option>`
-  ).join('');
-  const animalCountOptions = [0, 1, 2, 3, 4].map(c =>
-    `<option value="${c}" ${bData.animalCount === c ? 'selected' : ''}>${c} Animals</option>`
-  ).join('');
 
   const bountiesSectionHtml = `
-    <!-- Custom Weekly Bounties Direct Input Banner -->
-    <div class="planner-custom-banner ${bData.useCustom ? 'active-override' : ''}${isDark ? ' dark' : ''}">
-      <div class="planner-custom-banner-left">
-        <label class="planner-custom-toggle-label">
-          <input
-            type="checkbox"
-            ${bData.useCustom ? 'checked' : ''}
-            onchange="togglePlannerBountyCustom('${currentWeekVal}')"
-          />
-          <span class="planner-custom-banner-title">✏️ Custom Weekly Bounties Estimate</span>
-        </label>
-        <span class="planner-custom-banner-hint">
-          ${bData.useCustom
-            ? `Overriding with custom input (calculated board: ${bData.calculatedTix} Tix)`
-            : `Using board formula below (${bData.calculatedTix} Tix). Enter custom tickets to override.`}
-        </span>
-      </div>
-      <div class="planner-custom-banner-right">
-        <div class="planner-custom-input-wrap${isDark ? ' dark' : ''}">
-          <input
-            id="bountyCustomInput"
-            type="number"
-            min="0"
-            max="9999"
-            step="1"
-            value="${bData.useCustom ? bData.customTix : (bData.customTix !== undefined && bData.customTix !== null ? bData.customTix : bData.calculatedTix)}"
-            class="planner-custom-tix-input${isDark ? ' dark' : ''}"
-            oninput="setPlannerBountyCustomTix(this.value, '${currentWeekVal}')"
-            placeholder="Tix"
-            title="Custom weekly bounty tickets"
-          />
-          <span class="planner-custom-tix-unit">Tix / Wk</span>
-        </div>
-      </div>
-    </div>
-
     <div class="planner-sub-cards">
       <!-- Regular Bounties Card -->
-      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+      <div class="planner-sub-card ${bData.regularEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
         <div class="planner-sub-card-header">
           <label class="planner-sub-label">
             <input
@@ -1007,15 +937,22 @@ export function renderProjectionsView(proj) {
           <span class="planner-sub-tix">${ticketIconHtml} <strong>${bData.regularTix}</strong> Tix</span>
         </div>
         <div class="planner-sub-body">
-          <span class="planner-sub-desc">Board bounties from Pete, Bert & Plaza NPCs:</span>
-          <select
-            class="planner-mini-select${isDark ? ' dark' : ''}"
-            ${!bData.regularEnabled ? 'disabled' : ''}
-            onchange="setPlannerBountyCount('regularCount', this.value, '${currentWeekVal}')"
-          >
-            ${regCountOptions}
-          </select>
-          <span class="planner-sub-rate">@ ~${bData.regularAvgTix} tix each</span>
+          <span class="planner-sub-desc">Estimated weekly tickets from Plaza board bounties:</span>
+          <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
+            <input
+              id="regularBountyTixInput"
+              type="number"
+              min="0"
+              max="999"
+              step="1"
+              value="${bData.regularInputVal}"
+              class="planner-direct-num-input${isDark ? ' dark' : ''}"
+              ${!bData.regularEnabled ? 'disabled' : ''}
+              oninput="setPlannerRegularBountyTix(this.value, '${currentWeekVal}')"
+              placeholder="0"
+            />
+            <span class="planner-direct-unit">Tix / Week</span>
+          </div>
         </div>
       </div>
 
@@ -1038,7 +975,7 @@ export function renderProjectionsView(proj) {
       </div>
 
       <!-- Animal Bounties Card -->
-      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+      <div class="planner-sub-card ${bData.animalEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
         <div class="planner-sub-card-header">
           <label class="planner-sub-label">
             <input
@@ -1051,15 +988,22 @@ export function renderProjectionsView(proj) {
           <span class="planner-sub-tix">${ticketIconHtml} <strong>${bData.animalTix}</strong> Tix</span>
         </div>
         <div class="planner-sub-body">
-          <span class="planner-sub-desc">High-tier produce delivery tasks:</span>
-          <select
-            class="planner-mini-select${isDark ? ' dark' : ''}"
-            ${!bData.animalEnabled ? 'disabled' : ''}
-            onchange="setPlannerBountyCount('animalCount', this.value, '${currentWeekVal}')"
-          >
-            ${animalCountOptions}
-          </select>
-          <span class="planner-sub-rate">@ ~${bData.animalAvgTix} tix each</span>
+          <span class="planner-sub-desc">Estimated weekly tickets from animal produce bounties:</span>
+          <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
+            <input
+              id="animalBountyTixInput"
+              type="number"
+              min="0"
+              max="999"
+              step="1"
+              value="${bData.animalInputVal}"
+              class="planner-direct-num-input${isDark ? ' dark' : ''}"
+              ${!bData.animalEnabled ? 'disabled' : ''}
+              oninput="setPlannerAnimalBountyTix(this.value, '${currentWeekVal}')"
+              placeholder="0"
+            />
+            <span class="planner-direct-unit">Tix / Week</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1068,86 +1012,44 @@ export function renderProjectionsView(proj) {
   // 3. Chores & Logins HTML
   const cData = activePlan.choresBreakdown;
   const lData = activePlan.loginsBreakdown;
-  const choreFreqOptions = [
-    { count: 7, label: 'Daily (7 Chores / week — 1/day)' },
-    { count: 14, label: 'Active (14 Chores / week — 2/day)' },
-    { count: 21, label: 'Full Clear (21 Chores / week — 3/day)' },
-    { count: 3, label: 'Casual (3 Chores / week)' },
-    { count: 1, label: 'Light (1 Chore / week)' }
-  ].map(o =>
-    `<option value="${o.count}" ${cData.choresPerWeek === o.count ? 'selected' : ''}>${o.label}</option>`
-  ).join('');
 
   const choresSectionHtml = `
-    <!-- Custom Weekly Chores Direct Input Banner -->
-    <div class="planner-custom-banner ${cData.useCustom ? 'active-override' : ''}${isDark ? ' dark' : ''}">
-      <div class="planner-custom-banner-left">
-        <label class="planner-custom-toggle-label">
-          <input
-            type="checkbox"
-            ${cData.useCustom ? 'checked' : ''}
-            onchange="togglePlannerChoreCustom('${currentWeekVal}')"
-          />
-          <span class="planner-custom-banner-title">✏️ Custom Weekly Hank Chores Estimate</span>
-        </label>
-        <span class="planner-custom-banner-hint">
-          ${cData.useCustom
-            ? `Overriding with custom input (calculated chores: ${cData.calculatedTix} Tix)`
-            : `Using Hank chores formula below (${cData.calculatedTix} Tix). Enter custom tickets to override.`}
-        </span>
-      </div>
-      <div class="planner-custom-banner-right">
-        <div class="planner-custom-input-wrap${isDark ? ' dark' : ''}">
-          <input
-            id="choreCustomInput"
-            type="number"
-            min="0"
-            max="9999"
-            step="1"
-            value="${cData.useCustom ? cData.customTix : (cData.customTix !== undefined && cData.customTix !== null ? cData.customTix : cData.calculatedTix)}"
-            class="planner-custom-tix-input${isDark ? ' dark' : ''}"
-            oninput="setPlannerChoreCustomTix(this.value, '${currentWeekVal}')"
-            placeholder="Tix"
-            title="Custom weekly chore tickets"
-          />
-          <span class="planner-custom-tix-unit">Tix / Wk</span>
-        </div>
-      </div>
-    </div>
-
     <div class="planner-sub-cards">
-      <!-- Hank's Chores Card -->
-      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+      <!-- Weekly Chores Card -->
+      <div class="planner-sub-card ${cData.enabled ? 'active' : ''}${isDark ? ' dark' : ''}">
         <div class="planner-sub-card-header">
-          <div class="planner-chore-title-wrap">
-            <img src="public/icons/npcs/hank.webp" class="planner-hank-avatar" alt="Hank" onerror="this.style.display='none'" />
-            <label class="planner-sub-label">
-              <input
-                type="checkbox"
-                ${cData.enabled ? 'checked' : ''}
-                onchange="togglePlannerChore('${currentWeekVal}')"
-              />
-              <span class="planner-sub-title">🧹 Hank's Chores</span>
-            </label>
-          </div>
+          <label class="planner-sub-label">
+            <input
+              type="checkbox"
+              ${cData.enabled ? 'checked' : ''}
+              onchange="togglePlannerChore('${currentWeekVal}')"
+            />
+            <span class="planner-sub-title">🧹 Weekly Chores</span>
+          </label>
           <span class="planner-sub-tix">${ticketIconHtml} <strong>${cData.choresTix}</strong> Tix</span>
         </div>
         <div class="planner-sub-body">
-          <select
-            class="planner-mini-select${isDark ? ' dark' : ''}"
-            ${!cData.enabled ? 'disabled' : ''}
-            onchange="setPlannerChoreCount(this.value, '${currentWeekVal}')"
-          >
-            ${choreFreqOptions}
-          </select>
-          <span class="planner-sub-rate">
-            Yield: ${cData.baseTixPerChore} base ${vipBonus > 0 ? `(+2 VIP 👑)` : ''} = <strong>${cData.choreYield}</strong> ${ticketIconHtml}/chore
-          </span>
+          <span class="planner-sub-desc">Estimated weekly tickets from completing chores:</span>
+          <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
+            <input
+              id="choreTixInput"
+              type="number"
+              min="0"
+              max="999"
+              step="1"
+              value="${cData.choreInputVal}"
+              class="planner-direct-num-input${isDark ? ' dark' : ''}"
+              ${!cData.enabled ? 'disabled' : ''}
+              oninput="setPlannerChoreTix(this.value, '${currentWeekVal}')"
+              placeholder="0"
+            />
+            <span class="planner-direct-unit">Tix / Week</span>
+          </div>
         </div>
       </div>
 
       <!-- Daily Login Reward Card -->
-      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+      <div class="planner-sub-card ${lData.enabled ? 'active' : ''}${isDark ? ' dark' : ''}">
         <div class="planner-sub-card-header">
           <label class="planner-sub-label">
             <input
@@ -1234,7 +1136,7 @@ export function renderProjectionsView(proj) {
       <div class="planner-header">
         <div class="planner-title-wrap">
           <span class="planner-title">📋 WEEKLY ROUTINE PLANNER</span>
-          <span class="planner-subtitle">Customize your weekly Deliveries, Bounties (+100 Board Bonus), and Hank Chores</span>
+          <span class="planner-subtitle">Customize your weekly Deliveries, Bounties (+100 Board Bonus), and Chores</span>
         </div>
         <div class="planner-week-switcher">
           <select class="planner-week-select${isDark ? ' dark' : ''}" onchange="setPlannerOverrideWeek(this.value)">
@@ -1273,7 +1175,7 @@ export function renderProjectionsView(proj) {
           🎯 Bounties: <strong>${activePlan.bountiesTix}</strong> ${ticketIconHtml}
         </div>
         <div class="planner-summary-sep">+</div>
-        <div class="planner-summary-item" title="Hank Chores & Daily Logins">
+        <div class="planner-summary-item" title="Weekly Chores & Daily Logins">
           🧹 Chores/Logins: <strong>${activePlan.choresTix + activePlan.loginsTix}</strong> ${ticketIconHtml}
         </div>
         <div class="planner-summary-sep">=</div>
