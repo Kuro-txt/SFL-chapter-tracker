@@ -46,8 +46,10 @@ import {
   recalculateAll,
   showChartTooltip,
   moveChartTooltip,
-  hideChartTooltip
+  hideChartTooltip,
+  switchChartTab
 } from './render.js';
+import { setProjectionScenario } from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
 
@@ -145,6 +147,8 @@ window.updateChapterCountdown = updateChapterCountdown;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
+window.switchChartTab = switchChartTab;
+window.setProjectionScenario = setProjectionScenario;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;
 window.hideChartTooltip = hideChartTooltip;

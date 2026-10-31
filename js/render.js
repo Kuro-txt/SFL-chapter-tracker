@@ -14,6 +14,30 @@ import {
   getCoinRatio
 } from './state.js';
 import { renderChapterTicketIcon } from './item-icons.js';
+import { calculateProjections, renderProjectionsView } from './projections.js';
+
+/** Tab state -- persists across recalculations */
+let _activeChartTab = 'progression';
+
+/**
+ * Switch between the Weekly Progression chart and the Ticket Projections view.
+ * Bound to window.switchChartTab in app.js.
+ * @param {'progression'|'projections'} tab
+ */
+export function switchChartTab(tab) {
+  _activeChartTab = tab;
+  const chartEl = document.getElementById('weeklyChartContainer');
+  const projEl = document.getElementById('weeklyProjectionsContainer');
+  const progBtn = document.getElementById('tabWeeklyProgression');
+  const projBtn = document.getElementById('tabWeeklyProjections');
+  const legendEl = document.getElementById('chartHeaderRight');
+
+  if (chartEl) chartEl.style.display = tab === 'progression' ? '' : 'none';
+  if (projEl) projEl.style.display = tab === 'projections' ? '' : 'none';
+  if (progBtn) progBtn.classList.toggle('active', tab === 'progression');
+  if (projBtn) projBtn.classList.toggle('active', tab === 'projections');
+  if (legendEl) legendEl.style.display = tab === 'progression' ? '' : 'none';
+}
 
 export function recalculateAll() {
   if (!state.globalData) return;
@@ -516,7 +540,11 @@ export function recalculateAll() {
   updateBadge('animalBountiesTargetBadge', activeAnimalMatching);
   updateBadge('choresTargetBadge', activeChoresMatching);
 
-  renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek);
+  const chartData = renderWeeklyChart(weeklyStats, currentWeekMonday, targetPerWeek);
+  if (chartData) {
+    const projData = calculateProjections(chartData.displayItems, chartData.currentMondayKey, targetGoal, targetWeeks);
+    renderProjectionsView(projData);
+  }
 }
 
 function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
@@ -727,6 +755,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
       ${barsSvg}
     </svg>
   `;
+
+  return { displayItems, currentMondayKey };
 }
 
 export function showChartTooltip(e, label, mondayKey, delivTix, bountyTix, animalBountyTix, choreTix, totalTix, totalCost, bountyBonusTix = 0) {

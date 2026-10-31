@@ -4220,3 +4220,556 @@ body.dark-mode .panel-group-coins span {
 body.dark-mode .boosts-login-sep {
   border-left-color: #33445c !important;
 }
+
+/* ========================================================
+   CHART TAB SWITCHER & TICKET PROJECTIONS DASHBOARD
+   ======================================================== */
+
+.chart-tab-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chart-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: #FFF8DC;
+  border: 2px solid #C49A6C;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #5C4033;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.08);
+}
+
+.chart-tab-btn:hover {
+  background: #FFFACD;
+  border-color: #8B5A2B;
+  transform: translateY(-1px);
+}
+
+.chart-tab-btn.active {
+  background: #8B5A2B !important;
+  color: #FFF8DC !important;
+  border-color: #5C4033 !important;
+  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.25);
+}
+
+/* Projections Container */
+.projections-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 0 2px 0;
+  animation: fadeInProj 0.18s ease-in-out;
+}
+
+@keyframes fadeInProj {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.proj-no-data-note {
+  font-size: 12px;
+  font-weight: 700;
+  color: #B45309;
+  background: #FEF3C7;
+  border: 1.5px solid #FCD34D;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0;
+  text-align: center;
+}
+
+/* Milestone Metric Cards Grid */
+.projection-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.projection-metric-card {
+  background: #FFF8DC;
+  border: 2px solid #C49A6C;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 3px 0px #C49A6C;
+  transition: transform 0.15s ease;
+}
+
+.projection-metric-card:hover {
+  transform: translateY(-1px);
+}
+
+.proj-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.proj-milestone-icon {
+  font-size: 18px;
+}
+
+.proj-milestone-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #5C4033;
+  letter-spacing: 0.3px;
+}
+
+.proj-card-tix {
+  font-size: 20px;
+  font-weight: 900;
+  color: #8B5A2B;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.proj-card-tix strong {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+}
+
+.proj-card-gap {
+  display: flex;
+  align-items: center;
+  margin-top: -2px;
+}
+
+.proj-gap-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.proj-gap-ahead {
+  background: #DCFCE7;
+  color: #15803D;
+  border: 1px solid #86EFAC;
+}
+
+.proj-gap-behind {
+  background: #FEE2E2;
+  color: #B91C1C;
+  border: 1px solid #FCA5A5;
+}
+
+.proj-gap-even {
+  background: #E0E7FF;
+  color: #3730A3;
+  border: 1px solid #A5B4FC;
+}
+
+.proj-card-meta {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #78350F;
+  border-top: 1px dashed #D2B48C;
+  padding-top: 6px;
+}
+
+.proj-card-daily {
+  font-size: 11px;
+  font-weight: 800;
+  color: #92400E;
+  background: #FEF3C7;
+  border-radius: 6px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Scenario Selector */
+.scenario-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #FFF8DC;
+  border: 1.5px solid #D2B48C;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.scenario-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #5C4033;
+}
+
+.scenario-pill {
+  padding: 5px 10px;
+  background: #FFFFFF;
+  border: 1.5px solid #C49A6C;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #5C4033;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s ease;
+}
+
+.scenario-pill:hover {
+  background: #FFFACD;
+  border-color: #8B5A2B;
+}
+
+.scenario-pill.active {
+  background: #8B5A2B !important;
+  color: #FFF8DC !important;
+  border-color: #5C4033 !important;
+  box-shadow: 0 1px 0px rgba(0, 0, 0, 0.2);
+}
+
+.scenario-custom-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scenario-custom-input {
+  width: 75px;
+  padding: 3px 6px;
+  border: 1.5px solid #C49A6C;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  color: #5C4033;
+  background: #FFFFFF;
+  text-align: center;
+}
+
+.scenario-custom-input:focus {
+  outline: none;
+  border-color: #8B5A2B;
+  box-shadow: 0 0 0 2px rgba(139, 90, 43, 0.2);
+}
+
+.scenario-custom-unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #78350F;
+}
+
+/* Goal Date Banner */
+.proj-goal-date {
+  background: #ECFDF5;
+  border: 1.5px solid #A7F3D0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #065F46;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.proj-goal-miss {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #92400E;
+}
+
+.proj-goal-week-badge {
+  background: #10B981;
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+
+/* Roadmap Details & Table */
+.roadmap-details {
+  background: #FFF8DC;
+  border: 1.5px solid #D2B48C;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.roadmap-summary {
+  font-size: 12px;
+  font-weight: 900;
+  color: #5C4033;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+
+.roadmap-summary:hover {
+  color: #8B5A2B;
+}
+
+.roadmap-table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.roadmap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.roadmap-th {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #5C4033;
+  border-bottom: 2px solid #C49A6C;
+}
+
+.roadmap-cell {
+  padding: 5px 10px;
+  border-bottom: 1px dashed #E2D4C0;
+  color: #4A3525;
+  font-weight: 700;
+}
+
+.roadmap-week-cell {
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roadmap-tix-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+}
+
+.roadmap-cumul-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #78350F;
+}
+
+.roadmap-milestone {
+  font-size: 9.5px;
+  font-weight: 900;
+  background: #FEF08A;
+  color: #713F12;
+  border: 1px solid #EAB308;
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.roadmap-highlight-row {
+  background: rgba(254, 240, 138, 0.25);
+}
+
+.roadmap-type-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.roadmap-actual {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.roadmap-current {
+  background: #FFEDD5;
+  color: #9A3412;
+}
+
+.roadmap-proj {
+  background: #E0E7FF;
+  color: #3730A3;
+}
+
+/* ========================================================
+   DARK MODE OVERRIDES FOR PROJECTIONS
+   ======================================================== */
+body.dark-mode .chart-tab-btn {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  color: #94A3B8 !important;
+  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .chart-tab-btn:hover {
+  background: #334155 !important;
+  color: #F8FAFC !important;
+  border-color: #475569 !important;
+}
+
+body.dark-mode .chart-tab-btn.active {
+  background: #38BDF8 !important;
+  color: #0F172A !important;
+  border-color: #0284C7 !important;
+  box-shadow: 0 2px 0px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.dark-mode .projection-metric-card {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: 0 3px 0px #0F172A !important;
+}
+
+body.dark-mode .proj-milestone-title {
+  color: #F1F5F9 !important;
+}
+
+body.dark-mode .proj-card-tix {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .proj-card-meta {
+  color: #94A3B8 !important;
+  border-top-color: #334155 !important;
+}
+
+body.dark-mode .proj-card-daily {
+  background: #312E81 !important;
+  color: #C7D2FE !important;
+}
+
+body.dark-mode .proj-gap-ahead {
+  background: #064E3B !important;
+  color: #6EE7B7 !important;
+  border-color: #047857 !important;
+}
+
+body.dark-mode .proj-gap-behind {
+  background: #7F1D1D !important;
+  color: #FCA5A5 !important;
+  border-color: #991B1B !important;
+}
+
+body.dark-mode .proj-gap-even {
+  background: #312E81 !important;
+  color: #C7D2FE !important;
+  border-color: #4338CA !important;
+}
+
+body.dark-mode .scenario-selector {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .scenario-label {
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .scenario-pill {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .scenario-pill:hover {
+  background: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .scenario-pill.active {
+  background: #38BDF8 !important;
+  color: #0F172A !important;
+  border-color: #0284C7 !important;
+}
+
+body.dark-mode .scenario-custom-input {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .scenario-custom-unit {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .proj-goal-date {
+  background: #064E3B !important;
+  border-color: #047857 !important;
+  color: #A7F3D0 !important;
+}
+
+body.dark-mode .proj-goal-miss {
+  background: #451A03 !important;
+  border-color: #78350F !important;
+  color: #FDE68A !important;
+}
+
+body.dark-mode .roadmap-details {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .roadmap-summary {
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .roadmap-summary:hover {
+  color: #38BDF8 !important;
+}
+
+body.dark-mode .roadmap-th {
+  color: #CBD5E1 !important;
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .roadmap-cell {
+  border-bottom-color: #334155 !important;
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .roadmap-cumul-cell {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .roadmap-milestone {
+  background: #713F12 !important;
+  color: #FEF08A !important;
+  border-color: #A16207 !important;
+}
+
+body.dark-mode .roadmap-highlight-row {
+  background: rgba(56, 189, 248, 0.08) !important;
+}
+
+body.dark-mode .roadmap-actual {
+  background: #064E3B !important;
+  color: #6EE7B7 !important;
+}
+
+body.dark-mode .roadmap-current {
+  background: #7C2D12 !important;
+  color: #FDBA74 !important;
+}
+
+body.dark-mode .roadmap-proj {
+  background: #312E81 !important;
+  color: #C7D2FE !important;
+}
+
+body.dark-mode .proj-no-data-note {
+  background: #451A03 !important;
+  border-color: #78350F !important;
+  color: #FDE68A !important;
+}
