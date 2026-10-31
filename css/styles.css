@@ -4773,3 +4773,435 @@ body.dark-mode .proj-no-data-note {
   border-color: #78350F !important;
   color: #FDE68A !important;
 }
+/* ========================================================
+   WEEKLY NPC DELIVERY PLANNER & DOUBLE DELIVERY
+   ======================================================== */
+
+.planner-card {
+  background: #FFF8DC;
+  border: 2px solid #C49A6C;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 3px 0px #C49A6C;
+}
+
+.planner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-bottom: 2px dashed #D2B48C;
+  padding-bottom: 10px;
+}
+
+.planner-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planner-title {
+  font-size: 13.5px;
+  font-weight: 900;
+  color: #5C4033;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planner-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8C7853;
+}
+
+.planner-week-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planner-week-select {
+  padding: 5px 10px;
+  border: 1.5px solid #C49A6C;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #5C4033;
+  background: #FFFFFF;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.planner-week-select:focus {
+  outline: none;
+  border-color: #8B5A2B;
+}
+
+.btn-reset-override {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Double Delivery Bar */
+.planner-double-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #FEF3C7;
+  border: 1.5px solid #FCD34D;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.planner-double-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.planner-double-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #D97706;
+}
+
+.planner-double-text {
+  font-size: 12px;
+  font-weight: 900;
+  color: #92400E;
+}
+
+.planner-double-hint {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #B45309;
+}
+
+/* NPC Planner Grid */
+.npc-planner-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.npc-planner-row {
+  display: grid;
+  grid-template-columns: 32px 1fr 140px 100px;
+  align-items: center;
+  gap: 8px;
+  background: #FFFFFF;
+  border: 1.5px solid #E2D4C0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  transition: all 0.12s ease;
+}
+
+.npc-planner-row.active {
+  border-color: #8B5A2B;
+  background: #FFFDF7;
+}
+
+.npc-planner-row.inactive {
+  opacity: 0.6;
+}
+
+.npc-col-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.npc-planner-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #8B5A2B;
+}
+
+.npc-col-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.npc-planner-avatar {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+}
+
+.npc-planner-name-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.npc-planner-name {
+  font-size: 12px;
+  font-weight: 900;
+  color: #5C4033;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.npc-planner-rate {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #8C7853;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.npc-col-freq {
+  display: flex;
+  align-items: center;
+}
+
+.npc-freq-select {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1.5px solid #C49A6C;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #5C4033;
+  background: #FFFFFF;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.npc-freq-select:focus {
+  outline: none;
+  border-color: #8B5A2B;
+}
+
+.npc-col-subtotal {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.npc-double-tag {
+  font-size: 10px;
+  font-weight: 900;
+  color: #92400E;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 4px;
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+
+.npc-subtotal-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 800;
+  color: #8B5A2B;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 50px;
+  justify-content: flex-end;
+}
+
+/* Baselines Bar */
+.planner-baselines-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #FFFFFF;
+  border: 1.5px solid #E2D4C0;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.planner-baselines-title {
+  font-size: 11.5px;
+  font-weight: 900;
+  color: #5C4033;
+}
+
+.baseline-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #78350F;
+  cursor: pointer;
+}
+
+.baseline-toggle-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #8B5A2B;
+}
+
+/* Summary Bar */
+.planner-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #FFFDF7;
+  border: 2px solid #8B5A2B;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.planner-summary-item {
+  font-size: 12px;
+  font-weight: 800;
+  color: #5C4033;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.planner-summary-sep {
+  font-size: 14px;
+  font-weight: 900;
+  color: #C49A6C;
+}
+
+.planner-summary-total {
+  font-size: 13px;
+  font-weight: 900;
+  color: #8B5A2B;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.planner-summary-total strong {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+}
+
+/* ========================================================
+   DARK MODE OVERRIDES FOR NPC PLANNER
+   ======================================================== */
+body.dark-mode .planner-card {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  box-shadow: 0 3px 0px #0F172A !important;
+}
+
+body.dark-mode .planner-header {
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .planner-title {
+  color: #F1F5F9 !important;
+}
+
+body.dark-mode .planner-subtitle {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .planner-week-select {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .planner-double-bar {
+  background: #312E81 !important;
+  border-color: #4338CA !important;
+}
+
+body.dark-mode .planner-double-text {
+  color: #E0E7FF !important;
+}
+
+body.dark-mode .planner-double-hint {
+  color: #C7D2FE !important;
+}
+
+body.dark-mode .npc-planner-row {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .npc-planner-row.active {
+  border-color: #38BDF8 !important;
+  background: #131F33 !important;
+}
+
+body.dark-mode .npc-planner-name {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .npc-planner-rate {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .npc-freq-select {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .npc-double-tag {
+  background: #451A03 !important;
+  border-color: #78350F !important;
+  color: #FDE68A !important;
+}
+
+body.dark-mode .npc-subtotal-val {
+  color: #38BDF8 !important;
+}
+
+body.dark-mode .planner-baselines-bar {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .planner-baselines-title {
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .baseline-toggle-label {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .planner-summary-bar {
+  background: #0F172A !important;
+  border-color: #38BDF8 !important;
+}
+
+body.dark-mode .planner-summary-item {
+  color: #CBD5E1 !important;
+}
+
+body.dark-mode .planner-summary-sep {
+  color: #475569 !important;
+}
+
+body.dark-mode .planner-summary-total {
+  color: #38BDF8 !important;
+}

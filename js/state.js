@@ -138,6 +138,7 @@ export function getActiveBoostsCostSfl() {
 }
 
 export function getActiveVipBonus() {
+  if (typeof document === 'undefined') return 0;
   return document.getElementById('vipToggle')?.checked ? 2 : 0;
 }
 

@@ -49,7 +49,15 @@ import {
   hideChartTooltip,
   switchChartTab
 } from './render.js';
-import { setProjectionScenario } from './projections.js';
+import { 
+  setProjectionScenario,
+  togglePlannerNpc,
+  setPlannerNpcDays,
+  togglePlannerDoubleDelivery,
+  setPlannerOverrideWeek,
+  togglePlannerBaseline,
+  resetPlannerOverride
+} from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
 
@@ -149,6 +157,12 @@ window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
 window.switchChartTab = switchChartTab;
 window.setProjectionScenario = setProjectionScenario;
+window.togglePlannerNpc = togglePlannerNpc;
+window.setPlannerNpcDays = setPlannerNpcDays;
+window.togglePlannerDoubleDelivery = togglePlannerDoubleDelivery;
+window.setPlannerOverrideWeek = setPlannerOverrideWeek;
+window.togglePlannerBaseline = togglePlannerBaseline;
+window.resetPlannerOverride = resetPlannerOverride;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;
 window.hideChartTooltip = hideChartTooltip;
