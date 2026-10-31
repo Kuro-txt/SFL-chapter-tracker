@@ -550,6 +550,7 @@ export function recalculateAll() {
       { trackTickets, loginTickets: totalLoginTickets }
     );
     renderProjectionsView(projData);
+    switchChartTab(_activeChartTab);
   }
 }
 

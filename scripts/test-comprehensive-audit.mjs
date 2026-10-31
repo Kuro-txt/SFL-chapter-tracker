@@ -7,12 +7,16 @@ const projectDir = path.resolve('.');
 const indexHtmlPath = path.join(projectDir, 'index.html');
 const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
 
-// 1. Extract all inline event handlers from index.html
-console.log('Audit 1: Auditing inline event handlers in index.html...');
+// 1. Extract all inline event handlers from index.html and dynamic templates (js/projections.js)
+console.log('Audit 1: Auditing inline event handlers in index.html & dynamic JS templates...');
+const projJsPath = path.join(projectDir, 'js', 'projections.js');
+const projJs = fs.existsSync(projJsPath) ? fs.readFileSync(projJsPath, 'utf8') : '';
+const combinedHtmlSources = indexHtml + '\n' + projJs;
+
 const eventRegex = /\s(on[a-zA-Z]+)=["']([^"']+)["']/g;
 const uniqueHandlers = new Set();
 let match;
-while ((match = eventRegex.exec(indexHtml)) !== null) {
+while ((match = eventRegex.exec(combinedHtmlSources)) !== null) {
   const handlerCode = match[2].trim();
   uniqueHandlers.add(handlerCode);
 }
@@ -27,7 +31,7 @@ for (const handler of uniqueHandlers) {
   }
 }
 
-console.log(`Found ${calledFunctions.size} unique function calls in index.html:`);
+console.log(`Found ${calledFunctions.size} unique function calls across index.html & JS templates:`);
 for (const fn of Array.from(calledFunctions).sort()) {
   console.log(`  • window.${fn}()`);
 }
