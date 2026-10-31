@@ -1,7 +1,8 @@
 /**
  * projections.js — Ticket Projections & Deterministic NPC Planner Engine
  * Provides calculateProjections(), renderProjectionsView(), setProjectionScenario(),
- * and interactive NPC delivery planner with per-NPC 2x Double Delivery support.
+ * and interactive planner for Deliveries (with 2x Double Delivery), Bounties (incl. +100 Board Bonus),
+ * Hank Chores (with VIP +2 buff), and Daily Logins.
  */
 
 import { renderChapterTicketIcon } from './item-icons.js';
@@ -43,18 +44,31 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     pharaoh:      { enabled: false, daysPerWeek: 1, doubleDelivery: false },
     tywin:        { enabled: false, daysPerWeek: 1, doubleDelivery: false }
   },
-  includeBounties: true,
-  bountiesTixPerWeek: 35,
-  includeChores: true,
-  choresTixPerWeek: 7,
-  includeLogins: true,
-  loginsTixPerWeek: 7
+  bounties: {
+    regularEnabled: true,
+    regularCount: 4,
+    regularAvgTix: 3,
+    boardBonusEnabled: false, // +100 Tix Board Bonus
+    animalEnabled: true,
+    animalCount: 2,
+    animalAvgTix: 8
+  },
+  chores: {
+    enabled: true,
+    choresPerWeek: 7,
+    baseTixPerChore: 1
+  },
+  logins: {
+    enabled: true,
+    daysPerWeek: 7
+  }
 };
 
 /** Module state */
 let _activeScenario = 'planned'; // 'planned' | 'current' | 'target' | 'custom'
 let _customPace = 0;
 let _plannerSelectedWeek = 'template'; // 'template' | number (e.g. 8, 12)
+let _plannerSectionTab = 'deliveries'; // 'deliveries' | 'bounties' | 'chores'
 let _lastProjectionInput = null;
 
 // ---------------------------------------------------------------------------
@@ -70,7 +84,10 @@ export function getPlannerTemplate() {
     return {
       ...DEFAULT_PLANNER_TEMPLATE,
       ...parsed,
-      npcs: { ...DEFAULT_PLANNER_TEMPLATE.npcs, ...(parsed.npcs || {}) }
+      npcs: { ...DEFAULT_PLANNER_TEMPLATE.npcs, ...(parsed.npcs || {}) },
+      bounties: { ...DEFAULT_PLANNER_TEMPLATE.bounties, ...(parsed.bounties || {}) },
+      chores: { ...DEFAULT_PLANNER_TEMPLATE.chores, ...(parsed.chores || {}) },
+      logins: { ...DEFAULT_PLANNER_TEMPLATE.logins, ...(parsed.logins || {}) }
     };
   } catch (e) {
     return JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
@@ -102,12 +119,12 @@ export function savePlannerOverrides(overrides) {
 }
 
 // ---------------------------------------------------------------------------
-// Deterministic NPC Plan Math
+// Deterministic NPC, Bounty & Chore Math
 // ---------------------------------------------------------------------------
 
 /**
  * Calculate planned tickets for a specific week or template.
- * Supports individual per-NPC double delivery ticks.
+ * Includes Deliveries (per-NPC 2x), Bounties (+100 Board Bonus), Chores (VIP +2), and Logins.
  */
 export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0, boostCount = 0) {
   const isWeekOverride = weekNum !== 'template' && overrides && Boolean(overrides[weekNum]);
@@ -116,7 +133,10 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
   const config = overrideConfig ? {
     ...template,
     ...overrideConfig,
-    npcs: { ...template.npcs, ...(overrideConfig.npcs || {}) }
+    npcs: { ...template.npcs, ...(overrideConfig.npcs || {}) },
+    bounties: { ...template.bounties, ...(overrideConfig.bounties || {}) },
+    chores: { ...template.chores, ...(overrideConfig.chores || {}) },
+    logins: { ...template.logins, ...(overrideConfig.logins || {}) }
   } : template;
 
   const perOrderBonus = vipBonus + boostCount;
@@ -130,7 +150,6 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     const days = Math.max(1, Math.min(7, parseInt(npcConf.daysPerWeek, 10) || 7));
     const yieldPerOrder = npc.baseTickets + perOrderBonus;
 
-    // Per-NPC Double Delivery tick: must have global double day enabled AND NPC double checked
     const isDoubleTicked = (npcConf.doubleDelivery !== undefined)
       ? Boolean(npcConf.doubleDelivery)
       : (Boolean(config.doubleDeliveryDays > 0) && enabled);
@@ -139,7 +158,6 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
       ? Math.min(days, config.doubleDeliveryDays)
       : 0;
 
-    // Delivery math: (days + doubleDays) * yieldPerOrder
     const totalNpcTix = enabled ? (days + doubleDays) * yieldPerOrder : 0;
     const npcDoubleBonus = enabled ? doubleDays * yieldPerOrder : 0;
 
@@ -162,9 +180,22 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     };
   });
 
-  const bountiesTix = config.includeBounties ? (parseInt(config.bountiesTixPerWeek, 10) || 35) : 0;
-  const choresTix = config.includeChores ? (parseInt(config.choresTixPerWeek, 10) || 7) : 0;
-  const loginsTix = config.includeLogins ? (parseInt(config.loginsTixPerWeek, 10) || 7) : 0;
+  // Bounties calculations (Regular + Board Bonus + Animal)
+  const bConf = config.bounties || DEFAULT_PLANNER_TEMPLATE.bounties;
+  const regularBountiesTix = bConf.regularEnabled ? ((parseInt(bConf.regularCount, 10) || 4) * (parseInt(bConf.regularAvgTix, 10) || 3)) : 0;
+  const boardBonusTix = bConf.boardBonusEnabled ? 100 : 0;
+  const animalBountiesTix = bConf.animalEnabled ? ((parseInt(bConf.animalCount, 10) || 2) * (parseInt(bConf.animalAvgTix, 10) || 8)) : 0;
+  const bountiesTix = regularBountiesTix + boardBonusTix + animalBountiesTix;
+
+  // Chores calculations (Hank: VIP adds +2 tickets per chore)
+  const cConf = config.chores || DEFAULT_PLANNER_TEMPLATE.chores;
+  const choreYield = (parseInt(cConf.baseTixPerChore, 10) || 1) + (vipBonus > 0 ? 2 : 0);
+  const choresTix = cConf.enabled ? ((parseInt(cConf.choresPerWeek, 10) || 7) * choreYield) : 0;
+
+  // Logins calculations
+  const lConf = config.logins || DEFAULT_PLANNER_TEMPLATE.logins;
+  const loginsTix = lConf.enabled ? (parseInt(lConf.daysPerWeek, 10) || 7) : 0;
+
   const totalWeeklyTix = delivTix + bountiesTix + choresTix + loginsTix;
 
   return {
@@ -172,6 +203,31 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     isOverride: isWeekOverride,
     delivTix,
     doubleBonusTix,
+    bountiesBreakdown: {
+      regularEnabled: Boolean(bConf.regularEnabled),
+      regularCount: parseInt(bConf.regularCount, 10) || 4,
+      regularAvgTix: parseInt(bConf.regularAvgTix, 10) || 3,
+      regularTix: regularBountiesTix,
+      boardBonusEnabled: Boolean(bConf.boardBonusEnabled),
+      boardBonusTix,
+      animalEnabled: Boolean(bConf.animalEnabled),
+      animalCount: parseInt(bConf.animalCount, 10) || 2,
+      animalAvgTix: parseInt(bConf.animalAvgTix, 10) || 8,
+      animalTix: animalBountiesTix,
+      totalBountiesTix: bountiesTix
+    },
+    choresBreakdown: {
+      enabled: Boolean(cConf.enabled),
+      choresPerWeek: parseInt(cConf.choresPerWeek, 10) || 7,
+      baseTixPerChore: parseInt(cConf.baseTixPerChore, 10) || 1,
+      choreYield,
+      choresTix
+    },
+    loginsBreakdown: {
+      enabled: Boolean(lConf.enabled),
+      daysPerWeek: parseInt(lConf.daysPerWeek, 10) || 7,
+      loginsTix
+    },
     bountiesTix,
     choresTix,
     loginsTix,
@@ -185,9 +241,6 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
 // Projection Calculation Engine
 // ---------------------------------------------------------------------------
 
-/**
- * Calculate all projection metrics across all scenarios.
- */
 export function calculateProjections(displayItems, currentMondayKey, targetGoal, targetWeeks) {
   _lastProjectionInput = { displayItems, currentMondayKey, targetGoal, targetWeeks };
 
@@ -215,17 +268,14 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const daysRemaining12 = weeksRemaining12 * 7;
   const daysRemainingAuction = weeksRemainingAuction * 7;
 
-  // Retrieve player buffs & planner configurations defensively
   const vipBonus = (typeof document !== 'undefined' && typeof getActiveVipBonus === 'function') ? getActiveVipBonus() : 0;
   const boostCount = (typeof document !== 'undefined' && typeof getActiveBoostCount === 'function') ? getActiveBoostCount() : 0;
   const template = getPlannerTemplate();
   const overrides = getPlannerOverrides();
 
-  // Template week plan (default for remaining weeks)
   const templatePlan = calculateWeekNpcPlan('template', template, overrides, vipBonus, boostCount);
   const pPlanned = templatePlan.totalWeeklyTix;
 
-  // Empirical run-rate & target pace
   const pCurrent = elapsedWeeks > 0 && totalEarned > 0 ? totalEarned / elapsedWeeks : 0;
   const pTarget = targetGoal > 0 && targetWeeks > 0 ? targetGoal / targetWeeks : 0;
   const pCustom = _customPace > 0 ? _customPace : (pPlanned > 0 ? pPlanned : pCurrent);
@@ -245,11 +295,9 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
     return { projected, gapVsGoal, dailyRequired };
   }
 
-  // Deterministic calculation for Planned Scenario using exact weekly overrides
   function buildPlannedMilestone(milestoneWeek, milestoneGoal) {
     let projected = totalEarned;
 
-    // Remaining in current week
     if (activeWeekNum <= milestoneWeek) {
       const curPlan = calculateWeekNpcPlan(activeWeekNum, template, overrides, vipBonus, boostCount);
       const remainingDaysInWeek = Math.max(0, 7 - daysPassedInWeek);
@@ -257,7 +305,6 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
       projected += remainingCurWeekTix;
     }
 
-    // Full future weeks up to milestoneWeek
     for (let w = activeWeekNum + 1; w <= milestoneWeek; w++) {
       const wkPlan = calculateWeekNpcPlan(w, template, overrides, vipBonus, boostCount);
       projected += wkPlan.totalWeeklyTix;
@@ -351,6 +398,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
       template,
       overrides,
       selectedWeek: _plannerSelectedWeek,
+      sectionTab: _plannerSectionTab,
       activePlan: calculateWeekNpcPlan(_plannerSelectedWeek, template, overrides, vipBonus, boostCount),
       vipBonus,
       boostCount
@@ -378,6 +426,11 @@ export function setPlannerOverrideWeek(weekVal) {
   reRenderProjections();
 }
 
+export function setPlannerSectionTab(tab) {
+  _plannerSectionTab = tab;
+  reRenderProjections();
+}
+
 export function togglePlannerNpc(npcId, weekVal) {
   const isTemplate = weekVal === 'template' || !weekVal;
   if (isTemplate) {
@@ -388,9 +441,7 @@ export function togglePlannerNpc(npcId, weekVal) {
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
-    if (!ov[w]) {
-      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    }
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: false, daysPerWeek: 7, doubleDelivery: true };
     ov[w].npcs[npcId].enabled = !ov[w].npcs[npcId].enabled;
     savePlannerOverrides(ov);
@@ -409,9 +460,7 @@ export function togglePlannerNpcDouble(npcId, weekVal) {
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
-    if (!ov[w]) {
-      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    }
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: true, daysPerWeek: 7, doubleDelivery: false };
     const cur = ov[w].npcs[npcId].doubleDelivery !== undefined ? ov[w].npcs[npcId].doubleDelivery : true;
     ov[w].npcs[npcId].doubleDelivery = !cur;
@@ -432,9 +481,7 @@ export function toggleAllNpcDouble(enableAll, weekVal) {
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
-    if (!ov[w]) {
-      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    }
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     CORE_CHAPTER_NPCS.forEach(npc => {
       if (!ov[w].npcs[npc.id]) ov[w].npcs[npc.id] = { enabled: false, daysPerWeek: 7, doubleDelivery: false };
       ov[w].npcs[npc.id].doubleDelivery = Boolean(enableAll);
@@ -455,9 +502,7 @@ export function setPlannerNpcDays(npcId, daysVal, weekVal) {
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
-    if (!ov[w]) {
-      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    }
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     if (!ov[w].npcs[npcId]) ov[w].npcs[npcId] = { enabled: true, daysPerWeek: 7, doubleDelivery: true };
     ov[w].npcs[npcId].daysPerWeek = days;
     savePlannerOverrides(ov);
@@ -474,29 +519,100 @@ export function togglePlannerDoubleDelivery(weekVal) {
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
-    if (!ov[w]) {
-      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    }
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
     ov[w].doubleDeliveryDays = ov[w].doubleDeliveryDays > 0 ? 0 : 1;
     savePlannerOverrides(ov);
   }
   reRenderProjections();
 }
 
-export function togglePlannerBaseline(type, weekVal) {
+export function togglePlannerBounty(field, weekVal) {
   const isTemplate = weekVal === 'template' || !weekVal;
-  const key = type === 'bounties' ? 'includeBounties' : type === 'chores' ? 'includeChores' : 'includeLogins';
   if (isTemplate) {
     const t = getPlannerTemplate();
-    t[key] = !t[key];
+    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    t.bounties[field] = !t.bounties[field];
     savePlannerTemplate(t);
   } else {
     const w = parseInt(weekVal, 10);
     const ov = getPlannerOverrides();
-    if (!ov[w]) {
-      ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
-    }
-    ov[w][key] = !ov[w][key];
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    ov[w].bounties[field] = !ov[w].bounties[field];
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function setPlannerBountyCount(field, val, weekVal) {
+  const parsed = Math.max(0, parseInt(val, 10) || 0);
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.bounties) t.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    t.bounties[field] = parsed;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].bounties) ov[w].bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+    ov[w].bounties[field] = parsed;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function togglePlannerChore(weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    t.chores.enabled = !t.chores.enabled;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    ov[w].chores.enabled = !ov[w].chores.enabled;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function setPlannerChoreCount(val, weekVal) {
+  const parsed = Math.max(0, parseInt(val, 10) || 0);
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.chores) t.chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    t.chores.choresPerWeek = parsed;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].chores) ov[w].chores = { ...DEFAULT_PLANNER_TEMPLATE.chores };
+    ov[w].chores.choresPerWeek = parsed;
+    savePlannerOverrides(ov);
+  }
+  reRenderProjections();
+}
+
+export function togglePlannerLogin(weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  if (isTemplate) {
+    const t = getPlannerTemplate();
+    if (!t.logins) t.logins = { ...DEFAULT_PLANNER_TEMPLATE.logins };
+    t.logins.enabled = !t.logins.enabled;
+    savePlannerTemplate(t);
+  } else {
+    const w = parseInt(weekVal, 10);
+    const ov = getPlannerOverrides();
+    if (!ov[w]) ov[w] = JSON.parse(JSON.stringify(getPlannerTemplate()));
+    if (!ov[w].logins) ov[w].logins = { ...DEFAULT_PLANNER_TEMPLATE.logins };
+    ov[w].logins.enabled = !ov[w].logins.enabled;
     savePlannerOverrides(ov);
   }
   reRenderProjections();
@@ -598,7 +714,9 @@ export function renderProjectionsView(proj) {
   const activePlan = planner.activePlan;
   const isOverride = activePlan.isOverride;
   const currentWeekVal = planner.selectedWeek;
+  const activeSection = planner.sectionTab || 'deliveries';
   const doubleActive = Boolean(activePlan.config.doubleDeliveryDays > 0);
+  const vipBonus = planner.vipBonus || 0;
 
   // Week Options for selector
   const weekOptions = [
@@ -611,7 +729,7 @@ export function renderProjectionsView(proj) {
     weekOptions.push(`<option value="${w}" ${currentWeekVal === w ? 'selected' : ''}>${label}${badge}</option>`);
   }
 
-  // NPC Rows with Per-NPC 2x Double Delivery checkbox
+  // 1. Deliveries HTML
   const npcRowsHtml = CORE_CHAPTER_NPCS.map(npc => {
     const item = activePlan.npcBreakdown[npc.id];
     const isChecked = item.enabled;
@@ -674,6 +792,185 @@ export function renderProjectionsView(proj) {
     `;
   }).join('');
 
+  const deliveriesSectionHtml = `
+    <div class="planner-double-bar${isDark ? ' dark' : ''}">
+      <div class="planner-double-left">
+        <label class="planner-double-label">
+          <input
+            type="checkbox"
+            ${doubleActive ? 'checked' : ''}
+            onchange="togglePlannerDoubleDelivery('${currentWeekVal}')"
+          />
+          <span class="planner-double-text">⚡ Weekly 2x Double Delivery Day (+${activePlan.doubleBonusTix} Tix Bonus/Week)</span>
+        </label>
+        <span class="planner-double-hint">Tick ⚡ 2x on each NPC below that you complete on the weekly 2x event day.</span>
+      </div>
+      <div class="planner-double-actions">
+        <button class="btn-wood-sm" onclick="toggleAllNpcDouble(true, '${currentWeekVal}')" title="Enable 2x on all active NPCs">All 2x</button>
+        <button class="btn-wood-sm" onclick="toggleAllNpcDouble(false, '${currentWeekVal}')" title="Disable 2x on all NPCs">Clear 2x</button>
+      </div>
+    </div>
+
+    <div class="npc-planner-grid">
+      ${npcRowsHtml}
+    </div>
+  `;
+
+  // 2. Bounties HTML
+  const bData = activePlan.bountiesBreakdown;
+  const regCountOptions = [1, 2, 3, 4, 5, 6].map(c =>
+    `<option value="${c}" ${bData.regularCount === c ? 'selected' : ''}>${c} Bounties</option>`
+  ).join('');
+  const animalCountOptions = [0, 1, 2, 3, 4].map(c =>
+    `<option value="${c}" ${bData.animalCount === c ? 'selected' : ''}>${c} Animals</option>`
+  ).join('');
+
+  const bountiesSectionHtml = `
+    <div class="planner-sub-cards">
+      <!-- Regular Bounties Card -->
+      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+        <div class="planner-sub-card-header">
+          <label class="planner-sub-label">
+            <input
+              type="checkbox"
+              ${bData.regularEnabled ? 'checked' : ''}
+              onchange="togglePlannerBounty('regularEnabled', '${currentWeekVal}')"
+            />
+            <span class="planner-sub-title">🎯 Regular Plaza Bounties</span>
+          </label>
+          <span class="planner-sub-tix">${ticketIconHtml} <strong>${bData.regularTix}</strong> Tix</span>
+        </div>
+        <div class="planner-sub-body">
+          <span class="planner-sub-desc">Board bounties from Pete, Bert & Plaza NPCs:</span>
+          <select
+            class="planner-mini-select${isDark ? ' dark' : ''}"
+            ${!bData.regularEnabled ? 'disabled' : ''}
+            onchange="setPlannerBountyCount('regularCount', this.value, '${currentWeekVal}')"
+          >
+            ${regCountOptions}
+          </select>
+          <span class="planner-sub-rate">@ ~${bData.regularAvgTix} tix each</span>
+        </div>
+      </div>
+
+      <!-- Weekly Board Completion Bonus Card (+100) -->
+      <div class="planner-sub-card board-bonus-card ${bData.boardBonusEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
+        <div class="planner-sub-card-header">
+          <label class="planner-sub-label">
+            <input
+              type="checkbox"
+              ${bData.boardBonusEnabled ? 'checked' : ''}
+              onchange="togglePlannerBounty('boardBonusEnabled', '${currentWeekVal}')"
+            />
+            <span class="planner-sub-title">🏆 Full Board Completion Bonus (+100 Tix)</span>
+          </label>
+          <span class="planner-sub-tix bonus-glow">${ticketIconHtml} <strong>+${bData.boardBonusTix}</strong> Tix</span>
+        </div>
+        <div class="planner-sub-body">
+          <span class="planner-sub-desc">Awarded when all regular bounties on the weekly board are completed!</span>
+        </div>
+      </div>
+
+      <!-- Animal Bounties Card -->
+      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+        <div class="planner-sub-card-header">
+          <label class="planner-sub-label">
+            <input
+              type="checkbox"
+              ${bData.animalEnabled ? 'checked' : ''}
+              onchange="togglePlannerBounty('animalEnabled', '${currentWeekVal}')"
+            />
+            <span class="planner-sub-title">🐔 Animal Bounties (Chicken, Cow, Sheep)</span>
+          </label>
+          <span class="planner-sub-tix">${ticketIconHtml} <strong>${bData.animalTix}</strong> Tix</span>
+        </div>
+        <div class="planner-sub-body">
+          <span class="planner-sub-desc">High-tier produce delivery tasks:</span>
+          <select
+            class="planner-mini-select${isDark ? ' dark' : ''}"
+            ${!bData.animalEnabled ? 'disabled' : ''}
+            onchange="setPlannerBountyCount('animalCount', this.value, '${currentWeekVal}')"
+          >
+            ${animalCountOptions}
+          </select>
+          <span class="planner-sub-rate">@ ~${bData.animalAvgTix} tix each</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 3. Chores & Logins HTML
+  const cData = activePlan.choresBreakdown;
+  const lData = activePlan.loginsBreakdown;
+  const choreFreqOptions = [
+    { count: 7, label: 'Daily (7 Chores / week — 1/day)' },
+    { count: 14, label: 'Active (14 Chores / week — 2/day)' },
+    { count: 21, label: 'Full Clear (21 Chores / week — 3/day)' },
+    { count: 3, label: 'Casual (3 Chores / week)' },
+    { count: 1, label: 'Light (1 Chore / week)' }
+  ].map(o =>
+    `<option value="${o.count}" ${cData.choresPerWeek === o.count ? 'selected' : ''}>${o.label}</option>`
+  ).join('');
+
+  const choresSectionHtml = `
+    <div class="planner-sub-cards">
+      <!-- Hank's Chores Card -->
+      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+        <div class="planner-sub-card-header">
+          <div class="planner-chore-title-wrap">
+            <img src="public/icons/npcs/hank.webp" class="planner-hank-avatar" alt="Hank" onerror="this.style.display='none'" />
+            <label class="planner-sub-label">
+              <input
+                type="checkbox"
+                ${cData.enabled ? 'checked' : ''}
+                onchange="togglePlannerChore('${currentWeekVal}')"
+              />
+              <span class="planner-sub-title">🧹 Hank's Chores</span>
+            </label>
+          </div>
+          <span class="planner-sub-tix">${ticketIconHtml} <strong>${cData.choresTix}</strong> Tix</span>
+        </div>
+        <div class="planner-sub-body">
+          <select
+            class="planner-mini-select${isDark ? ' dark' : ''}"
+            ${!cData.enabled ? 'disabled' : ''}
+            onchange="setPlannerChoreCount(this.value, '${currentWeekVal}')"
+          >
+            ${choreFreqOptions}
+          </select>
+          <span class="planner-sub-rate">
+            Yield: ${cData.baseTixPerChore} base ${vipBonus > 0 ? `(+2 VIP 👑)` : ''} = <strong>${cData.choreYield}</strong> ${ticketIconHtml}/chore
+          </span>
+        </div>
+      </div>
+
+      <!-- Daily Login Reward Card -->
+      <div class="planner-sub-card${isDark ? ' dark' : ''}">
+        <div class="planner-sub-card-header">
+          <label class="planner-sub-label">
+            <input
+              type="checkbox"
+              ${lData.enabled ? 'checked' : ''}
+              onchange="togglePlannerLogin('${currentWeekVal}')"
+            />
+            <span class="planner-sub-title">🎁 Daily Free Login Reward</span>
+          </label>
+          <span class="planner-sub-tix">${ticketIconHtml} <strong>${lData.loginsTix}</strong> Tix</span>
+        </div>
+        <div class="planner-sub-body">
+          <span class="planner-sub-desc">Free +1 ticket credited on your first visit each calendar day (+7 tix/week).</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Active section display
+  const sectionContentHtml = activeSection === 'bounties'
+    ? bountiesSectionHtml
+    : activeSection === 'chores'
+    ? choresSectionHtml
+    : deliveriesSectionHtml;
+
   container.innerHTML = `
     <div class="projection-cards-grid">
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
@@ -730,12 +1027,12 @@ export function renderProjectionsView(proj) {
 
     ${goalDateHtml}
 
-    <!-- Deterministic Weekly NPC Delivery Planner -->
+    <!-- Deterministic Weekly Routine Planner -->
     <div class="planner-card${isDark ? ' dark' : ''}">
       <div class="planner-header">
         <div class="planner-title-wrap">
-          <span class="planner-title">📋 WEEKLY NPC DELIVERY PLANNER</span>
-          <span class="planner-subtitle">Select which NPCs you complete each week & tick ⚡ 2x Double Delivery for 100% deterministic projections</span>
+          <span class="planner-title">📋 WEEKLY ROUTINE PLANNER</span>
+          <span class="planner-subtitle">Customize your weekly Deliveries, Bounties (+100 Board Bonus), and Hank Chores</span>
         </div>
         <div class="planner-week-switcher">
           <select class="planner-week-select${isDark ? ' dark' : ''}" onchange="setPlannerOverrideWeek(this.value)">
@@ -745,63 +1042,37 @@ export function renderProjectionsView(proj) {
         </div>
       </div>
 
-      <div class="planner-double-bar${isDark ? ' dark' : ''}">
-        <div class="planner-double-left">
-          <label class="planner-double-label">
-            <input
-              type="checkbox"
-              ${doubleActive ? 'checked' : ''}
-              onchange="togglePlannerDoubleDelivery('${currentWeekVal}')"
-            />
-            <span class="planner-double-text">⚡ Weekly 2x Double Delivery Day (+${activePlan.doubleBonusTix} Tix Bonus/Week)</span>
-          </label>
-          <span class="planner-double-hint">Tick ⚡ 2x on each NPC below that you complete on the weekly 2x event day.</span>
-        </div>
-        <div class="planner-double-actions">
-          <button class="btn-wood-sm" onclick="toggleAllNpcDouble(true, '${currentWeekVal}')" title="Enable 2x on all active NPCs">All 2x</button>
-          <button class="btn-wood-sm" onclick="toggleAllNpcDouble(false, '${currentWeekVal}')" title="Disable 2x on all NPCs">Clear 2x</button>
-        </div>
+      <!-- Planner Section Navigation Tabs -->
+      <div class="planner-nav-tabs">
+        <button
+          class="planner-nav-btn ${activeSection === 'deliveries' ? 'active' : ''}${isDark ? ' dark' : ''}"
+          onclick="setPlannerSectionTab('deliveries')"
+        >🚚 Deliveries (${activePlan.delivTix} Tix)</button>
+        <button
+          class="planner-nav-btn ${activeSection === 'bounties' ? 'active' : ''}${isDark ? ' dark' : ''}"
+          onclick="setPlannerSectionTab('bounties')"
+        >🎯 Bounties (${activePlan.bountiesTix} Tix)</button>
+        <button
+          class="planner-nav-btn ${activeSection === 'chores' ? 'active' : ''}${isDark ? ' dark' : ''}"
+          onclick="setPlannerSectionTab('chores')"
+        >🧹 Chores & Logins (${activePlan.choresTix + activePlan.loginsTix} Tix)</button>
       </div>
 
-      <div class="npc-planner-grid">
-        ${npcRowsHtml}
-      </div>
-
-      <div class="planner-baselines-bar${isDark ? ' dark' : ''}">
-        <span class="planner-baselines-title">Weekly Recurring Baselines:</span>
-        <label class="baseline-toggle-label">
-          <input
-            type="checkbox"
-            ${activePlan.config.includeBounties ? 'checked' : ''}
-            onchange="togglePlannerBaseline('bounties', '${currentWeekVal}')"
-          />
-          <span>Bounties (+${activePlan.bountiesTix})</span>
-        </label>
-        <label class="baseline-toggle-label">
-          <input
-            type="checkbox"
-            ${activePlan.config.includeChores ? 'checked' : ''}
-            onchange="togglePlannerBaseline('chores', '${currentWeekVal}')"
-          />
-          <span>Hank Chores (+${activePlan.choresTix})</span>
-        </label>
-        <label class="baseline-toggle-label">
-          <input
-            type="checkbox"
-            ${activePlan.config.includeLogins ? 'checked' : ''}
-            onchange="togglePlannerBaseline('logins', '${currentWeekVal}')"
-          />
-          <span>Daily Logins (+${activePlan.loginsTix})</span>
-        </label>
+      <div class="planner-tab-content">
+        ${sectionContentHtml}
       </div>
 
       <div class="planner-summary-bar${isDark ? ' dark' : ''}">
-        <div class="planner-summary-item">
-          Deliveries: <strong>${activePlan.delivTix}</strong> ${ticketIconHtml}
+        <div class="planner-summary-item" title="NPC Deliveries">
+          🚚 Deliveries: <strong>${activePlan.delivTix}</strong> ${ticketIconHtml}
         </div>
         <div class="planner-summary-sep">+</div>
-        <div class="planner-summary-item">
-          Baselines: <strong>${activePlan.bountiesTix + activePlan.choresTix + activePlan.loginsTix}</strong> ${ticketIconHtml}
+        <div class="planner-summary-item" title="Bounties">
+          🎯 Bounties: <strong>${activePlan.bountiesTix}</strong> ${ticketIconHtml}
+        </div>
+        <div class="planner-summary-sep">+</div>
+        <div class="planner-summary-item" title="Hank Chores & Daily Logins">
+          🧹 Chores/Logins: <strong>${activePlan.choresTix + activePlan.loginsTix}</strong> ${ticketIconHtml}
         </div>
         <div class="planner-summary-sep">=</div>
         <div class="planner-summary-total">

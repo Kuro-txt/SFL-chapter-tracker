@@ -5323,3 +5323,229 @@ body.dark-mode .npc-double-sub-tag {
   border-color: #78350F !important;
   color: #FDE68A !important;
 }
+/* ========================================================
+   PLANNER TABS, BOUNTIES & CHORES STYLES
+   ======================================================== */
+
+.planner-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  border-bottom: 2px dashed #D2B48C;
+  padding-bottom: 8px;
+}
+
+.planner-nav-btn {
+  padding: 5px 12px;
+  background: #FFFDF7;
+  border: 1.5px solid #C49A6C;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #5C4033;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s ease;
+}
+
+.planner-nav-btn:hover {
+  background: #FFFACD;
+  border-color: #8B5A2B;
+}
+
+.planner-nav-btn.active {
+  background: #8B5A2B !important;
+  color: #FFF8DC !important;
+  border-color: #5C4033 !important;
+  box-shadow: 0 1.5px 0px rgba(0, 0, 0, 0.2);
+}
+
+/* Sub-Cards for Bounties & Chores */
+.planner-sub-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planner-sub-card {
+  background: #FFFFFF;
+  border: 1.5px solid #E2D4C0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.12s ease;
+}
+
+.planner-sub-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.planner-sub-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.planner-sub-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #8B5A2B;
+  cursor: pointer;
+}
+
+.planner-sub-title {
+  font-size: 12.5px;
+  font-weight: 900;
+  color: #5C4033;
+}
+
+.planner-sub-tix {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #8B5A2B;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.planner-sub-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-left: 24px;
+}
+
+.planner-sub-desc {
+  font-size: 11px;
+  font-weight: 600;
+  color: #78350F;
+}
+
+.planner-mini-select {
+  padding: 3px 8px;
+  border: 1.5px solid #C49A6C;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #5C4033;
+  background: #FFFFFF;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.planner-mini-select:focus {
+  outline: none;
+  border-color: #8B5A2B;
+}
+
+.planner-sub-rate {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8C7853;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Board Bonus Highlight Card */
+.board-bonus-card {
+  border-color: #FBBF24;
+  background: #FFFBEB;
+}
+
+.board-bonus-card.active {
+  border-color: #D97706;
+  background: #FEF3C7;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.bonus-glow {
+  color: #B45309 !important;
+}
+
+.planner-chore-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.planner-hank-avatar {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode .planner-nav-tabs {
+  border-bottom-color: #334155 !important;
+}
+
+body.dark-mode .planner-nav-btn {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .planner-nav-btn:hover {
+  background: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .planner-nav-btn.active {
+  background: #38BDF8 !important;
+  color: #0F172A !important;
+  border-color: #0284C7 !important;
+}
+
+body.dark-mode .planner-sub-card {
+  background: #0F172A !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .planner-sub-title {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .planner-sub-tix {
+  color: #38BDF8 !important;
+}
+
+body.dark-mode .planner-sub-desc {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .planner-mini-select {
+  background: #1E293B !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .planner-sub-rate {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .board-bonus-card {
+  background: #1E1B4B !important;
+  border-color: #4338CA !important;
+}
+
+body.dark-mode .board-bonus-card.active {
+  background: #312E81 !important;
+  border-color: #818CF8 !important;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25) !important;
+}
+
+body.dark-mode .bonus-glow {
+  color: #A5B4FC !important;
+}

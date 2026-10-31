@@ -324,4 +324,77 @@ console.log('Test 10: Verifying Per-NPC Double Delivery selective toggling...');
   console.log('✅ TEST 10 PASSED: Individual NPC double delivery toggling verified.\n');
 }
 
-console.log('🎉 ALL 10 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');
+
+// -------------------------------------------------------------
+// Test 11: Deterministic Bounties (Regular, Board Bonus +100, Animal)
+// -------------------------------------------------------------
+console.log('Test 11: Verifying Bounties breakdown (Regular, Board Bonus +100, Animals)...');
+{
+  const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
+  // Disable deliveries and chores
+  Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
+  template.chores.enabled = false;
+  template.logins.enabled = false;
+
+  template.bounties = {
+    regularEnabled: true,
+    regularCount: 4,
+    regularAvgTix: 3,
+    boardBonusEnabled: false,
+    animalEnabled: true,
+    animalCount: 3,
+    animalAvgTix: 8
+  };
+
+  // Regular (4*3=12) + Animals (3*8=24) = 36 tix (no bonus)
+  const planNoBonus = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planNoBonus.bountiesBreakdown.regularTix, 12);
+  assert.strictEqual(planNoBonus.bountiesBreakdown.boardBonusTix, 0);
+  assert.strictEqual(planNoBonus.bountiesBreakdown.animalTix, 24);
+  assert.strictEqual(planNoBonus.bountiesTix, 36);
+
+  // Now enable +100 Board Bonus
+  template.bounties.boardBonusEnabled = true;
+  const planWithBonus = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planWithBonus.bountiesBreakdown.boardBonusTix, 100);
+  assert.strictEqual(planWithBonus.bountiesTix, 136);
+
+  console.log('  ✓ Bounties (No Bonus): ' + planNoBonus.bountiesTix + ' Tix');
+  console.log('  ✓ Bounties (+100 Board Bonus): ' + planWithBonus.bountiesTix + ' Tix');
+  console.log('✅ TEST 11 PASSED: Bounties breakdown & +100 Board Bonus verified.\n');
+}
+
+// -------------------------------------------------------------
+// Test 12: Hank Chores Calculation with VIP (+2) Buff
+// -------------------------------------------------------------
+console.log('Test 12: Verifying Hank Chores calculation with VIP (+2) buff...');
+{
+  const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
+  Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
+  template.bounties.regularEnabled = false;
+  template.bounties.boardBonusEnabled = false;
+  template.bounties.animalEnabled = false;
+  template.logins.enabled = false;
+
+  template.chores = {
+    enabled: true,
+    choresPerWeek: 7,
+    baseTixPerChore: 1
+  };
+
+  // Case A: 0 VIP => 7 * 1 = 7 tix
+  const planNoVip = calculateWeekNpcPlan('template', template, {}, 0, 0);
+  assert.strictEqual(planNoVip.choresBreakdown.choreYield, 1);
+  assert.strictEqual(planNoVip.choresTix, 7);
+
+  // Case B: VIP (+2) => 7 * (1 + 2) = 21 tix
+  const planWithVip = calculateWeekNpcPlan('template', template, {}, 2, 0);
+  assert.strictEqual(planWithVip.choresBreakdown.choreYield, 3);
+  assert.strictEqual(planWithVip.choresTix, 21);
+
+  console.log('  ✓ Chores (0 VIP): ' + planNoVip.choresTix + ' Tix (1 tix/chore)');
+  console.log('  ✓ Chores (VIP +2): ' + planWithVip.choresTix + ' Tix (3 tix/chore)');
+  console.log('✅ TEST 12 PASSED: Hank Chores & VIP bonus verified.\n');
+}
+
+console.log('🎉 ALL 12 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');

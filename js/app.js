@@ -55,10 +55,15 @@ import {
   setPlannerNpcDays,
   togglePlannerDoubleDelivery,
   setPlannerOverrideWeek,
-  togglePlannerBaseline,
   resetPlannerOverride,
   togglePlannerNpcDouble,
-  toggleAllNpcDouble
+  toggleAllNpcDouble,
+  setPlannerSectionTab,
+  togglePlannerBounty,
+  setPlannerBountyCount,
+  togglePlannerChore,
+  setPlannerChoreCount,
+  togglePlannerLogin
 } from './projections.js';
 import { state, checkAndAutoClaimDailyLogin, handleDailyLoginToggle, recomputeCoinCosts } from './state.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -163,10 +168,15 @@ window.togglePlannerNpc = togglePlannerNpc;
 window.setPlannerNpcDays = setPlannerNpcDays;
 window.togglePlannerDoubleDelivery = togglePlannerDoubleDelivery;
 window.setPlannerOverrideWeek = setPlannerOverrideWeek;
-window.togglePlannerBaseline = togglePlannerBaseline;
 window.resetPlannerOverride = resetPlannerOverride;
 window.togglePlannerNpcDouble = togglePlannerNpcDouble;
 window.toggleAllNpcDouble = toggleAllNpcDouble;
+window.setPlannerSectionTab = setPlannerSectionTab;
+window.togglePlannerBounty = togglePlannerBounty;
+window.setPlannerBountyCount = setPlannerBountyCount;
+window.togglePlannerChore = togglePlannerChore;
+window.setPlannerChoreCount = setPlannerChoreCount;
+window.togglePlannerLogin = togglePlannerLogin;
 window.showChartTooltip = showChartTooltip;
 window.moveChartTooltip = moveChartTooltip;
 window.hideChartTooltip = hideChartTooltip;
