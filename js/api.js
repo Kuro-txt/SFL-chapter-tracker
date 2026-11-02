@@ -667,10 +667,7 @@ export async function saveProgressToCloudKV(silent = false) {
       }, 2500);
     }
 
-    if (!silent) {
-      const totalTix = data.vaultData?.cumulativeTickets || calculatedTotalTickets;
-      showToast(`☁️ Saved to Cloud! (${totalTix} Total Tickets)`, 'success');
-    }
+    // Success toast window disabled per user request; button state visually indicates 'SAVED! ✨'
   } catch (err) {
     setSaveButtonsState('idle');
     if (!silent) showToast(`❌ Cloud Save Error: ${err.message}`, 'error');

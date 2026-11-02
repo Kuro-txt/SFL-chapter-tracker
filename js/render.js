@@ -74,6 +74,7 @@ export function recalculateAll() {
   Object.entries(rawWeeks).forEach(([wkKey, wkVal]) => {
     if (!wkVal || typeof wkVal !== 'object') return;
     const normalizedId = getMondayBasedWeekId(wkVal.weekId || wkKey);
+    if (normalizedId < '2026-11-02') return;
     if (!weeks[normalizedId]) {
       weeks[normalizedId] = { weekId: normalizedId, bounties: [], chores: [] };
     }
@@ -108,6 +109,7 @@ export function recalculateAll() {
   const addWeeklyStat = (mondayKey, tix, cost, category = 'deliv') => {
     if (!mondayKey) mondayKey = currentWeekMonday;
     const normMonday = getMondayBasedWeekId(mondayKey);
+    if (normMonday < '2026-11-02') return;
     if (!weeklyStats[normMonday]) {
       weeklyStats[normMonday] = { 
         tickets: 0, 
@@ -593,12 +595,21 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
     weekMondays.push(d.toISOString().split('T')[0]);
   }
 
-  Object.keys(weeklyStats).forEach(mk => {
-    if (!weekMondays.includes(mk)) {
-      weekMondays.push(mk);
-      weekMondays.sort();
+  // Roll pre-season (Week 0) deliveries into Week 1 without shifting the 12-week chart
+  const preSeasonKey = '2026-11-02';
+  if (weeklyStats[preSeasonKey] && weekMondays[0]) {
+    const w1Key = weekMondays[0];
+    if (!weeklyStats[w1Key]) {
+      weeklyStats[w1Key] = { tickets: 0, cost: 0, delivTix: 0, bountyTix: 0, bountyBonusTix: 0, animalBountyTix: 0, choreTix: 0 };
     }
-  });
+    const pre = weeklyStats[preSeasonKey];
+    weeklyStats[w1Key].tickets += (pre.tickets || 0);
+    weeklyStats[w1Key].cost += (pre.cost || 0);
+    weeklyStats[w1Key].delivTix += (pre.delivTix || 0);
+    weeklyStats[w1Key].bountyTix += (pre.bountyTix || 0);
+    weeklyStats[w1Key].animalBountyTix += (pre.animalBountyTix || 0);
+    weeklyStats[w1Key].choreTix += (pre.choreTix || 0);
+  }
 
   const displayItems = [];
   weekMondays.forEach((mondayKey, idx) => {
@@ -663,9 +674,9 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   const leftPadding = 50;
   const rightPadding = 75;
   const topPadding = 40;
-  const bottomPadding = 52;
+  const bottomPadding = 58;
 
-  const chartHeight = 265;
+  const chartHeight = 275;
   const plotHeight = chartHeight - topPadding - bottomPadding;
   const chartWidth = leftPadding + (displayItems.length * (barWidth + barGap)) + rightPadding;
 
@@ -750,8 +761,9 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
           <title>📅 ${item.label} (${item.mondayKey})\n📦 Deliveries: ${item.delivTix} Tix\n📜 Bounties: ${item.bountyTix} Tix${bonusTitleText}\n🐄 Animal Bounties: ${item.animalBountyTix} Tix\n🧹 Chores: ${item.choreTix} Tix\n🎟️ Total: ${item.tickets} Tix\n💰 Cost: ${formatSFL(item.cost)} SFL</title>
         </rect>
         <text x="${xPos + (barWidth / 2)}" y="${yPos - 8}" font-size="13" font-weight="900" fill="${tixTextColor}" text-anchor="middle">${tixLabel}</text>
-        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 20}" font-size="12" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
-        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 35}" font-size="10" font-weight="900" fill="${colors.costLabel}" text-anchor="middle">${costText}</text>` : ''}
+        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 18}" font-size="12" font-weight="900" fill="${colors.axisLabel}" text-anchor="middle">${item.label}</text>
+        <text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 31}" font-size="9.5" font-weight="700" fill="${colors.gridText}" text-anchor="middle">${new Date(item.mondayKey + 'T00:00:00.000Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</text>
+        ${costText ? `<text x="${xPos + (barWidth / 2)}" y="${topPadding + plotHeight + 44}" font-size="10" font-weight="900" fill="${colors.costLabel}" text-anchor="middle">${costText}</text>` : ''}
       </g>
     `;
   });
