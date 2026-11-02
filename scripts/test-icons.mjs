@@ -101,10 +101,14 @@ for (const dNpc of deliveryNpcNames) {
 }
 console.log('✅ TEST 6 PASSED: All 11 chapter delivery NPCs resolve official animation CDN URLs.');
 
-// Test 7: Current Chapter Ticket (Shiny Feather) & Next Chapter (Beetle Wing)
+// Test 7: Current Chapter Ticket (Beetle Wing / Duende Cap) & Past Chapter (Shiny Feather)
 const currentTicketName = getChapterTicketName();
-if (currentTicketName !== 'shiny_feather') {
-  throw new Error(`Expected current chapter ticket to be shiny_feather, got: ${currentTicketName}`);
+if (currentTicketName !== 'beetle_wing') {
+  throw new Error(`Expected current chapter ticket to be beetle_wing, got: ${currentTicketName}`);
+}
+const pastTicketName = getChapterTicketName('Ascension Age');
+if (pastTicketName !== 'shiny_feather') {
+  throw new Error(`Expected past chapter ticket to be shiny_feather, got: ${pastTicketName}`);
 }
 const shinyFeatherUrl = getItemIconUrl('shiny_feather');
 if (!fs.existsSync(shinyFeatherUrl)) {
@@ -115,10 +119,10 @@ if (!fs.existsSync(beetleWingUrl)) {
   throw new Error(`Beetle wing asset missing on disk: ${beetleWingUrl}`);
 }
 const ticketHtml = renderChapterTicketIcon(16);
-if (!ticketHtml.includes('shiny_feather.webp')) {
-  throw new Error(`renderChapterTicketIcon did not render shiny_feather: ${ticketHtml}`);
+if (!ticketHtml.includes('beetle_wing.webp')) {
+  throw new Error(`renderChapterTicketIcon did not render beetle_wing: ${ticketHtml}`);
 }
-console.log('✅ TEST 7 PASSED: Current ticket (Shiny Feather) and next chapter ticket (Beetle Wing) correctly verified on disk.');
+console.log('✅ TEST 7 PASSED: Current ticket (Beetle Wing) and past chapter ticket (Shiny Feather) correctly verified on disk.');
 
 // Test 8: Formerly green-background items resolve to clean transparent public/icons
 const formerlyGreenItems = [

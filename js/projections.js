@@ -10,7 +10,7 @@ import { getActiveVipBonus, getActiveBoostCount } from './state.js';
 
 /** Chapter constants — must match render.js */
 const TOTAL_CHAPTER_WEEKS = 12;
-const BASE_EPOCH = new Date('2026-08-10T00:00:00.000Z');
+const BASE_EPOCH = new Date('2026-11-09T00:00:00.000Z');
 const AUCTION_WEEK = 9;
 
 /** Core 11 Chapter Delivery NPCs with base tickets & official avatars */
@@ -331,7 +331,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
   const nowMs = Date.now();
-  const isPreSeason = nowMs < BASE_EPOCH.getTime();
+  const isPreSeason = (currentIndex === -1) && (nowMs < BASE_EPOCH.getTime());
 
   let elapsedWeeks = 0;
   let taskEarned = 0;
@@ -340,7 +340,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   if (isPreSeason) {
     elapsedWeeks = 0;
     daysPassedInWeek = 0;
-    taskEarned = 0;
+    taskEarned = displayItems.reduce((s, d) => s + (d.tickets || 0), 0);
   } else if (currentIndex !== -1) {
     const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
     daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
@@ -1306,7 +1306,7 @@ export function renderProjectionsView(proj) {
           <span class="planner-sub-tix bonus-glow">${ticketIconHtml} <strong>+${cData.trackTix}</strong> Tix</span>
         </div>
         <div class="planner-sub-body">
-          <span class="planner-sub-desc">Total tickets earned from Ascension Age milestone track. <strong>Awarded once across the season (does not repeat weekly):</strong></span>
+          <span class="planner-sub-desc">Total tickets earned from Cave Dwellers milestone track. <strong>Awarded once across the season (does not repeat weekly):</strong></span>
           <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
             <input
               id="trackTixInput"

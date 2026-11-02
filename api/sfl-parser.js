@@ -28,6 +28,10 @@ export function extractRewardTickets(rewardObj) {
     for (const [key, val] of Object.entries(obj)) {
       const cleanKey = key.toLowerCase().trim();
       if (
+        cleanKey === 'duende cap' ||
+        cleanKey === 'duende_cap' ||
+        cleanKey === 'duendecap' ||
+        cleanKey.includes('duende') ||
         cleanKey === 'shiny feather' ||
         cleanKey === 'shiny_feather' ||
         cleanKey === 'feather' ||

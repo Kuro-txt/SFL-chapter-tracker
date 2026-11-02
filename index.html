@@ -119,7 +119,7 @@
           </a>
         </div>
 
-        <div id="chapterCountdownWidget" class="chapter-countdown-widget" title="Chapter ends on Nov 2, 2026 at 00:00 UTC">
+        <div id="chapterCountdownWidget" class="chapter-countdown-widget" title="Chapter ends on Feb 1, 2027 at 00:00 UTC">
           <div class="countdown-icon">
             <svg width="20" height="24" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg" style="image-rendering: pixelated;">
               <rect x="6" y="0" width="4" height="1" fill="#4B6584"/>
@@ -232,7 +232,7 @@
         <div class="input-group panel-group-track" style="padding:6px 10px; border:2px solid #2E7D32; border-radius:10px; display:flex; align-items:center; gap:6px;">
           <span style="color:#1B5E20; font-weight:900; font-size:12px;">🛤️ TRACK:</span>
           <label for="trackTicketsInput" style="color:#2E7D32; font-weight:bold; font-size:12px; display:inline-flex; align-items:center; gap:3px;"><img src="public/icons/shiny_feather.webp" alt="Tix" width="14" height="14" class="sfl-item-icon" style="width:14px; height:14px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" /> Tix:</label>
-          <input type="number" id="trackTicketsInput" value="0" readonly style="width: 58px; padding: 3px 6px; font-size: 12px; font-weight: bold; border-radius:6px; background: rgba(46, 125, 50, 0.1); border: 1.5px solid #2E7D32; color: #1B5E20; text-align: center; cursor: default;" title="Automatically calculated from Ascension Age chapter points and VIP status" />
+          <input type="number" id="trackTicketsInput" value="0" readonly style="width: 58px; padding: 3px 6px; font-size: 12px; font-weight: bold; border-radius:6px; background: rgba(46, 125, 50, 0.1); border: 1.5px solid #2E7D32; color: #1B5E20; text-align: center; cursor: default;" title="Automatically calculated from Cave Dwellers chapter points and VIP status" />
           <label for="trackCostInput" style="color:#2E7D32; font-weight:bold; font-size:12px;">SFL:</label>
           <input type="number" step="0.001" id="trackCostInput" value="0" placeholder="0.000" onchange="saveTrackAndRecalculate()" style="width: 70px; padding: 3px 6px; font-size: 12px; border-radius:6px;" title="Total Track SFL Cost" />
         </div>
@@ -619,9 +619,9 @@
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
               <span style="font-size: 16px;">🌾</span>
-              <strong id="chapterActiveName" class="chapter-active-title">ACTIVE CHAPTER: Ascension Age (Chapter 15)</strong>
+              <strong id="chapterActiveName" class="chapter-active-title">ACTIVE CHAPTER: Cave Dwellers (Chapter 16)</strong>
               <span id="chapterActiveBadge" class="chapter-badge-live">⏳ LIVE SEASON</span>
-              <span id="chapterActiveEndDate" class="chapter-badge-end-date" title="Official Season End Date">🏁 Ends: Nov 2, 2026 (00:00 UTC)</span>
+              <span id="chapterActiveEndDate" class="chapter-badge-end-date" title="Official Season End Date">🏁 Ends: Feb 1, 2027 (00:00 UTC)</span>
             </div>
             <button onclick="snapshotCurrentChapter()" class="btn btn-sm btn-emerald" style="padding: 5px 12px; font-size: 11px; cursor: pointer;">
               💾 SNAPSHOT TO LOGS

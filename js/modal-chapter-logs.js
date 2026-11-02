@@ -353,13 +353,13 @@ export function renderChapterLogsList() {
 
 export async function snapshotCurrentChapter() {
   const currentTitleEl = document.getElementById('chapterActiveName');
-  const defaultTitle = currentTitleEl ? currentTitleEl.textContent.replace('ACTIVE CHAPTER:', '').replace('LIVE SEASON', '').trim() : 'Ascension Age (Chapter 15)';
+  const defaultTitle = currentTitleEl ? currentTitleEl.textContent.replace('ACTIVE CHAPTER:', '').replace('LIVE SEASON', '').trim() : 'Cave Dwellers (Chapter 16)';
   
   const chapterTitle = prompt('Enter a label for this chapter snapshot:', defaultTitle);
   if (!chapterTitle || !chapterTitle.trim()) return;
 
-  const ACTIVE_CHAPTER_ID = 'ascension_age_15';
-  const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+  const ACTIVE_CHAPTER_ID = 'cave_dwellers_16';
+  const CHAPTER_END_MS = Date.UTC(2027, 1, 1, 0, 0, 0); // Feb 1, 2027 00:00:00 UTC
   const isLocked = Date.now() >= CHAPTER_END_MS;
 
   const logs = getStoredChapterLogs();

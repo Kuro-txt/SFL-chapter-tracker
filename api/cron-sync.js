@@ -375,7 +375,19 @@ export default async function handler(req, res) {
         };
         const parsed = parseFarmData(farm, userPriceMap);
 
-          reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
+        // Auto-migrate to Cave Dwellers (Chapter 16):
+        if (vault.activeChapter !== 'cave_dwellers_16') {
+          vault.activeChapter = 'cave_dwellers_16';
+          vault.archiveDeliveries = [];
+          vault.npcSnapshots = {};
+          vault.weeks = {};
+          vault.bounties = [];
+          vault.chores = [];
+          vault.trackTickets = 0;
+          vault.trackCost = 0;
+        }
+
+        reconcileDeliveriesWithNpcs(vault, parsed.deliveryList, parsed.npcsData);
 
           if (!vault.weeks) vault.weeks = {};
           if (!vault.weeks[currentWeekMonday]) {
@@ -587,9 +599,9 @@ export default async function handler(req, res) {
           // AUTO CHAPTER SNAPSHOT (Dedicated Table & Zero Duplication)
           // ==========================================
           try {
-            const ACTIVE_CHAPTER_ID = 'ascension_age_15';
-            const ACTIVE_CHAPTER_TITLE = 'Ascension Age (Chapter 15)';
-            const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+            const ACTIVE_CHAPTER_ID = 'cave_dwellers_16';
+            const ACTIVE_CHAPTER_TITLE = 'Cave Dwellers (Chapter 16)';
+            const CHAPTER_END_MS = Date.UTC(2027, 1, 1, 0, 0, 0); // Feb 1, 2027 00:00:00 UTC
             const isChapterEnded = Date.now() >= CHAPTER_END_MS;
 
             let delivCount = 0, delivTix = 0, delivCost = 0;

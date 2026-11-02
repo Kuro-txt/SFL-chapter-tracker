@@ -586,7 +586,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
 
   const TOTAL_CHAPTER_WEEKS = 12;
   const weekMondays = [];
-  const baseEpoch = new Date('2026-08-10T00:00:00.000Z');
+  const baseEpoch = new Date('2026-11-09T00:00:00.000Z');
   for (let w = 0; w < TOTAL_CHAPTER_WEEKS; w++) {
     const d = new Date(baseEpoch.getTime());
     d.setUTCDate(baseEpoch.getUTCDate() + (w * 7));
@@ -630,7 +630,7 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
 
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
   const nowMs = Date.now();
-  const isPreSeason = nowMs < baseEpoch.getTime();
+  const isPreSeason = (currentIndex === -1) && (nowMs < baseEpoch.getTime());
   const diffDays = Math.max(0, (nowMs - baseEpoch.getTime()) / (1000 * 60 * 60 * 24));
   const activeWeekNum = isPreSeason ? 0 : (currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.max(1, Math.floor(diffDays / 7) + 1)));
   const weekLabelText = isPreSeason ? 'WEEK 0 (PRE-SEASON)' : `WEEK ${activeWeekNum} OF ${TOTAL_CHAPTER_WEEKS} WEEKS (UTC)`;

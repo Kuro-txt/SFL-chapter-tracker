@@ -23,16 +23,18 @@ export function getItemIconUrl(name) {
 }
 
 /**
- * Returns current active chapter ticket slug ('shiny_feather' or 'beetle_wing')
+ * Returns current active chapter ticket slug ('beetle_wing' / 'duende_cap' for Cave Dwellers, or 'shiny_feather' for Ascension Age)
  */
-export function getChapterTicketName() {
-  if (typeof window !== 'undefined' && window.state && window.state.globalData) {
-    const ch = (window.state.globalData.chapter?.name || window.state.globalData.chapterName || '').toLowerCase();
-    if (ch.includes('cave')) {
-      return 'beetle_wing';
-    }
+export function getChapterTicketName(chapterName) {
+  const ch = (typeof chapterName === 'string' ? chapterName : (
+    typeof window !== 'undefined' && window.state && window.state.globalData
+      ? (window.state.globalData.chapter?.name || window.state.globalData.chapterName || '')
+      : ''
+  )).toLowerCase();
+  if (ch.includes('ascension')) {
+    return 'shiny_feather';
   }
-  return 'shiny_feather';
+  return 'beetle_wing';
 }
 
 /**
@@ -67,11 +69,11 @@ export function renderItemIcon(name, fallbackEmoji = '✨', size = 20, extraClas
 
 /**
  * Renders the chapter ticket icon for the currently active chapter.
- * Current: Shiny Feather (🪶), Next Chapter: Beetle Wing (🪲).
+ * Current: Duende Cap / Beetle Wing (🪲), Previous: Shiny Feather (🪶).
  */
 export function renderChapterTicketIcon(size = 16) {
   const ticketSlug = getChapterTicketName();
-  return renderItemIcon(ticketSlug, '🪶', size);
+  return renderItemIcon(ticketSlug, '🪲', size);
 }
 
 /**

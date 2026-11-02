@@ -276,6 +276,60 @@ window.saveLoginCountAndRecalculate = () => {
   recalculateAll();
 };
 
+export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChapterTitle = 'Cave Dwellers (Chapter 16)') {
+  try {
+    const logs = JSON.parse(localStorage.getItem('sfl_chapter_logs') || '[]');
+    const hasAscension = logs.some(l => l.chapterId === 'ascension_age_15' || (l.chapterTitle || '').toLowerCase().includes('ascension'));
+    if (!hasAscension) {
+      const pastDelivs = JSON.parse(localStorage.getItem('sfl_farm_deliveries') || '[]');
+      if (pastDelivs.length > 0) {
+        logs.unshift({
+          chapterId: 'ascension_age_15',
+          chapterTitle: 'Ascension Age (Chapter 15)',
+          date: '2026-11-02',
+          chapterEndDate: '2026-11-02T00:00:00.000Z',
+          isLocked: true,
+          summary: {
+            deliveriesCount: pastDelivs.filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed)).length
+          }
+        });
+        localStorage.setItem('sfl_chapter_logs', JSON.stringify(logs));
+      }
+    }
+  } catch (err) {
+    console.warn('Auto chapter archive skipped:', err);
+  }
+
+  localStorage.removeItem('sfl_farm_deliveries');
+  localStorage.removeItem('sfl_farm_bounties');
+  localStorage.removeItem('sfl_farm_chores');
+  localStorage.setItem('sfl_daily_login_count', '0');
+  localStorage.setItem('sfl_active_chapter', newChapterId);
+
+  const trackTixEl = document.getElementById('trackTicketsInput');
+  if (trackTixEl) trackTixEl.value = '0';
+  const loginEl = document.getElementById('dailyLoginCount');
+  if (loginEl) loginEl.value = '0';
+
+  if (state.globalData) {
+    state.globalData.deliveries = [];
+    state.globalData.bounties = [];
+    state.globalData.chores = [];
+    if (state.globalData.cloudHistory) {
+      state.globalData.cloudHistory.deliveries = [];
+      state.globalData.cloudHistory.bounties = [];
+      state.globalData.cloudHistory.chores = [];
+      state.globalData.cloudHistory.weeks = {};
+      state.globalData.cloudHistory.trackTickets = 0;
+      state.globalData.cloudHistory.trackCost = 0;
+    }
+  }
+
+  recalculateAll();
+  showToast(`🎉 Welcome to ${newChapterTitle}! Old tasks archived & cleared.`);
+}
+window.startNewChapter = startNewChapter;
+
 export async function handleCoinRatioChange() {
   const input = document.getElementById('coinsPerSflInput');
   const val = parseFloat(input?.value);
@@ -335,10 +389,10 @@ function startTipRotation() {
 }
 
 // ==========================================
-// CHAPTER COUNTDOWN TIMER (Nov 2, 2026, 00:00 UTC)
+// CHAPTER COUNTDOWN TIMER (Feb 1, 2027, 00:00 UTC)
 // ==========================================
-// Ascension Age (Chapter 15) ends Nov 2, 2026, 00:00:00 UTC (38 days and ~13 hours)
-const CHAPTER_END_TIMESTAMP = Date.UTC(2026, 10, 2, 0, 0, 0);
+// Cave Dwellers (Chapter 16) ends Feb 1, 2027, 00:00:00 UTC
+const CHAPTER_END_TIMESTAMP = Date.UTC(2027, 1, 1, 0, 0, 0);
 
 export function updateChapterCountdown() {
   const timerValEl = document.getElementById('chapterCountdownVal');
@@ -361,12 +415,12 @@ export function updateChapterCountdown() {
   }
 
   if (widgetEl) {
-    widgetEl.title = `Ascension Age (Chapter 15) ends: November 2, 2026 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
+    widgetEl.title = `Cave Dwellers (Chapter 16) ends: February 1, 2027 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
   }
 }
 
 export function updateCurrentWeekBadge() {
-  const baseEpoch = new Date('2026-08-10T00:00:00.000Z').getTime();
+  const baseEpoch = new Date('2026-11-09T00:00:00.000Z').getTime();
   const now = Date.now();
   let text = '';
   if (now < baseEpoch) {
@@ -411,6 +465,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('boost1').checked = localStorage.getItem('sfl_boost1') === 'true';
   document.getElementById('boost2').checked = localStorage.getItem('sfl_boost2') === 'true';
   document.getElementById('boost3').checked = localStorage.getItem('sfl_boost3') === 'true';
+
+  // Automatic rollover to Cave Dwellers (Chapter 16):
+  if (localStorage.getItem('sfl_active_chapter') !== 'cave_dwellers_16') {
+    await startNewChapter('cave_dwellers_16', 'Cave Dwellers (Chapter 16)');
+  }
 
   // Cleanup legacy local ticket cache
   localStorage.removeItem('sfl_track_manual_tix');

@@ -871,8 +871,8 @@ export default async function handler(req, res) {
       }
 
       const cleanUser = username.trim().toLowerCase();
-      const chapterId = chapterLog.chapterId || 'ascension_age_15';
-      const chapterTitle = chapterLog.chapterTitle || 'Ascension Age (Chapter 15)';
+      const chapterId = chapterLog.chapterId || 'cave_dwellers_16';
+      const chapterTitle = chapterLog.chapterTitle || 'Cave Dwellers (Chapter 16)';
 
       // Check if already locked in database
       const checkRes = await client.query(
@@ -883,7 +883,7 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: '🔒 This chapter has ended and is permanently locked. It cannot be overwritten.' });
       }
 
-      const CHAPTER_END_MS = Date.UTC(2026, 10, 2, 0, 0, 0); // Nov 2, 2026 00:00:00 UTC
+      const CHAPTER_END_MS = Date.UTC(2027, 1, 1, 0, 0, 0); // Feb 1, 2027 00:00:00 UTC
       const isLocked = Boolean(chapterLog.isLocked || Date.now() >= CHAPTER_END_MS);
       const chapterEndDate = chapterLog.chapterEndDate || new Date(CHAPTER_END_MS).toISOString();
 
@@ -1075,6 +1075,48 @@ export default async function handler(req, res) {
 
     if (userVault && cleanUser) {
       userVault.coinRatio = finalCoinRatio;
+
+      // Auto-migrate to Cave Dwellers (Chapter 16):
+      // If user vault active chapter is not cave_dwellers_16, archive old chapter data and reset deliveries/tasks!
+      if (userVault.activeChapter !== 'cave_dwellers_16') {
+        try {
+          const checkAsc = await client.query(
+            'SELECT id FROM user_chapter_logs WHERE username = $1 AND chapter_id = $2',
+            [cleanUser, 'ascension_age_15']
+          );
+          if (checkAsc.rows.length === 0 && (userVault.archiveDeliveries?.length > 0 || Object.keys(userVault.weeks || {}).length > 0)) {
+            await client.query(`
+              INSERT INTO user_chapter_logs (username, chapter_id, chapter_title, archived_at, is_locked, summary_data)
+              VALUES ($1, $2, $3, $4, $5, $6)
+              ON CONFLICT (username, chapter_id) DO NOTHING
+            `, [
+              cleanUser,
+              'ascension_age_15',
+              'Ascension Age (Chapter 15)',
+              new Date().toISOString(),
+              true,
+              JSON.stringify({
+                chapterEndDate: '2026-11-02T00:00:00.000Z',
+                deliveriesCount: (userVault.archiveDeliveries || []).length,
+                trackTickets: userVault.trackTickets || 0
+              })
+            ]);
+          }
+        } catch (archErr) {
+          console.warn('Auto chapter snapshot warning:', archErr);
+        }
+
+        // Reset old deliveries and tasks for Chapter 16
+        userVault.activeChapter = 'cave_dwellers_16';
+        userVault.archiveDeliveries = [];
+        userVault.npcSnapshots = {};
+        userVault.weeks = {};
+        userVault.bounties = [];
+        userVault.chores = [];
+        userVault.trackTickets = 0;
+        userVault.trackCost = 0;
+      }
+
       reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
 
         const currentWeekMonday = getMondayBasedWeekId(new Date());

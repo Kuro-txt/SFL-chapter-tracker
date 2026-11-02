@@ -15,18 +15,18 @@ import {
 import { recalculateAll } from './render.js';
 
 export const CHAPTER_WEEKS = [
-  { id: 'w1', num: 1, label: 'Week 1 (Aug 10 - Aug 16)', start: '2026-08-10', end: '2026-08-16' },
-  { id: 'w2', num: 2, label: 'Week 2 (Aug 17 - Aug 23)', start: '2026-08-17', end: '2026-08-23' },
-  { id: 'w3', num: 3, label: 'Week 3 (Aug 24 - Aug 30)', start: '2026-08-24', end: '2026-08-30' },
-  { id: 'w4', num: 4, label: 'Week 4 (Aug 31 - Sep 06)', start: '2026-08-31', end: '2026-09-06' },
-  { id: 'w5', num: 5, label: 'Week 5 (Sep 07 - Sep 13)', start: '2026-09-07', end: '2026-09-13' },
-  { id: 'w6', num: 6, label: 'Week 6 (Sep 14 - Sep 20)', start: '2026-09-14', end: '2026-09-20' },
-  { id: 'w7', num: 7, label: 'Week 7 (Sep 21 - Sep 27)', start: '2026-09-21', end: '2026-09-27' },
-  { id: 'w8', num: 8, label: 'Week 8 (Sep 28 - Oct 04)', start: '2026-09-28', end: '2026-10-04' },
-  { id: 'w9', num: 9, label: 'Week 9 (Oct 05 - Oct 11)', start: '2026-10-05', end: '2026-10-11' },
-  { id: 'w10', num: 10, label: 'Week 10 (Oct 12 - Oct 18)', start: '2026-10-12', end: '2026-10-18' },
-  { id: 'w11', num: 11, label: 'Week 11 (Oct 19 - Oct 25)', start: '2026-10-19', end: '2026-10-25' },
-  { id: 'w12', num: 12, label: 'Week 12 (Oct 26 - Nov 01)', start: '2026-10-26', end: '2026-11-01' }
+  { id: 'w1', num: 1, label: 'Week 1 (Nov 09 - Nov 15)', start: '2026-11-09', end: '2026-11-15' },
+  { id: 'w2', num: 2, label: 'Week 2 (Nov 16 - Nov 22)', start: '2026-11-16', end: '2026-11-22' },
+  { id: 'w3', num: 3, label: 'Week 3 (Nov 23 - Nov 29)', start: '2026-11-23', end: '2026-11-29' },
+  { id: 'w4', num: 4, label: 'Week 4 (Nov 30 - Dec 06)', start: '2026-11-30', end: '2026-12-06' },
+  { id: 'w5', num: 5, label: 'Week 5 (Dec 07 - Dec 13)', start: '2026-12-07', end: '2026-12-13' },
+  { id: 'w6', num: 6, label: 'Week 6 (Dec 14 - Dec 20)', start: '2026-12-14', end: '2026-12-20' },
+  { id: 'w7', num: 7, label: 'Week 7 (Dec 21 - Dec 27)', start: '2026-12-21', end: '2026-12-27' },
+  { id: 'w8', num: 8, label: 'Week 8 (Dec 28 - Jan 03)', start: '2026-12-28', end: '2027-01-03' },
+  { id: 'w9', num: 9, label: 'Week 9 (Jan 04 - Jan 10)', start: '2027-01-04', end: '2027-01-10' },
+  { id: 'w10', num: 10, label: 'Week 10 (Jan 11 - Jan 17)', start: '2027-01-11', end: '2027-01-17' },
+  { id: 'w11', num: 11, label: 'Week 11 (Jan 18 - Jan 24)', start: '2027-01-18', end: '2027-01-24' },
+  { id: 'w12', num: 12, label: 'Week 12 (Jan 25 - Feb 01)', start: '2027-01-25', end: '2027-02-01' }
 ];
 
 function computeYield(base, isVipEligible = true, isManual = false) {
@@ -70,7 +70,7 @@ function getWeekNumber(dateOrWeekStr) {
   if (typeof dateOrWeekStr === 'string' && dateOrWeekStr.startsWith('w')) {
     return parseInt(dateOrWeekStr.replace('w', ''), 10) || 1;
   }
-  const baseW1 = new Date('2026-08-10T00:00:00.000Z').getTime();
+  const baseW1 = new Date('2026-11-09T00:00:00.000Z').getTime();
   const targetTime = new Date(`${dateOrWeekStr.includes('T') ? dateOrWeekStr : dateOrWeekStr + 'T00:00:00.000Z'}`).getTime();
   const diffWeeks = Math.floor((targetTime - baseW1) / (7 * 24 * 60 * 60 * 1000)) + 1;
   return Math.max(1, Math.min(12, diffWeeks));
@@ -417,7 +417,7 @@ export async function addNewItemFromModal() {
   if (!state.globalData) return;
 
   const weekNum = parseInt(weekSelectVal.replace('w', ''), 10) || 1;
-  const baseMonday = new Date('2026-08-10T00:00:00.000Z');
+  const baseMonday = new Date('2026-11-09T00:00:00.000Z');
   baseMonday.setUTCDate(baseMonday.getUTCDate() + ((weekNum - 1) * 7));
   const targetWeekId = getMondayBasedWeekId(baseMonday);
   const targetWeekTimestamp = Date.now();
