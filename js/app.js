@@ -234,21 +234,20 @@ window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
   localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
 
-  // Automatically update Track Tickets from active chapter points & VIP status
-  const chapterPoints = state.globalData?.chapterPoints || 0;
-  if (chapterPoints > 0) {
-    const autoTrackTickets = calculateTrackTickets(chapterPoints, isVip);
-    const trackTixEl = document.getElementById('trackTicketsInput');
-    if (trackTixEl) trackTixEl.value = autoTrackTickets;
-    if (state.globalData?.cloudHistory) {
-      state.globalData.cloudHistory.trackTickets = autoTrackTickets;
-    }
-  }
+  // Track points auto-counting disabled until SFL API deploys 'Cave Dweller Points Earned'
 
   recalculateAll();
 };
 
 window.saveTrackAndRecalculate = () => {
+  const trackTixEl = document.getElementById('trackTicketsInput');
+  if (trackTixEl) {
+    const tix = parseInt(trackTixEl.value, 10) || 0;
+    localStorage.setItem('sfl_track_manual_tix', tix);
+    if (state.globalData?.cloudHistory) {
+      state.globalData.cloudHistory.trackTickets = tix;
+    }
+  }
   const trackCostEl = document.getElementById('trackCostInput');
   if (trackCostEl) {
     localStorage.setItem('sfl_track_cost', trackCostEl.value);
@@ -303,6 +302,8 @@ export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChap
   localStorage.removeItem('sfl_farm_deliveries');
   localStorage.removeItem('sfl_farm_bounties');
   localStorage.removeItem('sfl_farm_chores');
+  localStorage.removeItem('sfl_cloud_weeks');
+  localStorage.removeItem('sfl_archive_deliveries');
   localStorage.setItem('sfl_daily_login_count', '0');
   localStorage.setItem('sfl_active_chapter', newChapterId);
 
@@ -315,6 +316,9 @@ export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChap
     state.globalData.deliveries = [];
     state.globalData.bounties = [];
     state.globalData.chores = [];
+    state.globalData.archiveDeliveries = [];
+    state.globalData.archiveBounties = [];
+    state.globalData.archiveChores = [];
     if (state.globalData.cloudHistory) {
       state.globalData.cloudHistory.deliveries = [];
       state.globalData.cloudHistory.bounties = [];
@@ -323,6 +327,16 @@ export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChap
       state.globalData.cloudHistory.trackTickets = 0;
       state.globalData.cloudHistory.trackCost = 0;
     }
+  }
+
+  if (state.currentVaultData) {
+    state.currentVaultData.activeChapter = newChapterId;
+    state.currentVaultData.archiveDeliveries = [];
+    state.currentVaultData.weeks = {};
+    state.currentVaultData.bounties = [];
+    state.currentVaultData.chores = [];
+    state.currentVaultData.trackTickets = 0;
+    state.currentVaultData.trackCost = 0;
   }
 
   recalculateAll();
@@ -469,16 +483,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Automatic rollover to Cave Dwellers (Chapter 16):
   if (localStorage.getItem('sfl_active_chapter') !== 'cave_dwellers_16') {
     await startNewChapter('cave_dwellers_16', 'Cave Dwellers (Chapter 16)');
+  } else {
+    // Purge any residual pre-Chapter 16 local cache
+    localStorage.removeItem('sfl_farm_bounties');
+    localStorage.removeItem('sfl_farm_chores');
+    try {
+      const rawWks = localStorage.getItem('sfl_cloud_weeks');
+      if (rawWks) {
+        const parsed = JSON.parse(rawWks);
+        const filtered = {};
+        Object.entries(parsed).forEach(([k, v]) => {
+          if (k >= '2026-11-02') filtered[k] = v;
+        });
+        localStorage.setItem('sfl_cloud_weeks', JSON.stringify(filtered));
+      }
+    } catch (e) {}
   }
 
   // Cleanup legacy local ticket cache
-  localStorage.removeItem('sfl_track_manual_tix');
   localStorage.removeItem('sfl_track_tix');
   localStorage.removeItem('sfl_chapter_points');
   localStorage.removeItem('sfl_track_auto');
 
   const trackTixEl = document.getElementById('trackTicketsInput');
-  if (trackTixEl) trackTixEl.value = '0';
+  const savedTrackManual = localStorage.getItem('sfl_track_manual_tix');
+  if (trackTixEl) {
+    trackTixEl.value = (savedTrackManual !== null && !isNaN(parseInt(savedTrackManual, 10))) ? savedTrackManual : '0';
+  }
 
   const savedTrackCost = localStorage.getItem('sfl_track_cost');
   if (savedTrackCost !== null) document.getElementById('trackCostInput').value = savedTrackCost;

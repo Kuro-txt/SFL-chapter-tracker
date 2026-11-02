@@ -19,32 +19,39 @@ export const CHAPTER_NPC_TICKETS = {
   "tywin": 10
 };
 
-export function extractRewardTickets(rewardObj) {
+export function extractRewardTickets(rewardObj, chapter = 'Cave Dwellers') {
   if (!rewardObj || typeof rewardObj !== 'object') return 0;
   let count = 0;
+  const isAscension = typeof chapter === 'string' && chapter.toLowerCase().includes('ascension');
 
   function scan(obj) {
     if (!obj || typeof obj !== 'object') return;
     for (const [key, val] of Object.entries(obj)) {
       const cleanKey = key.toLowerCase().trim();
-      if (
+      const isDuende = (
         cleanKey === 'duende cap' ||
         cleanKey === 'duende_cap' ||
         cleanKey === 'duendecap' ||
         cleanKey.includes('duende') ||
-        cleanKey === 'shiny feather' ||
-        cleanKey === 'shiny_feather' ||
-        cleanKey === 'feather' ||
         cleanKey === 'beetle wing' ||
         cleanKey === 'beetle_wing' ||
         cleanKey === 'bettle wing' ||
-        cleanKey === 'wing' ||
+        cleanKey.includes('wing')
+      );
+      const isGeneric = (
         cleanKey === 'chapter ticket' ||
         cleanKey === 'seasonal ticket' ||
-        cleanKey.includes('feather') ||
-        cleanKey.includes('wing') ||
-        cleanKey.includes('ticket')
-      ) {
+        cleanKey === 'ticket' ||
+        cleanKey === 'tickets'
+      );
+      const isFeather = isAscension && (
+        cleanKey === 'shiny feather' ||
+        cleanKey === 'shiny_feather' ||
+        cleanKey === 'feather' ||
+        cleanKey.includes('feather')
+      );
+
+      if (isDuende || isGeneric || isFeather) {
         if (typeof val === 'number' && val > 0) {
           count += val;
         } else if (typeof val === 'string' && !isNaN(parseInt(val, 10))) {
@@ -291,22 +298,23 @@ export function extractChapterPoints(farm, payload = null) {
     payload
   ];
 
+  // ONLY look for Cave Dwellers (Chapter 16) points - NEVER look for Ascension Age track
   for (const src of candidateSources) {
     if (!src || typeof src !== 'object') continue;
-    if (src["Ascension Age Points Earned"] !== undefined) {
-      const v = Number(src["Ascension Age Points Earned"]);
-      if (!isNaN(v) && v > 0) return v;
-    }
-    if (src["Ascension Age Points"] !== undefined) {
-      const v = Number(src["Ascension Age Points"]);
-      if (!isNaN(v) && v > 0) return v;
-    }
     if (src["Cave Dwellers Points Earned"] !== undefined) {
       const v = Number(src["Cave Dwellers Points Earned"]);
       if (!isNaN(v) && v > 0) return v;
     }
+    if (src["Cave Dweller Points Earned"] !== undefined) {
+      const v = Number(src["Cave Dweller Points Earned"]);
+      if (!isNaN(v) && v > 0) return v;
+    }
     if (src["Cave Dwellers Points"] !== undefined) {
       const v = Number(src["Cave Dwellers Points"]);
+      if (!isNaN(v) && v > 0) return v;
+    }
+    if (src["Cave Dweller Points"] !== undefined) {
+      const v = Number(src["Cave Dweller Points"]);
       if (!isNaN(v) && v > 0) return v;
     }
   }
@@ -316,16 +324,12 @@ export function extractChapterPoints(farm, payload = null) {
     for (const [k, val] of Object.entries(src)) {
       const cleanK = k.toLowerCase().trim();
       if (
-        cleanK === "ascension age points earned" ||
-        cleanK === "ascension age points" ||
-        cleanK === "ascension points earned" ||
-        cleanK === "ascension points" ||
         cleanK === "cave dwellers points earned" ||
+        cleanK === "cave dweller points earned" ||
         cleanK === "cave dwellers points" ||
+        cleanK === "cave dweller points" ||
         cleanK === "cave points earned" ||
-        cleanK === "cave points" ||
-        cleanK === "chapter points earned" ||
-        cleanK === "chapter points"
+        cleanK === "cave points"
       ) {
         const num = Number(typeof val === 'object' && val !== null ? (val.value ?? val.amount ?? val.count) : val);
         if (!isNaN(num) && num > 0) return num;
@@ -339,12 +343,10 @@ export function extractChapterPoints(farm, payload = null) {
     for (const [k, val] of Object.entries(obj)) {
       const cleanK = k.toLowerCase().trim();
       if (
-        cleanK === "ascension age points earned" ||
-        cleanK === "ascension age points" ||
-        cleanK === "ascension points earned" ||
-        cleanK === "ascension points" ||
         cleanK === "cave dwellers points earned" ||
+        cleanK === "cave dweller points earned" ||
         cleanK === "cave dwellers points" ||
+        cleanK === "cave dweller points" ||
         cleanK === "cave points earned" ||
         cleanK === "cave points"
       ) {
@@ -524,6 +526,11 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
       let completedDateStr = null;
       if (completionTime) {
         const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
+        // Ignore tasks completed prior to Chapter 16 (Nov 2, 2026 UTC)
+        const CHAPTER_16_START_MS = new Date('2026-11-02T00:00:00.000Z').getTime();
+        if (ms < CHAPTER_16_START_MS) {
+          return;
+        }
         completedDateStr = new Date(ms).toISOString().split('T')[0];
       }
 
@@ -582,6 +589,11 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
         let completedDateStr = null;
         if (completionTime) {
           const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
+          // Ignore chores completed prior to Chapter 16 (Nov 2, 2026 UTC)
+          const CHAPTER_16_START_MS = new Date('2026-11-02T00:00:00.000Z').getTime();
+          if (ms < CHAPTER_16_START_MS) {
+            return;
+          }
           completedDateStr = new Date(ms).toISOString().split('T')[0];
         }
 

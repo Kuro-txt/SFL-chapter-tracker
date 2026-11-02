@@ -742,6 +742,51 @@ export default async function handler(req, res) {
         ? JSON.parse(userRes.rows[0].vault_data)
         : userRes.rows[0].vault_data;
 
+      // Auto-migrate to Cave Dwellers on vault retrieval if not already migrated:
+      if (vaultData.activeChapter !== 'cave_dwellers_16') {
+        try {
+          const checkAsc = await client.query(
+            'SELECT id FROM user_chapter_logs WHERE username = $1 AND chapter_id = $2',
+            [cleanUser, 'ascension_age_15']
+          );
+          if (checkAsc.rows.length === 0 && (vaultData.archiveDeliveries?.length > 0 || Object.keys(vaultData.weeks || {}).length > 0)) {
+            await client.query(`
+              INSERT INTO user_chapter_logs (username, chapter_id, chapter_title, archived_at, is_locked, summary_data)
+              VALUES ($1, $2, $3, $4, $5, $6)
+              ON CONFLICT (username, chapter_id) DO NOTHING
+            `, [
+              cleanUser,
+              'ascension_age_15',
+              'Ascension Age (Chapter 15)',
+              new Date().toISOString(),
+              true,
+              JSON.stringify({
+                chapterEndDate: '2026-11-02T00:00:00.000Z',
+                deliveriesCount: (vaultData.archiveDeliveries || []).length,
+                trackTickets: vaultData.trackTickets || 0
+              })
+            ]);
+          }
+        } catch (archErr) {
+          console.warn('Auto chapter snapshot warning in getVault:', archErr);
+        }
+
+        // Reset old deliveries, tasks and historical weeks for Chapter 16
+        vaultData.activeChapter = 'cave_dwellers_16';
+        vaultData.archiveDeliveries = [];
+        vaultData.npcSnapshots = {};
+        vaultData.weeks = {};
+        vaultData.bounties = [];
+        vaultData.chores = [];
+        vaultData.trackTickets = 0;
+        vaultData.trackCost = 0;
+
+        await client.query(
+          'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+          [JSON.stringify(vaultData), cleanUser]
+        );
+      }
+
       return res.status(200).json({ success: true, vaultData });
     }
 
@@ -1146,11 +1191,11 @@ export default async function handler(req, res) {
         userVault.bounties = userVault.weeks[currentWeekMonday].bounties;
         userVault.chores = userVault.weeks[currentWeekMonday].chores;
 
-        // Populate completed past-week bounties from SFL into their historical week bucket
+        // Populate completed past-week bounties from SFL into their historical week bucket (Chapter 16 only)
         (parsed.activeBounties || []).forEach(b => {
           if (b.completed && b.completedDate) {
             const bWeekId = getMondayBasedWeekId(b.completedDate);
-            if (bWeekId && bWeekId !== currentWeekMonday) {
+            if (bWeekId && bWeekId >= '2026-11-02' && bWeekId !== currentWeekMonday) {
               if (!userVault.weeks[bWeekId]) {
                 userVault.weeks[bWeekId] = { weekId: bWeekId, bounties: [], chores: [] };
               }

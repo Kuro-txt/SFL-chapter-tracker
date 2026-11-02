@@ -290,13 +290,14 @@ export async function loadTrackerData() {
     const activeChapterPoints = data.chapterPoints || 0;
     if (activeChapterPoints > 0) {
       state.globalData.chapterPoints = activeChapterPoints;
-
-      const isVip = Boolean(document.getElementById('vipToggle')?.checked);
-      const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip);
-      const trackTixEl = document.getElementById('trackTicketsInput');
-      if (trackTixEl) trackTixEl.value = autoTrackTickets;
+    }
+    // Track points auto-counting disabled until SFL API deploys 'Cave Dweller Points Earned'
+    const trackTixEl = document.getElementById('trackTicketsInput');
+    const savedManualTix = localStorage.getItem('sfl_track_manual_tix');
+    if (trackTixEl && savedManualTix !== null && !isNaN(parseInt(savedManualTix, 10))) {
+      trackTixEl.value = savedManualTix;
       if (state.globalData?.cloudHistory) {
-        state.globalData.cloudHistory.trackTickets = autoTrackTickets;
+        state.globalData.cloudHistory.trackTickets = parseInt(savedManualTix, 10);
       }
     }
 

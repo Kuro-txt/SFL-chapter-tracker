@@ -409,11 +409,11 @@ export default async function handler(req, res) {
             currentWk.bounties = [...parsed.activeBounties, ...savedManualBounties];
           }
 
-          // Populate completed past-week bounties from SFL into their historical week bucket
+          // Populate completed past-week bounties from SFL into their historical week bucket (Chapter 16 only)
           (parsed.activeBounties || []).forEach(b => {
             if (b.completed && b.completedDate) {
               const bWeekId = getMondayBasedWeekId(b.completedDate);
-              if (bWeekId && bWeekId !== currentWeekMonday) {
+              if (bWeekId && bWeekId >= '2026-11-02' && bWeekId !== currentWeekMonday) {
                 if (!vault.weeks[bWeekId]) {
                   vault.weeks[bWeekId] = { weekId: bWeekId, bounties: [], chores: [] };
                 }
@@ -442,11 +442,15 @@ export default async function handler(req, res) {
             vault.lastDailyLoginDate = todayDateStr;
           }
 
-          // Automatic Track Tickets calculation from active chapter points & VIP status
+          // Automatic Track Tickets calculation from active chapter points & VIP status (only if > 0)
           const activeChapterPoints = parsed.chapterPoints || 0;
           vault.chapterPoints = activeChapterPoints;
           vault.isVipActive = isVip;
-          vault.trackTickets = calculateTrackTickets(activeChapterPoints, isVip);
+          if (activeChapterPoints > 0) {
+            vault.trackTickets = calculateTrackTickets(activeChapterPoints, isVip);
+          } else {
+            vault.trackTickets = vault.trackTickets || 0;
+          }
 
           let totalCalculatedTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
           let totalCalculatedCost = (vault.trackCost || 0);
