@@ -91,7 +91,12 @@ export function openColumnHistoryModal(type) {
 
   if (filterContainer) filterContainer.style.display = 'flex';
   const currentWeekNum = getWeekNumber(getMondayBasedWeekId());
-  if (weekDropdown) weekDropdown.value = `w${currentWeekNum}`;
+  if (weekDropdown) {
+    weekDropdown.innerHTML = '<option value="">📅 ALL WEEKS</option>' + CHAPTER_WEEKS.map(wk => 
+      `<option value="${wk.id}">${wk.label}</option>`
+    ).join('');
+    weekDropdown.value = `w${currentWeekNum}`;
+  }
 
   if (type === 'delivery') {
     if (npcDropdown) {
