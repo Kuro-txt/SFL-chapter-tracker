@@ -13,6 +13,26 @@ const TOTAL_CHAPTER_WEEKS = 12;
 const BASE_EPOCH = new Date('2026-11-09T00:00:00.000Z');
 const AUCTION_WEEK = 9;
 
+export const CHAPTER_WEEKS = [
+  { num: 1, label: 'Nov 09 – Nov 15', start: '2026-11-09', end: '2026-11-15' },
+  { num: 2, label: 'Nov 16 – Nov 22', start: '2026-11-16', end: '2026-11-22' },
+  { num: 3, label: 'Nov 23 – Nov 29', start: '2026-11-23', end: '2026-11-29' },
+  { num: 4, label: 'Nov 30 – Dec 06', start: '2026-11-30', end: '2026-12-06' },
+  { num: 5, label: 'Dec 07 – Dec 13', start: '2026-12-07', end: '2026-12-13' },
+  { num: 6, label: 'Dec 14 – Dec 20', start: '2026-12-14', end: '2026-12-20' },
+  { num: 7, label: 'Dec 21 – Dec 27', start: '2026-12-21', end: '2026-12-27' },
+  { num: 8, label: 'Dec 28 – Jan 03', start: '2026-12-28', end: '2027-01-03' },
+  { num: 9, label: 'Jan 04 – Jan 10', start: '2027-01-04', end: '2027-01-10' },
+  { num: 10, label: 'Jan 11 – Jan 17', start: '2027-01-11', end: '2027-01-17' },
+  { num: 11, label: 'Jan 18 – Jan 24', start: '2027-01-18', end: '2027-01-24' },
+  { num: 12, label: 'Jan 25 – Feb 01', start: '2027-01-25', end: '2027-02-01' }
+];
+
+export function getWeekDateRange(weekNum) {
+  const wk = CHAPTER_WEEKS.find(w => w.num === Number(weekNum));
+  return wk ? wk.label : '';
+}
+
 /** Core 11 Chapter Delivery NPCs with base tickets & official avatars */
 export const CORE_CHAPTER_NPCS = [
   { id: 'pumpkin_pete', name: 'Pumpkin Pete', baseTickets: 1, avatar: 'public/icons/npcs/pumpkin_pete.webp' },
@@ -31,7 +51,7 @@ export const CORE_CHAPTER_NPCS = [
 /** Default Planner Routine Template */
 export const DEFAULT_PLANNER_TEMPLATE = {
   doubleDeliveryDays: 1, // 1 day per week gives 2x tickets
-  mondayStackedDeliveries: true, // Week 1 Sunday pre-season rollover (+1 delivery per enabled NPC)
+  mondayStackedDeliveries: false, // Default off: no extra Sunday rollover deliveries
   npcs: {
     pumpkin_pete: { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
     bert:         { enabled: true,  daysPerWeek: 7, doubleDelivery: true },
@@ -109,9 +129,7 @@ export function getPlannerTemplate() {
       }
       chores.trackTix = initialTrack;
     }
-    const mondayStackedDeliveries = parsed.mondayStackedDeliveries !== undefined
-      ? Boolean(parsed.mondayStackedDeliveries)
-      : DEFAULT_PLANNER_TEMPLATE.mondayStackedDeliveries;
+    const mondayStackedDeliveries = parsed.mondayStackedDeliveries === true;
     return {
       ...DEFAULT_PLANNER_TEMPLATE,
       ...parsed,
@@ -212,18 +230,20 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     };
   });
 
-  // Week 1 Monday Stacked Deliveries from Sunday Rollover (+1 delivery per enabled NPC)
+  // Week 1 Monday Stacked Deliveries from Sunday Rollover (only if explicitly enabled in config)
   const isWeek1 = (weekNum === 1 || weekNum === '1');
-  const hasStackedRollover = config.mondayStackedDeliveries !== false;
+  const hasStackedRollover = config.mondayStackedDeliveries === true;
   let stackedTix = 0;
 
-  CORE_CHAPTER_NPCS.forEach(npc => {
-    const npcConf = config.npcs[npc.id] || { enabled: false };
-    if (npcConf.enabled) {
-      const yieldPerOrder = npc.baseTickets + perOrderBonus;
-      stackedTix += yieldPerOrder; // 1x yield, excluded from 2x double delivery bonus
-    }
-  });
+  if (hasStackedRollover) {
+    CORE_CHAPTER_NPCS.forEach(npc => {
+      const npcConf = config.npcs[npc.id] || { enabled: false };
+      if (npcConf.enabled) {
+        const yieldPerOrder = npc.baseTickets + perOrderBonus;
+        stackedTix += yieldPerOrder; // 1x yield, excluded from 2x double delivery bonus
+      }
+    });
+  }
 
   // Week 1 specifically receives the stacked delivery windfall added to delivTix
   if (isWeek1 && hasStackedRollover) {
@@ -468,7 +488,7 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
       date: goalDate,
       weekNum,
       isAfterWeek12,
-      label: goalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      label: goalDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
     };
   }
 
@@ -997,8 +1017,10 @@ export function renderProjectionsView(proj) {
       ? `<span class="roadmap-stacked-badge" title="Includes +${row.stackedBonus} tickets from Monday Stacked Deliveries (Sunday Rollover)">+${row.stackedBonus}📦</span>`
       : '';
     const rowTitle = `Week ${row.weekNum}: Tasks: ${row.taskTix} | Logins: ${row.loginTix}${row.trackBonus > 0 ? ` | Track: ${row.trackBonus}` : ''}${row.stackedBonus > 0 ? ` | Stacked: ${row.stackedBonus}` : ''}`;
+    const dateRangeStr = getWeekDateRange(row.weekNum);
+    const dateRangeHtml = dateRangeStr ? `<span class="roadmap-date-sub" style="font-size:10px; font-weight:700; opacity:0.75; margin-left:auto;">${dateRangeStr}</span>` : '';
     return `<tr class="${isAuction || isFinale ? 'roadmap-highlight-row' : ''}${isDark ? ' dark' : ''}">
-      <td class="roadmap-cell roadmap-week-cell">W${row.weekNum}${milestoneHtml}</td>
+      <td class="roadmap-cell roadmap-week-cell">W${row.weekNum}${milestoneHtml}${dateRangeHtml}</td>
       <td class="roadmap-cell"><span class="roadmap-type-badge ${typeClass}">${typeLabel}</span></td>
       <td class="roadmap-cell roadmap-tix-cell" title="${rowTitle}">
         ${ticketIconHtml} ${row.value.toLocaleString()}
@@ -1025,7 +1047,9 @@ export function renderProjectionsView(proj) {
   ];
   for (let w = Math.max(1, proj.activeWeekNum); w <= TOTAL_CHAPTER_WEEKS; w++) {
     const hasOv = planner.overrides && planner.overrides[w];
-    const label = w === AUCTION_WEEK ? `Week ${w} (🏁 Mega Auction Week)` : w === TOTAL_CHAPTER_WEEKS ? `Week ${w} (🏆 Finale Week)` : `Week ${w}`;
+    const dateRangeStr = getWeekDateRange(w);
+    const dateSuffix = dateRangeStr ? ` (${dateRangeStr})` : '';
+    const label = w === AUCTION_WEEK ? `Week ${w}${dateSuffix} — 🏁 Mega Auction Week` : w === TOTAL_CHAPTER_WEEKS ? `Week ${w}${dateSuffix} — 🏆 Finale Week` : `Week ${w}${dateSuffix}`;
     const badge = hasOv ? ' ⚙️ [Customized]' : '';
     weekOptions.push(`<option value="${w}" ${currentWeekVal === w ? 'selected' : ''}>${label}${badge}</option>`);
   }
@@ -1093,28 +1117,7 @@ export function renderProjectionsView(proj) {
     `;
   }).join('');
 
-  const isStackedEligibleWeek = currentWeekVal === 'template' || currentWeekVal === '1' || currentWeekVal === 1;
-  const mondayStackedActive = activePlan.config.mondayStackedDeliveries !== false;
-  const stackedTixPreview = activePlan.stackedTix || 0;
-
-  const stackedBarHtml = isStackedEligibleWeek ? `
-    <div class="planner-stacked-bar${isDark ? ' dark' : ''}">
-      <div class="planner-stacked-left">
-        <label class="planner-stacked-label">
-          <input
-            type="checkbox"
-            ${mondayStackedActive ? 'checked' : ''}
-            onchange="togglePlannerStackedDeliveries(this.checked, '${currentWeekVal}')"
-          />
-          <span class="planner-stacked-text">📦 Week 1 Monday Stacked Deliveries (+${stackedTixPreview} Tix Sunday Rollover)</span>
-        </label>
-        <span class="planner-stacked-hint">Pre-season deliveries appearing on Sunday roll over to Monday, adding <strong>+1 extra delivery per active NPC</strong> (+${stackedTixPreview} Tix in Week 1, excluded from 2x double delivery).</span>
-      </div>
-    </div>
-  ` : '';
-
   const deliveriesSectionHtml = `
-    ${stackedBarHtml}
     <div class="planner-double-bar${isDark ? ' dark' : ''}">
       <div class="planner-double-left">
         <label class="planner-double-label">
@@ -1341,7 +1344,7 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏁</span>
-          <span class="proj-milestone-title">WEEK 9 — AUCTION WEEK</span>
+          <span class="proj-milestone-title">WEEK 9 (JAN 04 – JAN 10) — AUCTION WEEK</span>
         </div>
         <div class="proj-card-tix">${ticketIconHtml} <strong>${wAuction.projected.toLocaleString()}</strong> Tickets</div>
         <div class="proj-card-gap">${gapBadge(wAuction.gapVsGoal, isDark)}</div>
@@ -1354,7 +1357,7 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏆</span>
-          <span class="proj-milestone-title">WEEK 12 — SEASON FINALE</span>
+          <span class="proj-milestone-title">WEEK 12 (JAN 25 – FEB 01) — SEASON FINALE</span>
         </div>
         <div class="proj-card-tix">${ticketIconHtml} <strong>${w12.projected.toLocaleString()}</strong> Tickets</div>
         <div class="proj-card-gap">${gapBadge(w12.gapVsGoal, isDark)}</div>
@@ -1454,7 +1457,7 @@ export function renderProjectionsView(proj) {
     </div>
 
     <details class="roadmap-details${isDark ? ' dark' : ''}">
-      <summary class="roadmap-summary">📊 Week-by-Week Forecast Roadmap (Weeks 1–12)</summary>
+      <summary class="roadmap-summary">📊 Week-by-Week Forecast Roadmap (Nov 09, 2026 – Feb 01, 2027)</summary>
       <div class="roadmap-table-wrap">
         <table class="roadmap-table${isDark ? ' dark' : ''}">
           <thead>
