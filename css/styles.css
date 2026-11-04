@@ -1725,9 +1725,33 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
       box-shadow: 0 6px 14px rgba(0,0,0,0.35);
       pointer-events: none;
     }
-    .stat-box:hover .tooltip {
+    .stat-box:hover .tooltip,
+    .stat-box:focus .tooltip,
+    .stat-box:focus-within .tooltip {
       visibility: visible;
       opacity: 1;
+    }
+
+    .stat-breakdown-hint {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: none;
+      color: #8C7853;
+      opacity: 0.85;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      cursor: help;
+      letter-spacing: normal;
+      transition: opacity 0.15s ease, color 0.15s ease;
+    }
+    .stat-box:hover .stat-breakdown-hint,
+    .stat-box:focus .stat-breakdown-hint {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    body.dark-mode .stat-breakdown-hint {
+      color: #D2B48C;
     }
 
     .chart-floating-tooltip {

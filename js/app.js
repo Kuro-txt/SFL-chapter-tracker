@@ -256,8 +256,18 @@ window.saveTrackAndRecalculate = () => {
 };
 
 window.saveGoalAndRecalculate = () => {
-  localStorage.setItem('sfl_target_goal', document.getElementById('targetGoalInput').value);
-  localStorage.setItem('sfl_target_weeks', document.getElementById('targetWeeksInput').value);
+  const goalEl = document.getElementById('targetGoalInput');
+  const weeksEl = document.getElementById('targetWeeksInput');
+  if (weeksEl) {
+    let weeksVal = parseInt(weeksEl.value, 10);
+    if (isNaN(weeksVal) || weeksVal < 1) weeksVal = 1;
+    if (weeksVal > 12) weeksVal = 12;
+    weeksEl.value = weeksVal;
+    localStorage.setItem('sfl_target_weeks', weeksVal);
+  }
+  if (goalEl) {
+    localStorage.setItem('sfl_target_goal', goalEl.value);
+  }
   const ratioEl = document.getElementById('targetRatioInput');
   if (ratioEl) {
     localStorage.setItem('sfl_target_ratio', ratioEl.value);
@@ -518,7 +528,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (savedGoal) document.getElementById('targetGoalInput').value = savedGoal;
 
   const savedWeeks = localStorage.getItem('sfl_target_weeks');
-  if (savedWeeks) document.getElementById('targetWeeksInput').value = savedWeeks;
+  if (savedWeeks) {
+    const clampedWeeks = Math.max(1, Math.min(12, parseInt(savedWeeks, 10) || 12));
+    document.getElementById('targetWeeksInput').value = clampedWeeks;
+  }
 
   const savedTargetRatio = localStorage.getItem('sfl_target_ratio');
   const targetRatioEl = document.getElementById('targetRatioInput');

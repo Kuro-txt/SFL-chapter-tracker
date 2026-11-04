@@ -396,7 +396,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const pendingTrackTix = Math.max(0, effectiveTotalTrack - actualTrackTix);
 
   const pCurrent = elapsedWeeks > 0 && totalEarned > 0 ? totalEarned / elapsedWeeks : 0;
-  const pTarget = targetGoal > 0 && targetWeeks > 0 ? targetGoal / targetWeeks : 0;
+  const safeTargetWeeks = Math.max(1, Math.min(12, parseInt(targetWeeks, 10) || 12));
+  const pTarget = targetGoal > 0 && safeTargetWeeks > 0 ? targetGoal / safeTargetWeeks : 0;
   const pCustom = _customPace > 0 ? _customPace : (pPlanned > 0 ? pPlanned : pCurrent);
 
   if (_customPace === 0 && pPlanned > 0) {

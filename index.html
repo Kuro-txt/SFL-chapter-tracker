@@ -260,7 +260,7 @@
 
     <div class="stats-grid">
       <!-- 1. TOTAL TICKETS (Includes all components: Track + Login) -->
-      <div id="boxTotalTickets" class="stat-box">
+      <div id="boxTotalTickets" class="stat-box" tabindex="0">
         <div class="tooltip" id="tooltipTotal">
           <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
           <div id="tipTotalDeliv">📦 Deliveries: 0 Tix</div>
@@ -271,7 +271,10 @@
           <div id="tipTotalLogin">🎁 Daily Login: 0 Tix</div>
           <div id="tipTotalBoosts">⚡ Boosts: 0.000 SFL</div>
         </div>
-        <div class="stat-title">🏆 TOTAL TICKETS</div>
+        <div class="stat-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+          <span>🏆 TOTAL TICKETS</span>
+          <span class="stat-breakdown-hint">ℹ️ See breakdown</span>
+        </div>
         <div id="statTotalTickets" class="stat-val" style="display:flex; align-items:center; gap:6px;">
           <img src="public/icons/shiny_feather.webp" alt="Ticket" width="24" height="24" class="sfl-item-icon" style="width:24px; height:24px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
           <span>0 Tickets</span>
@@ -283,7 +286,7 @@
       </div>
 
       <!-- 2. THIS WEEK (Game activities only) -->
-      <div id="boxWeekTickets" class="stat-box" style="border-color: #D2691E;">
+      <div id="boxWeekTickets" class="stat-box" style="border-color: #D2691E;" tabindex="0">
         <div class="tooltip" id="tooltipWeek">
           <div>📅 <strong>WEEK BREAKDOWN:</strong></div>
           <div id="tipWeekDeliv">📦 Deliveries: 0 Tix</div>
@@ -291,7 +294,10 @@
           <div id="tipWeekAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
           <div id="tipWeekChore">🧹 Chores: 0 Tix</div>
         </div>
-        <div class="stat-title" style="color: #8B4513;">📅 THIS WEEK</div>
+        <div class="stat-title" style="color: #8B4513; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+          <span>📅 THIS WEEK</span>
+          <span class="stat-breakdown-hint">ℹ️ See breakdown</span>
+        </div>
         <div id="statWeekTickets" class="stat-val" style="color: #D2691E; display:flex; align-items:center; gap:6px;">
           <img src="public/icons/shiny_feather.webp" alt="Ticket" width="24" height="24" class="sfl-item-icon" style="width:24px; height:24px; object-fit:contain; image-rendering:pixelated; vertical-align:middle; display:inline-block; background:transparent; border:none;" onerror="this.replaceWith(document.createTextNode('🪶'))" />
           <span>0 Tickets</span>
@@ -325,7 +331,7 @@
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <input type="number" id="targetGoalInput" value="1000" onchange="saveGoalAndRecalculate()" style="width: 70px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Target Goal Tickets" />
           <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Tix /</span>
-          <input type="number" id="targetWeeksInput" value="12" onchange="saveGoalAndRecalculate()" style="width: 48px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks" />
+          <input type="number" id="targetWeeksInput" min="1" max="12" value="12" oninput="if(parseInt(this.value,10)>12)this.value=12;if(this.value!==''&&parseInt(this.value,10)<1)this.value=1;" onchange="saveGoalAndRecalculate()" style="width: 48px; padding: 2px 4px; font-size: 13px; font-weight: 900; color: #8E44AD; border-color: #8E44AD;" title="Total Weeks (Max 12)" />
           <span style="font-size: 11.5px; font-weight: 900; color: #8E44AD;">Wks</span>
         </div>
         <div style="display:flex; align-items:center; justify-content:space-between; margin-top:2px;">

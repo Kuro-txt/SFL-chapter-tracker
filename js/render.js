@@ -451,7 +451,8 @@ export function recalculateAll() {
   setElemHtml('tipTodayDeliv', `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>📦 Deliveries:</span><span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(13)} <strong>${todayDelivTix} Tix</strong></span></div>`);
 
   const targetGoal = parseInt(document.getElementById('targetGoalInput')?.value, 10) || 1000;
-  const targetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
+  const rawTargetWeeks = parseInt(document.getElementById('targetWeeksInput')?.value, 10) || 12;
+  const targetWeeks = Math.max(1, Math.min(12, rawTargetWeeks));
   const targetRatio = parseFloat(document.getElementById('targetRatioInput')?.value) || 0;
   const remainingNeeded = Math.max(0, targetGoal - totalTicketsAll);
   const targetPerWeek = targetWeeks > 0 ? Math.ceil(targetGoal / targetWeeks) : 0;
