@@ -115,6 +115,9 @@ export function getDirectMarketPrice(name, priceMap) {
   if (!name || !priceMap) return 0;
   const clean = name.toLowerCase().trim();
   if (clean === 'coins' || clean === 'coin') {
+    const isFree = priceMap && (priceMap['sfl_coin_rate'] === 0 || priceMap['sfl_coin_rate'] === '0' || priceMap['sfl_coin_rate'] === 'free' || priceMap['coins'] === 0 || priceMap['coin'] === 0);
+    if (isFree) return 0;
+    if (priceMap && priceMap['coins'] !== undefined && priceMap['coins'] > 0) return priceMap['coins'];
     const coinsPerSfl = (priceMap && priceMap['sfl_coin_rate'] && priceMap['sfl_coin_rate'] > 0) ? priceMap['sfl_coin_rate'] : 1000;
     return 1 / coinsPerSfl;
   }
@@ -169,7 +172,10 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
       Object.entries(ingredients).forEach(([ingName, ingQty]) => {
         const cleanIng = ingName.toLowerCase().trim();
         if (cleanIng === 'coins' || cleanIng === 'coin') {
-          recipeTotal += (typeof ingQty === 'number' ? ingQty : parseFloat(ingQty) || 0) / coinsPerSfl;
+          const isFree = priceMap && (priceMap['sfl_coin_rate'] === 0 || priceMap['sfl_coin_rate'] === '0' || priceMap['sfl_coin_rate'] === 'free');
+          if (!isFree) {
+            recipeTotal += (typeof ingQty === 'number' ? ingQty : parseFloat(ingQty) || 0) / coinsPerSfl;
+          }
         } else if (cleanIng === 'sfl') {
           recipeTotal += (typeof ingQty === 'number' ? ingQty : parseFloat(ingQty) || 0);
         } else if (typeof ingQty === 'number') {

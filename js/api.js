@@ -9,7 +9,8 @@ import {
   preserveCustomDeliveryEdits, 
   preserveCustomTaskEdits,
   getActiveBoostsCostSfl,
-  getBoostCostsConfig
+  getBoostCostsConfig,
+  getCoinRatio
 } from './state.js';
 import { recalculateAll } from './render.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -91,7 +92,7 @@ export async function loadTrackerData() {
   }
 
   try {
-    const coinRatioVal = parseFloat(document.getElementById('coinsPerSflInput')?.value) || 1000;
+    const coinRatioVal = getCoinRatio();
     const queryParams = new URLSearchParams({
       farmId,
       username: currentUsername,
@@ -258,10 +259,14 @@ export async function loadTrackerData() {
         if (trackCostEl) trackCostEl.value = Number(data.vaultData.trackCost || 0).toFixed(3);
       }
       if (data.vaultData?.coinRatio !== undefined || data.coinRatio !== undefined) {
-        const cr = data.vaultData?.coinRatio || data.coinRatio;
-        const coinRatioEl = document.getElementById('coinsPerSflInput');
-        if (coinRatioEl) coinRatioEl.value = cr;
-        localStorage.setItem('sfl_coin_ratio', cr);
+        const cr = data.vaultData?.coinRatio !== undefined ? data.vaultData.coinRatio : data.coinRatio;
+        if (typeof window.syncCoinRatioUi === 'function') {
+          window.syncCoinRatioUi(cr);
+        } else {
+          const coinRatioEl = document.getElementById('coinsPerSflInput');
+          if (coinRatioEl) coinRatioEl.value = cr;
+          localStorage.setItem('sfl_coin_ratio', cr);
+        }
         if (state.currentVaultData) state.currentVaultData.coinRatio = cr;
         if (state.globalData) state.globalData.coinRatio = cr;
       }
@@ -611,7 +616,7 @@ export async function saveProgressToCloudKV(silent = false) {
     trackTickets,
     trackCost,
     targetRatio: parseFloat(document.getElementById('targetRatioInput')?.value) || 0,
-    coinRatio: parseFloat(document.getElementById('coinsPerSflInput')?.value) || 1000,
+    coinRatio: getCoinRatio(),
     boostCosts: getBoostCostsConfig(),
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,

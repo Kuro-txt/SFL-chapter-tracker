@@ -366,12 +366,13 @@ export default async function handler(req, res) {
       }
 
       try {
-        const userCoinRatio = (vault.coinRatio && parseFloat(vault.coinRatio) > 0) ? parseFloat(vault.coinRatio) : 1000;
+        const isFree = vault.coinRatio === 0 || vault.coinRatio === '0' || vault.coinRatio === 'free';
+        const userCoinRatio = isFree ? 0 : ((vault.coinRatio && parseFloat(vault.coinRatio) > 0) ? parseFloat(vault.coinRatio) : 1000);
         const userPriceMap = {
           ...priceMap,
           'sfl_coin_rate': userCoinRatio,
-          'coins': 1 / userCoinRatio,
-          'coin': 1 / userCoinRatio
+          'coins': isFree ? 0 : (1 / userCoinRatio),
+          'coin': isFree ? 0 : (1 / userCoinRatio)
         };
         const parsed = parseFarmData(farm, userPriceMap);
 

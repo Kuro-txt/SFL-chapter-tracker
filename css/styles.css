@@ -4241,6 +4241,16 @@ body.dark-mode .panel-group-coins label,
 body.dark-mode .panel-group-coins span {
   color: #38bdf8 !important;
 }
+body.dark-mode #coinRatioSelect {
+  background: #1e293b !important;
+  color: #38bdf8 !important;
+  border-color: #38bdf8 !important;
+}
+body.dark-mode #coinsPerSflInput {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #38bdf8 !important;
+}
 body.dark-mode .boosts-login-sep {
   border-left-color: #33445c !important;
 }

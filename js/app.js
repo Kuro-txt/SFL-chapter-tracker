@@ -354,21 +354,118 @@ export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChap
 }
 window.startNewChapter = startNewChapter;
 
-export async function handleCoinRatioChange() {
+export function syncCoinRatioUi(ratio) {
+  const select = document.getElementById('coinRatioSelect');
   const input = document.getElementById('coinsPerSflInput');
-  const val = parseFloat(input?.value);
-  const ratio = (val && val > 0) ? val : 1000;
-  if (input) input.value = ratio;
-  localStorage.setItem('sfl_coin_ratio', ratio);
+  const unitText = document.getElementById('coinRatioUnitText');
+  if (!select && !input) return;
+
+  const isFree = ratio === 0 || ratio === '0' || ratio === 'free';
+  if (isFree) {
+    if (select) select.value = '0';
+    if (input) {
+      input.value = '0';
+      input.style.display = 'none';
+    }
+    if (unitText) unitText.textContent = '(Coins Cost 0 SFL)';
+  } else if (String(ratio) === '1000') {
+    if (select) select.value = '1000';
+    if (input) {
+      input.value = '1000';
+      input.style.display = 'none';
+    }
+    if (unitText) unitText.textContent = '= 1 SFL';
+  } else if (String(ratio) === '1500') {
+    if (select) select.value = '1500';
+    if (input) {
+      input.value = '1500';
+      input.style.display = 'none';
+    }
+    if (unitText) unitText.textContent = '= 1 SFL';
+  } else {
+    if (select) select.value = 'custom';
+    if (input) {
+      input.value = ratio;
+      input.style.display = 'inline-block';
+    }
+    if (unitText) unitText.textContent = '= 1 SFL';
+  }
+}
+window.syncCoinRatioUi = syncCoinRatioUi;
+
+export async function handleCoinSelectChange(val) {
+  const select = document.getElementById('coinRatioSelect');
+  const input = document.getElementById('coinsPerSflInput');
+  const unitText = document.getElementById('coinRatioUnitText');
+
+  if (val === 'custom') {
+    if (input) {
+      input.style.display = 'inline-block';
+      if (input.value === '1000' || input.value === '1500' || !input.value) {
+        input.select();
+      } else {
+        input.focus();
+      }
+    }
+    if (unitText) {
+      const isFree = input && (input.value === '0' || input.value.toLowerCase() === 'free');
+      unitText.textContent = isFree ? '(Coins Cost 0 SFL)' : '= 1 SFL';
+    }
+  } else if (val === '0') {
+    if (input) {
+      input.value = '0';
+      input.style.display = 'none';
+    }
+    if (unitText) unitText.textContent = '(Coins Cost 0 SFL)';
+    await applyCoinRatio(0);
+  } else {
+    const num = parseFloat(val) || 1000;
+    if (input) {
+      input.value = num;
+      input.style.display = 'none';
+    }
+    if (unitText) unitText.textContent = '= 1 SFL';
+    await applyCoinRatio(num);
+  }
+}
+window.handleCoinSelectChange = handleCoinSelectChange;
+
+async function applyCoinRatio(ratio) {
+  const isFree = ratio === 0 || ratio === '0' || ratio === 'free';
+  const effectiveRatio = isFree ? 0 : (parseFloat(ratio) || 1000);
+  localStorage.setItem('sfl_coin_ratio', isFree ? 'free' : effectiveRatio);
   if (state.currentVaultData) {
-    state.currentVaultData.coinRatio = ratio;
+    state.currentVaultData.coinRatio = isFree ? 0 : effectiveRatio;
   }
   if (state.globalData) {
-    state.globalData.coinRatio = ratio;
+    state.globalData.coinRatio = isFree ? 0 : effectiveRatio;
   }
-  recomputeCoinCosts(ratio);
+  recomputeCoinCosts(isFree ? 0 : effectiveRatio);
   recalculateAll();
   saveProgressToCloudKV(true);
+}
+
+export async function handleCoinRatioChange() {
+  const select = document.getElementById('coinRatioSelect');
+  const input = document.getElementById('coinsPerSflInput');
+  const unitText = document.getElementById('coinRatioUnitText');
+
+  const raw = input ? String(input.value).trim().toLowerCase() : '1000';
+  const isFree = raw === '0' || raw === 'free' || raw === '0.0' || (select && select.value === '0');
+
+  let ratio = 1000;
+  if (isFree) {
+    ratio = 0;
+  } else {
+    const parsed = parseFloat(raw);
+    ratio = (!isNaN(parsed) && parsed > 0) ? parsed : 1000;
+  }
+
+  if (unitText) {
+    unitText.textContent = isFree ? '(Coins Cost 0 SFL)' : '= 1 SFL';
+  }
+
+  await applyCoinRatio(isFree ? 0 : ratio);
 }
 window.handleCoinRatioChange = handleCoinRatioChange;
 
@@ -540,9 +637,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const savedCoinRatio = localStorage.getItem('sfl_coin_ratio');
-  const coinRatioEl = document.getElementById('coinsPerSflInput');
-  if (coinRatioEl && savedCoinRatio) {
-    coinRatioEl.value = savedCoinRatio;
+  if (savedCoinRatio !== null && savedCoinRatio !== undefined) {
+    syncCoinRatioUi(savedCoinRatio);
   }
 
   await checkSavedAuth();

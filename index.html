@@ -238,9 +238,15 @@
         </div>
 
         <div class="input-group panel-group-coins" style="padding:6px 10px; border:2px solid #D2691E; border-radius:10px; display:flex; align-items:center; gap:6px;">
-          <label for="coinsPerSflInput" style="color:#8B4513; font-weight:900; font-size:12px; white-space:nowrap;" title="Coin to Flower (SFL) ratio: number of Coins equal to 1 SFL (Default: 1000 Coins = 1 SFL)">🪙 COIN / FLOWER:</label>
-          <input type="number" id="coinsPerSflInput" value="1000" min="1" step="any" onchange="handleCoinRatioChange()" style="width: 72px; padding: 3px 6px; font-size: 12px; font-weight: bold; text-align: center; border-radius:6px;" title="Coins per 1 SFL (Flower). Default: 1000" />
-          <span style="font-size:11px; font-weight:bold; color:#8B4513;">= 1 SFL</span>
+          <label for="coinRatioSelect" style="color:#8B4513; font-weight:900; font-size:12px; white-space:nowrap;" title="Coin to Flower (SFL) ratio: number of Coins equal to 1 SFL (or Free)">🪙 COIN / FLOWER:</label>
+          <select id="coinRatioSelect" onchange="handleCoinSelectChange(this.value)" style="padding: 3px 6px; font-size: 12px; font-weight: 900; color: #8B4513; border: 1.5px solid #D2691E; border-radius: 6px; background: #FFF8DC; cursor: pointer;">
+            <option value="1000">1000</option>
+            <option value="1500">1500</option>
+            <option value="custom">Custom</option>
+            <option value="0">Free</option>
+          </select>
+          <input type="text" id="coinsPerSflInput" value="1000" oninput="handleCoinRatioChange()" onchange="handleCoinRatioChange()" style="display:none; width: 68px; padding: 3px 6px; font-size: 12px; font-weight: bold; text-align: center; border-radius:6px; border: 1.5px solid #D2691E;" placeholder="Rate / 0" title="Coins per 1 SFL (or 0 for Free)" />
+          <span id="coinRatioUnitText" style="font-size:11px; font-weight:bold; color:#8B4513;">= 1 SFL</span>
         </div>
 
         <div class="input-group" style="display:flex; flex-wrap:wrap; gap:8px;">
@@ -454,48 +460,79 @@
           <div class="guide-card-title">🚀 1. DAILY 3-STEP ROUTINE</div>
           <div class="guide-card-text">
             • <strong>① 📦 COMPLETE TASKS:</strong> Finish your orders, chores, or bounties in-game.<br/>
-            • <strong>② 🌾 FETCH DATA:</strong> Syncs your completed tasks & live prices — <strong>it automatically saves your progress to your Cloud Vault!</strong><br/>
+            • <strong>② 🌾 FETCH DATA:</strong> Pulls completed tasks, board state & live prices — <strong>it automatically saves your progress into your Cloud Vault!</strong><br/>
             • <strong>③ ☁️ SAVE IN CLOUD:</strong> When manually adding tickets into the <strong>Track</strong> or adjusting goals, click <strong>SAVE IN CLOUD</strong> to lock them in.<br/>
-            <span style="font-size:11.5px; display:inline-block; margin-top:4px;"><strong>💡 Note: Sync when you are done with deliveries, chores, and bounties for the day to ensure your ticket count is accurate. We have an automatic sync that runs at 23:00 UTC too but don't trust it too much.</strong></span>
+            <span style="font-size:11.5px; display:inline-block; margin-top:4px;"><strong>💡 Tip:</strong> Sync after finishing your tasks for the day to ensure full accuracy. An automated backup sync also runs daily at 23:00 UTC.</span>
           </div>
         </div>
 
-
-        <!-- 2. WEEKLY PROGRESSION CHART -->
+        <!-- 2. WEEKLY PROGRESSION CHART & BREAKDOWNS -->
         <div class="guide-card">
-          <div class="guide-card-title">📈 2. CLICK BARS FOR WEEKLY BREAKDOWNS</div>
+          <div class="guide-card-title">📈 2. PROGRESSION CHART & BREAKDOWNS</div>
           <div class="guide-card-text">
-            • <strong>Hover or Tap:</strong> Hover or tap any week bar in the <strong>Weekly Tickets Progression</strong> chart to see a breakdown popup of tickets earned from Deliveries, Bounties, Animal Bounties, and Chores.<br/>
-            • <strong>Click Bar:</strong> Opens the full itemized list of orders and tasks completed during that specific week with SFL costs.
+            • <strong>12-Week Roadmap:</strong> The progression chart is aligned to the 12 Cave Dwellers weeks (Nov 09, 2026 – Feb 01, 2027).<br/>
+            • <strong>Hover or Tap Bars:</strong> Hover or tap any week bar to see its breakdown of tickets earned from Deliveries, Bounties, Animal Bounties, and Chores.<br/>
+            • <strong>Click Any Bar:</strong> Opens the full itemized list of orders and tasks completed during that week with SFL costs.<br/>
+            • <strong>ℹ️ See Breakdown:</strong> Tap the breakdown hint on the <strong>🏆 TOTAL TICKETS</strong> and <strong>📅 THIS WEEK</strong> cards for complete component breakdowns.
           </div>
         </div>
 
-        <!-- 3. 2x DOUBLE DELIVERY EVENTS -->
+        <!-- 3. TICKET PROJECTIONS & ROUTINE PLANNER -->
         <div class="guide-card">
-          <div class="guide-card-title">⚡ 3. 2x DOUBLE DELIVERY EVENTS</div>
+          <div class="guide-card-title">🔮 3. TICKET PROJECTIONS & ROUTINE PLANNER</div>
+          <div class="guide-card-text">
+            • <strong>Deterministic Planner:</strong> Switch to the <strong>🔮 TICKET PROJECTIONS</strong> tab to forecast your entire season. Customize your weekly NPC deliveries, weekly 2x bonus day, regular + animal bounties (+100 board bonus), chores, and one-time Chapter Track tickets.<br/>
+            • <strong>Weekly Overrides:</strong> Customize specific weeks (like Week 9 Auction or Week 12 Finale) with different routines.<br/>
+            • <strong>4 Forecast Scenarios:</strong> Toggle between 📋 Planned Routine, 🚀 Run-Rate (current pace), 🎯 Target Pace, and ⚡ Custom Pace.<br/>
+            • <strong>Milestone Cards:</strong> Track your pace against Week 9 Auction Week (Jan 04 – Jan 10) and Week 12 Season Finale (Jan 25 – Feb 01).
+          </div>
+        </div>
+
+        <!-- 4. CHAPTER TARGET & EFFICIENCY RATIOS -->
+        <div class="guide-card">
+          <div class="guide-card-title">🎯 4. CHAPTER TARGET & EFFICIENCY RATIOS</div>
+          <div class="guide-card-text">
+            • <strong>Seasonal Target:</strong> Enter your target ticket goal and target weeks (capped at 12 weeks max) to see your required weekly pace and remaining tickets needed.<br/>
+            • <strong>Target Max Ratio (SFL / Tix):</strong> Set your maximum acceptable cost per ticket (e.g. <code>0.100</code> SFL/Tix). Orders below this cost automatically get a 🎯 badge on your board so you only craft high-efficiency tasks.
+          </div>
+        </div>
+
+        <!-- 5. COIN TO FLOWER (SFL) RATE & FREE COINS -->
+        <div class="guide-card">
+          <div class="guide-card-title">🪙 5. COIN / FLOWER RATE & FREE COINS</div>
+          <div class="guide-card-text">
+            • <strong>Preset Rates:</strong> Select <strong>1000</strong> or <strong>1500</strong> Coins = 1 SFL from the dropdown.<br/>
+            • <strong>Free Coins:</strong> Select <strong>Free</strong> (or type <code>0</code>) if you treat in-game coins as zero cost — all coin costs across recipes, orders, and boosts evaluate to 0 SFL.<br/>
+            • <strong>Custom Rate:</strong> Select <strong>Custom</strong> to enter any exchange rate (e.g. <code>1200</code> Coins = 1 SFL).
+          </div>
+        </div>
+
+        <!-- 6. 2x DOUBLE DELIVERY EVENTS -->
+        <div class="guide-card">
+          <div class="guide-card-title">⚡ 6. 2x DOUBLE DELIVERY EVENTS</div>
           <div class="guide-card-text">
             • <strong>First Delivery 2x:</strong> On 2x event days, your <strong>first completed delivery</strong> for each NPC gives double tickets: <code>[(Base + VIP + Boosts) × 2]</code>.<br/>
             • <strong>Extra Orders:</strong> Any additional orders completed for the same NPC on that day give standard 1x tickets.
           </div>
         </div>
 
-        <!-- 4. VIP, BOOSTERS & DAILY LOGIN -->
+        <!-- 7. VIP, BOOSTERS & DAILY LOGIN -->
         <div class="guide-card">
-          <div class="guide-card-title">👑 4. VIP, BOOSTERS & DAILY LOGIN</div>
+          <div class="guide-card-title">👑 7. VIP, BOOSTERS & DAILY LOGIN</div>
           <div class="guide-card-text">
             • <strong>VIP (+2):</strong> Toggle the VIP checkbox at the top to automatically add +2 tickets to all Deliveries & Chores.<br/>
-            • <strong>Boosters (+1):</strong> Toggle your active boosters to add +1 ticket each.<br/>
+            • <strong>Boosters (+1):</strong> Toggle your active boosters to add +1 ticket each. Click ⚙️ to configure coin and SFL purchase costs.<br/>
             • <strong>Daily Login (+1):</strong> +1 ticket is automatically credited every calendar day.
           </div>
         </div>
 
-        <!-- 5. FIXING OR CUSTOMIZING RECORDS -->
+        <!-- 8. FIXING RECORDS, CHAPTER LOGS & ITEMS BURNED -->
         <div class="guide-card">
-          <div class="guide-card-title">✏️ 5. EDITING & CUSTOM TASKS</div>
+          <div class="guide-card-title">✏️ 8. EDITING, ARCHIVES & ITEMS BURNED</div>
           <div class="guide-card-text">
-            • <strong>📜 EDIT:</strong> Click <strong>📜 EDIT</strong> on any card to view your history, filter by week, or filter by NPC.<br/>
-            • <strong>Active-First:</strong> Pending tasks always stay at the top. Completed orders are sorted by date.<br/>
-            • <strong>Custom Items:</strong> You can add or adjust tickets/costs for any past or current week at any time.
+            • <strong>📜 EDIT:</strong> Click <strong>📜 EDIT</strong> on any card to view your history, filter by week, filter by NPC, or add custom manual tasks.<br/>
+            • <strong>📜 CHAPTER LOGS:</strong> Open chapter logs in the header to view or lock historical season snapshots (e.g. Chapter 15 Ascension Age).<br/>
+            • <strong>🔥 ITEMS BURNED:</strong> View the total quantity and SFL costs of all crops, food, and animal items consumed throughout the season.
           </div>
         </div>
       </div>

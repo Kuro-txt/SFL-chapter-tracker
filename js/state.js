@@ -49,14 +49,26 @@ export const DEFAULT_BOOST_COSTS = {
 
 export function getCoinRatio() {
   if (typeof document !== 'undefined') {
-    const elVal = parseFloat(document.getElementById('coinsPerSflInput')?.value);
-    if (elVal && elVal > 0) return elVal;
+    const select = document.getElementById('coinRatioSelect');
+    if (select && select.value === '0') return 0;
+    const el = document.getElementById('coinsPerSflInput');
+    if (el) {
+      const s = String(el.value).trim().toLowerCase();
+      if (s === '0' || s === 'free') return 0;
+      const num = parseFloat(s);
+      if (!isNaN(num) && num > 0) return num;
+    }
   }
-  const stateVal = parseFloat(state.currentVaultData?.coinRatio || state.globalData?.coinRatio);
-  if (stateVal && stateVal > 0) return stateVal;
+  const stateVal = state.currentVaultData?.coinRatio !== undefined
+    ? state.currentVaultData.coinRatio
+    : state.globalData?.coinRatio;
+  if (stateVal === 0 || stateVal === '0' || stateVal === 'free') return 0;
+  if (stateVal && parseFloat(stateVal) > 0) return parseFloat(stateVal);
   if (typeof localStorage !== 'undefined') {
-    const localVal = parseFloat(localStorage.getItem('sfl_coin_ratio'));
-    if (localVal && localVal > 0) return localVal;
+    const localVal = localStorage.getItem('sfl_coin_ratio');
+    if (localVal === '0' || localVal === 'free') return 0;
+    const num = parseFloat(localVal);
+    if (!isNaN(num) && num > 0) return num;
   }
   return 1000;
 }
@@ -468,8 +480,13 @@ export function getDeliveryRecords() {
 }
 
 export function recomputeCoinCosts(ratio) {
-  if (!ratio || ratio <= 0) ratio = 1000;
-  const newCoinPrice = 1 / ratio;
+  const isFree = ratio === 0 || ratio === '0' || ratio === 'free';
+  const newCoinPrice = isFree ? 0 : (ratio && Number(ratio) > 0 ? 1 / Number(ratio) : 1 / 1000);
+
+  if (state.priceMap) {
+    state.priceMap['coins'] = newCoinPrice;
+    state.priceMap['coin'] = newCoinPrice;
+  }
 
   function updateItem(item) {
     if (!item) return;

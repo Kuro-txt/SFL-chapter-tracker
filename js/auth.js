@@ -226,9 +226,13 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
       if (trackCostEl) trackCostEl.value = data.vaultData.trackCost;
     }
     if (data.vaultData?.coinRatio !== undefined) {
-      const coinRatioEl = document.getElementById('coinsPerSflInput');
-      if (coinRatioEl) coinRatioEl.value = data.vaultData.coinRatio;
-      localStorage.setItem('sfl_coin_ratio', data.vaultData.coinRatio);
+      if (typeof window.syncCoinRatioUi === 'function') {
+        window.syncCoinRatioUi(data.vaultData.coinRatio);
+      } else {
+        const coinRatioEl = document.getElementById('coinsPerSflInput');
+        if (coinRatioEl) coinRatioEl.value = data.vaultData.coinRatio;
+        localStorage.setItem('sfl_coin_ratio', data.vaultData.coinRatio);
+      }
     }
     if (data.vaultData?.boostCosts) {
       localStorage.setItem('sfl_boost_costs', JSON.stringify(data.vaultData.boostCosts));
@@ -333,9 +337,13 @@ export async function checkSavedAuth() {
       }
 
       if (data.vaultData?.coinRatio !== undefined) {
-        const coinRatioEl = document.getElementById('coinsPerSflInput');
-        if (coinRatioEl) coinRatioEl.value = data.vaultData.coinRatio;
-        localStorage.setItem('sfl_coin_ratio', data.vaultData.coinRatio);
+        if (typeof window.syncCoinRatioUi === 'function') {
+          window.syncCoinRatioUi(data.vaultData.coinRatio);
+        } else {
+          const coinRatioEl = document.getElementById('coinsPerSflInput');
+          if (coinRatioEl) coinRatioEl.value = data.vaultData.coinRatio;
+          localStorage.setItem('sfl_coin_ratio', data.vaultData.coinRatio);
+        }
       }
       if (data.vaultData?.boostCosts) {
         localStorage.setItem('sfl_boost_costs', JSON.stringify(data.vaultData.boostCosts));

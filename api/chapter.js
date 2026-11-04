@@ -827,7 +827,7 @@ export default async function handler(req, res) {
         ...existingVault,
         ...body,
         trackTickets: body.trackTickets !== undefined ? body.trackTickets : (existingVault.trackTickets || 0),
-        coinRatio: body.coinRatio !== undefined ? (parseFloat(body.coinRatio) || 1000) : (existingVault.coinRatio || 1000),
+        coinRatio: body.coinRatio !== undefined ? (body.coinRatio === 0 || body.coinRatio === '0' || body.coinRatio === 'free' ? 0 : (parseFloat(body.coinRatio) || 1000)) : (existingVault.coinRatio !== undefined ? existingVault.coinRatio : 1000),
         targetRatio: body.targetRatio !== undefined ? (parseFloat(body.targetRatio) || 0) : (existingVault.targetRatio || 0),
         logs: mergedLogs,
         lastSavedAt: new Date().toISOString()
@@ -1096,7 +1096,12 @@ export default async function handler(req, res) {
     const farm = payload.farm || payload;
 
     const coinRatioQuery = searchParams.get('coinRatio');
-    let userCoinRatio = (coinRatioQuery && parseFloat(coinRatioQuery) > 0) ? parseFloat(coinRatioQuery) : null;
+    let userCoinRatio = null;
+    if (coinRatioQuery === '0' || coinRatioQuery === 'free') {
+      userCoinRatio = 0;
+    } else if (coinRatioQuery && parseFloat(coinRatioQuery) > 0) {
+      userCoinRatio = parseFloat(coinRatioQuery);
+    }
 
     let userVault = null;
     let cleanUser = null;
@@ -1105,16 +1110,18 @@ export default async function handler(req, res) {
       const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
       if (uRes.rows.length > 0) {
         userVault = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
-        if (!userCoinRatio && userVault.coinRatio) {
-          userCoinRatio = parseFloat(userVault.coinRatio);
+        if (userCoinRatio === null && userVault.coinRatio !== undefined) {
+          const cv = userVault.coinRatio;
+          userCoinRatio = (cv === 0 || cv === '0' || cv === 'free') ? 0 : parseFloat(cv);
         }
       }
     }
 
-    const finalCoinRatio = (userCoinRatio && userCoinRatio > 0) ? userCoinRatio : 1000;
+    const isFree = userCoinRatio === 0 || userCoinRatio === '0' || userCoinRatio === 'free';
+    const finalCoinRatio = isFree ? 0 : ((userCoinRatio && userCoinRatio > 0) ? userCoinRatio : 1000);
     priceMap['sfl_coin_rate'] = finalCoinRatio;
-    priceMap['coins'] = 1 / finalCoinRatio;
-    priceMap['coin'] = 1 / finalCoinRatio;
+    priceMap['coins'] = isFree ? 0 : (1 / finalCoinRatio);
+    priceMap['coin'] = isFree ? 0 : (1 / finalCoinRatio);
 
     const parsed = parseFarmData(farm, priceMap, payload);
 
