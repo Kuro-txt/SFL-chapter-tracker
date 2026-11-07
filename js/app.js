@@ -510,10 +510,10 @@ function startTipRotation() {
 }
 
 // ==========================================
-// CHAPTER COUNTDOWN TIMER (Feb 1, 2027, 00:00 UTC)
+// CHAPTER COUNTDOWN TIMER (Jan 25, 2027, 00:00 UTC)
 // ==========================================
-// Cave Dwellers (Chapter 16) ends Feb 1, 2027, 00:00:00 UTC
-const CHAPTER_END_TIMESTAMP = Date.UTC(2027, 1, 1, 0, 0, 0);
+// Cave Dwellers (Chapter 16) ends Jan 25, 2027, 00:00:00 UTC
+const CHAPTER_END_TIMESTAMP = Date.UTC(2027, 0, 25, 0, 0, 0);
 
 export function updateChapterCountdown() {
   const timerValEl = document.getElementById('chapterCountdownVal');
@@ -536,12 +536,12 @@ export function updateChapterCountdown() {
   }
 
   if (widgetEl) {
-    widgetEl.title = `Cave Dwellers (Chapter 16) ends: February 1, 2027 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
+    widgetEl.title = `Cave Dwellers (Chapter 16) ends: January 25, 2027 at 00:00 UTC (${days} days, ${hours} hours, ${mins} minutes remaining)`;
   }
 }
 
 export function updateCurrentWeekBadge() {
-  const baseEpoch = new Date('2026-11-09T00:00:00.000Z').getTime();
+  const baseEpoch = new Date('2026-11-02T00:00:00.000Z').getTime();
   const now = Date.now();
   let text = '';
   if (now < baseEpoch) {

@@ -5016,15 +5016,19 @@ body.dark-mode .proj-no-data-note {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   overflow: hidden;
 }
 
 .npc-planner-avatar {
   width: 28px;
   height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   object-fit: contain;
   flex-shrink: 0;
   image-rendering: pixelated;
+  display: inline-block;
 }
 
 .npc-planner-name-wrap {
@@ -5910,4 +5914,69 @@ body.dark-mode .planner-summary-track-bonus {
   color: #FDE68A !important;
   background: rgba(180, 83, 9, 0.25) !important;
   border-color: #B45309 !important;
+}
+
+/* ========================================================
+   MOBILE RESPONSIVE ADJUSTMENTS FOR PROJECTIONS TAB
+   ======================================================== */
+@media (max-width: 640px) {
+  .npc-planner-row {
+    display: grid !important;
+    grid-template-columns: 28px 1fr auto !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    padding: 8px 10px !important;
+    align-items: center !important;
+  }
+  .npc-col-check {
+    grid-column: 1 !important;
+    grid-row: 1 / span 2 !important;
+    align-self: center !important;
+  }
+  .npc-col-info {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+  }
+  .npc-col-subtotal {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+  }
+  .npc-col-freq {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    min-width: 0 !important;
+  }
+  .npc-col-double {
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+    justify-self: end !important;
+  }
+  .npc-planner-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    flex-shrink: 0 !important;
+    display: inline-block !important;
+  }
+  .planner-nav-tabs {
+    gap: 4px;
+  }
+  .planner-nav-btn {
+    padding: 5px 8px;
+    font-size: 10.5px;
+  }
+  .scenario-selector {
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  .scenario-pill {
+    padding: 4px 8px;
+    font-size: 10.5px;
+  }
+  .projection-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }

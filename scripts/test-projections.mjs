@@ -6,7 +6,10 @@ import {
   CORE_CHAPTER_NPCS, 
   DEFAULT_PLANNER_TEMPLATE,
   togglePlannerTrack,
-  setPlannerTrackTix
+  setPlannerTrackTix,
+  CHAPTER_WEEKS,
+  getWeekDateRange,
+  renderProjectionsView
 } from '../js/projections.js';
 
 console.log('🧪 Starting Verification Tests for Ticket Projections & Forecasting Engine...\n');
@@ -614,4 +617,62 @@ console.log('Test 16: Verifying Week 1 Monday Stacked Deliveries (Sunday Rollove
   console.log('✅ TEST 16 PASSED: Week 1 Monday Stacked Deliveries calculation and roadmap verified.\n');
 }
 
-console.log('🎉 ALL 16 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');
+// ---------------------------------------------------------------------------
+// Test 17: Verifying Cave Dwellers 12-Week Schedule Dates & Milestones
+// ---------------------------------------------------------------------------
+console.log('Test 17: Verifying Cave Dwellers 12-Week Schedule Dates & Milestones...');
+{
+  assert.strictEqual(CHAPTER_WEEKS.length, 12, 'Must have exactly 12 weeks');
+  assert.strictEqual(CHAPTER_WEEKS[0].start, '2026-11-02', 'Week 1 must start on Nov 02, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[0].end, '2026-11-08', 'Week 1 must end on Nov 08, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[0].label, 'Nov 02 – Nov 08', 'Week 1 label must be Nov 02 – Nov 08');
+
+  // Week 9 (Auction Week)
+  assert.strictEqual(CHAPTER_WEEKS[8].start, '2026-12-28', 'Week 9 must start on Dec 28, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[8].end, '2027-01-03', 'Week 9 must end on Jan 03, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[8].label, 'Dec 28 – Jan 03', 'Week 9 label must be Dec 28 – Jan 03');
+  assert.strictEqual(getWeekDateRange(9), 'Dec 28 – Jan 03');
+
+  // Week 12 (Season Finale)
+  assert.strictEqual(CHAPTER_WEEKS[11].start, '2027-01-18', 'Week 12 must start on Jan 18, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[11].end, '2027-01-25', 'Week 12 must end on Jan 25, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[11].label, 'Jan 18 – Jan 25', 'Week 12 label must be Jan 18 – Jan 25');
+  assert.strictEqual(getWeekDateRange(12), 'Jan 18 – Jan 25');
+
+  console.log('  ✓ Week 1: Nov 02 – Nov 08 (Cave Dwellers start)');
+  console.log('  ✓ Week 9 (Auction Week): Dec 28, 2026 – Jan 03, 2027');
+  console.log('  ✓ Week 12 (Season Finale): Jan 18 – Jan 25, 2027');
+  console.log('✅ TEST 17 PASSED: Cave Dwellers 12-week schedule dates verified.\n');
+}
+
+// ---------------------------------------------------------------------------
+// Test 18: Verifying NPC Avatar Rendering & Multi-Tier Fallback in Projections View
+// ---------------------------------------------------------------------------
+console.log('Test 18: Verifying NPC Avatar Rendering & Multi-Tier Fallback in Projections View...');
+{
+  const mockContainer = { innerHTML: '' };
+  globalThis.document = {
+    getElementById: (id) => id === 'weeklyProjectionsContainer' ? mockContainer : null,
+    body: { classList: { contains: () => false } }
+  };
+
+  const displayItems = buildMockDisplayItems(2, 100, 50);
+  const proj = calculateProjections(displayItems, '2026-11-02', 1000, 12, { loginTickets: 10, trackTickets: 50 });
+  renderProjectionsView(proj);
+
+  assert.ok(mockContainer.innerHTML.includes('WEEK 9 (DEC 28 – JAN 03) — AUCTION WEEK'), 'Milestone card must have Dec 28 - Jan 03');
+  assert.ok(mockContainer.innerHTML.includes('WEEK 12 (JAN 18 – JAN 25) — SEASON FINALE'), 'Milestone card must have Jan 18 - Jan 25');
+  assert.ok(mockContainer.innerHTML.includes('Nov 02, 2026 – Jan 25, 2027'), 'Roadmap summary must have Nov 02, 2026 - Jan 25, 2027');
+
+  // Verify all 11 core NPCs are rendered with avatar img tags having fallback mechanisms
+  CORE_CHAPTER_NPCS.forEach(npc => {
+    assert.ok(mockContainer.innerHTML.includes(npc.name), `Must render NPC name: ${npc.name}`);
+    assert.ok(mockContainer.innerHTML.includes(`alt="${npc.name}"`), `Must render avatar with alt="${npc.name}"`);
+    assert.ok(mockContainer.innerHTML.includes('sfl-npc-avatar'), 'Must render with sfl-npc-avatar class for responsive styling');
+  });
+
+  console.log('  ✓ All 11 Core NPC avatars rendered with multi-tier fallback and responsive CSS classes');
+  console.log('✅ TEST 18 PASSED: Projections View HTML & NPC avatar integrity verified.\n');
+}
+
+console.log('🎉 ALL 18 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');

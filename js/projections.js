@@ -6,26 +6,27 @@
  */
 
 import { renderChapterTicketIcon } from './item-icons.js';
+import { getNpcIconHtml } from './npc-icons.js';
 import { getActiveVipBonus, getActiveBoostCount } from './state.js';
 
 /** Chapter constants — must match render.js */
 const TOTAL_CHAPTER_WEEKS = 12;
-const BASE_EPOCH = new Date('2026-11-09T00:00:00.000Z');
+const BASE_EPOCH = new Date('2026-11-02T00:00:00.000Z');
 const AUCTION_WEEK = 9;
 
 export const CHAPTER_WEEKS = [
-  { num: 1, label: 'Nov 09 – Nov 15', start: '2026-11-09', end: '2026-11-15' },
-  { num: 2, label: 'Nov 16 – Nov 22', start: '2026-11-16', end: '2026-11-22' },
-  { num: 3, label: 'Nov 23 – Nov 29', start: '2026-11-23', end: '2026-11-29' },
-  { num: 4, label: 'Nov 30 – Dec 06', start: '2026-11-30', end: '2026-12-06' },
-  { num: 5, label: 'Dec 07 – Dec 13', start: '2026-12-07', end: '2026-12-13' },
-  { num: 6, label: 'Dec 14 – Dec 20', start: '2026-12-14', end: '2026-12-20' },
-  { num: 7, label: 'Dec 21 – Dec 27', start: '2026-12-21', end: '2026-12-27' },
-  { num: 8, label: 'Dec 28 – Jan 03', start: '2026-12-28', end: '2027-01-03' },
-  { num: 9, label: 'Jan 04 – Jan 10', start: '2027-01-04', end: '2027-01-10' },
-  { num: 10, label: 'Jan 11 – Jan 17', start: '2027-01-11', end: '2027-01-17' },
-  { num: 11, label: 'Jan 18 – Jan 24', start: '2027-01-18', end: '2027-01-24' },
-  { num: 12, label: 'Jan 25 – Feb 01', start: '2027-01-25', end: '2027-02-01' }
+  { num: 1, label: 'Nov 02 – Nov 08', start: '2026-11-02', end: '2026-11-08' },
+  { num: 2, label: 'Nov 09 – Nov 15', start: '2026-11-09', end: '2026-11-15' },
+  { num: 3, label: 'Nov 16 – Nov 22', start: '2026-11-16', end: '2026-11-22' },
+  { num: 4, label: 'Nov 23 – Nov 29', start: '2026-11-23', end: '2026-11-29' },
+  { num: 5, label: 'Nov 30 – Dec 06', start: '2026-11-30', end: '2026-12-06' },
+  { num: 6, label: 'Dec 07 – Dec 13', start: '2026-12-07', end: '2026-12-13' },
+  { num: 7, label: 'Dec 14 – Dec 20', start: '2026-12-14', end: '2026-12-20' },
+  { num: 8, label: 'Dec 21 – Dec 27', start: '2026-12-21', end: '2026-12-27' },
+  { num: 9, label: 'Dec 28 – Jan 03', start: '2026-12-28', end: '2027-01-03' },
+  { num: 10, label: 'Jan 04 – Jan 10', start: '2027-01-04', end: '2027-01-10' },
+  { num: 11, label: 'Jan 11 – Jan 17', start: '2027-01-11', end: '2027-01-17' },
+  { num: 12, label: 'Jan 18 – Jan 25', start: '2027-01-18', end: '2027-01-25' }
 ];
 
 export function getWeekDateRange(weekNum) {
@@ -1082,7 +1083,7 @@ export function renderProjectionsView(proj) {
           />
         </div>
         <div class="npc-col-info">
-          <img src="${npc.avatar}" class="npc-planner-avatar" alt="${npc.name}" onerror="this.style.display='none'" />
+          ${getNpcIconHtml(npc.name, { size: 28, className: 'npc-planner-avatar' })}
           <div class="npc-planner-name-wrap">
             <span class="npc-planner-name">${npc.name}</span>
             <span class="npc-planner-rate">${npc.baseTickets} base ${yieldPerOrder > npc.baseTickets ? `(+${yieldPerOrder - npc.baseTickets} buff)` : ''} = <strong>${yieldPerOrder}</strong> ${ticketIconHtml}/deliv</span>
@@ -1345,7 +1346,7 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏁</span>
-          <span class="proj-milestone-title">WEEK 9 (JAN 04 – JAN 10) — AUCTION WEEK</span>
+          <span class="proj-milestone-title">WEEK 9 (DEC 28 – JAN 03) — AUCTION WEEK</span>
         </div>
         <div class="proj-card-tix">${ticketIconHtml} <strong>${wAuction.projected.toLocaleString()}</strong> Tickets</div>
         <div class="proj-card-gap">${gapBadge(wAuction.gapVsGoal, isDark)}</div>
@@ -1358,7 +1359,7 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏆</span>
-          <span class="proj-milestone-title">WEEK 12 (JAN 25 – FEB 01) — SEASON FINALE</span>
+          <span class="proj-milestone-title">WEEK 12 (JAN 18 – JAN 25) — SEASON FINALE</span>
         </div>
         <div class="proj-card-tix">${ticketIconHtml} <strong>${w12.projected.toLocaleString()}</strong> Tickets</div>
         <div class="proj-card-gap">${gapBadge(w12.gapVsGoal, isDark)}</div>
@@ -1458,7 +1459,7 @@ export function renderProjectionsView(proj) {
     </div>
 
     <details class="roadmap-details${isDark ? ' dark' : ''}">
-      <summary class="roadmap-summary">📊 Week-by-Week Forecast Roadmap (Nov 09, 2026 – Feb 01, 2027)</summary>
+      <summary class="roadmap-summary">📊 Week-by-Week Forecast Roadmap (Nov 02, 2026 – Jan 25, 2027)</summary>
       <div class="roadmap-table-wrap">
         <table class="roadmap-table${isDark ? ' dark' : ''}">
           <thead>

@@ -359,7 +359,7 @@ export async function snapshotCurrentChapter() {
   if (!chapterTitle || !chapterTitle.trim()) return;
 
   const ACTIVE_CHAPTER_ID = 'cave_dwellers_16';
-  const CHAPTER_END_MS = Date.UTC(2027, 1, 1, 0, 0, 0); // Feb 1, 2027 00:00:00 UTC
+  const CHAPTER_END_MS = Date.UTC(2027, 0, 25, 0, 0, 0); // Jan 25, 2027 00:00:00 UTC
   const isLocked = Date.now() >= CHAPTER_END_MS;
 
   const logs = getStoredChapterLogs();

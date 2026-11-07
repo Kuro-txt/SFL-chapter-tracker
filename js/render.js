@@ -589,27 +589,11 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
 
   const TOTAL_CHAPTER_WEEKS = 12;
   const weekMondays = [];
-  const baseEpoch = new Date('2026-11-09T00:00:00.000Z');
+  const baseEpoch = new Date('2026-11-02T00:00:00.000Z');
   for (let w = 0; w < TOTAL_CHAPTER_WEEKS; w++) {
     const d = new Date(baseEpoch.getTime());
     d.setUTCDate(baseEpoch.getUTCDate() + (w * 7));
     weekMondays.push(d.toISOString().split('T')[0]);
-  }
-
-  // Roll pre-season (Week 0) deliveries into Week 1 without shifting the 12-week chart
-  const preSeasonKey = '2026-11-02';
-  if (weeklyStats[preSeasonKey] && weekMondays[0]) {
-    const w1Key = weekMondays[0];
-    if (!weeklyStats[w1Key]) {
-      weeklyStats[w1Key] = { tickets: 0, cost: 0, delivTix: 0, bountyTix: 0, bountyBonusTix: 0, animalBountyTix: 0, choreTix: 0 };
-    }
-    const pre = weeklyStats[preSeasonKey];
-    weeklyStats[w1Key].tickets += (pre.tickets || 0);
-    weeklyStats[w1Key].cost += (pre.cost || 0);
-    weeklyStats[w1Key].delivTix += (pre.delivTix || 0);
-    weeklyStats[w1Key].bountyTix += (pre.bountyTix || 0);
-    weeklyStats[w1Key].animalBountyTix += (pre.animalBountyTix || 0);
-    weeklyStats[w1Key].choreTix += (pre.choreTix || 0);
   }
 
   const displayItems = [];
