@@ -264,7 +264,7 @@ export function renderChapterLogsList() {
       day: 'numeric'
     }) : 'Archived';
 
-    const CHAPTER_END_FALLBACK = '2026-11-02T00:00:00.000Z';
+    const CHAPTER_END_FALLBACK = '2026-11-08T00:00:00.000Z';
     const endDateRaw = item.chapterEndDate || (item.chapterId === 'ascension_age_15' ? CHAPTER_END_FALLBACK : null);
     const endDateFormatted = endDateRaw ? new Date(endDateRaw).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -359,7 +359,7 @@ export async function snapshotCurrentChapter() {
   if (!chapterTitle || !chapterTitle.trim()) return;
 
   const ACTIVE_CHAPTER_ID = 'cave_dwellers_16';
-  const CHAPTER_END_MS = Date.UTC(2027, 0, 25, 0, 0, 0); // Jan 25, 2027 00:00:00 UTC
+  const CHAPTER_END_MS = Date.UTC(2027, 1, 1, 0, 0, 0); // Jan 25, 2027 00:00:00 UTC
   const isLocked = Date.now() >= CHAPTER_END_MS;
 
   const logs = getStoredChapterLogs();

@@ -588,13 +588,39 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   };
 
   const TOTAL_CHAPTER_WEEKS = 12;
-  const weekMondays = [];
-  const baseEpoch = new Date('2026-11-02T00:00:00.000Z');
-  for (let w = 0; w < TOTAL_CHAPTER_WEEKS; w++) {
-    const d = new Date(baseEpoch.getTime());
-    d.setUTCDate(baseEpoch.getUTCDate() + (w * 7));
-    weekMondays.push(d.toISOString().split('T')[0]);
-  }
+  const weekMondays = [
+    '2026-11-09',
+    '2026-11-16',
+    '2026-11-23',
+    '2026-11-30',
+    '2026-12-07',
+    '2026-12-14',
+    '2026-12-21',
+    '2026-12-28',
+    '2027-01-04',
+    '2027-01-11',
+    '2027-01-18',
+    '2027-01-25'
+  ];
+
+  // Merge any legacy Sunday Nov 08 (or 2026-11-02) entries into Week 1 without shifting chart
+  ['2026-11-02', '2026-11-08'].forEach(legacyKey => {
+    if (weeklyStats[legacyKey] && weekMondays[0]) {
+      const w1Key = weekMondays[0];
+      if (!weeklyStats[w1Key]) {
+        weeklyStats[w1Key] = { tickets: 0, cost: 0, delivTix: 0, bountyTix: 0, bountyBonusTix: 0, animalBountyTix: 0, choreTix: 0 };
+      }
+      const pre = weeklyStats[legacyKey];
+      weeklyStats[w1Key].tickets += (pre.tickets || 0);
+      weeklyStats[w1Key].cost += (pre.cost || 0);
+      weeklyStats[w1Key].delivTix += (pre.delivTix || 0);
+      weeklyStats[w1Key].bountyTix += (pre.bountyTix || 0);
+      weeklyStats[w1Key].bountyBonusTix = (weeklyStats[w1Key].bountyBonusTix || 0) + (pre.bountyBonusTix || 0);
+      weeklyStats[w1Key].animalBountyTix += (pre.animalBountyTix || 0);
+      weeklyStats[w1Key].choreTix += (pre.choreTix || 0);
+      delete weeklyStats[legacyKey];
+    }
+  });
 
   const displayItems = [];
   weekMondays.forEach((mondayKey, idx) => {
@@ -627,8 +653,17 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   const currentIndex = displayItems.findIndex(d => d.isCurrent);
   const nowMs = Date.now();
   const isPreSeason = (currentIndex === -1) && (nowMs < baseEpoch.getTime());
-  const diffDays = Math.max(0, (nowMs - baseEpoch.getTime()) / (1000 * 60 * 60 * 24));
-  const activeWeekNum = isPreSeason ? 0 : (currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.max(1, Math.floor(diffDays / 7) + 1)));
+  let activeWeekNum = 0;
+  if (!isPreSeason) {
+    if (nowMs < w2Start.getTime()) {
+      activeWeekNum = 1;
+    } else if (currentIndex !== -1) {
+      activeWeekNum = currentIndex + 1;
+    } else {
+      const diffAfterW1 = (nowMs - w2Start.getTime()) / (1000 * 60 * 60 * 24);
+      activeWeekNum = Math.min(TOTAL_CHAPTER_WEEKS, Math.floor(diffAfterW1 / 7) + 2);
+    }
+  }
   const weekLabelText = isPreSeason ? 'WEEK 0 (PRE-SEASON)' : `WEEK ${activeWeekNum} OF ${TOTAL_CHAPTER_WEEKS} WEEKS (UTC)`;
   if (badgeEl) {
     badgeEl.textContent = weekLabelText;

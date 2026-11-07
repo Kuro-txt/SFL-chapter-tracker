@@ -295,8 +295,8 @@ export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChap
         logs.unshift({
           chapterId: 'ascension_age_15',
           chapterTitle: 'Ascension Age (Chapter 15)',
-          date: '2026-11-02',
-          chapterEndDate: '2026-11-02T00:00:00.000Z',
+          date: '2026-11-08',
+          chapterEndDate: '2026-11-08T00:00:00.000Z',
           isLocked: true,
           summary: {
             deliveriesCount: pastDelivs.filter(d => Boolean(d.checked !== undefined ? d.checked : d.completed)).length
@@ -513,7 +513,7 @@ function startTipRotation() {
 // CHAPTER COUNTDOWN TIMER (Jan 25, 2027, 00:00 UTC)
 // ==========================================
 // Cave Dwellers (Chapter 16) ends Jan 25, 2027, 00:00:00 UTC
-const CHAPTER_END_TIMESTAMP = Date.UTC(2027, 0, 25, 0, 0, 0);
+const CHAPTER_END_TIMESTAMP = Date.UTC(2027, 1, 1, 0, 0, 0);
 
 export function updateChapterCountdown() {
   const timerValEl = document.getElementById('chapterCountdownVal');
@@ -541,7 +541,7 @@ export function updateChapterCountdown() {
 }
 
 export function updateCurrentWeekBadge() {
-  const baseEpoch = new Date('2026-11-02T00:00:00.000Z').getTime();
+  const baseEpoch = new Date('2026-11-08T00:00:00.000Z').getTime();
   const now = Date.now();
   let text = '';
   if (now < baseEpoch) {

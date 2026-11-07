@@ -11,22 +11,22 @@ import { getActiveVipBonus, getActiveBoostCount } from './state.js';
 
 /** Chapter constants — must match render.js */
 const TOTAL_CHAPTER_WEEKS = 12;
-const BASE_EPOCH = new Date('2026-11-02T00:00:00.000Z');
+const BASE_EPOCH = new Date('2026-11-08T00:00:00.000Z');
 const AUCTION_WEEK = 9;
 
 export const CHAPTER_WEEKS = [
-  { num: 1, label: 'Nov 02 – Nov 08', start: '2026-11-02', end: '2026-11-08' },
-  { num: 2, label: 'Nov 09 – Nov 15', start: '2026-11-09', end: '2026-11-15' },
-  { num: 3, label: 'Nov 16 – Nov 22', start: '2026-11-16', end: '2026-11-22' },
-  { num: 4, label: 'Nov 23 – Nov 29', start: '2026-11-23', end: '2026-11-29' },
-  { num: 5, label: 'Nov 30 – Dec 06', start: '2026-11-30', end: '2026-12-06' },
-  { num: 6, label: 'Dec 07 – Dec 13', start: '2026-12-07', end: '2026-12-13' },
-  { num: 7, label: 'Dec 14 – Dec 20', start: '2026-12-14', end: '2026-12-20' },
-  { num: 8, label: 'Dec 21 – Dec 27', start: '2026-12-21', end: '2026-12-27' },
-  { num: 9, label: 'Dec 28 – Jan 03', start: '2026-12-28', end: '2027-01-03' },
-  { num: 10, label: 'Jan 04 – Jan 10', start: '2027-01-04', end: '2027-01-10' },
-  { num: 11, label: 'Jan 11 – Jan 17', start: '2027-01-11', end: '2027-01-17' },
-  { num: 12, label: 'Jan 18 – Jan 25', start: '2027-01-18', end: '2027-01-25' }
+  { num: 1, label: 'Nov 08 – Nov 15', start: '2026-11-08', end: '2026-11-15', days: 8 },
+  { num: 2, label: 'Nov 16 – Nov 22', start: '2026-11-16', end: '2026-11-22', days: 7 },
+  { num: 3, label: 'Nov 23 – Nov 29', start: '2026-11-23', end: '2026-11-29', days: 7 },
+  { num: 4, label: 'Nov 30 – Dec 06', start: '2026-11-30', end: '2026-12-06', days: 7 },
+  { num: 5, label: 'Dec 07 – Dec 13', start: '2026-12-07', end: '2026-12-13', days: 7 },
+  { num: 6, label: 'Dec 14 – Dec 20', start: '2026-12-14', end: '2026-12-20', days: 7 },
+  { num: 7, label: 'Dec 21 – Dec 27', start: '2026-12-21', end: '2026-12-27', days: 7 },
+  { num: 8, label: 'Dec 28 – Jan 03', start: '2026-12-28', end: '2027-01-03', days: 7 },
+  { num: 9, label: 'Jan 04 – Jan 10', start: '2027-01-04', end: '2027-01-10', days: 7 },
+  { num: 10, label: 'Jan 11 – Jan 17', start: '2027-01-11', end: '2027-01-17', days: 7 },
+  { num: 11, label: 'Jan 18 – Jan 24', start: '2027-01-18', end: '2027-01-24', days: 7 },
+  { num: 12, label: 'Jan 25 – Feb 01', start: '2027-01-25', end: '2027-02-01', days: 7 }
 ];
 
 export function getWeekDateRange(weekNum) {
@@ -195,10 +195,15 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
   let doubleBonusTix = 0;
   const npcBreakdown = {};
 
+  const isWeek1 = (weekNum === 1 || weekNum === '1');
+  const weekDays = isWeek1 ? 8 : 7;
+
   CORE_CHAPTER_NPCS.forEach(npc => {
     const npcConf = config.npcs[npc.id] || { enabled: false, daysPerWeek: 7, doubleDelivery: false };
     const enabled = Boolean(npcConf.enabled);
-    const days = Math.max(1, Math.min(7, parseInt(npcConf.daysPerWeek, 10) || 7));
+    const rawDays = parseInt(npcConf.daysPerWeek, 10);
+    const isDaily = isNaN(rawDays) || rawDays >= 7;
+    const days = enabled ? (isWeek1 && isDaily ? 8 : Math.max(1, Math.min(weekDays, rawDays || 7))) : 0;
     const yieldPerOrder = npc.baseTickets + perOrderBonus;
 
     const isDoubleTicked = (npcConf.doubleDelivery !== undefined)
@@ -232,7 +237,6 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
   });
 
   // Week 1 Monday Stacked Deliveries from Sunday Rollover (only if explicitly enabled in config)
-  const isWeek1 = (weekNum === 1 || weekNum === '1');
   const hasStackedRollover = config.mondayStackedDeliveries === true;
   let stackedTix = 0;
 
@@ -281,9 +285,12 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     : 0;
   const trackTix = trackEnabled ? trackTixVal : 0;
 
-  // Logins calculations
+  // Logins calculations (Week 1 has 8 days for daily logins)
   const lConf = config.logins || DEFAULT_PLANNER_TEMPLATE.logins;
-  const loginsTix = lConf.enabled !== false ? (parseInt(lConf.daysPerWeek, 10) || 7) : 0;
+  const rawLoginDays = parseInt(lConf.daysPerWeek, 10);
+  const isDailyLogin = isNaN(rawLoginDays) || rawLoginDays >= 7;
+  const loginsDays = isWeek1 && isDailyLogin ? 8 : Math.max(0, Math.min(weekDays, rawLoginDays || 7));
+  const loginsTix = lConf.enabled !== false ? loginsDays : 0;
 
   // Total weekly routine strictly excludes one-time track tickets because track tickets do NOT repeat weekly
   const totalWeeklyTix = delivTix + bountiesTix + choresTix + loginsTix;
@@ -358,18 +365,25 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   let taskEarned = 0;
   let daysPassedInWeek = 0;
 
+  const W2_START_MS = new Date('2026-11-16T00:00:00.000Z').getTime();
+  const SEASON_END_MS = new Date('2027-02-01T00:00:00.000Z').getTime();
+  const AUCTION_END_MS = new Date('2027-01-11T00:00:00.000Z').getTime();
+
   if (isPreSeason) {
     elapsedWeeks = 0;
     daysPassedInWeek = 0;
     taskEarned = displayItems.reduce((s, d) => s + (d.tickets || 0), 0);
   } else if (currentIndex !== -1) {
+    const isW1 = (currentIndex === 0);
+    const daysInThisWeek = isW1 ? 8 : 7;
     const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
-    daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
-    elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
+    const weekStartMs = isW1 ? BASE_EPOCH.getTime() : currentMonMs;
+    daysPassedInWeek = Math.max(0.2, Math.min(daysInThisWeek, (nowMs - weekStartMs) / (24 * 60 * 60 * 1000)));
+    elapsedWeeks = currentIndex + (daysPassedInWeek / daysInThisWeek);
     taskEarned = displayItems.slice(0, currentIndex + 1).reduce((s, d) => s + (d.tickets || 0), 0);
   } else {
-    const diffDays = Math.max(0, (nowMs - BASE_EPOCH.getTime()) / (24 * 60 * 60 * 1000));
-    elapsedWeeks = Math.min(TOTAL_CHAPTER_WEEKS, diffDays / 7);
+    const diffAfterW1 = Math.max(0, (nowMs - W2_START_MS) / (24 * 60 * 60 * 1000));
+    elapsedWeeks = Math.min(TOTAL_CHAPTER_WEEKS, 1 + (diffAfterW1 / 7));
     taskEarned = displayItems.reduce((s, d) => s + (d.tickets || 0), 0);
   }
 
@@ -379,8 +393,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
   const activeWeekNum = isPreSeason ? 0 : (currentIndex !== -1 ? (currentIndex + 1) : Math.min(TOTAL_CHAPTER_WEEKS, Math.floor(elapsedWeeks) + 1));
   const weeksRemaining12 = Math.max(0, TOTAL_CHAPTER_WEEKS - elapsedWeeks);
   const weeksRemainingAuction = Math.max(0, AUCTION_WEEK - elapsedWeeks);
-  const daysRemaining12 = weeksRemaining12 * 7;
-  const daysRemainingAuction = weeksRemainingAuction * 7;
+  const daysRemaining12 = Math.max(0, (SEASON_END_MS - nowMs) / (24 * 60 * 60 * 1000));
+  const daysRemainingAuction = Math.max(0, (AUCTION_END_MS - nowMs) / (24 * 60 * 60 * 1000));
 
   const vipBonus = (typeof document !== 'undefined' && typeof getActiveVipBonus === 'function') ? getActiveVipBonus() : 0;
   const boostCount = (typeof document !== 'undefined' && typeof getActiveBoostCount === 'function') ? getActiveBoostCount() : 0;
@@ -421,8 +435,9 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
 
     if (activeWeekNum <= milestoneWeek) {
       const curPlan = calculateWeekNpcPlan(activeWeekNum, template, overrides, vipBonus, boostCount);
-      const remainingDaysInWeek = Math.max(0, 7 - daysPassedInWeek);
-      const remainingCurWeekTix = Math.round((curPlan.totalWeeklyTix / 7) * remainingDaysInWeek);
+      const totalDaysInCurWeek = activeWeekNum === 1 ? 8 : 7;
+      const remainingDaysInWeek = Math.max(0, totalDaysInCurWeek - daysPassedInWeek);
+      const remainingCurWeekTix = Math.round((curPlan.totalWeeklyTix / totalDaysInCurWeek) * remainingDaysInWeek);
       projected += remainingCurWeekTix;
     }
 
@@ -431,7 +446,8 @@ export function calculateProjections(displayItems, currentMondayKey, targetGoal,
       projected += wkPlan.totalWeeklyTix;
     }
 
-    const daysRemaining = Math.max(0, (milestoneWeek - elapsedWeeks) * 7);
+    const milestoneEndMs = milestoneWeek === AUCTION_WEEK ? AUCTION_END_MS : SEASON_END_MS;
+    const daysRemaining = Math.max(0, (milestoneEndMs - nowMs) / (24 * 60 * 60 * 1000));
     const gapVsGoal = projected - milestoneGoal;
     const dailyRequired = daysRemaining > 0.1
       ? Math.max(0, Math.ceil((milestoneGoal - totalEarned - pendingTrackTix) / daysRemaining))
@@ -1066,8 +1082,10 @@ export function renderProjectionsView(proj) {
     const totalTix = item.totalTix;
     const doubleBonus = item.doubleBonusTix;
 
-    const daysOptions = [7, 6, 5, 4, 3, 2, 1].map(d =>
-      `<option value="${d}" ${days === d ? 'selected' : ''}>${d === 7 ? 'Daily (7x/wk)' : `${d}x / week`}</option>`
+    const isWk1 = currentWeekVal === 1 || currentWeekVal === '1';
+    const daysList = isWk1 ? [8, 7, 6, 5, 4, 3, 2, 1] : [7, 6, 5, 4, 3, 2, 1];
+    const daysOptions = daysList.map(d =>
+      `<option value="${d}" ${days === d ? 'selected' : ''}>${isWk1 && d === 8 ? 'Daily (8x in Wk 1)' : (d === 7 ? 'Daily (7x/wk)' : `${d}x / week`)}</option>`
     ).join('');
 
     return `
@@ -1346,7 +1364,7 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏁</span>
-          <span class="proj-milestone-title">WEEK 9 (DEC 28 – JAN 03) — AUCTION WEEK</span>
+          <span class="proj-milestone-title">WEEK 9 (JAN 04 – JAN 10) — AUCTION WEEK</span>
         </div>
         <div class="proj-card-tix">${ticketIconHtml} <strong>${wAuction.projected.toLocaleString()}</strong> Tickets</div>
         <div class="proj-card-gap">${gapBadge(wAuction.gapVsGoal, isDark)}</div>
@@ -1359,7 +1377,7 @@ export function renderProjectionsView(proj) {
       <div class="projection-metric-card${isDark ? ' dark' : ''}">
         <div class="proj-card-header">
           <span class="proj-milestone-icon">🏆</span>
-          <span class="proj-milestone-title">WEEK 12 (JAN 18 – JAN 25) — SEASON FINALE</span>
+          <span class="proj-milestone-title">WEEK 12 (JAN 25 – FEB 01) — SEASON FINALE</span>
         </div>
         <div class="proj-card-tix">${ticketIconHtml} <strong>${w12.projected.toLocaleString()}</strong> Tickets</div>
         <div class="proj-card-gap">${gapBadge(w12.gapVsGoal, isDark)}</div>
@@ -1459,7 +1477,7 @@ export function renderProjectionsView(proj) {
     </div>
 
     <details class="roadmap-details${isDark ? ' dark' : ''}">
-      <summary class="roadmap-summary">📊 Week-by-Week Forecast Roadmap (Nov 02, 2026 – Jan 25, 2027)</summary>
+      <summary class="roadmap-summary">📊 Week-by-Week Forecast Roadmap (Nov 08, 2026 – Feb 01, 2027)</summary>
       <div class="roadmap-table-wrap">
         <table class="roadmap-table${isDark ? ' dark' : ''}">
           <thead>

@@ -566,55 +566,35 @@ console.log('Test 15: Verifying Chapter Track Tickets in Chores section & one-ti
 }
 
 // -------------------------------------------------------------
-// Test 16: Week 1 Monday Stacked Deliveries (Sunday Rollover)
+// Test 16: Week 1 8-Day Schedule & Routine Calculations
 // -------------------------------------------------------------
-console.log('Test 16: Verifying Week 1 Monday Stacked Deliveries (Sunday Rollover)...');
+console.log('Test 16: Verifying Week 1 (8 Days: Nov 08 – Nov 15) vs Weeks 2–12 (7 Days)...');
 {
   const template = JSON.parse(JSON.stringify(DEFAULT_PLANNER_TEMPLATE));
-  assert.strictEqual(template.mondayStackedDeliveries, false, 'DEFAULT_PLANNER_TEMPLATE.mondayStackedDeliveries must be false by default');
 
   // Default enabled NPCs: Pete (1), Bert (2), Finley (2), Miranda (2), Cornwell (3) = 10 base tix
-  // With VIP (+2): Pete (3), Bert (4), Finley (4), Miranda (4), Cornwell (5) = 20 tix
+  // With VIP (+2): Pete (3), Bert (4), Finley (4), Miranda (4), Cornwell (5) = 20 tix/order
 
-  // 1. By default, Week 1 should NOT add stacked tickets
-  const planDefaultW1 = calculateWeekNpcPlan(1, template, {}, 2, 0);
-  const planDefaultTemplate = calculateWeekNpcPlan('template', template, {}, 2, 0);
-  assert.strictEqual(planDefaultW1.delivTix, planDefaultTemplate.delivTix, 'Default Week 1 delivTix must match template (no extra Sunday rollover tickets)');
-
-  // 2. When mondayStackedDeliveries is explicitly enabled:
-  template.mondayStackedDeliveries = true;
-  const planTemplate = calculateWeekNpcPlan('template', template, {}, 2, 0);
-  assert.strictEqual(planTemplate.stackedTix, 20, `Expected 20 stacked tix preview, got ${planTemplate.stackedTix}`);
-
-  // Week 1 calculation MUST include the one-time +20 stacked tickets
+  // Week 1 has 8 days: 8 deliveries + 1 double delivery day bonus = 9x per NPC
+  // 9 * 20 = 180 delivery tickets + 8 login tickets
   const planW1 = calculateWeekNpcPlan(1, template, {}, 2, 0);
-  assert.strictEqual(planW1.stackedTix, 20, `Expected 20 stacked tix for Week 1, got ${planW1.stackedTix}`);
-  assert.strictEqual(planW1.delivTix, planTemplate.delivTix + 20, `Week 1 delivTix should be standard + 20 stacked tix`);
-  assert.strictEqual(planW1.totalWeeklyTix, planTemplate.totalWeeklyTix + 20, `Week 1 totalWeeklyTix should include 20 stacked tix`);
+  assert.strictEqual(planW1.delivTix, 180, `Week 1 (8 days) delivTix should be 180, got ${planW1.delivTix}`);
+  assert.strictEqual(planW1.loginsTix, 8, `Week 1 logins should be 8, got ${planW1.loginsTix}`);
 
-  // 3. Week 2 calculation MUST NOT include stacked tickets (strictly 7 days)
+  // Week 2 (and template) has 7 days: 7 deliveries + 1 double delivery day bonus = 8x per NPC
+  // 8 * 20 = 160 delivery tickets + 7 login tickets
   const planW2 = calculateWeekNpcPlan(2, template, {}, 2, 0);
-  assert.strictEqual(planW2.delivTix, planTemplate.delivTix, `Week 2 delivTix must NOT include stacked deliveries`);
-  assert.strictEqual(planW2.totalWeeklyTix, planTemplate.totalWeeklyTix, `Week 2 total must match template routine`);
+  assert.strictEqual(planW2.delivTix, 160, `Week 2 (7 days) delivTix should be 160, got ${planW2.delivTix}`);
+  assert.strictEqual(planW2.loginsTix, 7, `Week 2 logins should be 7, got ${planW2.loginsTix}`);
 
-  // 4. When mondayStackedDeliveries is disabled, Week 1 should NOT add stacked tickets
-  template.mondayStackedDeliveries = false;
-  const planW1Disabled = calculateWeekNpcPlan(1, template, {}, 2, 0);
-  assert.strictEqual(planW1Disabled.delivTix, planTemplate.delivTix, `Disabled stacked deliveries must not add extra tickets`);
+  // Template routine
+  const planTemplate = calculateWeekNpcPlan('template', template, {}, 2, 0);
+  assert.strictEqual(planTemplate.delivTix, 160, `Template delivTix should be standard 7-day 160`);
+  assert.strictEqual(planTemplate.loginsTix, 7, `Template logins should be standard 7-day 7`);
 
-  // 5. Verify Roadmap receives stackedBonus on Week 1 when projected (Pre-Season / Week 0) with mondayStackedDeliveries=true
-  setProjectionScenario('planned');
-  template.mondayStackedDeliveries = true;
-  const displayItems = buildMockDisplayItems(0, 0, 0).map(d => ({ ...d, isCurrent: false })); // Pre-Season
-  const proj = calculateProjections(displayItems, '2026-08-10', 1000, 12, { loginTickets: 0, trackTickets: 0 });
-  const w1Row = proj.roadmap[0];
-  assert.strictEqual(w1Row.weekNum, 1);
-  assert.strictEqual(w1Row.stackedBonus, 0, `Roadmap Week 1 default stackedBonus must be 0 when template is clean`);
-
-  console.log(`  ✓ Default Week 1: Clean 7-day routine (${planDefaultW1.delivTix} Tix)`);
-  console.log(`  ✓ Opt-in Week 1 Stacked Windfall (VIP +2): +${planW1.stackedTix} Tix`);
-  console.log(`  ✓ Week 1 Total: ${planW1.totalWeeklyTix} Tix | Week 2 Routine: ${planW2.totalWeeklyTix} Tix`);
-  console.log('✅ TEST 16 PASSED: Week 1 Monday Stacked Deliveries calculation and roadmap verified.\n');
+  console.log(`  ✓ Week 1 (8 days: Nov 08 – Nov 15): ${planW1.delivTix} deliv tix + ${planW1.loginsTix} logins = ${planW1.totalWeeklyTix} Tix`);
+  console.log(`  ✓ Week 2 (7 days: Nov 16 – Nov 22): ${planW2.delivTix} deliv tix + ${planW2.loginsTix} logins = ${planW2.totalWeeklyTix} Tix`);
+  console.log('✅ TEST 16 PASSED: Week 1 8-day schedule and routine calculation verified.\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -623,25 +603,33 @@ console.log('Test 16: Verifying Week 1 Monday Stacked Deliveries (Sunday Rollove
 console.log('Test 17: Verifying Cave Dwellers 12-Week Schedule Dates & Milestones...');
 {
   assert.strictEqual(CHAPTER_WEEKS.length, 12, 'Must have exactly 12 weeks');
-  assert.strictEqual(CHAPTER_WEEKS[0].start, '2026-11-02', 'Week 1 must start on Nov 02, 2026');
-  assert.strictEqual(CHAPTER_WEEKS[0].end, '2026-11-08', 'Week 1 must end on Nov 08, 2026');
-  assert.strictEqual(CHAPTER_WEEKS[0].label, 'Nov 02 – Nov 08', 'Week 1 label must be Nov 02 – Nov 08');
+  assert.strictEqual(CHAPTER_WEEKS[0].start, '2026-11-08', 'Week 1 must start on Nov 08, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[0].end, '2026-11-15', 'Week 1 must end on Nov 15, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[0].label, 'Nov 08 – Nov 15', 'Week 1 label must be Nov 08 – Nov 15');
+  assert.strictEqual(CHAPTER_WEEKS[0].days, 8, 'Week 1 must have 8 days');
+
+  // Week 2
+  assert.strictEqual(CHAPTER_WEEKS[1].start, '2026-11-16', 'Week 2 must start on Nov 16, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[1].end, '2026-11-22', 'Week 2 must end on Nov 22, 2026');
+  assert.strictEqual(CHAPTER_WEEKS[1].label, 'Nov 16 – Nov 22', 'Week 2 label must be Nov 16 – Nov 22');
+  assert.strictEqual(CHAPTER_WEEKS[1].days, 7, 'Week 2 must have 7 days');
 
   // Week 9 (Auction Week)
-  assert.strictEqual(CHAPTER_WEEKS[8].start, '2026-12-28', 'Week 9 must start on Dec 28, 2026');
-  assert.strictEqual(CHAPTER_WEEKS[8].end, '2027-01-03', 'Week 9 must end on Jan 03, 2027');
-  assert.strictEqual(CHAPTER_WEEKS[8].label, 'Dec 28 – Jan 03', 'Week 9 label must be Dec 28 – Jan 03');
-  assert.strictEqual(getWeekDateRange(9), 'Dec 28 – Jan 03');
+  assert.strictEqual(CHAPTER_WEEKS[8].start, '2027-01-04', 'Week 9 must start on Jan 04, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[8].end, '2027-01-10', 'Week 9 must end on Jan 10, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[8].label, 'Jan 04 – Jan 10', 'Week 9 label must be Jan 04 – Jan 10');
+  assert.strictEqual(getWeekDateRange(9), 'Jan 04 – Jan 10');
 
   // Week 12 (Season Finale)
-  assert.strictEqual(CHAPTER_WEEKS[11].start, '2027-01-18', 'Week 12 must start on Jan 18, 2027');
-  assert.strictEqual(CHAPTER_WEEKS[11].end, '2027-01-25', 'Week 12 must end on Jan 25, 2027');
-  assert.strictEqual(CHAPTER_WEEKS[11].label, 'Jan 18 – Jan 25', 'Week 12 label must be Jan 18 – Jan 25');
-  assert.strictEqual(getWeekDateRange(12), 'Jan 18 – Jan 25');
+  assert.strictEqual(CHAPTER_WEEKS[11].start, '2027-01-25', 'Week 12 must start on Jan 25, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[11].end, '2027-02-01', 'Week 12 must end on Feb 01, 2027');
+  assert.strictEqual(CHAPTER_WEEKS[11].label, 'Jan 25 – Feb 01', 'Week 12 label must be Jan 25 – Feb 01');
+  assert.strictEqual(getWeekDateRange(12), 'Jan 25 – Feb 01');
 
-  console.log('  ✓ Week 1: Nov 02 – Nov 08 (Cave Dwellers start)');
-  console.log('  ✓ Week 9 (Auction Week): Dec 28, 2026 – Jan 03, 2027');
-  console.log('  ✓ Week 12 (Season Finale): Jan 18 – Jan 25, 2027');
+  console.log('  ✓ Week 1: Nov 08 – Nov 15 (8 days, Cave Dwellers launch)');
+  console.log('  ✓ Week 2: Nov 16 – Nov 22 (7 days)');
+  console.log('  ✓ Week 9 (Auction Week): Jan 04 – Jan 10, 2027');
+  console.log('  ✓ Week 12 (Season Finale): Jan 25 – Feb 01, 2027');
   console.log('✅ TEST 17 PASSED: Cave Dwellers 12-week schedule dates verified.\n');
 }
 
@@ -657,12 +645,12 @@ console.log('Test 18: Verifying NPC Avatar Rendering & Multi-Tier Fallback in Pr
   };
 
   const displayItems = buildMockDisplayItems(2, 100, 50);
-  const proj = calculateProjections(displayItems, '2026-11-02', 1000, 12, { loginTickets: 10, trackTickets: 50 });
+  const proj = calculateProjections(displayItems, '2026-11-09', 1000, 12, { loginTickets: 10, trackTickets: 50 });
   renderProjectionsView(proj);
 
-  assert.ok(mockContainer.innerHTML.includes('WEEK 9 (DEC 28 – JAN 03) — AUCTION WEEK'), 'Milestone card must have Dec 28 - Jan 03');
-  assert.ok(mockContainer.innerHTML.includes('WEEK 12 (JAN 18 – JAN 25) — SEASON FINALE'), 'Milestone card must have Jan 18 - Jan 25');
-  assert.ok(mockContainer.innerHTML.includes('Nov 02, 2026 – Jan 25, 2027'), 'Roadmap summary must have Nov 02, 2026 - Jan 25, 2027');
+  assert.ok(mockContainer.innerHTML.includes('WEEK 9 (JAN 04 – JAN 10) — AUCTION WEEK'), 'Milestone card must have Jan 04 - Jan 10');
+  assert.ok(mockContainer.innerHTML.includes('WEEK 12 (JAN 25 – FEB 01) — SEASON FINALE'), 'Milestone card must have Jan 25 - Feb 01');
+  assert.ok(mockContainer.innerHTML.includes('Nov 08, 2026 – Feb 01, 2027'), 'Roadmap summary must have Nov 08, 2026 - Feb 01, 2027');
 
   // Verify all 11 core NPCs are rendered with avatar img tags having fallback mechanisms
   CORE_CHAPTER_NPCS.forEach(npc => {
