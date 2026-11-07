@@ -588,6 +588,8 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   };
 
   const TOTAL_CHAPTER_WEEKS = 12;
+  const baseEpoch = new Date('2026-11-08T00:00:00.000Z');
+  const w2Start = new Date('2026-11-16T00:00:00.000Z');
   const weekMondays = [
     '2026-11-09',
     '2026-11-16',
@@ -676,9 +678,12 @@ function renderWeeklyChart(weeklyStats, currentMondayKey, targetPacePerWeek) {
   let currentPace = 0;
   if (!isPreSeason) {
     if (currentIndex !== -1) {
+      const isW1 = (currentIndex === 0);
+      const daysInThisWeek = isW1 ? 8 : 7;
       const currentMonMs = new Date(currentMondayKey + 'T00:00:00.000Z').getTime();
-      const daysPassedInWeek = Math.max(0.2, Math.min(7, (nowMs - currentMonMs) / (24 * 60 * 60 * 1000)));
-      const elapsedWeeks = currentIndex + (daysPassedInWeek / 7);
+      const weekStartMs = isW1 ? baseEpoch.getTime() : currentMonMs;
+      const daysPassedInWeek = Math.max(0.2, Math.min(daysInThisWeek, (nowMs - weekStartMs) / (24 * 60 * 60 * 1000)));
+      const elapsedWeeks = currentIndex + (daysPassedInWeek / daysInThisWeek);
       const totalEarnedSoFar = displayItems.slice(0, currentIndex + 1).reduce((sum, d) => sum + (d.tickets || 0), 0);
       if (elapsedWeeks > 0 && totalEarnedSoFar > 0) {
         currentPace = Math.round(totalEarnedSoFar / elapsedWeeks);
