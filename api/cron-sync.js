@@ -488,6 +488,8 @@ export default async function handler(req, res) {
               const isManual = Boolean(d.isManual);
               const isStacked = Boolean(d.isStacked);
               const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDateStr);
+              const itemWeekId = getMondayBasedWeekId(compDate || d.weekId);
+              d.weekId = itemWeekId;
               const isToday = !isManual && (compDate === snapshotDate || compDate === todayDateStr);
 
               const isDoubleDay = doubleDatesSet.has(compDate) || (isDoubleToday && compDate === todayDateStr);
@@ -527,7 +529,7 @@ export default async function handler(req, res) {
                   name: d.name || d.from,
                   yield: yieldAmt,
                   cost: dCost,
-                  weekId: d.weekId || currentWeekMonday
+                  weekId: itemWeekId
                 });
               }
             }

@@ -213,7 +213,8 @@ export function recalculateAll() {
       const isManual = Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_'));
       const isStacked = Boolean(d.isStacked);
       const compDate = resolveDateStr(d) || todayUtcStr;
-      const itemWeekMonday = getMondayBasedWeekId(d.weekId || compDate);
+      const itemWeekMonday = getMondayBasedWeekId(compDate || d.weekId);
+      d.weekId = itemWeekMonday;
       const isToday = !isManual && isDeliveryDoneToday(d);
 
       const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayUtcStr);
@@ -272,7 +273,8 @@ export function recalculateAll() {
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
       const isAnimal = isAnimalBounty(b);
       const compDate = resolveDateStr(b);
-      const itemWeekMonday = getMondayBasedWeekId(b.weekId || compDate || currentWeekMonday);
+      const itemWeekMonday = getMondayBasedWeekId(compDate || b.weekId || currentWeekMonday);
+      b.weekId = itemWeekMonday;
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
 
       if (isAnimal) {
@@ -306,7 +308,8 @@ export function recalculateAll() {
 
       const cCost = c.cost !== undefined ? c.cost : (c.itemsCost || 0);
       const compDate = resolveDateStr(c);
-      const itemWeekMonday = getMondayBasedWeekId(c.weekId || compDate || currentWeekMonday);
+      const itemWeekMonday = getMondayBasedWeekId(compDate || c.weekId || currentWeekMonday);
+      c.weekId = itemWeekMonday;
       const isThisWeek = (itemWeekMonday === currentWeekMonday);
 
       totalChoreTix += finalTix;

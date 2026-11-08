@@ -484,6 +484,8 @@ export async function saveProgressToCloudKV(silent = false) {
       const isManual = Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_'));
       const isStacked = Boolean(d.isStacked);
       const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDate);
+      const itemWeekId = getMondayBasedWeekId(compDate || d.weekId);
+      d.weekId = itemWeekId;
       const isToday = !isManual && (compDate === todayDate);
 
       const isDoubleDay = doubleDeliveryDates.has(compDate) || (isDoubleDeliveryActive && compDate === todayDate);
@@ -524,7 +526,7 @@ export async function saveProgressToCloudKV(silent = false) {
           name: d.name || d.from,
           yield: yieldAmt,
           cost: lineCost,
-          weekId: d.weekId || currentWeekMonday
+          weekId: itemWeekId
         });
       }
     }
