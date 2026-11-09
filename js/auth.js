@@ -220,7 +220,7 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
       const trackPointsBadge = document.getElementById('trackPointsBadge');
       if (trackPointsBadge) {
         if (pts > 0) {
-          trackPointsBadge.textContent = ${pts.toLocaleString()} pts;
+          trackPointsBadge.textContent = `${pts.toLocaleString()} pts`;
           trackPointsBadge.style.display = 'inline-block';
         } else {
           trackPointsBadge.style.display = 'none';
