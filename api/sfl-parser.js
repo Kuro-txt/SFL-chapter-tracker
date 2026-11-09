@@ -182,7 +182,8 @@ export function getItemUnitPrice(itemName, priceMap, depth = 0) {
           recipeTotal += getItemUnitPrice(ingName, priceMap, depth + 1) * ingQty;
         }
       });
-      return recipeTotal;
+      const yieldQty = (recipe.yield && typeof recipe.yield === 'number' && recipe.yield > 0) ? recipe.yield : 1;
+      return recipeTotal / yieldQty;
     }
   }
   return 0;

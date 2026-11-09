@@ -40,6 +40,11 @@ export const SFL_RECIPES = {
   "blue cosmos": { "cauliflower": 5, "coins": 16 },
   "red pansy": { "radish": 5, "coins": 16 },
   "red cosmos": { "red pansy": 1, "coins": 16 },
+  "blue pansy": { "purple cosmos": 1, "coins": 16 },
+  "purple pansy": { "blue pansy": 1, "coins": 16 },
+  "yellow cosmos": { "yellow pansy": 1, "coins": 16 },
+  "prism petal": { "blue lotus": 1, "coins": 16 },
+  "white cosmos": { "prism petal": 1, "coins": 16 },
 
   // ==========================================
   // LOTUS & CARNATIONS
@@ -322,5 +327,6 @@ export const SFL_RECIPES = {
   "aged halibut": { "salt": 18, "halibut": 1 },
   "aged squid": { "salt": 20, "squid": 1 },
   "pickled broccoli": { "salt": 5, "broccoli": 20 },
-  "turbofruit mix": { "rapid root": 5, "fruitful blend": 5, "refined salt": 2 }
+  "sproutroot surprise": { "sprout mix": 1, "rapid root": 1, "refined salt": 0.4 },
+  "turbofruit mix": { "rapid root": 1, "fruitful blend": 1, "refined salt": 0.4 }
 };
