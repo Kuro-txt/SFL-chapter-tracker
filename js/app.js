@@ -234,7 +234,23 @@ window.saveAndRecalculate = () => {
   localStorage.setItem('sfl_boost2', document.getElementById('boost2').checked);
   localStorage.setItem('sfl_boost3', document.getElementById('boost3').checked);
 
-  // Track points auto-counting disabled until SFL API deploys 'Cave Dweller Points Earned'
+  // Automatically update Track Tickets from active chapter points & VIP status
+  const chapterPoints = state.globalData?.chapterPoints || state.currentVaultData?.chapterPoints || 0;
+  if (chapterPoints > 0) {
+    const autoTrackTickets = calculateTrackTickets(chapterPoints, isVip, 'Cave Dwellers');
+    const trackTixEl = document.getElementById('trackTicketsInput');
+    if (trackTixEl) trackTixEl.value = autoTrackTickets;
+    if (state.globalData?.cloudHistory) {
+      state.globalData.cloudHistory.trackTickets = autoTrackTickets;
+    }
+    localStorage.setItem('sfl_track_manual_tix', autoTrackTickets);
+
+    const trackPointsBadge = document.getElementById('trackPointsBadge');
+    if (trackPointsBadge) {
+      trackPointsBadge.textContent = `${chapterPoints.toLocaleString()} pts`;
+      trackPointsBadge.style.display = 'inline-block';
+    }
+  }
 
   recalculateAll();
 };

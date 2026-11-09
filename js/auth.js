@@ -214,10 +214,23 @@ export async function userLogin(customUsername, customPassword, customFarmId) {
       localStorage.setItem('sfl_daily_login_count', data.vaultData.dailyLoginTickets);
     }
 
+    if (data.vaultData?.chapterPoints !== undefined) {
+      const pts = Number(data.vaultData.chapterPoints) || 0;
+      if (state.globalData) state.globalData.chapterPoints = pts;
+      const trackPointsBadge = document.getElementById('trackPointsBadge');
+      if (trackPointsBadge) {
+        if (pts > 0) {
+          trackPointsBadge.textContent = ${pts.toLocaleString()} pts;
+          trackPointsBadge.style.display = 'inline-block';
+        } else {
+          trackPointsBadge.style.display = 'none';
+        }
+      }
+    }
+
     if (data.vaultData?.trackTickets !== undefined) {
-      const isAuto = localStorage.getItem('sfl_track_auto') === 'true';
       const trackTixEl = document.getElementById('trackTicketsInput');
-      if (trackTixEl && !isAuto) {
+      if (trackTixEl) {
         trackTixEl.value = data.vaultData.trackTickets;
       }
     }

@@ -292,17 +292,36 @@ export async function loadTrackerData() {
       }
     }
 
-    const activeChapterPoints = data.chapterPoints || 0;
+    const isVip = Boolean(document.getElementById('vipToggle')?.checked);
+    const activeChapterPoints = data.chapterPoints || (data.vaultData?.chapterPoints) || 0;
+    const trackTixEl = document.getElementById('trackTicketsInput');
+    const trackPointsBadge = document.getElementById('trackPointsBadge');
+
     if (activeChapterPoints > 0) {
       state.globalData.chapterPoints = activeChapterPoints;
-    }
-    // Track points auto-counting disabled until SFL API deploys 'Cave Dweller Points Earned'
-    const trackTixEl = document.getElementById('trackTicketsInput');
-    const savedManualTix = localStorage.getItem('sfl_track_manual_tix');
-    if (trackTixEl && savedManualTix !== null && !isNaN(parseInt(savedManualTix, 10))) {
-      trackTixEl.value = savedManualTix;
+      const autoTrackTickets = calculateTrackTickets(activeChapterPoints, isVip, 'Cave Dwellers');
+      if (trackTixEl) {
+        trackTixEl.value = autoTrackTickets;
+      }
       if (state.globalData?.cloudHistory) {
-        state.globalData.cloudHistory.trackTickets = parseInt(savedManualTix, 10);
+        state.globalData.cloudHistory.trackTickets = autoTrackTickets;
+      }
+      localStorage.setItem('sfl_track_manual_tix', autoTrackTickets);
+
+      if (trackPointsBadge) {
+        trackPointsBadge.textContent = `${activeChapterPoints.toLocaleString()} pts`;
+        trackPointsBadge.style.display = 'inline-block';
+      }
+    } else {
+      const savedManualTix = localStorage.getItem('sfl_track_manual_tix');
+      if (trackTixEl && savedManualTix !== null && !isNaN(parseInt(savedManualTix, 10))) {
+        trackTixEl.value = savedManualTix;
+        if (state.globalData?.cloudHistory) {
+          state.globalData.cloudHistory.trackTickets = parseInt(savedManualTix, 10);
+        }
+      }
+      if (trackPointsBadge) {
+        trackPointsBadge.style.display = 'none';
       }
     }
 
@@ -615,6 +634,7 @@ export async function saveProgressToCloudKV(silent = false) {
   const payload = {
     username: state.currentUser,
     farmId,
+    chapterPoints: state.globalData?.chapterPoints || state.currentVaultData?.chapterPoints || 0,
     trackTickets,
     trackCost,
     targetRatio: parseFloat(document.getElementById('targetRatioInput')?.value) || 0,

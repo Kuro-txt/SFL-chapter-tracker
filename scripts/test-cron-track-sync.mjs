@@ -89,4 +89,26 @@ assert.strictEqual(maxVip, 360, 'Max VIP Duende Caps must be exactly 360 (180 fr
 console.log(`  Level 60 Max Tickets -> Free: ${maxFree} tickets, VIP: ${maxVip} tickets`);
 console.log('✅ TEST 5 PASSED: Max milestone computation verified.\n');
 
-console.log('🎉 ALL 5 CRON TRACK AUTOMATIC SYNC TESTS PASSED WITH 100% SUCCESS!\n');
+// TEST 6: User Live Case: 80 Points ("Cave Dwellers Points Earned": 80)
+console.log('Test 6: Verifying "Cave Dwellers Points Earned": 80 Track Sync & Extraction...');
+const { extractChapterPoints } = await import('../api/sfl-parser.js');
+
+const farmWithPoints = {
+  bumpkin: {
+    activity: {
+      "Cave Dwellers Points Earned": 80
+    }
+  }
+};
+const extractedPoints = extractChapterPoints(farmWithPoints);
+assert.strictEqual(extractedPoints, 80, 'Extracted points must be exactly 80');
+
+const freeTix80 = calculateTrackTickets(extractedPoints, false);
+const vipTix80 = calculateTrackTickets(extractedPoints, true);
+assert.strictEqual(freeTix80, 0, '80 points on free tier awards 0 tickets (levels 1-3 give box, coins, raffle tickets)');
+assert.strictEqual(vipTix80, 30, '80 points on VIP tier awards 30 tickets (levels 1-3 give 10+10+10 Duende Caps)');
+
+console.log(`  Extracted Points: ${extractedPoints} -> Free: ${freeTix80} tix, VIP: ${vipTix80} tix`);
+console.log('✅ TEST 6 PASSED: "Cave Dwellers Points Earned": 80 verified for both extraction & auto-sync.\n');
+
+console.log('🎉 ALL 6 CRON TRACK AUTOMATIC SYNC TESTS PASSED WITH 100% SUCCESS!\n');

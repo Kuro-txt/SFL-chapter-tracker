@@ -679,13 +679,13 @@ export function calculateTrackTickets(points, isVip = false, chapter = 'Cave Dwe
     if (m.points > p) break;
 
     // Free tier tickets
-    if (m.free?.items?.[ticketKey]) {
-      totalTickets += Number(m.free.items[ticketKey]) || 0;
+    if (m.free?.items?.[ticketKey] || (ticketKey === 'Duende Cap' && m.free?.items?.['Beetle Wing'])) {
+      totalTickets += Number(m.free.items[ticketKey] || m.free.items['Beetle Wing']) || 0;
     }
 
     // Premium tier tickets (only if VIP is active)
-    if (isVip && m.premium?.items?.[ticketKey]) {
-      totalTickets += Number(m.premium.items[ticketKey]) || 0;
+    if (isVip && (m.premium?.items?.[ticketKey] || (ticketKey === 'Duende Cap' && m.premium?.items?.['Beetle Wing']))) {
+      totalTickets += Number(m.premium.items[ticketKey] || m.premium.items['Beetle Wing']) || 0;
     }
   }
 

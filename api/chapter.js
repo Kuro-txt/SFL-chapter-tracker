@@ -1,4 +1,5 @@
 import { pool, hashPassword } from './db.js';
+import { calculateTrackTickets } from './chapter-tracks.js';
 import { 
   extractPricesRecursive, 
   getMondayBasedWeekId, 
@@ -826,6 +827,7 @@ export default async function handler(req, res) {
       const updatedVault = {
         ...existingVault,
         ...body,
+        chapterPoints: body.chapterPoints !== undefined ? Number(body.chapterPoints) : (existingVault.chapterPoints || 0),
         trackTickets: body.trackTickets !== undefined ? body.trackTickets : (existingVault.trackTickets || 0),
         coinRatio: body.coinRatio !== undefined ? (body.coinRatio === 0 || body.coinRatio === '0' || body.coinRatio === 'free' ? 0 : (parseFloat(body.coinRatio) || 1000)) : (existingVault.coinRatio !== undefined ? existingVault.coinRatio : 1000),
         targetRatio: body.targetRatio !== undefined ? (parseFloat(body.targetRatio) || 0) : (existingVault.targetRatio || 0),
@@ -1171,6 +1173,13 @@ export default async function handler(req, res) {
 
       reconcileDeliveriesWithNpcs(userVault, parsed.deliveryList, parsed.npcsData);
 
+      const activeChapterPoints = parsed.chapterPoints || 0;
+      userVault.chapterPoints = activeChapterPoints;
+      userVault.isVipActive = parsed.isVipActive;
+      if (activeChapterPoints > 0) {
+        userVault.trackTickets = calculateTrackTickets(activeChapterPoints, parsed.isVipActive, 'Cave Dwellers');
+      }
+
         const currentWeekMonday = getMondayBasedWeekId(new Date());
         if (!userVault.weeks) userVault.weeks = {};
         if (!userVault.weeks[currentWeekMonday]) {
@@ -1245,6 +1254,7 @@ export default async function handler(req, res) {
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       doubleDeliveryDates: parsed.doubleDeliveryDates,
       chapterPoints: parsed.chapterPoints || 0,
+      trackTickets: userVault ? (userVault.trackTickets || 0) : (parsed.chapterPoints > 0 ? calculateTrackTickets(parsed.chapterPoints, parsed.isVipActive, 'Cave Dwellers') : 0),
       coinRatio: finalCoinRatio,
       usedBackupKey,
       apiKeyInvalid,
