@@ -14,6 +14,7 @@ import {
   toggleGuideModal, 
   openCategorySummaryModal, 
   closeCategorySummaryModal, 
+  handleCategorySortChange,
   openWeekBreakdownModal, 
   openColumnHistoryModal, 
   closeColumnHistoryModal, 
@@ -171,6 +172,7 @@ window.toggleGuideModal = toggleGuideModal;
 window.updateChapterCountdown = updateChapterCountdown;
 window.openCategorySummaryModal = openCategorySummaryModal;
 window.closeCategorySummaryModal = closeCategorySummaryModal;
+window.handleCategorySortChange = handleCategorySortChange;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
 window.switchChartTab = switchChartTab;
 window.setProjectionScenario = setProjectionScenario;

@@ -553,6 +553,18 @@
             <span class="sum-stat">0 Tickets</span> | <span class="sum-stat">0.000 SFL</span> | <span class="avg-pill">📊 Avg: 0.000 SFL / Tix</span>
           </div>
         </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin: 4px 0;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <label for="categorySortSelect" style="font-size:11px; font-weight:900; color:#8B4513;">SORT BY:</label>
+            <select id="categorySortSelect" onchange="handleCategorySortChange(this.value)" style="padding: 4px 8px; font-size: 11px; font-weight: 800; border-radius: 6px; border: 1.5px solid #D2691E; background: #FFF8DC; color: #8B4513; cursor: pointer;">
+              <option value="ticket_per_flower" selected>🎯 Ticket / Flower (Best Value)</option>
+              <option value="flower_per_ticket">📊 Flower / Ticket (Cheapest First)</option>
+              <option value="cost_asc">💰 Lowest Cost (SFL)</option>
+              <option value="tickets_desc">🪲 Most Tickets</option>
+              <option value="default">📋 Default Board Order</option>
+            </select>
+          </div>
+        </div>
         <div id="categorySummaryBody" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
           <p style="font-size: 12px; color: #8C7853; font-weight: bold;">Loading summary...</p>
         </div>
@@ -586,18 +598,25 @@
           </select>
           <select id="editWeekFilterDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px;">
             <option value="">📅 ALL WEEKS</option>
-            <option value="w1">Week 1 (Nov 02 - Nov 08)</option>
-            <option value="w2">Week 2 (Nov 09 - Nov 15)</option>
-            <option value="w3">Week 3 (Nov 16 - Nov 22)</option>
-            <option value="w4">Week 4 (Nov 23 - Nov 29)</option>
-            <option value="w5">Week 5 (Nov 30 - Dec 06)</option>
-            <option value="w6">Week 6 (Dec 07 - Dec 13)</option>
-            <option value="w7">Week 7 (Dec 14 - Dec 20)</option>
-            <option value="w8">Week 8 (Dec 21 - Dec 27)</option>
-            <option value="w9">Week 9 (Dec 28 - Jan 03)</option>
-            <option value="w10">Week 10 (Jan 04 - Jan 10)</option>
-            <option value="w11">Week 11 (Jan 11 - Jan 17)</option>
-            <option value="w12">Week 12 (Jan 18 - Jan 25)</option>
+            <option value="w1">Week 1 (Nov 08 - Nov 15)</option>
+            <option value="w2">Week 2 (Nov 16 - Nov 22)</option>
+            <option value="w3">Week 3 (Nov 23 - Nov 29)</option>
+            <option value="w4">Week 4 (Nov 30 - Dec 06)</option>
+            <option value="w5">Week 5 (Dec 07 - Dec 13)</option>
+            <option value="w6">Week 6 (Dec 14 - Dec 20)</option>
+            <option value="w7">Week 7 (Dec 21 - Dec 27)</option>
+            <option value="w8">Week 8 (Dec 28 - Jan 03)</option>
+            <option value="w9">Week 9 (Jan 04 - Jan 10)</option>
+            <option value="w10">Week 10 (Jan 11 - Jan 17)</option>
+            <option value="w11">Week 11 (Jan 18 - Jan 24)</option>
+            <option value="w12">Week 12 (Jan 25 - Feb 01)</option>
+          </select>
+          <select id="editSortDropdown" onchange="renderColumnHistoryModalList()" style="padding: 6px 10px; font-size: 11px; flex: 1; min-width: 140px;">
+            <option value="ticket_per_flower" selected>🎯 Ticket / Flower (Best Value)</option>
+            <option value="flower_per_ticket">📊 Flower / Ticket (Cheapest First)</option>
+            <option value="date_desc">📅 Date (Newest First)</option>
+            <option value="cost_asc">💰 Cost (Lowest First)</option>
+            <option value="tickets_desc">🪲 Tickets (Highest First)</option>
           </select>
         </div>
 

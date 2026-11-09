@@ -3,6 +3,7 @@ export {
   toggleGuideModal,
   openCategorySummaryModal,
   closeCategorySummaryModal,
+  handleCategorySortChange,
   openWeekBreakdownModal,
   deleteMasterLog,
   toggleHistoryModal,

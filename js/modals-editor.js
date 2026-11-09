@@ -268,12 +268,41 @@ export function renderColumnHistoryModalList() {
     });
   }
 
+  const editSort = document.getElementById('editSortDropdown')?.value || 'ticket_per_flower';
+
   records.sort((a, b) => {
     // 1. Sort by Active vs Done (Active/uncompleted first, then Done/completed)
     const aDone = Boolean(a.checked);
     const bDone = Boolean(b.checked);
     if (aDone !== bDone) {
       return aDone ? 1 : -1;
+    }
+
+    if (editSort === 'ticket_per_flower') {
+      const aTixPerSfl = (a.cost || 0) <= 0 ? (a.displayTickets > 0 ? Infinity : 0) : (a.displayTickets / a.cost);
+      const bTixPerSfl = (b.cost || 0) <= 0 ? (b.displayTickets > 0 ? Infinity : 0) : (b.displayTickets / b.cost);
+      if (aTixPerSfl !== bTixPerSfl) {
+        return bTixPerSfl - aTixPerSfl;
+      }
+      if (aTixPerSfl === Infinity && bTixPerSfl === Infinity) {
+        if (b.displayTickets !== a.displayTickets) return b.displayTickets - a.displayTickets;
+      }
+      if (a.cost !== b.cost) return a.cost - b.cost;
+      if (b.displayTickets !== a.displayTickets) return b.displayTickets - a.displayTickets;
+    } else if (editSort === 'flower_per_ticket') {
+      const aSflPerTix = a.displayTickets > 0 ? ((a.cost || 0) / a.displayTickets) : Infinity;
+      const bSflPerTix = b.displayTickets > 0 ? ((b.cost || 0) / b.displayTickets) : Infinity;
+      if (aSflPerTix !== bSflPerTix) {
+        return aSflPerTix - bSflPerTix;
+      }
+      if (a.cost !== b.cost) return a.cost - b.cost;
+      if (b.displayTickets !== a.displayTickets) return b.displayTickets - a.displayTickets;
+    } else if (editSort === 'cost_asc') {
+      if (a.cost !== b.cost) return a.cost - b.cost;
+      if (b.displayTickets !== a.displayTickets) return b.displayTickets - a.displayTickets;
+    } else if (editSort === 'tickets_desc') {
+      if (b.displayTickets !== a.displayTickets) return b.displayTickets - a.displayTickets;
+      if (a.cost !== b.cost) return a.cost - b.cost;
     }
 
     // 2. Sort by date descending (most recent date first)

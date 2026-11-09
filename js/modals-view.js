@@ -278,7 +278,50 @@ export function openWeekBreakdownModal(mondayKey, label) {
   modal.classList.add('show');
 }
 
+let currentSummaryCat = 'delivery';
+let currentSummarySort = 'ticket_per_flower';
+
+export function handleCategorySortChange(val) {
+  currentSummarySort = val || 'ticket_per_flower';
+  openCategorySummaryModal(currentSummaryCat);
+}
+
+function compareSummaryItems(a, b, sortMode = 'ticket_per_flower') {
+  if (a.done !== b.done) {
+    return a.done ? 1 : -1;
+  }
+
+  if (sortMode === 'ticket_per_flower') {
+    if (a.tixPerFlower !== b.tixPerFlower) {
+      return b.tixPerFlower - a.tixPerFlower;
+    }
+    if (a.tixPerFlower === Infinity && b.tixPerFlower === Infinity) {
+      if (b.finalTickets !== a.finalTickets) return b.finalTickets - a.finalTickets;
+    }
+    if (a.itemCost !== b.itemCost) return a.itemCost - b.itemCost;
+    if (b.finalTickets !== a.finalTickets) return b.finalTickets - a.finalTickets;
+  } else if (sortMode === 'flower_per_ticket') {
+    if (a.flowerPerTix !== b.flowerPerTix) {
+      return a.flowerPerTix - b.flowerPerTix;
+    }
+    if (a.itemCost !== b.itemCost) return a.itemCost - b.itemCost;
+    if (b.finalTickets !== a.finalTickets) return b.finalTickets - a.finalTickets;
+  } else if (sortMode === 'cost_asc') {
+    if (a.itemCost !== b.itemCost) return a.itemCost - b.itemCost;
+    if (b.finalTickets !== a.finalTickets) return b.finalTickets - a.finalTickets;
+  } else if (sortMode === 'tickets_desc') {
+    if (b.finalTickets !== a.finalTickets) return b.finalTickets - a.finalTickets;
+    if (a.itemCost !== b.itemCost) return a.itemCost - b.itemCost;
+  }
+
+  return (a.name || '').localeCompare(b.name || '');
+}
 export function openCategorySummaryModal(cat) {
+  currentSummaryCat = cat;
+  const sortSelect = document.getElementById('categorySortSelect');
+  if (sortSelect && sortSelect.value !== currentSummarySort) {
+    sortSelect.value = currentSummarySort;
+  }
   const modal = document.getElementById('categorySummaryModal');
   const titleEl = document.getElementById('categorySummaryTitle');
   const totalsEl = document.getElementById('categorySummaryTotals');
@@ -379,14 +422,10 @@ export function openCategorySummaryModal(cat) {
       });
     }
 
-    const sortedDeliv = [...liveDeliveries].sort((a, b) => {
-      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
-      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      return aDone === bDone ? 0 : aDone ? 1 : -1;
-    });
-
-    bodyEl.innerHTML = sortedDeliv.map(d => {
-      const isTicked = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+    const processedDeliv = liveDeliveries.map(d => {
+      const isDone = d.checked !== undefined ? Boolean(d.checked) : Boolean(d.completed);
+      const isSkipped = Boolean(d.isSkipped);
+      const isTicked = isDone && !isSkipped;
       const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
       const isManual = Boolean(d.isManual);
       const applyDouble = !isManual && !d.isStacked && Boolean(doubleEligibleMap.get(d));
@@ -399,20 +438,42 @@ export function openCategorySummaryModal(cat) {
       const itemCost = d.itemsCost || d.cost || 0;
       const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
       const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
-
       const isTargetMatch = (targetRatio > 0) && (finalTickets > 0) && (numRatio <= targetRatio);
+
+      const tixPerFlower = itemCost <= 0 ? (finalTickets > 0 ? Infinity : 0) : (finalTickets / itemCost);
+      const flowerPerTix = finalTickets > 0 ? (itemCost / finalTickets) : Infinity;
+
+      return {
+        d,
+        done: isDone,
+        isTicked,
+        finalTickets,
+        itemCost,
+        numRatio,
+        itemRatio,
+        tixPerFlower,
+        flowerPerTix,
+        isTargetMatch,
+        applyDouble,
+        name: d.from || d.name || ''
+      };
+    });
+
+    processedDeliv.sort((a, b) => compareSummaryItems(a, b, currentSummarySort));
+
+    bodyEl.innerHTML = processedDeliv.map(item => {
+      const { d, isTicked, finalTickets, itemCost, itemRatio, isTargetMatch, applyDouble, tixPerFlower } = item;
       if (isTargetMatch) targetMatchingCount++;
+      if (isTicked) {
+        catTickets += finalTickets;
+        catCost += itemCost;
+      }
 
       const targetBadge = isTargetMatch
         ? `<span class="tag-pill tag-target-match" title="Ratio (${itemRatio}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
         : '';
       const cardBorderClass = isTargetMatch ? 'card-target-match' : '';
       const ratioClass = isTargetMatch ? 'ratio-pill ratio-target-match' : 'ratio-pill';
-
-      if (isTicked) {
-        catTickets += finalTickets;
-        catCost += itemCost;
-      }
 
       const doubleBadge = applyDouble 
         ? '<span class="tag-pill tag-double">⚡ 2X EVENT</span>' 
@@ -428,6 +489,8 @@ export function openCategorySummaryModal(cat) {
         statusBadge = `<span class="badge" style="background:#FFCDD2; color:#B71C1C;">✕ SKIPPED</span>`;
       }
 
+      const tixPerFlowerStr = tixPerFlower === Infinity ? '∞' : (tixPerFlower >= 100 ? tixPerFlower.toFixed(0) : tixPerFlower.toFixed(1));
+
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; flex-direction:column; gap:6px; font-size:11px;">
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900;">
           <span style="color:#8B4513; display:inline-flex; align-items:center; gap:6px;">${getNpcIconHtml(d.from || d.name, { size: 26, className: 'npc-avatar-md' })} <span>${(d.from || d.name || 'NPC').toUpperCase()} ${d.isChapterNpc ? '👑' : ''}</span>${doubleBadge}${isStackedBadge}${isSkippedBadge}${targetBadge}</span>
@@ -437,8 +500,8 @@ export function openCategorySummaryModal(cat) {
         <div style="display:flex; justify-content:space-between; align-items:center; font-weight:900; color:#2E7D32; border-top:1px dashed #D2B48C; padding-top:6px; flex-wrap:wrap; gap:4px;">
           <span style="display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(16)} <strong>${finalTickets} Tickets</strong></span>
           <span>💰 ${formatSFL(itemCost)} SFL</span>
-          <span class="${ratioClass}">
-            📊 ${itemRatio} SFL / Ticket
+          <span class="${ratioClass}" title="${isFinite(tixPerFlower) ? tixPerFlower.toFixed(2) : '∞'} Tickets per Flower">
+            📊 ${itemCost === 0 ? 'FREE (∞ Tix/Flower)' : `${itemRatio} SFL/Tix (${tixPerFlowerStr} Tix/Flower)`}
           </span>
         </div>
       </div>`;
@@ -448,22 +511,43 @@ export function openCategorySummaryModal(cat) {
     titleEl.textContent = isAnimal ? '🐄 ANIMAL BOUNTIES OVERVIEW' : '📜 BOUNTIES OVERVIEW';
     
     const currentBounties = (state.globalData.bounties || []).filter(b => isAnimalBounty(b) === isAnimal);
-    const sortedBounties = [...currentBounties].sort((a, b) => {
-      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
-      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      return aDone === bDone ? 0 : aDone ? 1 : -1;
-    });
-
-    bodyEl.innerHTML = sortedBounties.map(b => {
-      const isTicked = b.checked !== undefined ? b.checked : Boolean(b.completed);
+    const processedBounties = currentBounties.map(b => {
+      const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+      const isTicked = isDone;
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const finalTickets = computeYield(base, false, Boolean(b.isManual));
       const itemCost = b.itemsCost || b.cost || 0;
       const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
       const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
-
       const isTargetMatch = (targetRatio > 0) && (finalTickets > 0) && (numRatio <= targetRatio);
+
+      const tixPerFlower = itemCost <= 0 ? (finalTickets > 0 ? Infinity : 0) : (finalTickets / itemCost);
+      const flowerPerTix = finalTickets > 0 ? (itemCost / finalTickets) : Infinity;
+
+      return {
+        b,
+        done: isDone,
+        isTicked,
+        finalTickets,
+        itemCost,
+        numRatio,
+        itemRatio,
+        tixPerFlower,
+        flowerPerTix,
+        isTargetMatch,
+        name: b.name || ''
+      };
+    });
+
+    processedBounties.sort((a, b) => compareSummaryItems(a, b, currentSummarySort));
+
+    bodyEl.innerHTML = processedBounties.map(item => {
+      const { b, isTicked, finalTickets, itemCost, itemRatio, isTargetMatch, tixPerFlower } = item;
       if (isTargetMatch) targetMatchingCount++;
+      if (isTicked) {
+        catTickets += finalTickets;
+        catCost += itemCost;
+      }
 
       const targetBadge = isTargetMatch
         ? `<span class="tag-pill tag-target-match" title="Ratio (${itemRatio}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
@@ -471,10 +555,6 @@ export function openCategorySummaryModal(cat) {
       const cardBorderClass = isTargetMatch ? 'card-target-match' : '';
       const ratioClass = isTargetMatch ? 'ratio-pill ratio-target-match' : 'ratio-pill';
 
-      if (isTicked) {
-        catTickets += finalTickets;
-        catCost += itemCost;
-      }
       const lvl = resolveAnimalLevel(b);
       const lvlTag = lvl ? `<span class="tag-pill tag-lvl">Lvl ${lvl}</span>` : '';
 
@@ -482,14 +562,16 @@ export function openCategorySummaryModal(cat) {
         ? `<span style="display:inline-flex; align-items:center; gap:5px;">${renderAnimalIcon(b.name, 24)} <strong>${(b.name || '').toUpperCase()}</strong></span>`
         : `<span style="display:inline-flex; align-items:center; gap:5px;">${renderItemIcon(b.name, '📜', 24)} <strong>${(b.name || '').toUpperCase()}</strong></span>`;
 
+      const tixPerFlowerStr = tixPerFlower === Infinity ? '∞' : (tixPerFlower >= 100 ? tixPerFlower.toFixed(0) : tixPerFlower.toFixed(1));
+
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
           <div style="color:#3E2723; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">${bountyHeaderHtml}${lvlTag}${targetBadge}</div>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
             <span style="color:#8B4513; font-weight:bold; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(14)} <strong>${finalTickets} Tix</strong></span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span class="${ratioClass}">
-              📊 ${itemRatio} SFL / Tix
+            <span class="${ratioClass}" title="${isFinite(tixPerFlower) ? tixPerFlower.toFixed(2) : '∞'} Tickets per Flower">
+              📊 ${itemCost === 0 ? 'FREE (∞ Tix/Flower)' : `${itemRatio} SFL/Tix (${tixPerFlowerStr} Tix/Flower)`}
             </span>
           </div>
         </div>
@@ -512,22 +594,43 @@ export function openCategorySummaryModal(cat) {
   } else if (cat === 'chore') {
     titleEl.textContent = '🧹 CHORES OVERVIEW';
     const currentChores = state.globalData.chores || [];
-    const sortedChores = [...currentChores].sort((a, b) => {
-      const aDone = a.checked !== undefined ? a.checked : Boolean(a.completed);
-      const bDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
-      return aDone === bDone ? 0 : aDone ? 1 : -1;
-    });
-
-    bodyEl.innerHTML = sortedChores.map(c => {
-      const isTicked = c.checked !== undefined ? c.checked : Boolean(c.completed);
+    const processedChores = currentChores.map(c => {
+      const isDone = c.checked !== undefined ? Boolean(c.checked) : Boolean(c.completed);
+      const isTicked = isDone;
       const base = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
       const finalTickets = computeYield(base, true, Boolean(c.isManual));
       const itemCost = c.itemsCost || c.cost || 0;
       const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
       const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
-
       const isTargetMatch = (targetRatio > 0) && (finalTickets > 0) && (numRatio <= targetRatio);
+
+      const tixPerFlower = itemCost <= 0 ? (finalTickets > 0 ? Infinity : 0) : (finalTickets / itemCost);
+      const flowerPerTix = finalTickets > 0 ? (itemCost / finalTickets) : Infinity;
+
+      return {
+        c,
+        done: isDone,
+        isTicked,
+        finalTickets,
+        itemCost,
+        numRatio,
+        itemRatio,
+        tixPerFlower,
+        flowerPerTix,
+        isTargetMatch,
+        name: c.task || c.name || ''
+      };
+    });
+
+    processedChores.sort((a, b) => compareSummaryItems(a, b, currentSummarySort));
+
+    bodyEl.innerHTML = processedChores.map(item => {
+      const { c, isTicked, finalTickets, itemCost, itemRatio, isTargetMatch, tixPerFlower } = item;
       if (isTargetMatch) targetMatchingCount++;
+      if (isTicked) {
+        catTickets += finalTickets;
+        catCost += itemCost;
+      }
 
       const targetBadge = isTargetMatch
         ? `<span class="tag-pill tag-target-match" title="Ratio (${itemRatio}) meets or beats target ratio (≤ ${targetRatio.toFixed(3)})">🎯 ≤ ${targetRatio.toFixed(2)}</span>`
@@ -535,22 +638,19 @@ export function openCategorySummaryModal(cat) {
       const cardBorderClass = isTargetMatch ? 'card-target-match' : '';
       const ratioClass = isTargetMatch ? 'ratio-pill ratio-target-match' : 'ratio-pill';
 
-      if (isTicked) {
-        catTickets += finalTickets;
-        catCost += itemCost;
-      }
+      const tixPerFlowerStr = tixPerFlower === Infinity ? '∞' : (tixPerFlower >= 100 ? tixPerFlower.toFixed(0) : tixPerFlower.toFixed(1));
 
       return `<div class="${cardBorderClass}" style="background:#FFF8DC; border:2px solid #8B5A2B; padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; gap:8px;">
         <div style="flex:1;">
-          <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
-            <strong style="color:#3E2723; display:inline-flex; align-items:center; gap:5px;">${getNpcIconHtml(c.npc || 'Hank', { size: 24, className: 'npc-avatar-sm' })} <span>${(c.npc || 'NPC').toUpperCase()}</span></strong>${targetBadge}
+          <div style="color:#3E2723; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span>🧹 <strong>${(c.task || c.name || '').toUpperCase()}</strong></span>
+            ${targetBadge}
           </div>
-          <span style="color:#5C4033; font-weight:bold; margin-top:2px; display:inline-block;">${c.task || c.name}</span><br/>
           <div style="display:flex; gap:8px; align-items:center; margin-top:3px; flex-wrap:wrap;">
-            <span style="color:#2E7D32; font-weight:900; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(14)} <strong>${finalTickets} Tix</strong></span>
+            <span style="color:#8B4513; font-weight:bold; display:inline-flex; align-items:center; gap:3px;">Yield: ${renderChapterTicketIcon(14)} <strong>${finalTickets} Tix</strong></span>
             <span style="color:#5C4033; font-weight:bold;">💰 ${formatSFL(itemCost)} SFL</span>
-            <span class="${ratioClass}">
-              📊 ${itemRatio} SFL / Tix
+            <span class="${ratioClass}" title="${isFinite(tixPerFlower) ? tixPerFlower.toFixed(2) : '∞'} Tickets per Flower">
+              📊 ${itemCost === 0 ? 'FREE (∞ Tix/Flower)' : `${itemRatio} SFL/Tix (${tixPerFlowerStr} Tix/Flower)`}
             </span>
           </div>
         </div>
