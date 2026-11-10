@@ -139,6 +139,9 @@ export function renderAnimalIcon(nameOrItem, size = 22) {
   if (clean.includes('cow') || clean.includes('bull')) {
     return renderItemIcon('cow', '🐄', size);
   }
+  if (clean.includes('pig')) {
+    return renderItemIcon('pig', '🐷', size);
+  }
   return renderItemIcon('cow', '🐄', size);
 }
 

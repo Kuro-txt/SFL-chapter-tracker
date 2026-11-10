@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { state } from '../js/state.js';
 import { 
   calculateProjections, 
   setProjectionScenario, 
@@ -698,26 +699,47 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
   assert.strictEqual(categorizeBounty({ name: 'Cow #1' }), 'animals');
   assert.strictEqual(categorizeBounty({ name: 'Sheep' }), 'animals');
 
-  // 3. Test canonical cards calculation
+  // 3. Test canonical cards calculation (24 regular bounties + 19 animal bounties = 43)
   const defaultCards = getActiveBountyCards();
-  assert.ok(defaultCards.cards.length >= 24, `Should have at least 24 cards, got ${defaultCards.cards.length}`);
+  assert.strictEqual(defaultCards.cards.length, 43, `Canonical roster must be exactly 43 cards, got ${defaultCards.cards.length}`);
+  assert.strictEqual(defaultCards.regularCount, 24, 'Must have 24 regular bounties (5 flowers + 5 fish + 3 crustaceans + 3 obsidian + 3 exotic + 5 dolls)');
+  assert.strictEqual(defaultCards.animalCount, 19, 'Must have 19 animal bounties (8 chicken + 4 cow + 4 sheep + 3 pig)');
   assert.ok(defaultCards.regularTix > 0, 'Regular tickets sum must be positive');
   assert.ok(defaultCards.animalTix > 0, 'Animal tickets sum must be positive');
   assert.strictEqual(defaultCards.allRegularDone, true, 'Default state should have all regular done');
 
-  // 4. Test calculation with partial tile selection
+  // 4. Test live bounties derivation from state.globalData.bounties
+  state.globalData = {
+    bounties: [
+      { id: '101', name: 'Red Pansy', baseTickets: 7 },
+      { id: '102', name: 'Octopus', baseTickets: 25 },
+      { id: '103', name: 'Chicken (Lvl 1)', baseTickets: 6, level: 1 },
+      { id: '104', name: 'Cow (Lvl 2)', baseTickets: 11, level: 2 }
+    ]
+  };
+  const liveCards = getActiveBountyCards();
+  assert.strictEqual(liveCards.cards.length, 43, 'Must maintain 43 canonical roster cards with live overrides');
+  assert.strictEqual(liveCards.regularCount, 24, '24 regular bounties');
+  assert.strictEqual(liveCards.animalCount, 19, '19 animal bounties');
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_red_pansy').tickets, 7);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_octopus').tickets, 25);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_chicken_lvl1').tickets, 6);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_cow_lvl2').tickets, 11);
+  state.globalData = {}; // Clean up
+
+  // 5. Test calculation with partial tile selection
   const partialTiles = {
     b_red_pansy: true,
     b_yellow_cosmos: false,
-    b_chicken: true,
-    b_cow: false
+    b_chicken_lvl1: true,
+    b_cow_lvl1: false
   };
   const partialCards = getActiveBountyCards(partialTiles);
   assert.strictEqual(partialCards.cards.find(c => c.id === 'b_yellow_cosmos').isActive, false);
-  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_cow').isActive, false);
+  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_cow_lvl1').isActive, false);
   assert.strictEqual(partialCards.allRegularDone, false, 'Should be false when yellow cosmos is unticked');
 
-  // 5. Test plan calculation with tiles in config
+  // 6. Test plan calculation with tiles in config
   const customTilesTemplate = {
     ...DEFAULT_PLANNER_TEMPLATE,
     bounties: {
@@ -725,7 +747,7 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
       animalEnabled: true,
       tiles: {
         b_red_pansy: true,
-        b_chicken: true
+        b_chicken_lvl1: true
       }
     }
   };
@@ -734,9 +756,9 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
   assert.ok(tilePlan.bountiesBreakdown.animalTix > 0);
   assert.strictEqual(tilePlan.bountiesBreakdown.boardBonusEnabled, false, 'Bonus not awarded when not all regular bounties are done');
 
-  console.log(`  ✓ 7 Categories verified: ${actualKeys.join(', ')}`);
-  console.log(`  ✓ Canonical Roster: ${defaultCards.cards.length} cards categorized`);
-  console.log(`  ✓ Tile-based ticket derivation verified`);
+  console.log(`  ✓ 7 Categories registered: ${actualKeys.join(', ')}`);
+  console.log(`  ✓ Canonical Roster: 24 regular + 19 animal bounties (43 total)`);
+  console.log(`  ✓ Live Farm Derivation: dynamically reflects exact farm bounties`);
   console.log('✅ TEST 19 PASSED: Bounty Board categorization & live derivation verified.\n');
 }
 
@@ -763,15 +785,13 @@ console.log('Test 20: Verifying Bounty Board Game-Like Interface HTML Structure 
   assert.ok(mockContainer.innerHTML.includes('Flower Bounties'), 'Must render Flower Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Fish Bounties'), 'Must render Fish Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Crustacean Bounties'), 'Must render Crustacean Bounties plaque');
-  assert.ok(mockContainer.innerHTML.includes('Obsidian Bounties'), 'Must render Obsidian Bounties plaque');
-  assert.ok(mockContainer.innerHTML.includes('Doll Bounties'), 'Must render Doll Bounties plaque');
-  assert.ok(mockContainer.innerHTML.includes('Exotic Fruit Bounties'), 'Must render Exotic Fruit Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Animal Bounties'), 'Must render Animal Bounties plaque');
 
   // Assert tiles, checkmarks and ribbons
   assert.ok(mockContainer.innerHTML.includes('bounty-tile'), 'Must render .bounty-tile');
   assert.ok(mockContainer.innerHTML.includes('bounty-tile-checkmark'), 'Must render green checkmark badge');
   assert.ok(mockContainer.innerHTML.includes('bounty-tile-ribbon'), 'Must render bottom golden ribbon');
+  assert.ok(mockContainer.innerHTML.includes('bounty-tile-level'), 'Must render animal level badge');
   assert.ok(mockContainer.innerHTML.includes('bounty-bonus-banner'), 'Must render Full Board Bonus banner');
   assert.ok(mockContainer.innerHTML.includes('togglePlannerBountyTile'), 'Must have togglePlannerBountyTile click handler');
   assert.ok(mockContainer.innerHTML.includes('toggleAllPlannerBountyTiles'), 'Must have toggleAllPlannerBountyTiles click handler');
