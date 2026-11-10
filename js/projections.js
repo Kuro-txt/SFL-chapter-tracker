@@ -87,69 +87,74 @@ export const DEFAULT_PLANNER_TEMPLATE = {
 
   /**
    * Canonical Sunflower Land In-Game Bounty Roster with authentic sprites and default ticket yields.
-   * Derives ticket counts dynamically from live bounties (state.globalData.bounties) when available.
-   * Total: 24 Regular (5 Flowers, 5 Fishes, 3 Crustaceans, 3 Obsidian, 3 Exotic, 5 Dolls) + 19 Animal (8 Chicken, 4 Cow, 4 Sheep, 3 Pig) = 43 Bounties.
+   * Total: 27 Regular (5 Flowers, 5 Fishes, 3 Crustaceans, 3 Obsidian, 3 Giant Fruits, 3 Exotic Crops, 5 Dolls)
+   *      + 19 Animal (8 Chicken, 4 Cow, 4 Sheep, 3 Pig) = 46 Bounties.
    */
   export const DEFAULT_ROSTER_BOUNTIES = [
     // 1. Flowers (🌸) - 5 bounties
-    { id: 'b_red_pansy',      name: 'Red Pansy',       category: 'flowers',     defaultTickets: 6,  icon: 'red_pansy' },
-    { id: 'b_yellow_cosmos',  name: 'Yellow Cosmos',   category: 'flowers',     defaultTickets: 10, icon: 'yellow_cosmos' },
-    { id: 'b_white_lotus',    name: 'White Lotus',     category: 'flowers',     defaultTickets: 6,  icon: 'white_lotus' },
-    { id: 'b_blue_pansy',     name: 'Blue Pansy',      category: 'flowers',     defaultTickets: 10, icon: 'blue_pansy' },
-    { id: 'b_chamomile',      name: 'Chamomile',       category: 'flowers',     defaultTickets: 9,  icon: 'chamomile' },
+    { id: 'b_blue_daffodil',    name: 'Blue Daffodil',     category: 'flowers',     defaultTickets: 10, icon: 'blue_daffodil' },
+    { id: 'b_purple_edelweiss', name: 'Purple Edelweiss',  category: 'flowers',     defaultTickets: 6,  icon: 'purple_edelweiss' },
+    { id: 'b_purple_pansy',     name: 'Purple Pansy',      category: 'flowers',     defaultTickets: 6,  icon: 'purple_pansy' },
+    { id: 'b_white_carnation',  name: 'White Carnation',   category: 'flowers',     defaultTickets: 9,  icon: 'white_carnation' },
+    { id: 'b_yellow_daffodil',  name: 'Yellow Daffodil',   category: 'flowers',     defaultTickets: 10, icon: 'yellow_daffodil' },
 
     // 2. Fishes (🐟) - 5 bounties
-    { id: 'b_red_snapper',    name: 'Red Snapper',     category: 'fishes',      defaultTickets: 5,  icon: 'red_snapper' },
-    { id: 'b_barred_knifejaw',name: 'Barred Knifejaw', category: 'fishes',      defaultTickets: 13, icon: 'barred_knifejaw' },
-    { id: 'b_butterfly_fish', name: 'Butterfly Fish',  category: 'fishes',      defaultTickets: 5,  icon: 'butterfly_fish' },
-    { id: 'b_blowfish',       name: 'Blowfish',        category: 'fishes',      defaultTickets: 8,  icon: 'blowfish' },
-    { id: 'b_anchovy',        name: 'Anchovy',         category: 'fishes',      defaultTickets: 5,  icon: 'anchovy' },
+    { id: 'b_weakfish',         name: 'Weakfish',          category: 'fishes',      defaultTickets: 5,  icon: 'weakfish' },
+    { id: 'b_angelfish',        name: 'Angelfish',         category: 'fishes',      defaultTickets: 5,  icon: 'angelfish' },
+    { id: 'b_blowfish',         name: 'Blowfish',          category: 'fishes',      defaultTickets: 8,  icon: 'blowfish' },
+    { id: 'b_coelacanth',       name: 'Coelacanth',        category: 'fishes',      defaultTickets: 13, icon: 'coelacanth' },
+    { id: 'b_football_fish',    name: 'Football fish',     category: 'fishes',      defaultTickets: 5,  icon: 'football_fish' },
 
     // 3. Crustaceans (🦀) - 3 bounties
-    { id: 'b_cockle_shell',   name: 'Cockle Shell',    category: 'crustaceans', defaultTickets: 15, icon: 'cockle_shell' },
-    { id: 'b_octopus',        name: 'Octopus',         category: 'crustaceans', defaultTickets: 23, icon: 'octopus' },
-    { id: 'b_hermit_crab',    name: 'Hermit Crab',     category: 'crustaceans', defaultTickets: 11, icon: 'hermit_crab' },
+    { id: 'b_oyster',           name: 'Oyster',            category: 'crustaceans', defaultTickets: 15, icon: 'oyster' },
+    { id: 'b_octopus',          name: 'Octopus',           category: 'crustaceans', defaultTickets: 23, icon: 'octopus' },
+    { id: 'b_hermit_crab',      name: 'Hermit Crab',       category: 'crustaceans', defaultTickets: 11, icon: 'hermit_crab' },
 
-    // 4. Obsidian & Minerals (🪨) - 3 bounties
-    { id: 'b_obsidian',       name: 'Obsidian',        category: 'obsidian',    defaultTickets: 15, icon: 'obsidian' },
-    { id: 'b_celestine',      name: 'Celestine',       category: 'obsidian',    defaultTickets: 10, icon: 'celestine' },
-    { id: 'b_lunara',         name: 'Lunara',          category: 'obsidian',    defaultTickets: 12, icon: 'lunara' },
+    // 4. Obsidian Bounties (🪨) - 3 bounties
+    { id: 'b_obsidian_33',      name: 'Obsidian',          category: 'obsidian',    defaultTickets: 33, icon: 'obsidian' },
+    { id: 'b_obsidian_43_1',    name: 'Obsidian',          category: 'obsidian',    defaultTickets: 43, icon: 'obsidian' },
+    { id: 'b_obsidian_43_2',    name: 'Obsidian',          category: 'obsidian',    defaultTickets: 43, icon: 'obsidian' },
 
     // 5. Giant Fruits (🍎) - 3 bounties
-    { id: 'b_giant_apple',    name: 'Giant Apple',     category: 'fruits',      defaultTickets: 17, icon: 'giant_apple' },
-    { id: 'b_giant_banana',   name: 'Giant Banana',    category: 'fruits',      defaultTickets: 33, icon: 'giant_banana' },
-    { id: 'b_giant_orange',   name: 'Giant Orange',    category: 'fruits',      defaultTickets: 10, icon: 'giant_orange' },
+    { id: 'b_giant_apple',      name: 'Giant Apple',       category: 'fruits',      defaultTickets: 17, icon: 'giant_apple' },
+    { id: 'b_giant_banana',     name: 'Giant Banana',      category: 'fruits',      defaultTickets: 33, icon: 'giant_banana' },
+    { id: 'b_giant_orange',     name: 'Giant Orange',      category: 'fruits',      defaultTickets: 10, icon: 'giant_orange' },
 
-    // 6. Dolls (🧸) - 5 bounties
-    { id: 'b_cluky_doll',     name: 'Cluky Doll',      category: 'dolls',       defaultTickets: 12, icon: 'cluky_doll' },
-    { id: 'b_sizzler_doll',   name: 'Sizzler Doll',    category: 'dolls',       defaultTickets: 12, icon: 'sizzler_doll' },
-    { id: 'b_cosmo_doll',     name: 'Cosmo Doll',      category: 'dolls',       defaultTickets: 12, icon: 'cosmo_doll' },
-    { id: 'b_angler_doll',    name: 'Angler Doll',     category: 'dolls',       defaultTickets: 12, icon: 'angler_doll' },
-    { id: 'b_frosty_doll',    name: 'Frosty Doll',     category: 'dolls',       defaultTickets: 12, icon: 'frosty_doll' },
+    // 6. Exotic Crops (🥔) - 3 bounties
+    { id: 'b_adirondack_potato',    name: 'Adirondack Potato',     category: 'crops', defaultTickets: 9, icon: 'adirondack_potato' },
+    { id: 'b_warty_goblin_pumpkin', name: 'Warty Goblin Pumpkin', category: 'crops', defaultTickets: 7, icon: 'warty_goblin_pumpkin' },
+    { id: 'b_white_carrot',         name: 'White Carrot',         category: 'crops', defaultTickets: 6, icon: 'white_carrot' },
 
-    // 7. Animal Bounties (🐔) - 19 bounties (8 Chicken, 4 Cow, 4 Sheep, 3 Pig)
-    { id: 'b_chicken_lvl3',   name: 'Chicken (Lvl 3+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '3+' },
-    { id: 'b_chicken_lvl5',   name: 'Chicken (Lvl 5+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '5+' },
-    { id: 'b_chicken_lvl6',   name: 'Chicken (Lvl 6+)',    category: 'animals', defaultTickets: 5, icon: 'chicken', level: '6+' },
-    { id: 'b_chicken_lvl8_1', name: 'Chicken (Lvl 8+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
-    { id: 'b_chicken_lvl8_2', name: 'Chicken (Lvl 8+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
-    { id: 'b_chicken_lvl9_1', name: 'Chicken (Lvl 9+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
-    { id: 'b_chicken_lvl9_2', name: 'Chicken (Lvl 9+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
-    { id: 'b_chicken_lvl13',  name: 'Chicken (Lvl 13+)',   category: 'animals', defaultTickets: 6, icon: 'chicken', level: '13+' },
+    // 7. Dolls (🧸) - 5 bounties
+    { id: 'b_ember_doll',       name: 'Ember Doll',        category: 'dolls',       defaultTickets: 33, icon: 'ember_doll' },
+    { id: 'b_lumber_doll',      name: 'Lumber Doll',       category: 'dolls',       defaultTickets: 18, icon: 'lumber_doll' },
+    { id: 'b_bloom_doll',       name: 'Bloom Doll',        category: 'dolls',       defaultTickets: 33, icon: 'bloom_doll' },
+    { id: 'b_lunar_doll',       name: 'Lunar Doll',        category: 'dolls',       defaultTickets: 28, icon: 'lunar_doll' },
+    { id: 'b_moo_doll',         name: 'Moo Doll',          category: 'dolls',       defaultTickets: 23, icon: 'moo_doll' },
 
-    { id: 'b_cow_lvl4',       name: 'Cow (Lvl 4+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '4+' },
-    { id: 'b_cow_lvl6',       name: 'Cow (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
-    { id: 'b_cow_lvl8',       name: 'Cow (Lvl 8+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '8+' },
-    { id: 'b_cow_lvl12',      name: 'Cow (Lvl 12+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '12+' },
+    // 8. Animal Bounties (🐔) - 19 bounties (8 Chicken, 4 Cow, 4 Sheep, 3 Pig)
+    { id: 'b_chicken_lvl3',     name: 'Chicken (Lvl 3+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '3+' },
+    { id: 'b_chicken_lvl5',     name: 'Chicken (Lvl 5+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '5+' },
+    { id: 'b_chicken_lvl6',     name: 'Chicken (Lvl 6+)',    category: 'animals', defaultTickets: 5, icon: 'chicken', level: '6+' },
+    { id: 'b_chicken_lvl8_1',   name: 'Chicken (Lvl 8+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
+    { id: 'b_chicken_lvl8_2',   name: 'Chicken (Lvl 8+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
+    { id: 'b_chicken_lvl9_1',   name: 'Chicken (Lvl 9+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
+    { id: 'b_chicken_lvl9_2',   name: 'Chicken (Lvl 9+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
+    { id: 'b_chicken_lvl13',    name: 'Chicken (Lvl 13+)',   category: 'animals', defaultTickets: 6, icon: 'chicken', level: '13+' },
 
-    { id: 'b_sheep_lvl5',     name: 'Sheep (Lvl 5+)',      category: 'animals', defaultTickets: 5, icon: 'sheep',   level: '5+' },
-    { id: 'b_sheep_lvl6',     name: 'Sheep (Lvl 6+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '6+' },
-    { id: 'b_sheep_lvl8',     name: 'Sheep (Lvl 8+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '8+' },
-    { id: 'b_sheep_lvl12',    name: 'Sheep (Lvl 12+)',     category: 'animals', defaultTickets: 7, icon: 'sheep',   level: '12+' },
+    { id: 'b_cow_lvl4',         name: 'Cow (Lvl 4+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '4+' },
+    { id: 'b_cow_lvl6',         name: 'Cow (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
+    { id: 'b_cow_lvl8',         name: 'Cow (Lvl 8+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '8+' },
+    { id: 'b_cow_lvl12',        name: 'Cow (Lvl 12+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '12+' },
 
-    { id: 'b_pig_lvl3',       name: 'Pig (Lvl 3+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '3+' },
-    { id: 'b_pig_lvl6',       name: 'Pig (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
-    { id: 'b_pig_lvl14',      name: 'Pig (Lvl 14+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '14+' }
+    { id: 'b_sheep_lvl5',       name: 'Sheep (Lvl 5+)',      category: 'animals', defaultTickets: 5, icon: 'sheep',   level: '5+' },
+    { id: 'b_sheep_lvl6',       name: 'Sheep (Lvl 6+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '6+' },
+    { id: 'b_sheep_lvl8',       name: 'Sheep (Lvl 8+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '8+' },
+    { id: 'b_sheep_lvl12',      name: 'Sheep (Lvl 12+)',     category: 'animals', defaultTickets: 7, icon: 'sheep',   level: '12+' },
+
+    { id: 'b_pig_lvl3',         name: 'Pig (Lvl 3+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '3+' },
+    { id: 'b_pig_lvl6',         name: 'Pig (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
+    { id: 'b_pig_lvl14',        name: 'Pig (Lvl 14+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '14+' }
   ];
 
   export const BOUNTY_CATEGORIES = [
@@ -158,6 +163,7 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     { key: 'crustaceans', title: 'Crustacean Bounties' },
     { key: 'obsidian',    title: 'Obsidian Bounties' },
     { key: 'fruits',      title: 'Giant Fruit Bounties' },
+    { key: 'crops',       title: 'Exotic Crop Bounties' },
     { key: 'dolls',       title: 'Doll Bounties' },
     { key: 'animals',     title: 'Animal Bounties' }
   ];
@@ -184,7 +190,8 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     ];
     if (fishKeywords.some(k => s.includes(k))) return 'fishes';
 
-    if (s.includes('giant') || s.includes('dewberry') || s.includes('duskberry') || s.includes('apple') || s.includes('banana') || s.includes('orange') || s.includes('blueberry') || s.includes('lemon') || s.includes('tomato') || s.includes('fruit')) return 'fruits';
+    if (s.includes('giant') || s.includes('dewberry') || s.includes('duskberry') || s.includes('apple') || s.includes('banana') || s.includes('orange') || s.includes('blueberry') || s.includes('lemon') || s.includes('fruit')) return 'fruits';
+    if (s.includes('potato') || s.includes('pumpkin') || s.includes('carrot') || s.includes('crop') || s.includes('corn') || s.includes('radish') || s.includes('wheat') || s.includes('cabbage') || s.includes('beetroot') || s.includes('cauliflower') || s.includes('parsnip') || s.includes('eggplant') || s.includes('soybean') || s.includes('sunflower')) return 'crops';
 
     return 'flowers';
   }
@@ -205,7 +212,7 @@ export const DEFAULT_PLANNER_TEMPLATE = {
       return String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
-    // 1. Process Canonical 43-Card Roster
+    // 1. Process Canonical 46-Card Roster
     DEFAULT_ROSTER_BOUNTIES.forEach(item => {
       const card = { ...item };
       const cKey = norm(card.name);
@@ -231,7 +238,17 @@ export const DEFAULT_PLANNER_TEMPLATE = {
               const cardNum = parseInt(String(card.level).replace(/[^0-9]/g, ''), 10);
               if (bLevel && Number(bLevel) === cardNum) return true;
             }
-            return bKey === cKey || bKey.includes(cKey) || cKey.includes(bKey);
+            return false;
+          }
+          if (card.category === 'obsidian') {
+            if (bKey.includes('obsidian')) {
+              const bTix = b.baseTickets !== undefined ? b.baseTickets : b.tickets;
+              if (bTix !== undefined && Number(bTix) === Number(card.defaultTickets)) {
+                return true;
+              }
+              return true;
+            }
+            return false;
           }
           return bKey === cKey || bKey.includes(cKey) || cKey.includes(bKey);
         });
@@ -253,41 +270,6 @@ export const DEFAULT_PLANNER_TEMPLATE = {
       }
 
       cards.push(card);
-    });
-
-    // 2. Dynamically add extra live bounties not matched to canonical roster
-    liveBounties.forEach(b => {
-      if (!b) return;
-      const bId = b.id || b.name;
-      if (matchedLiveKeys.has(bId)) return;
-
-      const bName = b.name || b.item || 'Bounty';
-      const bCat = categorizeBounty(b);
-      const tileId = `b_${norm(bName)}`;
-
-      if (cards.some(c => c.id === tileId)) return;
-
-      const tix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 10);
-      const isActive = (tilesState && typeof tilesState === 'object' && Object.keys(tilesState).length > 0)
-        ? Boolean(tilesState[tileId])
-        : true;
-
-      let level = b.level;
-      if (!level) {
-        const lvlMatch = bName.match(/(?:lvl|level|#|\()\s*(\d+)/i);
-        if (lvlMatch) level = lvlMatch[1];
-      }
-
-      cards.push({
-        id: tileId,
-        name: bName,
-        category: bCat,
-        defaultTickets: tix,
-        tickets: tix,
-        icon: b.icon || norm(b.item || bName),
-        level,
-        isActive
-      });
     });
 
     // Aggregation
@@ -1577,7 +1559,7 @@ export function renderProjectionsView(proj) {
           <span class="bounty-bonus-desc">
             ${isBonusActive
               ? '🎉 Full Board Bonus Active! +100 Tickets awarded for completing all regular Plaza bounties.'
-              : 'Complete all regular Plaza bounties (Flowers, Fish, Crustaceans, Obsidian, Giant Fruits & Dolls) to unlock +100 Bonus Tickets! Click to manually toggle.'}
+              : 'Complete all regular Plaza bounties (Flowers, Fish, Crustaceans, Obsidian, Giant Fruits, Crops & Dolls) to unlock +100 Bonus Tickets! Click to manually toggle.'}
           </span>
         </div>
         <div class="bounty-bonus-reward">

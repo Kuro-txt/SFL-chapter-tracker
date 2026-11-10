@@ -674,40 +674,45 @@ console.log('Test 18: Verifying NPC Avatar Rendering & Multi-Tier Fallback in Pr
 // ---------------------------------------------------------------------------
 console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Ticket Derivation...');
 {
-  // 1. Verify all 7 requested categories exist
-  const expectedKeys = ['flowers', 'crustaceans', 'obsidian', 'fishes', 'dolls', 'fruits', 'animals'];
+  // 1. Verify all 8 requested categories exist
+  const expectedKeys = ['flowers', 'crustaceans', 'obsidian', 'fishes', 'dolls', 'fruits', 'crops', 'animals'];
   const actualKeys = BOUNTY_CATEGORIES.map(c => c.key);
   expectedKeys.forEach(k => {
     assert.ok(actualKeys.includes(k), `Category ${k} must be registered in BOUNTY_CATEGORIES`);
   });
 
   // 2. Verify categorizeBounty classifies items across categories
-  assert.strictEqual(categorizeBounty({ name: 'Red Pansy' }), 'flowers');
-  assert.strictEqual(categorizeBounty({ name: 'Yellow Cosmos' }), 'flowers');
-  assert.strictEqual(categorizeBounty({ name: 'Cockle Shell' }), 'crustaceans');
+  assert.strictEqual(categorizeBounty({ name: 'Blue Daffodil' }), 'flowers');
+  assert.strictEqual(categorizeBounty({ name: 'Yellow Daffodil' }), 'flowers');
+  assert.strictEqual(categorizeBounty({ name: 'Oyster' }), 'crustaceans');
   assert.strictEqual(categorizeBounty({ name: 'Octopus' }), 'crustaceans');
   assert.strictEqual(categorizeBounty({ name: 'Hermit Crab' }), 'crustaceans');
   assert.strictEqual(categorizeBounty({ name: 'Obsidian' }), 'obsidian');
-  assert.strictEqual(categorizeBounty({ name: 'Celestine' }), 'obsidian');
-  assert.strictEqual(categorizeBounty({ name: 'Barred Knifejaw' }), 'fishes');
-  assert.strictEqual(categorizeBounty({ name: 'Red Snapper' }), 'fishes');
-  assert.strictEqual(categorizeBounty({ name: 'Cluky Doll' }), 'dolls');
-  assert.strictEqual(categorizeBounty({ name: 'Cosmo Doll' }), 'dolls');
+  assert.strictEqual(categorizeBounty({ name: 'Weakfish' }), 'fishes');
+  assert.strictEqual(categorizeBounty({ name: 'Coelacanth' }), 'fishes');
+  assert.strictEqual(categorizeBounty({ name: 'Ember Doll' }), 'dolls');
+  assert.strictEqual(categorizeBounty({ name: 'Bloom Doll' }), 'dolls');
   assert.strictEqual(categorizeBounty({ name: 'Giant Apple' }), 'fruits');
   assert.strictEqual(categorizeBounty({ name: 'Giant Orange' }), 'fruits');
   assert.strictEqual(categorizeBounty({ name: 'Giant Banana' }), 'fruits');
-  assert.strictEqual(categorizeBounty({ name: 'Chicken (Lvl 2)' }), 'animals');
+  assert.strictEqual(categorizeBounty({ name: 'Adirondack Potato' }), 'crops');
+  assert.strictEqual(categorizeBounty({ name: 'Warty Goblin Pumpkin' }), 'crops');
+  assert.strictEqual(categorizeBounty({ name: 'White Carrot' }), 'crops');
+  assert.strictEqual(categorizeBounty({ name: 'Chicken (Lvl 3)' }), 'animals');
   assert.strictEqual(categorizeBounty({ name: 'Cow #1' }), 'animals');
   assert.strictEqual(categorizeBounty({ name: 'Sheep' }), 'animals');
 
-  // 3. Test canonical cards calculation (24 regular bounties + 19 animal bounties = 43)
+  // 3. Test canonical cards calculation (27 regular bounties + 19 animal bounties = 46)
   const defaultCards = getActiveBountyCards();
-  assert.strictEqual(defaultCards.cards.length, 43, `Canonical roster must be exactly 43 cards, got ${defaultCards.cards.length}`);
-  assert.strictEqual(defaultCards.regularCount, 24, 'Must have 24 regular bounties (5 flowers + 5 fish + 3 crustaceans + 3 obsidian + 3 giant fruits + 5 dolls)');
+  assert.strictEqual(defaultCards.cards.length, 46, `Canonical roster must be exactly 46 cards, got ${defaultCards.cards.length}`);
+  assert.strictEqual(defaultCards.regularCount, 27, 'Must have 27 regular bounties (5 flowers + 5 fish + 3 crustaceans + 3 obsidian + 3 giant fruits + 3 crops + 5 dolls)');
   assert.strictEqual(defaultCards.animalCount, 19, 'Must have 19 animal bounties (8 chicken + 4 cow + 4 sheep + 3 pig)');
   assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_apple').tickets, 17, 'Giant Apple must yield 17 tix');
   assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_banana').tickets, 33, 'Giant Banana must yield 33 tix');
   assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_orange').tickets, 10, 'Giant Orange must yield 10 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_obsidian_33').tickets, 33, 'Obsidian #1 must yield 33 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_obsidian_43_1').tickets, 43, 'Obsidian #2 must yield 43 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_obsidian_43_2').tickets, 43, 'Obsidian #3 must yield 43 tix');
   assert.ok(defaultCards.regularTix > 0, 'Regular tickets sum must be positive');
   assert.ok(defaultCards.animalTix > 0, 'Animal tickets sum must be positive');
   assert.strictEqual(defaultCards.allRegularDone, true, 'Default state should have all regular done');
@@ -715,17 +720,17 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
   // 4. Test live bounties derivation from state.globalData.bounties
   state.globalData = {
     bounties: [
-      { id: '101', name: 'Red Pansy', baseTickets: 7 },
+      { id: '101', name: 'Blue Daffodil', baseTickets: 12 },
       { id: '102', name: 'Octopus', baseTickets: 25 },
       { id: '103', name: 'Chicken (Lvl 3+)', baseTickets: 6, level: 3 },
       { id: '104', name: 'Cow (Lvl 4+)', baseTickets: 11, level: 4 }
     ]
   };
   const liveCards = getActiveBountyCards();
-  assert.strictEqual(liveCards.cards.length, 43, 'Must maintain 43 canonical roster cards with live overrides');
-  assert.strictEqual(liveCards.regularCount, 24, '24 regular bounties');
+  assert.strictEqual(liveCards.cards.length, 46, 'Must maintain 46 canonical roster cards with live overrides');
+  assert.strictEqual(liveCards.regularCount, 27, '27 regular bounties');
   assert.strictEqual(liveCards.animalCount, 19, '19 animal bounties');
-  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_red_pansy').tickets, 7);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_blue_daffodil').tickets, 12);
   assert.strictEqual(liveCards.cards.find(c => c.id === 'b_octopus').tickets, 25);
   assert.strictEqual(liveCards.cards.find(c => c.id === 'b_chicken_lvl3').tickets, 6);
   assert.strictEqual(liveCards.cards.find(c => c.id === 'b_cow_lvl4').tickets, 11);
@@ -733,15 +738,15 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
 
   // 5. Test calculation with partial tile selection
   const partialTiles = {
-    b_red_pansy: true,
-    b_yellow_cosmos: false,
+    b_blue_daffodil: true,
+    b_yellow_daffodil: false,
     b_chicken_lvl3: true,
     b_cow_lvl4: false
   };
   const partialCards = getActiveBountyCards(partialTiles);
-  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_yellow_cosmos').isActive, false);
+  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_yellow_daffodil').isActive, false);
   assert.strictEqual(partialCards.cards.find(c => c.id === 'b_cow_lvl4').isActive, false);
-  assert.strictEqual(partialCards.allRegularDone, false, 'Should be false when yellow cosmos is unticked');
+  assert.strictEqual(partialCards.allRegularDone, false, 'Should be false when yellow daffodil is unticked');
 
   // 6. Test plan calculation with tiles in config
   const customTilesTemplate = {
@@ -750,7 +755,7 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
       regularEnabled: true,
       animalEnabled: true,
       tiles: {
-        b_red_pansy: true,
+        b_blue_daffodil: true,
         b_chicken_lvl3: true
       }
     }
@@ -789,7 +794,10 @@ console.log('Test 20: Verifying Bounty Board Game-Like Interface HTML Structure 
   assert.ok(mockContainer.innerHTML.includes('Flower Bounties'), 'Must render Flower Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Fish Bounties'), 'Must render Fish Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Crustacean Bounties'), 'Must render Crustacean Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Obsidian Bounties'), 'Must render Obsidian Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Giant Fruit Bounties'), 'Must render Giant Fruit Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Exotic Crop Bounties'), 'Must render Exotic Crop Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Doll Bounties'), 'Must render Doll Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Animal Bounties'), 'Must render Animal Bounties plaque');
 
   // Assert tiles, checkmarks and ribbons
