@@ -133,11 +133,11 @@ export async function searchLeaderboardRank(customQuery = '') {
   if (isNumeric) {
     _searchedFarmId = query;
     _searchedUsername = '';
-    _searchStatus = { type: 'loading', message: `🔍 Searching leaderboard for Farm ID #${query}...` };
+    _searchStatus = { type: 'loading', message: 'Searching...' };
     renderLeaderboard();
     await loadLeaderboardData(true, query);
   } else {
-    _searchStatus = { type: 'loading', message: `🔍 Converting username "${query}" to Farm ID via sfl.world API...` };
+    _searchStatus = { type: 'loading', message: 'Searching...' };
     renderLeaderboard();
     try {
       const info = await lookupUsernameToFarmId(query);
@@ -146,7 +146,7 @@ export async function searchLeaderboardRank(customQuery = '') {
       }
       _searchedFarmId = String(info.farm_id);
       _searchedUsername = info.username || query;
-      _searchStatus = { type: 'loading', message: `✅ Found ${info.username} (Farm ID #${info.farm_id})! Loading leaderboard rank...` };
+      _searchStatus = { type: 'loading', message: 'Searching...' };
       renderLeaderboard();
       await loadLeaderboardData(true, _searchedFarmId);
     } catch (err) {
