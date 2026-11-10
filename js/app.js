@@ -75,6 +75,8 @@ import {
   toggleAllNpcDouble,
   setPlannerSectionTab,
   togglePlannerBounty,
+  togglePlannerBountyTile,
+  toggleAllPlannerBountyTiles,
   setPlannerBountyCount,
   setPlannerRegularBountyTix,
   setPlannerAnimalBountyTix,
@@ -211,6 +213,8 @@ window.togglePlannerNpcDouble = togglePlannerNpcDouble;
 window.toggleAllNpcDouble = toggleAllNpcDouble;
 window.setPlannerSectionTab = setPlannerSectionTab;
 window.togglePlannerBounty = togglePlannerBounty;
+window.togglePlannerBountyTile = togglePlannerBountyTile;
+window.toggleAllPlannerBountyTiles = toggleAllPlannerBountyTiles;
 window.setPlannerBountyCount = setPlannerBountyCount;
 window.setPlannerRegularBountyTix = setPlannerRegularBountyTix;
 window.setPlannerAnimalBountyTix = setPlannerAnimalBountyTix;
