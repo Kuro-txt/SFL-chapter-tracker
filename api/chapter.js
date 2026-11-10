@@ -379,7 +379,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             const completedCountIndex = prevStat.deliveryCount + 1;
             const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
             const orderToComplete = vault.archiveDeliveries[staleActiveIdx];
-            const origWeek = orderToComplete.weekId || (orderToComplete.activeSince ? getMondayBasedWeekId(orderToComplete.activeSince) : compWeek);
+            const origWeek = getMondayBasedWeekId(orderToComplete.weekId || orderToComplete.activeSince || compWeek);
             orderToComplete.id = targetOrderId;
             orderToComplete.completed = true;
             orderToComplete.checked = true;
@@ -411,7 +411,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
             if (existingPendingIdx !== -1) {
               const orderToComplete = vault.archiveDeliveries[existingPendingIdx];
-              const origWeek = orderToComplete.weekId || (orderToComplete.activeSince ? getMondayBasedWeekId(orderToComplete.activeSince) : compWeek);
+              const origWeek = getMondayBasedWeekId(orderToComplete.weekId || orderToComplete.activeSince || compWeek);
               orderToComplete.id = targetOrderId;
               orderToComplete.completed = true;
               orderToComplete.checked = true;
@@ -503,7 +503,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         target.status = 'completed';
         target.completedAt = compTime;
         target.completedDate = compDate;
-        target.weekId = compWeek;
+        target.weekId = getMondayBasedWeekId(target.weekId || compWeek);
         target.deliveryCountAtCreation = currStat.deliveryCount;
         target.isStacked = isStackedOrder;
         target.items = order.items || target.items;
@@ -526,7 +526,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           target.status = 'completed';
           target.completedAt = compTime;
           target.completedDate = compDate;
-          target.weekId = compWeek;
+          target.weekId = getMondayBasedWeekId(target.weekId || compWeek);
           target.isStacked = isStackedOrder;
           target.items = order.items || target.items;
           if (!target.isCustomCost && target.userCost === undefined) {

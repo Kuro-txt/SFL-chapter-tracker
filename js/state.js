@@ -185,7 +185,16 @@ export function getMondayBasedWeekId(d) {
   const utcDate = date.getUTCDate();
   const diffToMonday = (day === 0 ? -6 : 1 - day);
   date.setUTCDate(utcDate + diffToMonday);
-  return date.toISOString().split('T')[0];
+  const weekId = date.toISOString().split('T')[0];
+
+  // In Chapter 16 (Cave Dwellers), Week 1 launched on Sunday Nov 08 (8-day week: Nov 08 – Nov 15).
+  // Standard ISO Monday grouping assigns Sunday Nov 08 (and any 2026-11-02 legacy key) to 2026-11-02.
+  // Re-map to Week 1's anchor Monday (2026-11-09).
+  if (weekId === '2026-11-02') {
+    return '2026-11-09';
+  }
+
+  return weekId;
 }
 
 export function isAnimalBounty(item) {

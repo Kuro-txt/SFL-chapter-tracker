@@ -495,7 +495,7 @@ export default async function handler(req, res) {
               const isManual = Boolean(d.isManual);
               const isStacked = Boolean(d.isStacked);
               const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDateStr);
-              const itemWeekId = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(compDate || d.weekId));
+              const itemWeekId = getMondayBasedWeekId(d.weekId || compDate);
               d.weekId = itemWeekId;
               const isToday = !isManual && (compDate === snapshotDate || compDate === todayDateStr);
 
@@ -730,7 +730,7 @@ export default async function handler(req, res) {
               const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
               if (isDone) {
                 const dDate = d.completedAt || d.completedDate;
-                const wId = d.weekId || (dDate ? getMondayBasedWeekId(dDate) : currentWeekMonday);
+                const wId = getMondayBasedWeekId(d.weekId || dDate || currentWeekMonday);
                 if (!weeklyProgMap.has(wId)) weeklyProgMap.set(wId, { baseTickets: 0, tickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
                 const stat = weeklyProgMap.get(wId);
                 const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
@@ -758,8 +758,8 @@ export default async function handler(req, res) {
             }
 
             Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
-              if (wkKey === currentWeekMonday) return;
               const normWeek = getMondayBasedWeekId(wk.weekId || wkKey);
+              if (normWeek === currentWeekMonday) return;
               if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { baseTickets: 0, tickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
               const stat = weeklyProgMap.get(normWeek);
               (wk.bounties || []).forEach(b => {

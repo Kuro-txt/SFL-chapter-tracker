@@ -170,7 +170,7 @@ export function renderChapterLogsList() {
       const isManualOrEdited = isManuallyEditedOrAdded(d);
       const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
       const dDate = d.completedAt || d.completedDate;
-      const dWeek = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? getMondayBasedWeekId() : null)));
+      const dWeek = getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? getMondayBasedWeekId() : null));
       if (!liveWeekUnitsMap.has(dWeek)) {
         liveWeekUnitsMap.set(dWeek, { vipUnits: 0, boostUnits: 0, manualTickets: 0 });
       }
@@ -213,7 +213,35 @@ export function renderChapterLogsList() {
       });
     });
 
-    const weeks = Array.isArray(item.weeklySummary) ? item.weeklySummary : [];
+    const rawWeeksList = Array.isArray(item.weeklySummary) ? item.weeklySummary : [];
+    const consolidatedMap = new Map();
+    rawWeeksList.forEach(w => {
+      const normWk = getMondayBasedWeekId(w.weekId);
+      if (!consolidatedMap.has(normWk)) {
+        consolidatedMap.set(normWk, {
+          weekId: normWk,
+          baseTickets: 0,
+          tickets: 0,
+          cost: 0,
+          boostUnits: 0,
+          vipUnits: 0,
+          manualTickets: 0
+        });
+      }
+      const agg = consolidatedMap.get(normWk);
+      agg.baseTickets += (w.baseTickets || 0);
+      agg.tickets += (w.tickets || 0);
+      agg.cost += (w.cost || 0);
+      agg.boostUnits += (w.boostUnits || 0);
+      agg.vipUnits += (w.vipUnits || 0);
+      agg.manualTickets += (w.manualTickets || 0);
+    });
+    const weeks = Array.from(consolidatedMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([wId, val], idx) => ({
+        ...val,
+        week: idx + 1
+      }));
     const weeksHtml = weeks.length > 0 ? `
       <div style="border-top: 1.5px dashed #D2B48C; padding-top: 8px; margin-top: 4px;">
         <span class="chapter-weekly-title">Weekly Progression (${weeks.length} Weeks Recorded):</span>
@@ -391,7 +419,7 @@ export async function snapshotCurrentChapter() {
     delivCost += cost;
 
     const dDate = d.completedAt || d.completedDate;
-    const dWeek = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? curWeekMonday : null)));
+    const dWeek = getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? curWeekMonday : null));
     if (!weeklyMap.has(dWeek)) {
       weeklyMap.set(dWeek, { baseTickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
     }
