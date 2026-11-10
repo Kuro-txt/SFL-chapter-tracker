@@ -1,5 +1,6 @@
 // Sunflower Land Seasonal Ticket Leaderboard Controller
 // Fetches and displays global chapter ticket rankings with live player context.
+// Converts usernames to Farm IDs via sfl.world API and queries the SFL Leaderboard API.
 
 import { renderChapterTicketIcon } from './item-icons.js';
 import { state } from './state.js';
@@ -7,6 +8,9 @@ import { state } from './state.js';
 let _leaderboardData = null;
 let _leaderboardLimit = 100;
 let _leaderboardFilter = '';
+let _searchedFarmId = '';
+let _searchedUsername = '';
+let _searchStatus = { type: '', message: '' };
 let _isLoading = false;
 let _leaderboardError = null;
 let _lastFetchedAt = 0;
@@ -16,6 +20,9 @@ export function getLeaderboardState() {
     data: _leaderboardData,
     limit: _leaderboardLimit,
     filter: _leaderboardFilter,
+    searchedFarmId: _searchedFarmId,
+    searchedUsername: _searchedUsername,
+    searchStatus: _searchStatus,
     loading: _isLoading,
     error: _leaderboardError,
     lastFetchedAt: _lastFetchedAt
@@ -70,11 +77,154 @@ function resolveApiKey() {
   return '';
 }
 
-export async function loadLeaderboardData(forceRefresh = false) {
+export async function lookupUsernameToFarmId(username) {
+  const clean = (username || '').trim();
+  if (!clean) throw new Error('Username cannot be empty.');
+
+  // Try proxy endpoint first to bypass browser CORS
+  try {
+    const res = await fetch(`/api/chapter?action=lookupFarm&username=${encodeURIComponent(clean)}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.success && json.data) {
+        return json.data;
+      }
+      if (json && json.error) {
+        throw new Error(json.error);
+      }
+    } else if (res.status === 404) {
+      throw new Error(`Username "${clean}" not found on Sunflower Land.`);
+    }
+  } catch (proxyErr) {
+    if (proxyErr.message && proxyErr.message.includes('not found')) {
+      throw proxyErr;
+    }
+  }
+
+  // Fallback direct fetch to sfl.world API
+  try {
+    const directRes = await fetch(`https://sfl.world/api/v1/land/info/username/${encodeURIComponent(clean)}`);
+    if (!directRes.ok) {
+      if (directRes.status === 404) throw new Error(`Username "${clean}" not found on Sunflower Land.`);
+      throw new Error(`Lookup failed with status ${directRes.status}`);
+    }
+    const data = await directRes.json();
+    return data;
+  } catch (directErr) {
+    throw new Error(directErr.message || `Unable to resolve username "${clean}".`);
+  }
+}
+
+export async function searchLeaderboardRank(customQuery = '') {
+  if (typeof document === 'undefined') return;
+  const inputEl = document.getElementById('leaderboardRankSearchInput');
+  const query = (typeof customQuery === 'string' && customQuery.trim()) 
+    ? customQuery.trim() 
+    : (inputEl ? inputEl.value.trim() : '');
+
+  if (!query) {
+    _searchStatus = { type: 'error', message: 'Please enter a username (e.g. Kuro1) or numeric Farm ID.' };
+    renderLeaderboard();
+    return;
+  }
+
+  const isNumeric = /^\d+$/.test(query);
+
+  if (isNumeric) {
+    _searchedFarmId = query;
+    _searchedUsername = '';
+    _searchStatus = { type: 'loading', message: `🔍 Searching leaderboard for Farm ID #${query}...` };
+    renderLeaderboard();
+    await loadLeaderboardData(true, query);
+  } else {
+    _searchStatus = { type: 'loading', message: `🔍 Converting username "${query}" to Farm ID via sfl.world API...` };
+    renderLeaderboard();
+    try {
+      const info = await lookupUsernameToFarmId(query);
+      if (!info || !info.farm_id) {
+        throw new Error(`Could not find Farm ID for username "${query}".`);
+      }
+      _searchedFarmId = String(info.farm_id);
+      _searchedUsername = info.username || query;
+      _searchStatus = { type: 'loading', message: `✅ Found ${info.username} (Farm ID #${info.farm_id})! Loading leaderboard rank...` };
+      renderLeaderboard();
+      await loadLeaderboardData(true, _searchedFarmId);
+    } catch (err) {
+      _searchStatus = { type: 'error', message: `❌ ${err.message}` };
+      renderLeaderboard();
+      return;
+    }
+  }
+
+  // Verify if rank was located
+  const rankDetails = Array.isArray(_leaderboardData?.farmRankingDetails) ? _leaderboardData.farmRankingDetails : [];
+  const topList = Array.isArray(_leaderboardData?.topTen) ? _leaderboardData.topTen : (Array.isArray(_leaderboardData?.ranking) ? _leaderboardData.ranking : []);
+  let foundRecord = rankDetails.find(r => String(r.farmId) === String(_searchedFarmId));
+  if (!foundRecord && topList.length > 0) {
+    const topIdx = topList.findIndex(r => String(r.farmId) === String(_searchedFarmId));
+    if (topIdx !== -1) {
+      foundRecord = { ...topList[topIdx], rank: topList[topIdx].rank || (topIdx + 1) };
+    }
+  }
+
+  if (foundRecord && foundRecord.rank) {
+    const nameLabel = _searchedUsername || foundRecord.id || `Farm #${_searchedFarmId}`;
+    _searchStatus = { 
+      type: 'success', 
+      message: `🏆 Found Rank #${foundRecord.rank} for ${nameLabel} with ${(foundRecord.count || 0).toLocaleString()} tickets!` 
+    };
+  } else {
+    _searchStatus = { 
+      type: 'warning', 
+      message: `Player Farm #${_searchedFarmId}${_searchedUsername ? ` (${_searchedUsername})` : ''} is currently unranked or has 0 tickets.` 
+    };
+  }
+  renderLeaderboard();
+}
+
+export function clearRankSearch() {
+  _searchedFarmId = '';
+  _searchedUsername = '';
+  _searchStatus = { type: '', message: '' };
+  if (typeof document !== 'undefined') {
+    const inputEl = document.getElementById('leaderboardRankSearchInput');
+    if (inputEl) inputEl.value = '';
+  }
+  loadLeaderboardData(true);
+}
+
+export function openLeaderboardModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('leaderboardModal');
+  if (modal) {
+    modal.classList.add('show');
+    loadLeaderboardData();
+  }
+}
+
+export function closeLeaderboardModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('leaderboardModal');
+  if (modal) modal.classList.remove('show');
+}
+
+export function toggleLeaderboardModal() {
+  if (typeof document === 'undefined') return;
+  const modal = document.getElementById('leaderboardModal');
+  if (modal) {
+    if (modal.classList.contains('show')) {
+      closeLeaderboardModal();
+    } else {
+      openLeaderboardModal();
+    }
+  }
+}
+
+export async function loadLeaderboardData(forceRefresh = false, overrideFarmId = null) {
   if (typeof window === 'undefined') return;
   const now = Date.now();
-  // Cache for 60 seconds unless explicitly refreshed
-  if (!forceRefresh && _leaderboardData && (now - _lastFetchedAt < 60000)) {
+  // Cache for 60 seconds unless explicitly refreshed or searching specific farm
+  if (!forceRefresh && !overrideFarmId && _leaderboardData && (now - _lastFetchedAt < 60000)) {
     renderLeaderboard();
     return;
   }
@@ -83,7 +233,8 @@ export async function loadLeaderboardData(forceRefresh = false) {
   _leaderboardError = null;
   renderLeaderboard();
 
-  const farmId = resolveTargetFarmId();
+  const userFarmId = resolveTargetFarmId();
+  const farmId = overrideFarmId || _searchedFarmId || userFarmId;
   const apiKey = resolveApiKey();
 
   try {
@@ -104,6 +255,29 @@ export async function loadLeaderboardData(forceRefresh = false) {
 
     _leaderboardData = result.data || result.leaderboard || null;
     _lastFetchedAt = Date.now();
+
+    // Auto-update user's rank in Total Tickets card when querying user's own farm
+    try {
+      if (String(farmId) === String(userFarmId)) {
+        const rankDetails = Array.isArray(_leaderboardData?.farmRankingDetails) ? _leaderboardData.farmRankingDetails : [];
+        const topList = Array.isArray(_leaderboardData?.topTen) ? _leaderboardData.topTen : (Array.isArray(_leaderboardData?.ranking) ? _leaderboardData.ranking : []);
+        let myRecord = rankDetails.find(r => String(r.farmId) === String(userFarmId));
+        if (!myRecord && topList.length > 0) {
+          const topIdx = topList.findIndex(r => String(r.farmId) === String(userFarmId));
+          if (topIdx !== -1) {
+            myRecord = { ...topList[topIdx], rank: topList[topIdx].rank || (topIdx + 1) };
+          }
+        }
+        if (myRecord && myRecord.rank) {
+          updateUserRankDisplay(myRecord.rank, myRecord.id);
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('sfl_user_rank', JSON.stringify({ rank: myRecord.rank, name: myRecord.id || '', farmId: myRecord.farmId }));
+          }
+        }
+      }
+    } catch (rankErr) {
+      console.warn('Rank card update notice:', rankErr);
+    }
   } catch (err) {
     console.warn('Leaderboard fetch error:', err.message);
     _leaderboardError = err.message || 'Unable to load leaderboard data.';
@@ -128,6 +302,42 @@ export function renderLeaderboard() {
   if (!container) return;
 
   const userFarmId = resolveTargetFarmId();
+  const effectiveFarmId = _searchedFarmId || userFarmId;
+  const isSearchActive = Boolean(_searchedFarmId && _searchedFarmId !== userFarmId);
+
+  // Search & Lookup Bar HTML
+  const searchBarHtml = `
+    <div class="leaderboard-search-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+        <label for="leaderboardRankSearchInput" style="font-weight:900; font-size:12px; color:#8B4513; display:flex; align-items:center; gap:5px;">
+          <span>🔍</span> <span>SEARCH PLAYER RANK (USERNAME OR FARM ID):</span>
+        </label>
+        ${isSearchActive ? `
+          <button type="button" class="btn btn-sm btn-subtle" onclick="clearRankSearch()" style="padding:2px 8px; font-size:11px; cursor:pointer;">
+            ↩ Reset to My Farm (#${userFarmId})
+          </button>
+        ` : ''}
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+        <input 
+          type="text" 
+          id="leaderboardRankSearchInput" 
+          placeholder="Enter Username (e.g. Kuro1) or Farm ID (e.g. 8472883706403914)..." 
+          value="${_searchedUsername || _searchedFarmId || ''}"
+          onkeydown="if(event.key==='Enter') searchLeaderboardRank()"
+          class="leaderboard-rank-input"
+        />
+        <button type="button" class="btn btn-wood" onclick="searchLeaderboardRank()" style="padding:6px 14px; font-size:12px; font-weight:900;">
+          🎯 SEARCH RANK
+        </button>
+      </div>
+      ${_searchStatus.message ? `
+        <div class="leaderboard-search-status ${_searchStatus.type}">
+          ${_searchStatus.message}
+        </div>
+      ` : ''}
+    </div>
+  `;
 
   // Header and controls HTML
   const headerHtml = `
@@ -149,7 +359,7 @@ export function renderLeaderboard() {
           <input 
             type="text" 
             id="leaderboardSearchInput" 
-            placeholder="🔍 Search name or Farm ID..." 
+            placeholder="🔍 Filter loaded table..." 
             value="${_leaderboardFilter}" 
             oninput="setLeaderboardFilter(this.value)"
             class="leaderboard-search-input"
@@ -167,6 +377,7 @@ export function renderLeaderboard() {
   // Loading state
   if (_isLoading && !_leaderboardData) {
     container.innerHTML = `
+      ${searchBarHtml}
       ${headerHtml}
       <div class="leaderboard-loading-state">
         <div class="leaderboard-spinner"></div>
@@ -179,6 +390,7 @@ export function renderLeaderboard() {
   // Error state
   if (_leaderboardError && !_leaderboardData) {
     container.innerHTML = `
+      ${searchBarHtml}
       ${headerHtml}
       <div class="leaderboard-error-state">
         <span class="leaderboard-error-icon">⚠️</span>
@@ -204,28 +416,30 @@ export function renderLeaderboard() {
   const lastUpdatedStr = lastUpdatedMs ? new Date(lastUpdatedMs).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live';
   const totalTickets = typeof data.total === 'number' ? data.total.toLocaleString() : null;
 
-  // Find user's record in farmRankingDetails or rawList
-  let userDetails = userRankings.find(r => String(r.farmId) === String(userFarmId));
+  // Find effective record in farmRankingDetails or rawList
+  let userDetails = userRankings.find(r => String(r.farmId) === String(effectiveFarmId));
   if (!userDetails && rawList.length > 0) {
-    const idx = rawList.findIndex(r => String(r.farmId) === String(userFarmId));
+    const idx = rawList.findIndex(r => String(r.farmId) === String(effectiveFarmId));
     if (idx !== -1) {
       userDetails = { ...rawList[idx], rank: rawList[idx].rank || (idx + 1) };
     }
   }
 
-  // Banner for User's Ranking
+  // Banner for User's / Searched Player's Ranking
   let userBannerHtml = '';
   if (userDetails) {
     const userRankNum = userDetails.rank ? `#${userDetails.rank}` : 'Ranked';
     const userTicketsCount = (userDetails.count || 0).toLocaleString();
     const userXp = formatExperience(userDetails.experience);
     const userAsc = userDetails.ascensionLevel > 0 ? `⭐ Lvl ${userDetails.ascensionLevel}` : '';
+    const bannerTitle = isSearchActive ? '🎯 SEARCHED STANDING' : '🌾 YOUR STANDING';
+    const displayName = _searchedUsername || userDetails.id || 'Farmer';
 
     userBannerHtml = `
-      <div class="leaderboard-user-card">
+      <div class="leaderboard-user-card ${isSearchActive ? 'searched-card' : ''}">
         <div class="leaderboard-user-info">
-          <span class="leaderboard-user-badge">🌾 YOUR STANDING</span>
-          <strong class="leaderboard-user-name">${userDetails.id || 'Farmer'}</strong>
+          <span class="leaderboard-user-badge">${bannerTitle}</span>
+          <strong class="leaderboard-user-name">${displayName}</strong>
           <span class="leaderboard-user-farm">Farm #${userDetails.farmId}</span>
           ${userAsc ? `<span class="leaderboard-user-asc">${userAsc}</span>` : ''}
         </div>
@@ -269,14 +483,15 @@ export function renderLeaderboard() {
   if (filteredList.length === 0) {
     tableRowsHtml = `
       <tr>
-        <td colspan="5" class="leaderboard-empty-row">
+        <td colspan="4" class="leaderboard-empty-row">
           ${_leaderboardFilter ? `No players found matching "${_leaderboardFilter}".` : 'No leaderboard records available.'}
         </td>
       </tr>
     `;
   } else {
     tableRowsHtml = filteredList.map(player => {
-      const isCurrentUser = String(player.farmId) === String(userFarmId);
+      const isTargetUser = String(player.farmId) === String(effectiveFarmId);
+      const isActualUser = String(player.farmId) === String(userFarmId);
       const rank = player.rank;
       let rankBadge = `#${rank}`;
       let rankClass = 'rank-normal';
@@ -304,14 +519,14 @@ export function renderLeaderboard() {
         : '';
 
       return `
-        <tr class="leaderboard-row ${isCurrentUser ? 'leaderboard-row-user' : ''}">
+        <tr class="leaderboard-row ${isTargetUser ? 'leaderboard-row-user' : ''}">
           <td class="col-rank">
             <span class="rank-badge ${rankClass}">${rankBadge}</span>
           </td>
           <td class="col-player">
             <div class="player-cell">
               <strong class="player-name">${player.id || 'Farmer'}</strong>
-              ${isCurrentUser ? '<span class="you-badge">YOU</span>' : ''}
+              ${isActualUser ? '<span class="you-badge">YOU</span>' : (isTargetUser ? '<span class="you-badge searched-badge">SEARCHED</span>' : '')}
               ${ascBadge}
               <span class="farm-id-pill">#${player.farmId}</span>
               ${cosmeticsCount > 0 ? `<span class="gear-pill" title="${gearSummary.replace(/"/g, '&quot;')}">👕 ${cosmeticsCount}</span>` : ''}
@@ -330,29 +545,30 @@ export function renderLeaderboard() {
     }).join('');
   }
 
-  // Surrounding ranks table if user is outside the current filtered view
+  // Surrounding ranks table if target player is outside the current filtered view
   let surroundingHtml = '';
   if (userRankings.length > 0 && !_leaderboardFilter) {
-    const isUserInFiltered = filteredList.some(p => String(p.farmId) === String(userFarmId));
-    if (!isUserInFiltered) {
+    const isTargetInFiltered = filteredList.some(p => String(p.farmId) === String(effectiveFarmId));
+    if (!isTargetInFiltered) {
       surroundingHtml = `
         <div class="leaderboard-surrounding-section">
           <div class="surrounding-header">
-            <span>📍 Your Surrounding Standings</span>
-            <span class="surrounding-sub">Farms near your rank</span>
+            <span>📍 Surrounding Standings</span>
+            <span class="surrounding-sub">Farms near Rank #${userDetails?.rank || '-'}</span>
           </div>
           <table class="leaderboard-table surrounding-table">
             <tbody>
               ${userRankings.map(player => {
-                const isUser = String(player.farmId) === String(userFarmId);
+                const isTarget = String(player.farmId) === String(effectiveFarmId);
+                const isActual = String(player.farmId) === String(userFarmId);
                 const tixStr = (player.count || 0).toLocaleString();
                 return `
-                  <tr class="leaderboard-row ${isUser ? 'leaderboard-row-user' : ''}">
+                  <tr class="leaderboard-row ${isTarget ? 'leaderboard-row-user' : ''}">
                     <td class="col-rank"><span class="rank-badge rank-normal">#${player.rank || '-'}</span></td>
                     <td class="col-player">
                       <div class="player-cell">
                         <strong class="player-name">${player.id || 'Farmer'}</strong>
-                        ${isUser ? '<span class="you-badge">YOU</span>' : ''}
+                        ${isActual ? '<span class="you-badge">YOU</span>' : (isTarget ? '<span class="you-badge searched-badge">SEARCHED</span>' : '')}
                         <span class="farm-id-pill">#${player.farmId}</span>
                       </div>
                     </td>
@@ -381,6 +597,7 @@ export function renderLeaderboard() {
   `;
 
   container.innerHTML = `
+    ${searchBarHtml}
     ${headerHtml}
     ${userBannerHtml}
     <div class="leaderboard-table-wrapper">
@@ -403,9 +620,58 @@ export function renderLeaderboard() {
   `;
 }
 
+export function updateUserRankDisplay(rank, playerName = '') {
+  if (typeof document === 'undefined') return;
+  const badgeEl = document.getElementById('statTotalRankBadge');
+  const footerEl = document.getElementById('statTotalRank');
+  const tipEl = document.getElementById('tipTotalRank');
+
+  if (!rank) {
+    if (badgeEl) badgeEl.style.display = 'none';
+    if (footerEl) footerEl.textContent = '#--';
+    if (tipEl) tipEl.textContent = '🏆 Global Rank: Unranked';
+    return;
+  }
+
+  const rankStr = `#${rank}`;
+  if (badgeEl) {
+    badgeEl.textContent = rankStr;
+    badgeEl.style.display = 'inline-block';
+    badgeEl.title = `Your Global Rank: ${rankStr}${playerName ? ` (${playerName})` : ''} - Click to view Leaderboard`;
+  }
+  if (footerEl) {
+    footerEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:3px;">🏆 ${rankStr}</span>`;
+    footerEl.title = `Your Global Rank: ${rankStr}${playerName ? ` (${playerName})` : ''} - Click to view Leaderboard`;
+  }
+  if (tipEl) {
+    tipEl.innerHTML = `🏆 Global Rank: <strong>${rankStr}</strong>${playerName ? ` (${playerName})` : ''}`;
+  }
+}
+
+export function initLeaderboardRank() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const saved = localStorage.getItem('sfl_user_rank');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.rank) {
+        updateUserRankDisplay(parsed.rank, parsed.name);
+      }
+    }
+  } catch (e) {}
+}
+
 if (typeof window !== 'undefined') {
   window.setLeaderboardLimit = setLeaderboardLimit;
   window.setLeaderboardFilter = setLeaderboardFilter;
   window.loadLeaderboardData = loadLeaderboardData;
   window.renderLeaderboard = renderLeaderboard;
+  window.updateUserRankDisplay = updateUserRankDisplay;
+  window.initLeaderboardRank = initLeaderboardRank;
+  window.openLeaderboardModal = openLeaderboardModal;
+  window.closeLeaderboardModal = closeLeaderboardModal;
+  window.toggleLeaderboardModal = toggleLeaderboardModal;
+  window.searchLeaderboardRank = searchLeaderboardRank;
+  window.clearRankSearch = clearRankSearch;
+  window.lookupUsernameToFarmId = lookupUsernameToFarmId;
 }

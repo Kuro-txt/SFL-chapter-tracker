@@ -1031,6 +1031,37 @@ export default async function handler(req, res) {
     }
 
     // ==========================================
+    // ACTION: LOOKUP FARM BY USERNAME
+    // ==========================================
+    if (action === 'lookupFarm' || action === 'lookupUser') {
+      const targetUsername = searchParams.get('username') || (req.query && req.query.username) || '';
+      if (!targetUsername) {
+        return res.status(400).json({ success: false, error: 'Username is required.' });
+      }
+      try {
+        const cleanUser = targetUsername.trim();
+        const sflWorldUrl = `https://sfl.world/api/v1/land/info/username/${encodeURIComponent(cleanUser)}`;
+        const resp = await fetch(sflWorldUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          signal: AbortSignal.timeout(10000)
+        });
+        if (!resp.ok) {
+          return res.status(resp.status).json({ 
+            success: false, 
+            error: resp.status === 404 ? `Username "${cleanUser}" was not found on Sunflower Land.` : 'Failed to lookup user on sfl.world.' 
+          });
+        }
+        const data = await resp.json();
+        return res.status(200).json({ success: true, data });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: err.message || 'Lookup request failed.' });
+      }
+    }
+
+    // ==========================================
     // ACTION: GET LEADERBOARD
     // ==========================================
     if (action === 'getLeaderboard') {
@@ -1040,11 +1071,33 @@ export default async function handler(req, res) {
       const reqUser = searchParams.get('username') || (req.query && req.query.username) || '';
 
       if (!targetFarmId && reqUser) {
-        const cleanUser = reqUser.trim().toLowerCase();
-        const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
-        if (uRes.rows.length > 0) {
-          const v = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
-          if (v && v.farmId) targetFarmId = String(v.farmId).trim();
+        const cleanUser = reqUser.trim();
+        try {
+          const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser.toLowerCase()]);
+          if (uRes.rows.length > 0) {
+            const v = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
+            if (v && v.farmId) targetFarmId = String(v.farmId).trim();
+          }
+        } catch (dbErr) {
+          // ignore db error, proceed to fallback lookup
+        }
+
+        // Fallback to sfl.world API to resolve username to farm_id
+        if (!targetFarmId) {
+          try {
+            const sflWorldRes = await fetch(`https://sfl.world/api/v1/land/info/username/${encodeURIComponent(cleanUser)}`, {
+              headers: { 'Accept': 'application/json' },
+              signal: AbortSignal.timeout(6000)
+            });
+            if (sflWorldRes.ok) {
+              const sflWorldData = await sflWorldRes.json();
+              if (sflWorldData && sflWorldData.farm_id) {
+                targetFarmId = String(sflWorldData.farm_id).trim();
+              }
+            }
+          } catch (lookupErr) {
+            // ignore lookup error and fallback
+          }
         }
       }
 

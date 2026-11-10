@@ -261,6 +261,7 @@
           <button id="itemsBurnedBtn" onclick="openItemsBurnedModal()" class="btn btn-wood" title="View all items burned/consumed throughout the chapter and their SFL cost">🔥 ITEMS BURNED</button>
           <button id="chapterLogsBtn" onclick="openChapterLogsModal()" class="btn btn-wood">📜 CHAPTER LOGS</button>
           <button id="guideBtn" onclick="toggleGuideModal()" class="btn btn-wood">📖 GUIDE</button>
+          <button id="leaderboardBtn" onclick="openLeaderboardModal()" class="btn btn-wood" title="View Sunflower Land Ticket Leaderboard and search ranks">🏆 LEADERBOARD</button>
         </div>
       </div>
     </div>
@@ -270,6 +271,7 @@
       <div id="boxTotalTickets" class="stat-box" tabindex="0">
         <div class="tooltip" id="tooltipTotal">
           <div>📊 <strong>TOTAL BREAKDOWN:</strong></div>
+          <div id="tipTotalRank">🏆 Global Rank: #--</div>
           <div id="tipTotalDeliv">📦 Deliveries: 0 Tix</div>
           <div id="tipTotalBounty">📜 Bounties: 0 Tix</div>
           <div id="tipTotalAnimalBounty">🐄 Animal Bounties: 0 Tix</div>
@@ -279,7 +281,10 @@
           <div id="tipTotalBoosts">⚡ Boosts: 0.000 SFL</div>
         </div>
         <div class="stat-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-          <span>🏆 TOTAL TICKETS</span>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span>🏆 TOTAL TICKETS</span>
+            <span id="statTotalRankBadge" class="stat-rank-badge" style="display:none; font-size:11px; font-weight:900; background:#FFF3E0; color:#E65100; border:1px solid #FFB74D; border-radius:10px; padding:1px 7px; cursor:pointer;" onclick="openLeaderboardModal()" title="Global Rank">#--</span>
+          </div>
           <span class="stat-breakdown-hint">ℹ️ See breakdown</span>
         </div>
         <div id="statTotalTickets" class="stat-val" style="display:flex; align-items:center; gap:6px;">
@@ -287,6 +292,7 @@
           <span>0 Tickets</span>
         </div>
         <div class="stat-footer">
+          <div style="display:flex; justify-content:space-between; align-items:center;"><span>Global Rank:</span><strong id="statTotalRank" style="color:#E65100; cursor:pointer;" onclick="openLeaderboardModal()" title="Click to view Leaderboard">#--</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Vault Cost:</span><strong id="statTotalCost" style="color:#8B4513;">0.000 SFL</strong></div>
           <div style="display:flex; justify-content:space-between;"><span>Avg / Tix:</span><strong id="statTotalRatio" style="color:#2E7D32;">0.000 SFL</strong></div>
         </div>
@@ -431,7 +437,6 @@
         <div class="chart-tab-group">
           <button id="tabWeeklyProgression" class="chart-tab-btn active" onclick="switchChartTab('progression')">📈 WEEKLY PROGRESSION</button>
           <button id="tabWeeklyProjections" class="chart-tab-btn" onclick="switchChartTab('projections')">🔮 TICKET PROJECTIONS</button>
-          <button id="tabLeaderboard" class="chart-tab-btn" onclick="switchChartTab('leaderboard')">🏆 LEADERBOARD</button>
         </div>
         <div id="chartHeaderRight" class="chart-legend">
           <span id="chartSummaryBadge" class="badge chapter-week-badge chart-week-badge">0 WEEKS RECORDED</span>
@@ -446,9 +451,6 @@
       </div>
       <div class="projections-container" id="weeklyProjectionsContainer" style="display:none;">
         <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading projections...</p>
-      </div>
-      <div class="leaderboard-container" id="leaderboardContainer" style="display:none;">
-        <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading leaderboard...</p>
       </div>
     </div>
   </div>
@@ -539,6 +541,23 @@
             • <strong>📜 CHAPTER LOGS:</strong> Open chapter logs in the header to view or lock historical season snapshots (e.g. Chapter 15 Ascension Age).<br/>
             • <strong>🔥 ITEMS BURNED:</strong> View the total quantity and SFL costs of all crops, food, and animal items consumed throughout the season.
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD MODAL -->
+  <div id="leaderboardModal" class="modal">
+    <div class="modal-content" style="max-width: 880px; max-height: 92vh; width: 95%;">
+      <div class="modal-header">
+        <h3 id="leaderboardModalTitle" style="font-size: 14px; font-weight: 900; color: #FFF8DC; display: flex; align-items: center; gap: 6px;">
+          <span>🏆</span> <span>SUNFLOWER LAND TICKET LEADERBOARD</span>
+        </h3>
+        <button onclick="closeLeaderboardModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
+      </div>
+      <div class="modal-body" id="leaderboardModalBody" style="display: flex; flex-direction: column; gap: 14px; max-height: 80vh; overflow-y: auto; padding: 14px;">
+        <div id="leaderboardContainer" class="leaderboard-container">
+          <p style="color:#8C7853; font-size:12px; font-weight:bold; text-align:center; padding: 12px 0;">Loading leaderboard...</p>
         </div>
       </div>
     </div>
