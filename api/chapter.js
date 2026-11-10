@@ -1146,8 +1146,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Farm ID is required.' });
     }
 
-    // Parallelize live prices and farm data fetching for maximum performance
-    const [priceMap, sflFetchResult] = await Promise.all([
+    // Parallelize live prices, farm data, and leaderboard rank fetching for maximum performance
+    const [priceMap, sflFetchResult, userRank] = await Promise.all([
       getLivePriceMap(),
       (async () => {
         const sflHeaders = {
@@ -1196,6 +1196,54 @@ export default async function handler(req, res) {
           }
         }
         return { sflRes, usedBackupKey, apiKeyInvalid };
+      })(),
+      (async () => {
+        try {
+          const lbHeaders = {
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://sunflower-land.com/',
+            'Origin': 'https://sunflower-land.com'
+          };
+          if (apiKey) lbHeaders['x-api-key'] = apiKey;
+          else if (process.env.SFL_API_KEY) lbHeaders['x-api-key'] = process.env.SFL_API_KEY;
+
+          let lbRes = await fetch(`https://api.sunflower-land.com/community/data?type=ticketLeaderboard&farmId=${encodeURIComponent(farmId)}&limit=1`, {
+            headers: lbHeaders,
+            signal: AbortSignal.timeout(8000)
+          });
+          if (!lbRes.ok && process.env.SFL_API_KEY && lbHeaders['x-api-key'] !== process.env.SFL_API_KEY) {
+            lbHeaders['x-api-key'] = process.env.SFL_API_KEY;
+            lbRes = await fetch(`https://api.sunflower-land.com/community/data?type=ticketLeaderboard&farmId=${encodeURIComponent(farmId)}&limit=1`, {
+              headers: lbHeaders,
+              signal: AbortSignal.timeout(8000)
+            });
+          }
+          if (lbRes.ok) {
+            const lbJson = await lbRes.json();
+            const lbData = lbJson.data || lbJson;
+            const details = Array.isArray(lbData.farmRankingDetails) ? lbData.farmRankingDetails : [];
+            const topList = Array.isArray(lbData.topTen) ? lbData.topTen : (Array.isArray(lbData.ranking) ? lbData.ranking : []);
+            let found = details.find(r => String(r.farmId) === String(farmId));
+            if (!found && topList.length > 0) {
+              const idx = topList.findIndex(r => String(r.farmId) === String(farmId));
+              if (idx !== -1) found = { ...topList[idx], rank: topList[idx].rank || (idx + 1) };
+            }
+            if (found && found.rank) {
+              return {
+                rank: found.rank,
+                count: found.count,
+                id: found.id || '',
+                experience: found.experience || 0,
+                ascensionLevel: found.ascensionLevel || 0,
+                farmId: found.farmId
+              };
+            }
+          }
+        } catch (lbErr) {
+          console.warn('Leaderboard rank fetch warning:', lbErr.message);
+        }
+        return null;
       })()
     ]);
 
@@ -1389,6 +1437,7 @@ export default async function handler(req, res) {
       archiveDeliveries: userVault ? (userVault.archiveDeliveries || []) : [],
       bounties: userVault?.weeks?.[curWkId]?.bounties || parsed.activeBounties,
       chores: userVault?.weeks?.[curWkId]?.chores || parsed.choresList,
+      userRank: userRank || null,
       vaultData: userVault
     });
   } catch (err) {
