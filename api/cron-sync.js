@@ -274,14 +274,21 @@ export default async function handler(req, res) {
         chapter_title VARCHAR(255) NOT NULL,
         archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         is_locked BOOLEAN DEFAULT FALSE,
-        summary_data JSONB NOT NULL,
-        CONSTRAINT unique_user_chapter UNIQUE (username, chapter_id)
+        summary_data JSONB NOT NULL
       );
-
-      ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
-
-      CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);
     `);
+
+    try {
+      await client.query(`ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;`);
+    } catch (e) {}
+
+    try {
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);`);
+    } catch (e) {}
+
+    try {
+      await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_chapter_logs_user_chapter ON user_chapter_logs (username, chapter_id);`);
+    } catch (e) {}
 
     const vaultsRes = await client.query('SELECT username, vault_data FROM user_vaults');
 
@@ -488,7 +495,7 @@ export default async function handler(req, res) {
               const isManual = Boolean(d.isManual);
               const isStacked = Boolean(d.isStacked);
               const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDateStr);
-              const itemWeekId = getMondayBasedWeekId(compDate || d.weekId);
+              const itemWeekId = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(compDate || d.weekId));
               d.weekId = itemWeekId;
               const isToday = !isManual && (compDate === snapshotDate || compDate === todayDateStr);
 
@@ -751,6 +758,7 @@ export default async function handler(req, res) {
             }
 
             Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
+              if (wkKey === currentWeekMonday) return;
               const normWeek = getMondayBasedWeekId(wk.weekId || wkKey);
               if (!weeklyProgMap.has(normWeek)) weeklyProgMap.set(normWeek, { baseTickets: 0, tickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
               const stat = weeklyProgMap.get(normWeek);

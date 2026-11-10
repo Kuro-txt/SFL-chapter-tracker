@@ -782,12 +782,15 @@ export function openChapterLogsModal() {
   const activeCostEl = document.getElementById('chapterActiveCost');
   const activeRatioEl = document.getElementById('chapterActiveRatio');
 
-  if (activeTixEl && tixEl) {
-    const rawNum = (tixEl.textContent || '0').replace(/[^0-9]/g, '');
+  if (activeTixEl) {
+    let rawNum = tixEl ? (tixEl.textContent || '0').replace(/[^0-9]/g, '') : '';
+    if (!rawNum && state.currentVaultData && state.currentVaultData.cumulativeTickets) {
+      rawNum = String(state.currentVaultData.cumulativeTickets.totalTickets || 0);
+    }
     activeTixEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:3px;">${renderChapterTicketIcon(14)} <span>${(parseInt(rawNum, 10) || 0).toLocaleString()} Tix</span></span>`;
   }
-  if (activeCostEl && costEl) activeCostEl.textContent = costEl.textContent || '0.000 SFL';
-  if (activeRatioEl && ratioEl) activeRatioEl.textContent = ratioEl.textContent || '0.000 SFL/Tix';
+  if (activeCostEl) activeCostEl.textContent = (costEl && costEl.textContent) ? costEl.textContent : '0.000 SFL';
+  if (activeRatioEl) activeRatioEl.textContent = (ratioEl && ratioEl.textContent) ? ratioEl.textContent : '0.000 SFL/Tix';
 
   renderChapterLogsList();
   modal.classList.add('show');

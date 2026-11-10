@@ -185,21 +185,7 @@ export function getMondayBasedWeekId(d) {
   const utcDate = date.getUTCDate();
   const diffToMonday = (day === 0 ? -6 : 1 - day);
   date.setUTCDate(utcDate + diffToMonday);
-  const weekId = date.toISOString().split('T')[0];
-
-  // In Chapter 16, Week 1 begins on Sunday Nov 08 (8-day week: Nov 08 to Nov 15)
-  // Standard Monday grouping assigns Sunday Nov 08 to 2026-11-02.
-  // Re-map Sunday Nov 08 to Week 1's Monday key (2026-11-09).
-  if (weekId === '2026-11-02') {
-    let isNov8 = false;
-    if (typeof d === 'string' && d.startsWith('2026-11-08')) isNov8 = true;
-    else if (d instanceof Date && d.toISOString().startsWith('2026-11-08')) isNov8 = true;
-    else if (typeof d === 'number' && new Date(d < 1e11 ? d * 1000 : d).toISOString().startsWith('2026-11-08')) isNov8 = true;
-    else if (!d && new Date().toISOString().startsWith('2026-11-08')) isNov8 = true;
-    if (isNov8) return '2026-11-09';
-  }
-
-  return weekId;
+  return date.toISOString().split('T')[0];
 }
 
 export function isAnimalBounty(item) {

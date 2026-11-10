@@ -10,7 +10,8 @@ import {
   getDeliveryRecords, 
   getMondayBasedWeekId,
   isAnimalBounty,
-  hasWeeklyBountiesBonus
+  hasWeeklyBountiesBonus,
+  getActiveBoostsCostSfl
 } from './state.js';
 
 export function getStoredChapterLogs() {
@@ -169,7 +170,7 @@ export function renderChapterLogsList() {
       const isManualOrEdited = isManuallyEditedOrAdded(d);
       const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
       const dDate = d.completedAt || d.completedDate;
-      const dWeek = getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? getMondayBasedWeekId() : null));
+      const dWeek = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? getMondayBasedWeekId() : null)));
       if (!liveWeekUnitsMap.has(dWeek)) {
         liveWeekUnitsMap.set(dWeek, { vipUnits: 0, boostUnits: 0, manualTickets: 0 });
       }
@@ -390,7 +391,7 @@ export async function snapshotCurrentChapter() {
     delivCost += cost;
 
     const dDate = d.completedAt || d.completedDate;
-    const dWeek = getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? curWeekMonday : null));
+    const dWeek = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(d.weekId || dDate || (d.checkedToday ? curWeekMonday : null)));
     if (!weeklyMap.has(dWeek)) {
       weeklyMap.set(dWeek, { baseTickets: 0, cost: 0, boostUnits: 0, vipUnits: 0, manualTickets: 0 });
     }
@@ -599,6 +600,10 @@ export async function snapshotCurrentChapter() {
       if (data.success && Array.isArray(data.chapterLogs)) {
         if (!state.currentVaultData) state.currentVaultData = {};
         state.currentVaultData.chapterLogs = data.chapterLogs;
+        await saveStoredChapterLogs(data.chapterLogs);
+        renderChapterLogsList();
+        alert(`✔ Successfully archived "${newEntry.chapterTitle}" (~1.2 KB summary) to your cloud vault!`);
+        return;
       }
     } catch (e) {
       console.warn('Cloud chapter logs save notice:', e.message);

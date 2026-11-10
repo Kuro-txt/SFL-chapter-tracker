@@ -218,19 +218,7 @@ export function getMondayBasedWeekId(d) {
   const utcDate = date.getUTCDate();
   const diffToMonday = (day === 0 ? -6 : 1 - day);
   date.setUTCDate(utcDate + diffToMonday);
-  const weekId = date.toISOString().split('T')[0];
-
-  // In Chapter 16, Week 1 begins on Sunday Nov 08 (8-day week: Nov 08 to Nov 15)
-  if (weekId === '2026-11-02') {
-    let isNov8 = false;
-    if (typeof d === 'string' && d.startsWith('2026-11-08')) isNov8 = true;
-    else if (d instanceof Date && d.toISOString().startsWith('2026-11-08')) isNov8 = true;
-    else if (typeof d === 'number' && new Date(d < 1e11 ? d * 1000 : d).toISOString().startsWith('2026-11-08')) isNov8 = true;
-    else if (!d && new Date().toISOString().startsWith('2026-11-08')) isNov8 = true;
-    if (isNov8) return '2026-11-09';
-  }
-
-  return weekId;
+  return date.toISOString().split('T')[0];
 }
 
 export const KNOWN_DOUBLE_DELIVERY_DATES = [
@@ -546,7 +534,7 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
       if (completionTime) {
         const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
         // Ignore tasks completed prior to Chapter 16 (Nov 2, 2026 UTC)
-        const CHAPTER_16_START_MS = new Date('2026-11-08T00:00:00.000Z').getTime();
+        const CHAPTER_16_START_MS = new Date('2026-11-02T00:00:00.000Z').getTime();
         if (ms < CHAPTER_16_START_MS) {
           return;
         }
@@ -609,7 +597,7 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
         if (completionTime) {
           const ms = completionTime < 1e11 ? completionTime * 1000 : completionTime;
           // Ignore chores completed prior to Chapter 16 (Nov 2, 2026 UTC)
-          const CHAPTER_16_START_MS = new Date('2026-11-08T00:00:00.000Z').getTime();
+          const CHAPTER_16_START_MS = new Date('2026-11-02T00:00:00.000Z').getTime();
           if (ms < CHAPTER_16_START_MS) {
             return;
           }

@@ -113,14 +113,22 @@ async function ensureTableExists(client) {
         chapter_title VARCHAR(255) NOT NULL,
         archived_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         is_locked BOOLEAN DEFAULT FALSE,
-        summary_data JSONB NOT NULL,
-        CONSTRAINT unique_user_chapter UNIQUE (username, chapter_id)
+        summary_data JSONB NOT NULL
       );
-
-      ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;
-
-      CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);
     `);
+
+    try {
+      await client.query(`ALTER TABLE user_chapter_logs ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT FALSE;`);
+    } catch (e) {}
+
+    try {
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_user_chapter_logs_user ON user_chapter_logs (username);`);
+    } catch (e) {}
+
+    try {
+      await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_chapter_logs_user_chapter ON user_chapter_logs (username, chapter_id);`);
+    } catch (e) {}
+
     isSchemaInitialized = true;
   } catch (err) {
     console.warn('ensureTableExists warning:', err.message);
@@ -371,6 +379,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             const completedCountIndex = prevStat.deliveryCount + 1;
             const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
             const orderToComplete = vault.archiveDeliveries[staleActiveIdx];
+            const origWeek = orderToComplete.weekId || (orderToComplete.activeSince ? getMondayBasedWeekId(orderToComplete.activeSince) : compWeek);
             orderToComplete.id = targetOrderId;
             orderToComplete.completed = true;
             orderToComplete.checked = true;
@@ -378,7 +387,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             orderToComplete.status = 'completed';
             orderToComplete.completedAt = completionTime;
             orderToComplete.completedDate = compDate;
-            orderToComplete.weekId = compWeek;
+            orderToComplete.weekId = origWeek;
             orderToComplete.deliveryCountAtCreation = completedCountIndex;
             orderToComplete.isStacked = false; // Primary / oldest delivery: eligible for 2x double delivery bonus
             staleCompletedNpcs.add(npcClean);
@@ -402,6 +411,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
             if (existingPendingIdx !== -1) {
               const orderToComplete = vault.archiveDeliveries[existingPendingIdx];
+              const origWeek = orderToComplete.weekId || (orderToComplete.activeSince ? getMondayBasedWeekId(orderToComplete.activeSince) : compWeek);
               orderToComplete.id = targetOrderId;
               orderToComplete.completed = true;
               orderToComplete.checked = true;
@@ -409,7 +419,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
               orderToComplete.status = 'completed';
               orderToComplete.completedAt = completionTime;
               orderToComplete.completedDate = compDate;
-              orderToComplete.weekId = compWeek;
+              orderToComplete.weekId = origWeek;
               orderToComplete.deliveryCountAtCreation = completedCountIndex;
               orderToComplete.isStacked = isStacked;
             } else {
@@ -707,7 +717,7 @@ export default async function handler(req, res) {
         : userRes.rows[0].vault_data;
 
       const chapterLogsRes = await client.query(
-        'SELECT chapter_id, chapter_title, archived_at, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
+        'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
         [cleanUser]
       );
       vaultData.chapterLogs = chapterLogsRes.rows.map(r => {
@@ -717,7 +727,8 @@ export default async function handler(req, res) {
           chapterId: r.chapter_id,
           chapterTitle: r.chapter_title,
           chapterEndDate: parsed?.chapterEndDate || (r.chapter_id === 'ascension_age_15' ? '2026-11-02T00:00:00.000Z' : undefined),
-          archivedAt: r.archived_at
+          archivedAt: r.archived_at,
+          isLocked: Boolean(r.is_locked)
         };
       });
 
@@ -787,6 +798,22 @@ export default async function handler(req, res) {
           [JSON.stringify(vaultData), cleanUser]
         );
       }
+
+      const chapterLogsRes = await client.query(
+        'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
+        [cleanUser]
+      );
+      vaultData.chapterLogs = chapterLogsRes.rows.map(r => {
+        const parsed = typeof r.summary_data === 'string' ? JSON.parse(r.summary_data) : r.summary_data;
+        return {
+          ...parsed,
+          chapterId: r.chapter_id,
+          chapterTitle: r.chapter_title,
+          chapterEndDate: parsed?.chapterEndDate || (r.chapter_id === 'ascension_age_15' ? '2026-11-02T00:00:00.000Z' : undefined),
+          archivedAt: r.archived_at,
+          isLocked: Boolean(r.is_locked)
+        };
+      });
 
       return res.status(200).json({ success: true, vaultData });
     }

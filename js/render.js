@@ -213,7 +213,7 @@ export function recalculateAll() {
       const isManual = Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_'));
       const isStacked = Boolean(d.isStacked);
       const compDate = resolveDateStr(d) || todayUtcStr;
-      const itemWeekMonday = getMondayBasedWeekId(compDate || d.weekId);
+      const itemWeekMonday = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(compDate || d.weekId));
       d.weekId = itemWeekMonday;
       const isToday = !isManual && isDeliveryDoneToday(d);
 

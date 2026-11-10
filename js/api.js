@@ -503,7 +503,7 @@ export async function saveProgressToCloudKV(silent = false) {
       const isManual = Boolean(d.isManual) || (typeof d.id === 'string' && d.id.startsWith('manual_'));
       const isStacked = Boolean(d.isStacked);
       const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : todayDate);
-      const itemWeekId = getMondayBasedWeekId(compDate || d.weekId);
+      const itemWeekId = (d.weekId && d.weekId < '2026-11-09') ? d.weekId : (d.activeSince && d.activeSince <= '2026-11-08' ? '2026-11-02' : getMondayBasedWeekId(compDate || d.weekId));
       d.weekId = itemWeekId;
       const isToday = !isManual && (compDate === todayDate);
 
