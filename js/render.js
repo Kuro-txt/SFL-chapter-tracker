@@ -28,15 +28,23 @@ export function switchChartTab(tab) {
   _activeChartTab = tab;
   const chartEl = document.getElementById('weeklyChartContainer');
   const projEl = document.getElementById('weeklyProjectionsContainer');
+  const leadEl = document.getElementById('leaderboardContainer');
   const progBtn = document.getElementById('tabWeeklyProgression');
   const projBtn = document.getElementById('tabWeeklyProjections');
+  const leadBtn = document.getElementById('tabLeaderboard');
   const legendEl = document.getElementById('chartHeaderRight');
 
   if (chartEl) chartEl.style.display = tab === 'progression' ? '' : 'none';
   if (projEl) projEl.style.display = tab === 'projections' ? '' : 'none';
+  if (leadEl) leadEl.style.display = tab === 'leaderboard' ? '' : 'none';
   if (progBtn) progBtn.classList.toggle('active', tab === 'progression');
   if (projBtn) projBtn.classList.toggle('active', tab === 'projections');
+  if (leadBtn) leadBtn.classList.toggle('active', tab === 'leaderboard');
   if (legendEl) legendEl.style.display = tab === 'progression' ? '' : 'none';
+
+  if (tab === 'leaderboard' && typeof window !== 'undefined' && typeof window.loadLeaderboardData === 'function') {
+    window.loadLeaderboardData();
+  }
 }
 
 export function recalculateAll() {

@@ -50,6 +50,12 @@ import {
   hideChartTooltip,
   switchChartTab
 } from './render.js';
+import {
+  setLeaderboardLimit,
+  setLeaderboardFilter,
+  loadLeaderboardData,
+  renderLeaderboard
+} from './leaderboard.js';
 import { 
   setProjectionScenario,
   togglePlannerNpc,
@@ -175,6 +181,10 @@ window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.handleCategorySortChange = handleCategorySortChange;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
 window.switchChartTab = switchChartTab;
+window.setLeaderboardLimit = setLeaderboardLimit;
+window.setLeaderboardFilter = setLeaderboardFilter;
+window.loadLeaderboardData = loadLeaderboardData;
+window.renderLeaderboard = renderLeaderboard;
 window.setProjectionScenario = setProjectionScenario;
 window.togglePlannerNpc = togglePlannerNpc;
 window.setPlannerNpcDays = setPlannerNpcDays;
