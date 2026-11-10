@@ -694,7 +694,8 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
   assert.strictEqual(categorizeBounty({ name: 'Cluky Doll' }), 'dolls');
   assert.strictEqual(categorizeBounty({ name: 'Cosmo Doll' }), 'dolls');
   assert.strictEqual(categorizeBounty({ name: 'Giant Apple' }), 'fruits');
-  assert.strictEqual(categorizeBounty({ name: 'Dewberry' }), 'fruits');
+  assert.strictEqual(categorizeBounty({ name: 'Giant Orange' }), 'fruits');
+  assert.strictEqual(categorizeBounty({ name: 'Giant Banana' }), 'fruits');
   assert.strictEqual(categorizeBounty({ name: 'Chicken (Lvl 2)' }), 'animals');
   assert.strictEqual(categorizeBounty({ name: 'Cow #1' }), 'animals');
   assert.strictEqual(categorizeBounty({ name: 'Sheep' }), 'animals');
@@ -702,8 +703,11 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
   // 3. Test canonical cards calculation (24 regular bounties + 19 animal bounties = 43)
   const defaultCards = getActiveBountyCards();
   assert.strictEqual(defaultCards.cards.length, 43, `Canonical roster must be exactly 43 cards, got ${defaultCards.cards.length}`);
-  assert.strictEqual(defaultCards.regularCount, 24, 'Must have 24 regular bounties (5 flowers + 5 fish + 3 crustaceans + 3 obsidian + 3 exotic + 5 dolls)');
+  assert.strictEqual(defaultCards.regularCount, 24, 'Must have 24 regular bounties (5 flowers + 5 fish + 3 crustaceans + 3 obsidian + 3 giant fruits + 5 dolls)');
   assert.strictEqual(defaultCards.animalCount, 19, 'Must have 19 animal bounties (8 chicken + 4 cow + 4 sheep + 3 pig)');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_apple').tickets, 17, 'Giant Apple must yield 17 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_banana').tickets, 33, 'Giant Banana must yield 33 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_orange').tickets, 10, 'Giant Orange must yield 10 tix');
   assert.ok(defaultCards.regularTix > 0, 'Regular tickets sum must be positive');
   assert.ok(defaultCards.animalTix > 0, 'Animal tickets sum must be positive');
   assert.strictEqual(defaultCards.allRegularDone, true, 'Default state should have all regular done');
@@ -713,8 +717,8 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
     bounties: [
       { id: '101', name: 'Red Pansy', baseTickets: 7 },
       { id: '102', name: 'Octopus', baseTickets: 25 },
-      { id: '103', name: 'Chicken (Lvl 1)', baseTickets: 6, level: 1 },
-      { id: '104', name: 'Cow (Lvl 2)', baseTickets: 11, level: 2 }
+      { id: '103', name: 'Chicken (Lvl 3+)', baseTickets: 6, level: 3 },
+      { id: '104', name: 'Cow (Lvl 4+)', baseTickets: 11, level: 4 }
     ]
   };
   const liveCards = getActiveBountyCards();
@@ -723,20 +727,20 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
   assert.strictEqual(liveCards.animalCount, 19, '19 animal bounties');
   assert.strictEqual(liveCards.cards.find(c => c.id === 'b_red_pansy').tickets, 7);
   assert.strictEqual(liveCards.cards.find(c => c.id === 'b_octopus').tickets, 25);
-  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_chicken_lvl1').tickets, 6);
-  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_cow_lvl2').tickets, 11);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_chicken_lvl3').tickets, 6);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_cow_lvl4').tickets, 11);
   state.globalData = {}; // Clean up
 
   // 5. Test calculation with partial tile selection
   const partialTiles = {
     b_red_pansy: true,
     b_yellow_cosmos: false,
-    b_chicken_lvl1: true,
-    b_cow_lvl1: false
+    b_chicken_lvl3: true,
+    b_cow_lvl4: false
   };
   const partialCards = getActiveBountyCards(partialTiles);
   assert.strictEqual(partialCards.cards.find(c => c.id === 'b_yellow_cosmos').isActive, false);
-  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_cow_lvl1').isActive, false);
+  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_cow_lvl4').isActive, false);
   assert.strictEqual(partialCards.allRegularDone, false, 'Should be false when yellow cosmos is unticked');
 
   // 6. Test plan calculation with tiles in config
@@ -747,7 +751,7 @@ console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Tic
       animalEnabled: true,
       tiles: {
         b_red_pansy: true,
-        b_chicken_lvl1: true
+        b_chicken_lvl3: true
       }
     }
   };
@@ -785,6 +789,7 @@ console.log('Test 20: Verifying Bounty Board Game-Like Interface HTML Structure 
   assert.ok(mockContainer.innerHTML.includes('Flower Bounties'), 'Must render Flower Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Fish Bounties'), 'Must render Fish Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Crustacean Bounties'), 'Must render Crustacean Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Giant Fruit Bounties'), 'Must render Giant Fruit Bounties plaque');
   assert.ok(mockContainer.innerHTML.includes('Animal Bounties'), 'Must render Animal Bounties plaque');
 
   // Assert tiles, checkmarks and ribbons

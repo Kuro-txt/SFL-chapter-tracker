@@ -140,7 +140,7 @@ export function renderAnimalIcon(nameOrItem, size = 22) {
     return renderItemIcon('cow', '🐄', size);
   }
   if (clean.includes('pig')) {
-    return renderItemIcon('pig', '🐷', size);
+    return renderItemIcon('cow', '🐄', size);
   }
   return renderItemIcon('cow', '🐄', size);
 }

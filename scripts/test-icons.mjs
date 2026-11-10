@@ -147,12 +147,12 @@ for (const it of formerlyGreenItems) {
 }
 console.log(`✅ TEST 8 PASSED: All ${formerlyGreenItems.length} formerly green items resolve to clean transparent sprites in public/icons/ without NFT frames.`);
 
-// Test 9: Animal Bounty Sprites (Chicken, Cow, Sheep, Pig)
+// Test 9: Animal Bounty Sprites (Chicken, Cow, Sheep, Pig - Pig uses Cow sprite)
 const animalTests = [
   { input: 'Chicken Lvl 1', expectedFile: 'chicken.png' },
   { input: 'Cow Level 2', expectedFile: 'cow.webp' },
   { input: 'Sheep (Lvl 3)', expectedFile: 'sheep.webp' },
-  { input: 'Pig (Lvl 1)', expectedFile: 'pig_plush.webp' }
+  { input: 'Pig (Lvl 1)', expectedFile: 'cow.webp' }
 ];
 
 for (const a of animalTests) {
@@ -161,6 +161,6 @@ for (const a of animalTests) {
     throw new Error(`Expected ${a.input} to render ${a.expectedFile}, got: ${html}`);
   }
 }
-console.log('✅ TEST 9 PASSED: Animal bounties correctly render official chicken, cow, sheep, and pig sprites.');
+console.log('✅ TEST 9 PASSED: Animal bounties correctly render official chicken, cow, sheep, and pig (cows sprite) sprites.');
 
 console.log('\n🎉 ALL 9 ICON & AVATAR TESTS PASSED WITH 100% SUCCESS!');

@@ -115,10 +115,10 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     { id: 'b_celestine',      name: 'Celestine',       category: 'obsidian',    defaultTickets: 10, icon: 'celestine' },
     { id: 'b_lunara',         name: 'Lunara',          category: 'obsidian',    defaultTickets: 12, icon: 'lunara' },
 
-    // 5. Exotic Fruits (🍍) - 3 bounties
-    { id: 'b_giant_apple',    name: 'Giant Apple',     category: 'fruits',      defaultTickets: 10, icon: 'giant_apple' },
-    { id: 'b_giant_banana',   name: 'Giant Banana',    category: 'fruits',      defaultTickets: 10, icon: 'giant_banana' },
-    { id: 'b_dewberry',       name: 'Dewberry',        category: 'fruits',      defaultTickets: 8,  icon: 'dewberry' },
+    // 5. Giant Fruits (🍎) - 3 bounties
+    { id: 'b_giant_apple',    name: 'Giant Apple',     category: 'fruits',      defaultTickets: 17, icon: 'giant_apple' },
+    { id: 'b_giant_banana',   name: 'Giant Banana',    category: 'fruits',      defaultTickets: 33, icon: 'giant_banana' },
+    { id: 'b_giant_orange',   name: 'Giant Orange',    category: 'fruits',      defaultTickets: 10, icon: 'giant_orange' },
 
     // 6. Dolls (🧸) - 5 bounties
     { id: 'b_cluky_doll',     name: 'Cluky Doll',      category: 'dolls',       defaultTickets: 12, icon: 'cluky_doll' },
@@ -128,28 +128,28 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     { id: 'b_frosty_doll',    name: 'Frosty Doll',     category: 'dolls',       defaultTickets: 12, icon: 'frosty_doll' },
 
     // 7. Animal Bounties (🐔) - 19 bounties (8 Chicken, 4 Cow, 4 Sheep, 3 Pig)
-    { id: 'b_chicken_lvl1',   name: 'Chicken (Lvl 1)', category: 'animals',     defaultTickets: 5,  icon: 'chicken', level: 1 },
-    { id: 'b_chicken_lvl2',   name: 'Chicken (Lvl 2)', category: 'animals',     defaultTickets: 6,  icon: 'chicken', level: 2 },
-    { id: 'b_chicken_lvl3',   name: 'Chicken (Lvl 3)', category: 'animals',     defaultTickets: 6,  icon: 'chicken', level: 3 },
-    { id: 'b_chicken_lvl4',   name: 'Chicken (Lvl 4)', category: 'animals',     defaultTickets: 7,  icon: 'chicken', level: 4 },
-    { id: 'b_chicken_lvl5',   name: 'Chicken (Lvl 5)', category: 'animals',     defaultTickets: 7,  icon: 'chicken', level: 5 },
-    { id: 'b_chicken_lvl6',   name: 'Chicken (Lvl 6)', category: 'animals',     defaultTickets: 8,  icon: 'chicken', level: 6 },
-    { id: 'b_chicken_lvl7',   name: 'Chicken (Lvl 7)', category: 'animals',     defaultTickets: 8,  icon: 'chicken', level: 7 },
-    { id: 'b_chicken_lvl8',   name: 'Chicken (Lvl 8)', category: 'animals',     defaultTickets: 9,  icon: 'chicken', level: 8 },
+    { id: 'b_chicken_lvl3',   name: 'Chicken (Lvl 3+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '3+' },
+    { id: 'b_chicken_lvl5',   name: 'Chicken (Lvl 5+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '5+' },
+    { id: 'b_chicken_lvl6',   name: 'Chicken (Lvl 6+)',    category: 'animals', defaultTickets: 5, icon: 'chicken', level: '6+' },
+    { id: 'b_chicken_lvl8_1', name: 'Chicken (Lvl 8+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
+    { id: 'b_chicken_lvl8_2', name: 'Chicken (Lvl 8+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
+    { id: 'b_chicken_lvl9_1', name: 'Chicken (Lvl 9+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
+    { id: 'b_chicken_lvl9_2', name: 'Chicken (Lvl 9+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
+    { id: 'b_chicken_lvl13',  name: 'Chicken (Lvl 13+)',   category: 'animals', defaultTickets: 6, icon: 'chicken', level: '13+' },
 
-    { id: 'b_cow_lvl1',       name: 'Cow (Lvl 1)',     category: 'animals',     defaultTickets: 8,  icon: 'cow',     level: 1 },
-    { id: 'b_cow_lvl2',       name: 'Cow (Lvl 2)',     category: 'animals',     defaultTickets: 9,  icon: 'cow',     level: 2 },
-    { id: 'b_cow_lvl3',       name: 'Cow (Lvl 3)',     category: 'animals',     defaultTickets: 10, icon: 'cow',     level: 3 },
-    { id: 'b_cow_lvl4',       name: 'Cow (Lvl 4)',     category: 'animals',     defaultTickets: 12, icon: 'cow',     level: 4 },
+    { id: 'b_cow_lvl4',       name: 'Cow (Lvl 4+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '4+' },
+    { id: 'b_cow_lvl6',       name: 'Cow (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
+    { id: 'b_cow_lvl8',       name: 'Cow (Lvl 8+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '8+' },
+    { id: 'b_cow_lvl12',      name: 'Cow (Lvl 12+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '12+' },
 
-    { id: 'b_sheep_lvl1',     name: 'Sheep (Lvl 1)',   category: 'animals',     defaultTickets: 6,  icon: 'sheep',   level: 1 },
-    { id: 'b_sheep_lvl2',     name: 'Sheep (Lvl 2)',   category: 'animals',     defaultTickets: 7,  icon: 'sheep',   level: 2 },
-    { id: 'b_sheep_lvl3',     name: 'Sheep (Lvl 3)',   category: 'animals',     defaultTickets: 8,  icon: 'sheep',   level: 3 },
-    { id: 'b_sheep_lvl4',     name: 'Sheep (Lvl 4)',   category: 'animals',     defaultTickets: 10, icon: 'sheep',   level: 4 },
+    { id: 'b_sheep_lvl5',     name: 'Sheep (Lvl 5+)',      category: 'animals', defaultTickets: 5, icon: 'sheep',   level: '5+' },
+    { id: 'b_sheep_lvl6',     name: 'Sheep (Lvl 6+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '6+' },
+    { id: 'b_sheep_lvl8',     name: 'Sheep (Lvl 8+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '8+' },
+    { id: 'b_sheep_lvl12',    name: 'Sheep (Lvl 12+)',     category: 'animals', defaultTickets: 7, icon: 'sheep',   level: '12+' },
 
-    { id: 'b_pig_lvl1',       name: 'Pig (Lvl 1)',     category: 'animals',     defaultTickets: 8,  icon: 'pig',     level: 1 },
-    { id: 'b_pig_lvl2',       name: 'Pig (Lvl 2)',     category: 'animals',     defaultTickets: 10, icon: 'pig',     level: 2 },
-    { id: 'b_pig_lvl3',       name: 'Pig (Lvl 3)',     category: 'animals',     defaultTickets: 12, icon: 'pig',     level: 3 }
+    { id: 'b_pig_lvl3',       name: 'Pig (Lvl 3+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '3+' },
+    { id: 'b_pig_lvl6',       name: 'Pig (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
+    { id: 'b_pig_lvl14',      name: 'Pig (Lvl 14+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '14+' }
   ];
 
   export const BOUNTY_CATEGORIES = [
@@ -157,7 +157,7 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     { key: 'fishes',      title: 'Fish Bounties' },
     { key: 'crustaceans', title: 'Crustacean Bounties' },
     { key: 'obsidian',    title: 'Obsidian Bounties' },
-    { key: 'fruits',      title: 'Exotic Fruit Bounties' },
+    { key: 'fruits',      title: 'Giant Fruit Bounties' },
     { key: 'dolls',       title: 'Doll Bounties' },
     { key: 'animals',     title: 'Animal Bounties' }
   ];
@@ -214,6 +214,8 @@ export const DEFAULT_PLANNER_TEMPLATE = {
       if (liveBounties.length > 0) {
         liveMatch = liveBounties.find(b => {
           if (!b) return false;
+          const bId = b.id || b.name;
+          if (matchedLiveKeys.has(bId)) return false;
           const bKey = norm(b.name || b.item || '');
           if (card.category === 'animals') {
             const kindMatch = (cKey.includes('chicken') && bKey.includes('chicken')) ||
@@ -226,7 +228,8 @@ export const DEFAULT_PLANNER_TEMPLATE = {
                 const m = bKey.match(/(?:lvl|level|#|\()\s*(\d+)/i);
                 if (m) bLevel = parseInt(m[1], 10);
               }
-              if (bLevel && Number(bLevel) === Number(card.level)) return true;
+              const cardNum = parseInt(String(card.level).replace(/[^0-9]/g, ''), 10);
+              if (bLevel && Number(bLevel) === cardNum) return true;
             }
             return bKey === cKey || bKey.includes(cKey) || cKey.includes(bKey);
           }
@@ -1504,8 +1507,10 @@ export function renderProjectionsView(proj) {
           title="${escapeAttr(card.name)}: ${card.tickets} Tickets (Click to toggle)"
           onclick="togglePlannerBountyTile('${card.id}', '${currentWeekVal}')"
         >
-          <div class="bounty-tile-checkmark">✔</div>
-          ${card.level ? `<div class="bounty-tile-level">Lv.${card.level}</div>` : ''}
+          <div class="bounty-tile-checkmark ${card.category === 'animals' ? 'sold-badge' : ''}">
+            ${card.category === 'animals' ? 'Sold' : '✔'}
+          </div>
+          ${card.level ? `<div class="bounty-tile-level">Lvl ${card.level.toString().replace(/^lvl\s*/i, '')}</div>` : ''}
           <div class="bounty-tile-icon-wrap">
             ${iconHtml}
           </div>
@@ -1572,7 +1577,7 @@ export function renderProjectionsView(proj) {
           <span class="bounty-bonus-desc">
             ${isBonusActive
               ? '🎉 Full Board Bonus Active! +100 Tickets awarded for completing all regular Plaza bounties.'
-              : 'Complete all regular Plaza bounties (Flowers, Crustaceans, Obsidian, Fish, Dolls & Fruits) to unlock +100 Bonus Tickets! Click to manually toggle.'}
+              : 'Complete all regular Plaza bounties (Flowers, Fish, Crustaceans, Obsidian, Giant Fruits & Dolls) to unlock +100 Bonus Tickets! Click to manually toggle.'}
           </span>
         </div>
         <div class="bounty-bonus-reward">
