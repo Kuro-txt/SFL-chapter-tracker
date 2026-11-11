@@ -273,7 +273,7 @@ export function recalculateAll() {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-      const finalTix = isManual ? baseTix : (baseTix + vipBonus + boostCount);
+      const finalTix = isManual ? baseTix : (baseTix + boostCount);
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -336,7 +336,7 @@ export function recalculateAll() {
       if (isTicked(b)) {
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
         const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-        const finalTix = isManual ? baseTix : (baseTix + vipBonus + boostCount);
+        const finalTix = isManual ? baseTix : (baseTix + boostCount);
         if (finalTix <= 0) return;
 
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);

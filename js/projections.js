@@ -261,9 +261,7 @@ export const DEFAULT_PLANNER_TEMPLATE = {
         const liveBase = liveMatch.baseTickets !== undefined
           ? liveMatch.baseTickets
           : (liveMatch.tickets !== undefined ? liveMatch.tickets : card.defaultTickets);
-        const vipBonus = (typeof getActiveVipBonus === 'function') ? getActiveVipBonus() : 0;
-        const boostCount = (typeof getActiveBoostCount === 'function') ? getActiveBoostCount() : 0;
-        card.tickets = Math.max(card.defaultTickets, liveBase + vipBonus + boostCount);
+        card.tickets = Math.max(card.defaultTickets, liveBase);
       } else {
         card.tickets = card.defaultTickets;
       }
