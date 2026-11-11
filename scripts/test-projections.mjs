@@ -426,17 +426,18 @@ console.log('Test 13: Verifying direct ticket inputs & Week 9 Auction overrides.
   Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
   template.logins.enabled = false;
 
-  // Case A: Default values
-  // Bounties: 12 (regular) + 16 (animals) = 28 tix
+  // Case A: Default values (Canonical 46 Bounties + 100 Board Bonus)
+  // Bounties: 462 (regular) + 112 (animals) + 100 (bonus) = 674 tix
   // Chores: 7 tix
   const planDefault = calculateWeekNpcPlan('template', template, {}, 0, 0);
-  assert.strictEqual(planDefault.bountiesTix, 28);
+  assert.strictEqual(planDefault.bountiesTix, 674);
   assert.strictEqual(planDefault.choresTix, 7);
-  assert.strictEqual(planDefault.totalWeeklyTix, 35);
+  assert.strictEqual(planDefault.totalWeeklyTix, 681);
 
   // Case B: User enters custom amounts in template
   template.bounties.regularTix = 25;
   template.bounties.animalTix = 30;
+  template.bounties.boardBonusEnabled = false;
   template.chores.choresTix = 14;
   const planCustom = calculateWeekNpcPlan('template', template, {}, 0, 0);
   assert.strictEqual(planCustom.bountiesTix, 55, `Expected 55 bounties tix, got ${planCustom.bountiesTix}`);

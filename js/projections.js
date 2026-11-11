@@ -68,10 +68,10 @@ export const DEFAULT_PLANNER_TEMPLATE = {
   },
   bounties: {
     regularEnabled: true,
-    regularTix: 12,
-    boardBonusEnabled: false, // +100 Tix Board Bonus
+    regularTix: 462,
+    boardBonusEnabled: true, // +100 Tix Board Bonus
     animalEnabled: true,
-    animalTix: 16
+    animalTix: 112
   },
   chores: {
     enabled: true,
@@ -206,7 +206,7 @@ export const DEFAULT_PLANNER_TEMPLATE = {
       ? state.globalData.bounties
       : [];
 
-    const matchedLiveKeys = new Set();
+    const matchedLiveIndices = new Set();
 
     function norm(str) {
       return String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -219,10 +219,8 @@ export const DEFAULT_PLANNER_TEMPLATE = {
 
       let liveMatch = null;
       if (liveBounties.length > 0) {
-        liveMatch = liveBounties.find(b => {
-          if (!b) return false;
-          const bId = b.id || b.name;
-          if (matchedLiveKeys.has(bId)) return false;
+        const liveIdx = liveBounties.findIndex((b, idx) => {
+          if (!b || matchedLiveIndices.has(idx)) return false;
           const bKey = norm(b.name || b.item || '');
           if (card.category === 'animals') {
             const kindMatch = (cKey.includes('chicken') && bKey.includes('chicken')) ||
@@ -252,10 +250,14 @@ export const DEFAULT_PLANNER_TEMPLATE = {
           }
           return bKey === cKey || bKey.includes(cKey) || cKey.includes(bKey);
         });
+
+        if (liveIdx !== -1) {
+          liveMatch = liveBounties[liveIdx];
+          matchedLiveIndices.add(liveIdx);
+        }
       }
 
       if (liveMatch) {
-        matchedLiveKeys.add(liveMatch.id || liveMatch.name);
         card.tickets = liveMatch.baseTickets !== undefined
           ? liveMatch.baseTickets
           : (liveMatch.tickets !== undefined ? liveMatch.tickets : card.defaultTickets);
@@ -498,15 +500,16 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     const isAllRegular = tilesData.allRegularDone;
     boardBonusTix = (bConf.boardBonusEnabled !== undefined ? Boolean(bConf.boardBonusEnabled) : isAllRegular) ? 100 : 0;
   } else {
+    const defaultData = getActiveBountyCards();
     regularTixVal = (bConf.regularTix !== undefined && bConf.regularTix !== null && bConf.regularTix !== '')
       ? Math.max(0, parseInt(bConf.regularTix, 10) || 0)
-      : (bConf.regularCount && bConf.regularAvgTix ? bConf.regularCount * bConf.regularAvgTix : 12);
+      : defaultData.regularTix;
 
     animalTixVal = (bConf.animalTix !== undefined && bConf.animalTix !== null && bConf.animalTix !== '')
       ? Math.max(0, parseInt(bConf.animalTix, 10) || 0)
-      : (bConf.animalCount && bConf.animalAvgTix ? bConf.animalCount * bConf.animalAvgTix : 16);
+      : defaultData.animalTix;
 
-    boardBonusTix = bConf.boardBonusEnabled ? 100 : 0;
+    boardBonusTix = (bConf.boardBonusEnabled !== undefined ? Boolean(bConf.boardBonusEnabled) : defaultData.allRegularDone) ? 100 : 0;
   }
 
   const regularBountiesTix = bConf.regularEnabled !== false ? regularTixVal : 0;
