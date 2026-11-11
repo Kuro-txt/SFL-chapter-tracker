@@ -577,7 +577,8 @@ export async function saveProgressToCloudKV(silent = false) {
     if (isTicked) {
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const isFixedTix = isManual || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+      const yieldAmt = isFixedTix ? (b.userTickets !== undefined ? b.userTickets : base) : (base + boostCount);
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
@@ -615,7 +616,9 @@ export async function saveProgressToCloudKV(silent = false) {
     (wk.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
         const isMan = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-        calculatedTotalTickets += (isMan ? (b.baseTickets || b.tickets || 0) : ((b.baseTickets || b.tickets || 0) + boostCount));
+        const isFixedTix = isMan || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+        const bBase = b.userTickets !== undefined ? b.userTickets : (b.baseTickets || b.tickets || 0);
+        calculatedTotalTickets += (isFixedTix ? bBase : (bBase + boostCount));
         calculatedTotalCost += (b.itemsCost || b.cost || 0);
       }
     });

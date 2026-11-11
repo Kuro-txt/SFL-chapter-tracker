@@ -273,7 +273,8 @@ export function recalculateAll() {
     if (isTicked(b)) {
       const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-      const finalTix = isManual ? baseTix : (baseTix + boostCount);
+      const isFixedTix = isManual || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+      const finalTix = isFixedTix ? (b.userTickets !== undefined ? b.userTickets : baseTix) : (baseTix + boostCount);
       if (finalTix <= 0) return;
 
       const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -336,7 +337,8 @@ export function recalculateAll() {
       if (isTicked(b)) {
         const baseTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
         const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-        const finalTix = isManual ? baseTix : (baseTix + boostCount);
+        const isFixedTix = isManual || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+        const finalTix = isFixedTix ? (b.userTickets !== undefined ? b.userTickets : baseTix) : (baseTix + boostCount);
         if (finalTix <= 0) return;
 
         const bCost = b.cost !== undefined ? b.cost : (b.itemsCost || 0);
@@ -410,9 +412,11 @@ export function recalculateAll() {
     return !isDone;
   }).length;
 
+  const isAnimalBoardComplete = animalBounties.length > 0 && activeAnimalBountiesCount === 0;
+
   setElemText('deliveriesCount', `${activeDeliveriesCount} Orders`);
   setElemText('bountiesCount', isCurBoardComplete ? '✨ ALL DONE (+100)!' : `${activeBountiesCount} Items`);
-  setElemText('animalBountiesCount', `${activeAnimalBountiesCount} Animals`);
+  setElemText('animalBountiesCount', isAnimalBoardComplete ? '✨ ALL SOLD!' : `${activeAnimalBountiesCount} Animals`);
   setElemText('choresCount', `${activeChoresCount} Tasks`);
 
   // Main Metric Counters

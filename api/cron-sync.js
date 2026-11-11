@@ -764,11 +764,14 @@ export default async function handler(req, res) {
               const stat = weeklyProgMap.get(normWeek);
               (wk.bounties || []).forEach(b => {
                 if (b.completed || b.checked) {
-                  const bTix = (b.baseTickets || b.tickets || 0);
+                  const isMan = isManualBountyHelper(b);
+                  const isCustom = Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+                  const isFixedTix = isMan || isCustom;
+                  const bTix = b.userTickets !== undefined ? b.userTickets : (b.baseTickets || b.tickets || 0);
                   stat.tickets += bTix;
                   stat.baseTickets += bTix;
                   stat.cost += (b.itemsCost || b.cost || 0);
-                  if (isManualBountyHelper(b)) {
+                  if (isFixedTix) {
                     stat.manualTickets += bTix;
                   } else {
                     stat.boostUnits += 1;

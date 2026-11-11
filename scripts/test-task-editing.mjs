@@ -3,22 +3,33 @@ import { preserveCustomTaskEdits, reconcileDeliveriesWithNpcs } from '../api/cha
 
 console.log('🧪 Starting Automated Tests for Task Editing (Cost All + Animal Bounty Tickets Only)...');
 
-// Test 1: Animal Bounty Ticket Yield Reverse-Derivation
-console.log('\nTest 1: Verifying Animal Bounty Ticket Yield Derivation...');
+// Test 1: Direct Custom Ticket Setting on Animal Bounties
+console.log('\nTest 1: Verifying Animal Bounty Custom Ticket Preservation & Display...');
 {
-  const boostCount = 1; // 1 Boost active
-  const desiredYield = 3;
-  const isMan = false;
+  const desiredYield = 1; // e.g. Chicken Lvl 3 edited to 1 ticket
+  const target = {
+    id: 'bounty_chicken_3',
+    name: 'Chicken (Lvl 3+)',
+    level: 3,
+    baseTickets: 4,
+    tickets: 4
+  };
 
-  const derivedBase = isMan ? desiredYield : Math.max(0, desiredYield - boostCount); // 3 - 1 = 2
-  assert.strictEqual(derivedBase, 2, 'Derived base for animal bounty should be 2');
+  // User enters desired yield directly
+  target.baseTickets = desiredYield;
+  target.tickets = desiredYield;
+  target.userTickets = desiredYield;
+  target.isCustomTickets = true;
 
-  const recomputedYield = derivedBase + boostCount;
-  assert.strictEqual(recomputedYield, 3, 'Recomputed yield with 1 boost should be 3');
+  assert.strictEqual(target.userTickets, 1, 'Custom ticket yield must be directly stored as 1');
+  assert.strictEqual(target.baseTickets, 1, 'Base tickets must not be subtracted to 0 by active boosts');
+  assert.strictEqual(target.isCustomTickets, true, 'isCustomTickets flag must be set');
 
-  // When boost is 0 (Chapter Logs NONE)
-  assert.strictEqual(derivedBase + 0, 2, 'Yield under 0 boost should scale to 2');
-  console.log('✅ TEST 1 PASSED: Animal bounty ticket derivation verified.');
+  // Display computation for fixed tickets
+  const isFixedTix = Boolean(target.isManual) || Boolean(target.isCustomTickets) || target.userTickets !== undefined;
+  const displayTix = isFixedTix ? (target.userTickets !== undefined ? target.userTickets : target.baseTickets) : target.baseTickets;
+  assert.strictEqual(displayTix, 1, 'Display tickets must evaluate to 1, never resetting to 0');
+  console.log('✅ TEST 1 PASSED: Animal bounty custom ticket yield stored and displayed cleanly.');
 }
 
 // Test 2: Cost Editing Preservation on Deliveries

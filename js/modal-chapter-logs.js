@@ -478,11 +478,13 @@ export async function snapshotCurrentChapter() {
     (wkVal.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
         const isMan = isManTask(b);
-        const t = b.baseTickets || b.tickets || 0;
+        const isCustom = Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+        const isFixedTix = isMan || isCustom;
+        const t = b.userTickets !== undefined ? b.userTickets : (b.baseTickets || b.tickets || 0);
         const c = b.itemsCost || b.cost || 0;
         stat.baseTickets += t;
         stat.cost += c;
-        if (isMan) {
+        if (isFixedTix) {
           stat.manualTickets += t;
         } else {
           stat.boostUnits += 1;

@@ -238,7 +238,11 @@ export function renderColumnHistoryModalList() {
 
       const baseTix = item.baseTickets !== undefined ? item.baseTickets : (item.tickets || 1);
       const isManual = Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
-      const finalTix = computeYield(baseTix, isChore, isManual);
+      const isCustom = Boolean(item.isCustomTickets) || item.userTickets !== undefined;
+      const isFixedTix = isManual || isCustom;
+      const finalTix = isFixedTix
+        ? (item.userTickets !== undefined ? item.userTickets : baseTix)
+        : computeYield(baseTix, isChore, false);
 
       const lvl = resolveAnimalLevel(item);
       const isChecked = item.checked !== undefined ? item.checked : Boolean(item.completed);
@@ -248,6 +252,7 @@ export function renderColumnHistoryModalList() {
       if (!isChecked && !isSkipped) return;
 
       records.push({
+        source,
         weekId,
         id: item.id ? String(item.id) : '',
         itemIdx: idx,
@@ -262,7 +267,7 @@ export function renderColumnHistoryModalList() {
         date: dateDisplay,
         weekNum: itemWeekNum,
         isManual,
-        isCustomTickets: Boolean(item.isCustomTickets) || item.userTickets !== undefined,
+        isCustomTickets: isCustom,
         isCustomCost: Boolean(item.isCustomCost) || item.userCost !== undefined
       });
     });
@@ -668,13 +673,46 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdxOrId, va
     }
 
     const desiredYield = Math.max(0, parseInt(val, 10) || 0);
-    const boostCount = getActiveBoostCount();
-    const derivedBase = isMan ? desiredYield : Math.max(0, desiredYield - boostCount);
 
-    target.baseTickets = derivedBase;
-    target.tickets = derivedBase;
-    target.userTickets = derivedBase;
+    target.baseTickets = desiredYield;
+    target.tickets = desiredYield;
+    target.userTickets = desiredYield;
     target.isCustomTickets = true;
+
+    // Cross-sync: Ensure both state.globalData and cloudHistory.weeks stay synchronized for this item
+    const matchFn = (item) => {
+      if (!item) return false;
+      if (target.id && item.id) return String(item.id) === String(target.id);
+      if (isChore) {
+        return (item.npc || '').toLowerCase() === (target.npc || '').toLowerCase() &&
+               (item.task || item.name || '').toLowerCase() === (target.task || target.name || '').toLowerCase();
+      }
+      return (item.name || '').toLowerCase() === (target.name || '').toLowerCase() &&
+             Number(item.level || 0) === Number(target.level || 0);
+    };
+
+    const liveList = isChore ? (state.globalData.chores || []) : (state.globalData.bounties || []);
+    liveList.forEach(item => {
+      if (matchFn(item)) {
+        item.baseTickets = desiredYield;
+        item.tickets = desiredYield;
+        item.userTickets = desiredYield;
+        item.isCustomTickets = true;
+      }
+    });
+
+    const weeks = state.globalData?.cloudHistory?.weeks || {};
+    Object.values(weeks).forEach(wk => {
+      const wkList = isChore ? (wk.chores || []) : (wk.bounties || []);
+      wkList.forEach(item => {
+        if (matchFn(item)) {
+          item.baseTickets = desiredYield;
+          item.tickets = desiredYield;
+          item.userTickets = desiredYield;
+          item.isCustomTickets = true;
+        }
+      });
+    });
   }
 
   // Ensure current week bounties and chores in cloudHistory.weeks are always synchronized

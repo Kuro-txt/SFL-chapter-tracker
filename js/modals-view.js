@@ -125,7 +125,8 @@ export function openWeekBreakdownModal(mondayKey, label) {
     const isAnimal = isAnimalBounty(b);
     const isDone = isTicked(b);
     const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-    const tix = computeYield(base, false, Boolean(b.isManual));
+    const isFixedTix = Boolean(b.isManual) || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+    const tix = isFixedTix ? (b.userTickets !== undefined ? b.userTickets : base) : computeYield(base, false, false);
     const cost = b.itemsCost || b.cost || 0;
 
     if (isAnimal) {
@@ -515,7 +516,8 @@ export function openCategorySummaryModal(cat) {
       const isDone = b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
       const isTicked = isDone;
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
-      const finalTickets = computeYield(base, false, Boolean(b.isManual));
+      const isFixedTix = Boolean(b.isManual) || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+      const finalTickets = isFixedTix ? (b.userTickets !== undefined ? b.userTickets : base) : computeYield(base, false, false);
       const itemCost = b.itemsCost || b.cost || 0;
       const numRatio = finalTickets > 0 ? (itemCost / finalTickets) : 0;
       const itemRatio = finalTickets > 0 ? formatSFL(numRatio) : "0.000";
