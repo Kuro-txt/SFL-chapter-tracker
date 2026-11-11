@@ -206,7 +206,7 @@ export const SFL_RECIPES = {
   "cabbage cake": { "cabbage": 90, "wheat": 10, "egg": 3 },
   "carrot cake": { "carrot": 120, "wheat": 10, "egg": 3 },
   "cauliflower cake": { "cauliflower": 60, "wheat": 10, "egg": 3 },
-  "cornbread": { "wheat": 5, "corn": 15, "egg": 1 },
+  "cornbread": { "wheat": 5, "corn": 15, "egg": 10 },
   "eggplant cake": { "eggplant": 30, "wheat": 10, "egg": 3 },
   "honey cake": { "honey": 10, "wheat": 10, "egg": 2 },
   "lemon cheese cake": { "lemon": 20, "cheese": 5, "egg": 4 },
