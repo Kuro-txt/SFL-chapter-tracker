@@ -137,11 +137,8 @@ export async function saveBoostCostsFromModal() {
   } catch (e) {}
 
   try {
-    const { saveProgressToCloudKV, showToast } = await import('./api.js');
+    const { saveProgressToCloudKV } = await import('./api.js');
     saveProgressToCloudKV(true);
-    if (typeof showToast === 'function') {
-      showToast('⚡ Boost costs updated and saved!', 'success');
-    }
   } catch (e) {}
 }
 

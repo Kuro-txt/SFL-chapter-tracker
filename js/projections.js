@@ -5,9 +5,9 @@
  * Hank Chores (with VIP +2 buff), and Daily Logins.
  */
 
-import { renderChapterTicketIcon } from './item-icons.js';
+import { renderItemIcon, renderChapterTicketIcon, renderAnimalIcon } from './item-icons.js';
 import { getNpcIconHtml } from './npc-icons.js';
-import { getActiveVipBonus, getActiveBoostCount } from './state.js';
+import { getActiveVipBonus, getActiveBoostCount, state, isAnimalBounty } from './state.js';
 
 /** Chapter constants — must match render.js */
 const TOTAL_CHAPTER_WEEKS = 12;
@@ -68,10 +68,10 @@ export const DEFAULT_PLANNER_TEMPLATE = {
   },
   bounties: {
     regularEnabled: true,
-    regularTix: 12,
-    boardBonusEnabled: false, // +100 Tix Board Bonus
+    regularTix: 462,
+    boardBonusEnabled: true, // +100 Tix Board Bonus
     animalEnabled: true,
-    animalTix: 16
+    animalTix: 112
   },
   chores: {
     enabled: true,
@@ -79,11 +79,239 @@ export const DEFAULT_PLANNER_TEMPLATE = {
     trackEnabled: true,
     trackTix: 0
   },
-  logins: {
-    enabled: true,
-    daysPerWeek: 7
+    logins: {
+      enabled: true,
+      daysPerWeek: 7
+    }
+  };
+
+  /**
+   * Canonical Sunflower Land In-Game Bounty Roster with authentic sprites and default ticket yields.
+   * Total: 27 Regular (5 Flowers, 5 Fishes, 3 Crustaceans, 3 Obsidian, 3 Giant Fruits, 3 Exotic Crops, 5 Dolls)
+   *      + 19 Animal (8 Chicken, 4 Cow, 4 Sheep, 3 Pig) = 46 Bounties.
+   */
+  export const DEFAULT_ROSTER_BOUNTIES = [
+    // 1. Flowers (🌸) - 5 bounties
+    { id: 'b_blue_daffodil',    name: 'Blue Daffodil',     category: 'flowers',     defaultTickets: 10, icon: 'blue_daffodil' },
+    { id: 'b_purple_edelweiss', name: 'Purple Edelweiss',  category: 'flowers',     defaultTickets: 6,  icon: 'purple_edelweiss' },
+    { id: 'b_purple_pansy',     name: 'Purple Pansy',      category: 'flowers',     defaultTickets: 6,  icon: 'purple_pansy' },
+    { id: 'b_white_carnation',  name: 'White Carnation',   category: 'flowers',     defaultTickets: 9,  icon: 'white_carnation' },
+    { id: 'b_yellow_daffodil',  name: 'Yellow Daffodil',   category: 'flowers',     defaultTickets: 10, icon: 'yellow_daffodil' },
+
+    // 2. Fishes (🐟) - 5 bounties
+    { id: 'b_weakfish',         name: 'Weakfish',          category: 'fishes',      defaultTickets: 5,  icon: 'weakfish' },
+    { id: 'b_angelfish',        name: 'Angelfish',         category: 'fishes',      defaultTickets: 5,  icon: 'angelfish' },
+    { id: 'b_blowfish',         name: 'Blowfish',          category: 'fishes',      defaultTickets: 8,  icon: 'blowfish' },
+    { id: 'b_coelacanth',       name: 'Coelacanth',        category: 'fishes',      defaultTickets: 13, icon: 'coelacanth' },
+    { id: 'b_football_fish',    name: 'Football fish',     category: 'fishes',      defaultTickets: 5,  icon: 'football_fish' },
+
+    // 3. Crustaceans (🦀) - 3 bounties
+    { id: 'b_oyster',           name: 'Oyster',            category: 'crustaceans', defaultTickets: 15, icon: 'oyster' },
+    { id: 'b_octopus',          name: 'Octopus',           category: 'crustaceans', defaultTickets: 23, icon: 'octopus' },
+    { id: 'b_hermit_crab',      name: 'Hermit Crab',       category: 'crustaceans', defaultTickets: 11, icon: 'hermit_crab' },
+
+    // 4. Obsidian Bounties (🪨) - 3 bounties
+    { id: 'b_obsidian_33',      name: 'Obsidian',          category: 'obsidian',    defaultTickets: 33, icon: 'obsidian' },
+    { id: 'b_obsidian_43_1',    name: 'Obsidian',          category: 'obsidian',    defaultTickets: 43, icon: 'obsidian' },
+    { id: 'b_obsidian_43_2',    name: 'Obsidian',          category: 'obsidian',    defaultTickets: 43, icon: 'obsidian' },
+
+    // 5. Giant Fruits (🍎) - 3 bounties
+    { id: 'b_giant_apple',      name: 'Giant Apple',       category: 'fruits',      defaultTickets: 17, icon: 'giant_apple' },
+    { id: 'b_giant_banana',     name: 'Giant Banana',      category: 'fruits',      defaultTickets: 33, icon: 'giant_banana' },
+    { id: 'b_giant_orange',     name: 'Giant Orange',      category: 'fruits',      defaultTickets: 10, icon: 'giant_orange' },
+
+    // 6. Exotic Crops (🥔) - 3 bounties
+    { id: 'b_adirondack_potato',    name: 'Adirondack Potato',     category: 'crops', defaultTickets: 9, icon: 'adirondack_potato' },
+    { id: 'b_warty_goblin_pumpkin', name: 'Warty Goblin Pumpkin', category: 'crops', defaultTickets: 7, icon: 'warty_goblin_pumpkin' },
+    { id: 'b_white_carrot',         name: 'White Carrot',         category: 'crops', defaultTickets: 6, icon: 'white_carrot' },
+
+    // 7. Dolls (🧸) - 5 bounties
+    { id: 'b_ember_doll',       name: 'Ember Doll',        category: 'dolls',       defaultTickets: 33, icon: 'ember_doll' },
+    { id: 'b_lumber_doll',      name: 'Lumber Doll',       category: 'dolls',       defaultTickets: 18, icon: 'lumber_doll' },
+    { id: 'b_bloom_doll',       name: 'Bloom Doll',        category: 'dolls',       defaultTickets: 33, icon: 'bloom_doll' },
+    { id: 'b_lunar_doll',       name: 'Lunar Doll',        category: 'dolls',       defaultTickets: 28, icon: 'lunar_doll' },
+    { id: 'b_moo_doll',         name: 'Moo Doll',          category: 'dolls',       defaultTickets: 23, icon: 'moo_doll' },
+
+    // 8. Animal Bounties (🐔) - 19 bounties (8 Chicken, 4 Cow, 4 Sheep, 3 Pig)
+    { id: 'b_chicken_lvl3',     name: 'Chicken (Lvl 3+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '3+' },
+    { id: 'b_chicken_lvl5',     name: 'Chicken (Lvl 5+)',    category: 'animals', defaultTickets: 4, icon: 'chicken', level: '5+' },
+    { id: 'b_chicken_lvl6',     name: 'Chicken (Lvl 6+)',    category: 'animals', defaultTickets: 5, icon: 'chicken', level: '6+' },
+    { id: 'b_chicken_lvl8_1',   name: 'Chicken (Lvl 8+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
+    { id: 'b_chicken_lvl8_2',   name: 'Chicken (Lvl 8+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '8+' },
+    { id: 'b_chicken_lvl9_1',   name: 'Chicken (Lvl 9+ #1)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
+    { id: 'b_chicken_lvl9_2',   name: 'Chicken (Lvl 9+ #2)', category: 'animals', defaultTickets: 5, icon: 'chicken', level: '9+' },
+    { id: 'b_chicken_lvl13',    name: 'Chicken (Lvl 13+)',   category: 'animals', defaultTickets: 6, icon: 'chicken', level: '13+' },
+
+    { id: 'b_cow_lvl4',         name: 'Cow (Lvl 4+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '4+' },
+    { id: 'b_cow_lvl6',         name: 'Cow (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
+    { id: 'b_cow_lvl8',         name: 'Cow (Lvl 8+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '8+' },
+    { id: 'b_cow_lvl12',        name: 'Cow (Lvl 12+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '12+' },
+
+    { id: 'b_sheep_lvl5',       name: 'Sheep (Lvl 5+)',      category: 'animals', defaultTickets: 5, icon: 'sheep',   level: '5+' },
+    { id: 'b_sheep_lvl6',       name: 'Sheep (Lvl 6+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '6+' },
+    { id: 'b_sheep_lvl8',       name: 'Sheep (Lvl 8+)',      category: 'animals', defaultTickets: 6, icon: 'sheep',   level: '8+' },
+    { id: 'b_sheep_lvl12',      name: 'Sheep (Lvl 12+)',     category: 'animals', defaultTickets: 7, icon: 'sheep',   level: '12+' },
+
+    { id: 'b_pig_lvl3',         name: 'Pig (Lvl 3+)',        category: 'animals', defaultTickets: 6, icon: 'cow',     level: '3+' },
+    { id: 'b_pig_lvl6',         name: 'Pig (Lvl 6+)',        category: 'animals', defaultTickets: 7, icon: 'cow',     level: '6+' },
+    { id: 'b_pig_lvl14',        name: 'Pig (Lvl 14+)',       category: 'animals', defaultTickets: 8, icon: 'cow',     level: '14+' }
+  ];
+
+  export const BOUNTY_CATEGORIES = [
+    { key: 'flowers',     title: 'Flower Bounties' },
+    { key: 'fishes',      title: 'Fish Bounties' },
+    { key: 'crustaceans', title: 'Crustacean Bounties' },
+    { key: 'obsidian',    title: 'Obsidian Bounties' },
+    { key: 'fruits',      title: 'Giant Fruit Bounties' },
+    { key: 'crops',       title: 'Exotic Crop Bounties' },
+    { key: 'dolls',       title: 'Doll Bounties' },
+    { key: 'animals',     title: 'Animal Bounties' }
+  ];
+
+  /**
+   * Classifies any bounty into one of the 7 official Sunflower Land bounty categories.
+   */
+  export function categorizeBounty(bounty) {
+    if (isAnimalBounty(bounty)) return 'animals';
+
+    const raw = typeof bounty === 'string' ? bounty : (bounty?.name || bounty?.item || '');
+    const s = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (s.includes('doll') || s.includes('plushie')) return 'dolls';
+    if (s.includes('obsidian') || s.includes('celestine') || s.includes('lunara') || s.includes('sunstone') || s.includes('crimstone') || s.includes('gem')) return 'obsidian';
+    if (s.includes('crab') || s.includes('shell') || s.includes('cockle') || s.includes('octopus') || s.includes('lobster') || s.includes('shrimp') || s.includes('clam') || s.includes('oyster') || s.includes('nautilus') || s.includes('isopod')) return 'crustaceans';
+
+    const fishKeywords = [
+      'snapper', 'knifejaw', 'butterflyfish', 'blowfish', 'anchovy', 'marlin', 'tuna', 'carp', 'ray',
+      'bass', 'shark', 'tilapia', 'halibut', 'clownfish', 'mackerel', 'moray', 'eel', 'squid',
+      'jellyfish', 'angler', 'seahorse', 'sunfish', 'weakfish', 'walleye', 'coelacanth', 'copia',
+      'footballfish', 'mahimahi', 'muskellunge', 'napoleonfish', 'porcupinefish', 'rockblackfish',
+      'sawshark', 'surgeonfish', 'trout', 'zebraturkeyfish', 'fish'
+    ];
+    if (fishKeywords.some(k => s.includes(k))) return 'fishes';
+
+    if (s.includes('giant') || s.includes('dewberry') || s.includes('duskberry') || s.includes('apple') || s.includes('banana') || s.includes('orange') || s.includes('blueberry') || s.includes('lemon') || s.includes('fruit')) return 'fruits';
+    if (s.includes('potato') || s.includes('pumpkin') || s.includes('carrot') || s.includes('crop') || s.includes('corn') || s.includes('radish') || s.includes('wheat') || s.includes('cabbage') || s.includes('beetroot') || s.includes('cauliflower') || s.includes('parsnip') || s.includes('eggplant') || s.includes('soybean') || s.includes('sunflower')) return 'crops';
+
+    return 'flowers';
   }
-};
+
+  /**
+   * Returns complete list of cards with live ticket amounts derived from state.globalData.bounties
+   * and active/checked state from tilesState.
+   */
+  export function getActiveBountyCards(tilesState = null) {
+    const cards = [];
+    const liveBounties = (typeof state !== 'undefined' && Array.isArray(state?.globalData?.bounties) && state.globalData.bounties.length > 0)
+      ? state.globalData.bounties
+      : [];
+
+    const matchedLiveIndices = new Set();
+
+    function norm(str) {
+      return String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    // 1. Process Canonical 46-Card Roster
+    DEFAULT_ROSTER_BOUNTIES.forEach(item => {
+      const card = { ...item };
+      const cKey = norm(card.name);
+
+      let liveMatch = null;
+      if (liveBounties.length > 0) {
+        const liveIdx = liveBounties.findIndex((b, idx) => {
+          if (!b || matchedLiveIndices.has(idx)) return false;
+          const bKey = norm(b.name || b.item || '');
+          if (card.category === 'animals') {
+            const kindMatch = (cKey.includes('chicken') && bKey.includes('chicken')) ||
+                              (cKey.includes('cow') && (bKey.includes('cow') || bKey.includes('bull'))) ||
+                              (cKey.includes('sheep') && bKey.includes('sheep')) ||
+                              (cKey.includes('pig') && bKey.includes('pig'));
+            if (kindMatch && card.level !== undefined) {
+              let bLevel = b.level;
+              if (!bLevel) {
+                const m = bKey.match(/(?:lvl|level|#|\()\s*(\d+)/i);
+                if (m) bLevel = parseInt(m[1], 10);
+              }
+              const cardNum = parseInt(String(card.level).replace(/[^0-9]/g, ''), 10);
+              if (bLevel && Number(bLevel) === cardNum) return true;
+            }
+            return false;
+          }
+          if (card.category === 'obsidian') {
+            if (bKey.includes('obsidian')) {
+              const bTix = b.baseTickets !== undefined ? b.baseTickets : b.tickets;
+              if (bTix !== undefined && Number(bTix) === Number(card.defaultTickets)) {
+                return true;
+              }
+              return true;
+            }
+            return false;
+          }
+          return bKey === cKey || bKey.includes(cKey) || cKey.includes(bKey);
+        });
+
+        if (liveIdx !== -1) {
+          liveMatch = liveBounties[liveIdx];
+          matchedLiveIndices.add(liveIdx);
+        }
+      }
+
+      if (liveMatch) {
+        const liveBase = liveMatch.baseTickets !== undefined
+          ? liveMatch.baseTickets
+          : (liveMatch.tickets !== undefined ? liveMatch.tickets : card.defaultTickets);
+        card.tickets = Math.max(card.defaultTickets, liveBase);
+      } else {
+        card.tickets = card.defaultTickets;
+      }
+
+      if (tilesState && typeof tilesState === 'object' && Object.keys(tilesState).length > 0) {
+        card.isActive = Boolean(tilesState[card.id]);
+      } else {
+        card.isActive = true;
+      }
+
+      cards.push(card);
+    });
+
+    // Aggregation
+    let regularTix = 0;
+    let animalTix = 0;
+    let regularCount = 0;
+    let activeRegularCount = 0;
+    let animalCount = 0;
+    let activeAnimalCount = 0;
+
+    cards.forEach(c => {
+      if (c.category === 'animals') {
+        animalCount++;
+        if (c.isActive) {
+          animalTix += c.tickets;
+          activeAnimalCount++;
+        }
+      } else {
+        regularCount++;
+        if (c.isActive) {
+          regularTix += c.tickets;
+          activeRegularCount++;
+        }
+      }
+    });
+
+    const allRegularDone = regularCount > 0 && activeRegularCount === regularCount;
+
+    return {
+      cards,
+      regularTix,
+      animalTix,
+      regularCount,
+      activeRegularCount,
+      animalCount,
+      activeAnimalCount,
+      allRegularDone
+    };
+  }
 
 /** Module state */
 let _activeScenario = 'planned'; // 'planned' | 'current' | 'target' | 'custom'
@@ -112,6 +340,9 @@ export function getPlannerTemplate() {
       bounties.animalTix = (bounties.animalCount && bounties.animalAvgTix)
         ? (bounties.animalCount * bounties.animalAvgTix)
         : DEFAULT_PLANNER_TEMPLATE.bounties.animalTix;
+    }
+    if (parsed.bounties && parsed.bounties.tiles) {
+      bounties.tiles = { ...parsed.bounties.tiles };
     }
     const chores = { ...DEFAULT_PLANNER_TEMPLATE.chores, ...(parsed.chores || {}) };
     if (chores.choresTix === undefined) {
@@ -255,20 +486,35 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
     delivTix += stackedTix;
   }
 
-  // Bounties calculations (User direct input: Regular Bounties + Board Bonus + Animal Bounties)
+  // Bounties calculations (Interactive Tiles or User direct input: Regular Bounties + Board Bonus + Animal Bounties)
   const bConf = config.bounties || DEFAULT_PLANNER_TEMPLATE.bounties;
-  const regularTixVal = (bConf.regularTix !== undefined && bConf.regularTix !== null && bConf.regularTix !== '')
-    ? Math.max(0, parseInt(bConf.regularTix, 10) || 0)
-    : (bConf.regularCount && bConf.regularAvgTix ? bConf.regularCount * bConf.regularAvgTix : 12);
+  const hasTiles = bConf.tiles && typeof bConf.tiles === 'object' && Object.keys(bConf.tiles).length > 0;
+
+  let regularTixVal = 0;
+  let animalTixVal = 0;
+  let boardBonusTix = 0;
+
+  if (hasTiles) {
+    const tilesData = getActiveBountyCards(bConf.tiles);
+    regularTixVal = tilesData.regularTix;
+    animalTixVal = tilesData.animalTix;
+    const isAllRegular = tilesData.allRegularDone;
+    boardBonusTix = (bConf.boardBonusEnabled !== undefined ? Boolean(bConf.boardBonusEnabled) : isAllRegular) ? 100 : 0;
+  } else {
+    const defaultData = getActiveBountyCards();
+    regularTixVal = (bConf.regularTix !== undefined && bConf.regularTix !== null && bConf.regularTix !== '')
+      ? Math.max(0, parseInt(bConf.regularTix, 10) || 0)
+      : defaultData.regularTix;
+
+    animalTixVal = (bConf.animalTix !== undefined && bConf.animalTix !== null && bConf.animalTix !== '')
+      ? Math.max(0, parseInt(bConf.animalTix, 10) || 0)
+      : defaultData.animalTix;
+
+    boardBonusTix = (bConf.boardBonusEnabled !== undefined ? Boolean(bConf.boardBonusEnabled) : defaultData.allRegularDone) ? 100 : 0;
+  }
+
   const regularBountiesTix = bConf.regularEnabled !== false ? regularTixVal : 0;
-
-  const boardBonusTix = bConf.boardBonusEnabled ? 100 : 0;
-
-  const animalTixVal = (bConf.animalTix !== undefined && bConf.animalTix !== null && bConf.animalTix !== '')
-    ? Math.max(0, parseInt(bConf.animalTix, 10) || 0)
-    : (bConf.animalCount && bConf.animalAvgTix ? bConf.animalCount * bConf.animalAvgTix : 16);
   const animalBountiesTix = bConf.animalEnabled !== false ? animalTixVal : 0;
-
   const bountiesTix = regularBountiesTix + boardBonusTix + animalBountiesTix;
 
   // Chores calculations (User direct input for weekly chores)
@@ -304,12 +550,13 @@ export function calculateWeekNpcPlan(weekNum, template, overrides, vipBonus = 0,
       regularEnabled: bConf.regularEnabled !== false,
       regularTix: regularBountiesTix,
       regularInputVal: regularTixVal,
-      boardBonusEnabled: Boolean(bConf.boardBonusEnabled),
+      boardBonusEnabled: Boolean(boardBonusTix > 0),
       boardBonusTix,
       animalEnabled: bConf.animalEnabled !== false,
       animalTix: animalBountiesTix,
       animalInputVal: animalTixVal,
-      totalBountiesTix: bountiesTix
+      totalBountiesTix: bountiesTix,
+      tiles: bConf.tiles || {}
     },
     choresBreakdown: {
       enabled: cConf.enabled !== false,
@@ -783,6 +1030,67 @@ export function togglePlannerBounty(field, weekVal) {
   reRenderProjections();
 }
 
+export function togglePlannerBountyTile(tileId, weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  const t = isTemplate ? getPlannerTemplate() : getPlannerOverrides();
+  const target = isTemplate ? t : (t[parseInt(weekVal, 10)] || JSON.parse(JSON.stringify(getPlannerTemplate())));
+
+  if (!target.bounties) target.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+
+  if (!target.bounties.tiles || Object.keys(target.bounties.tiles).length === 0) {
+    const allCards = getActiveBountyCards().cards;
+    target.bounties.tiles = {};
+    allCards.forEach(c => {
+      target.bounties.tiles[c.id] = (c.id === tileId) ? false : true;
+    });
+  } else {
+    const curVal = target.bounties.tiles[tileId] !== undefined ? Boolean(target.bounties.tiles[tileId]) : true;
+    target.bounties.tiles[tileId] = !curVal;
+  }
+
+  const recalculated = getActiveBountyCards(target.bounties.tiles);
+  target.bounties.regularTix = recalculated.regularTix;
+  target.bounties.animalTix = recalculated.animalTix;
+  target.bounties.boardBonusEnabled = recalculated.allRegularDone;
+
+  if (isTemplate) {
+    savePlannerTemplate(target);
+  } else {
+    const w = parseInt(weekVal, 10);
+    t[w] = target;
+    savePlannerOverrides(t);
+  }
+  reRenderProjections();
+}
+
+export function toggleAllPlannerBountyTiles(enableAll, weekVal) {
+  const isTemplate = weekVal === 'template' || !weekVal;
+  const t = isTemplate ? getPlannerTemplate() : getPlannerOverrides();
+  const target = isTemplate ? t : (t[parseInt(weekVal, 10)] || JSON.parse(JSON.stringify(getPlannerTemplate())));
+
+  if (!target.bounties) target.bounties = { ...DEFAULT_PLANNER_TEMPLATE.bounties };
+
+  const allCards = getActiveBountyCards().cards;
+  target.bounties.tiles = {};
+  allCards.forEach(c => {
+    target.bounties.tiles[c.id] = Boolean(enableAll);
+  });
+
+  const recalculated = getActiveBountyCards(target.bounties.tiles);
+  target.bounties.regularTix = recalculated.regularTix;
+  target.bounties.animalTix = recalculated.animalTix;
+  target.bounties.boardBonusEnabled = recalculated.allRegularDone;
+
+  if (isTemplate) {
+    savePlannerTemplate(target);
+  } else {
+    const w = parseInt(weekVal, 10);
+    t[w] = target;
+    savePlannerOverrides(t);
+  }
+  reRenderProjections();
+}
+
 export function setPlannerRegularBountyTix(val, weekVal) {
   const parsed = Math.max(0, parseInt(val, 10) || 0);
   const isTemplate = weekVal === 'template' || !weekVal;
@@ -1161,96 +1469,105 @@ export function renderProjectionsView(proj) {
     </div>
   `;
 
-  // 2. Bounties HTML
+  // 2. Bounties HTML (Sunflower Land Authentic Game-Like Bounty Board)
+  function escapeAttr(str) {
+    return String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   const bData = activePlan.bountiesBreakdown;
+  const tilesData = getActiveBountyCards(bData.tiles);
+  const isBonusActive = bData.boardBonusTix > 0;
+
+  const categoryGroupsHtml = BOUNTY_CATEGORIES.map(cat => {
+    const catCards = tilesData.cards.filter(c => c.category === cat.key);
+    if (catCards.length === 0) return '';
+
+    const cardsHtml = catCards.map(card => {
+      const iconHtml = card.category === 'animals'
+        ? renderAnimalIcon(card.icon || card.name, 32)
+        : renderItemIcon(card.icon || card.name, '📦', 32);
+
+      return `
+        <div
+          class="bounty-tile ${card.isActive ? 'active' : 'inactive'}"
+          title="${escapeAttr(card.name)}: ${card.tickets} Tickets (Click to toggle)"
+          onclick="togglePlannerBountyTile('${card.id}', '${currentWeekVal}')"
+        >
+          <div class="bounty-tile-checkmark ${card.category === 'animals' ? 'sold-badge' : ''}">
+            ${card.category === 'animals' ? 'Sold' : '✔'}
+          </div>
+          ${card.level ? `<div class="bounty-tile-level">Lvl ${card.level.toString().replace(/^lvl\s*/i, '')}</div>` : ''}
+          <div class="bounty-tile-icon-wrap">
+            ${iconHtml}
+          </div>
+          <div class="bounty-tile-ribbon">
+            ${ticketIconHtml}
+            <span class="bounty-tile-ribbon-tix">${card.tickets}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="bounty-category-group">
+        <div class="bounty-category-plaque">${cat.title}</div>
+        <div class="bounty-tiles-grid">
+          ${cardsHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
 
   const bountiesSectionHtml = `
-    <div class="planner-sub-cards">
-      <!-- Regular Bounties Card -->
-      <div class="planner-sub-card ${bData.regularEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
-        <div class="planner-sub-card-header">
-          <label class="planner-sub-label">
-            <input
-              type="checkbox"
-              ${bData.regularEnabled ? 'checked' : ''}
-              onchange="togglePlannerBounty('regularEnabled', '${currentWeekVal}')"
-            />
-            <span class="planner-sub-title">🎯 Regular Plaza Bounties</span>
-          </label>
-          <span class="planner-sub-tix">${ticketIconHtml} <strong>${bData.regularTix}</strong> Tix</span>
+    <div class="bounty-game-board">
+      <!-- Board Top Summary & Actions -->
+      <div class="bounty-board-top-bar">
+        <div class="bounty-board-stats">
+          <span class="bounty-stat-pill">
+            🌸 Regular: <strong>${bData.regularTix}</strong> Tix (${tilesData.activeRegularCount}/${tilesData.regularCount})
+          </span>
+          <span class="bounty-stat-pill">
+            🐔 Animals: <strong>${bData.animalTix}</strong> Tix (${tilesData.activeAnimalCount}/${tilesData.animalCount})
+          </span>
+          <span class="bounty-stat-pill bonus-pill ${isBonusActive ? 'active' : ''}">
+            🏆 Full Board: <strong>+${bData.boardBonusTix}</strong> Tix
+          </span>
+          <span class="bounty-stat-pill" style="background:#FEF3C7; color:#92400E; border-color:#F59E0B;">
+            ${ticketIconHtml} <strong>${bData.totalBountiesTix}</strong> Tix / Week
+          </span>
         </div>
-        <div class="planner-sub-body">
-          <span class="planner-sub-desc">Estimated weekly tickets from Plaza board bounties:</span>
-          <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
-            <input
-              id="regularBountyTixInput"
-              type="number"
-              min="0"
-              max="999"
-              step="1"
-              value="${bData.regularInputVal}"
-              class="planner-direct-num-input${isDark ? ' dark' : ''}"
-              ${!bData.regularEnabled ? 'disabled' : ''}
-              onfocus="this.select()"
-              onkeydown="if(event.key === 'Enter') this.blur()"
-              onchange="setPlannerRegularBountyTix(this.value, '${currentWeekVal}')"
-              placeholder="0"
-            />
-            <span class="planner-direct-unit">Tix / Week</span>
-          </div>
+        <div class="bounty-board-actions">
+          <button class="btn-wood-sm" onclick="toggleAllPlannerBountyTiles(true, '${currentWeekVal}')" title="Select all bounties on the board">
+            ✔ All Bounties
+          </button>
+          <button class="btn-wood-sm" onclick="toggleAllPlannerBountyTiles(false, '${currentWeekVal}')" title="Clear all bounties">
+            ✖ Clear All
+          </button>
         </div>
       </div>
 
-      <!-- Weekly Board Completion Bonus Card (+100) -->
-      <div class="planner-sub-card board-bonus-card ${bData.boardBonusEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
-        <div class="planner-sub-card-header">
-          <label class="planner-sub-label">
-            <input
-              type="checkbox"
-              ${bData.boardBonusEnabled ? 'checked' : ''}
-              onchange="togglePlannerBounty('boardBonusEnabled', '${currentWeekVal}')"
-            />
-            <span class="planner-sub-title">🏆 Full Board Completion Bonus (+100 Tix)</span>
-          </label>
-          <span class="planner-sub-tix bonus-glow">${ticketIconHtml} <strong>+${bData.boardBonusTix}</strong> Tix</span>
-        </div>
-        <div class="planner-sub-body">
-          <span class="planner-sub-desc">Awarded when all regular bounties on the weekly board are completed!</span>
-        </div>
+      <!-- Categories with Plaques and Cards -->
+      <div class="bounty-categories-container">
+        ${categoryGroupsHtml}
       </div>
 
-      <!-- Animal Bounties Card -->
-      <div class="planner-sub-card ${bData.animalEnabled ? 'active' : ''}${isDark ? ' dark' : ''}">
-        <div class="planner-sub-card-header">
-          <label class="planner-sub-label">
-            <input
-              type="checkbox"
-              ${bData.animalEnabled ? 'checked' : ''}
-              onchange="togglePlannerBounty('animalEnabled', '${currentWeekVal}')"
-            />
-            <span class="planner-sub-title">🐔 Animal Bounties (Chicken, Cow, Sheep)</span>
-          </label>
-          <span class="planner-sub-tix">${ticketIconHtml} <strong>${bData.animalTix}</strong> Tix</span>
+      <!-- Full Board Completion Bonus (+100 Tix) Banner -->
+      <div
+        class="bounty-bonus-banner ${isBonusActive ? 'active' : ''}"
+        onclick="togglePlannerBounty('boardBonusEnabled', '${currentWeekVal}')"
+        style="cursor: pointer;"
+        title="Click to toggle Full Board Completion Bonus (+100 Tix)"
+      >
+        <div class="bounty-bonus-info">
+          <span class="bounty-bonus-tag">${isBonusActive ? 'AWARDED (+100)' : 'BOARD BONUS'}</span>
+          <span class="bounty-bonus-desc">
+            ${isBonusActive
+              ? '🎉 Full Board Bonus Active! +100 Tickets awarded for completing all regular Plaza bounties.'
+              : 'Complete all regular Plaza bounties (Flowers, Fish, Crustaceans, Obsidian, Giant Fruits, Crops & Dolls) to unlock +100 Bonus Tickets! Click to manually toggle.'}
+          </span>
         </div>
-        <div class="planner-sub-body">
-          <span class="planner-sub-desc">Estimated weekly tickets from animal produce bounties:</span>
-          <div class="planner-direct-input-wrap${isDark ? ' dark' : ''}">
-            <input
-              id="animalBountyTixInput"
-              type="number"
-              min="0"
-              max="999"
-              step="1"
-              value="${bData.animalInputVal}"
-              class="planner-direct-num-input${isDark ? ' dark' : ''}"
-              ${!bData.animalEnabled ? 'disabled' : ''}
-              onfocus="this.select()"
-              onkeydown="if(event.key === 'Enter') this.blur()"
-              onchange="setPlannerAnimalBountyTix(this.value, '${currentWeekVal}')"
-              placeholder="0"
-            />
-            <span class="planner-direct-unit">Tix / Week</span>
-          </div>
+        <div class="bounty-bonus-reward">
+          ${ticketIconHtml} <strong>+${bData.boardBonusTix > 0 ? bData.boardBonusTix : 100}</strong> Tix
         </div>
       </div>
     </div>

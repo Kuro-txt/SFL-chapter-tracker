@@ -110,6 +110,20 @@ export async function loadTrackerData() {
     isRequestPending = false;
     updateFetchBtn();
 
+    // Auto-update user's rank from response if provided
+    if (data.userRank && data.userRank.rank) {
+      if (typeof window.updateUserRankDisplay === 'function') {
+        window.updateUserRankDisplay(data.userRank.rank, data.userRank.id);
+      }
+      try {
+        localStorage.setItem('sfl_user_rank', JSON.stringify({
+          rank: data.userRank.rank,
+          name: data.userRank.id || '',
+          farmId: data.userRank.farmId
+        }));
+      } catch (e) {}
+    }
+
     const curWkId = getMondayBasedWeekId();
     let loadedWeeks = {};
     try {
@@ -326,8 +340,9 @@ export async function loadTrackerData() {
     }
 
     if (priceBadge) {
+      const rankSuffix = (data.userRank && data.userRank.rank) ? ` • 🏆 RANK #${data.userRank.rank}` : '';
       if (data.usedBackupKey || data.apiKeyInvalid) {
-        priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED (⚠️ API key incorrect, used backup)`;
+        priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED${rankSuffix} (⚠️ API key incorrect, used backup)`;
         priceBadge.style.background = '#FFF8E1';
         priceBadge.style.borderColor = '#FFA000';
         priceBadge.style.color = '#E65100';
@@ -337,7 +352,7 @@ export async function loadTrackerData() {
           apiKeyEl.title = 'The API key entered was incorrect. Used backup API.';
         }
       } else {
-        priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED & SAVED`;
+        priceBadge.textContent = `✔ ${data.pricesLoadedCount || 0} PRICES SYNCED${rankSuffix} & SAVED`;
         priceBadge.style.background = '#E8F5E9';
         priceBadge.style.borderColor = '#4CAF50';
         priceBadge.style.color = '#2E7D32';
@@ -345,6 +360,11 @@ export async function loadTrackerData() {
     }
 
     recalculateAll();
+
+    // Automatically refresh full leaderboard data & rank
+    if (typeof window.loadLeaderboardData === 'function') {
+      window.loadLeaderboardData(true);
+    }
   } catch (err) {
     isRequestPending = false;
     updateFetchBtn();

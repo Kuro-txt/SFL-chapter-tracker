@@ -11,7 +11,9 @@ const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
 console.log('Audit 1: Auditing inline event handlers in index.html & dynamic JS templates...');
 const projJsPath = path.join(projectDir, 'js', 'projections.js');
 const projJs = fs.existsSync(projJsPath) ? fs.readFileSync(projJsPath, 'utf8') : '';
-const combinedHtmlSources = indexHtml + '\n' + projJs;
+const leadJsPath = path.join(projectDir, 'js', 'leaderboard.js');
+const leadJs = fs.existsSync(leadJsPath) ? fs.readFileSync(leadJsPath, 'utf8') : '';
+const combinedHtmlSources = indexHtml + '\n' + projJs + '\n' + leadJs;
 
 const eventRegex = /\s(on[a-zA-Z]+)=["']([^"']+)["']/g;
 const uniqueHandlers = new Set();

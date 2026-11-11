@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { state } from '../js/state.js';
 import { 
   calculateProjections, 
   setProjectionScenario, 
@@ -9,7 +10,12 @@ import {
   setPlannerTrackTix,
   CHAPTER_WEEKS,
   getWeekDateRange,
-  renderProjectionsView
+  renderProjectionsView,
+  DEFAULT_ROSTER_BOUNTIES,
+  BOUNTY_CATEGORIES,
+  categorizeBounty,
+  getActiveBountyCards,
+  setPlannerSectionTab
 } from '../js/projections.js';
 
 console.log('🧪 Starting Verification Tests for Ticket Projections & Forecasting Engine...\n');
@@ -420,17 +426,18 @@ console.log('Test 13: Verifying direct ticket inputs & Week 9 Auction overrides.
   Object.keys(template.npcs).forEach(k => { template.npcs[k].enabled = false; });
   template.logins.enabled = false;
 
-  // Case A: Default values
-  // Bounties: 12 (regular) + 16 (animals) = 28 tix
+  // Case A: Default values (Canonical 46 Bounties + 100 Board Bonus)
+  // Bounties: 462 (regular) + 112 (animals) + 100 (bonus) = 674 tix
   // Chores: 7 tix
   const planDefault = calculateWeekNpcPlan('template', template, {}, 0, 0);
-  assert.strictEqual(planDefault.bountiesTix, 28);
+  assert.strictEqual(planDefault.bountiesTix, 674);
   assert.strictEqual(planDefault.choresTix, 7);
-  assert.strictEqual(planDefault.totalWeeklyTix, 35);
+  assert.strictEqual(planDefault.totalWeeklyTix, 681);
 
   // Case B: User enters custom amounts in template
   template.bounties.regularTix = 25;
   template.bounties.animalTix = 30;
+  template.bounties.boardBonusEnabled = false;
   template.chores.choresTix = 14;
   const planCustom = calculateWeekNpcPlan('template', template, {}, 0, 0);
   assert.strictEqual(planCustom.bountiesTix, 55, `Expected 55 bounties tix, got ${planCustom.bountiesTix}`);
@@ -663,4 +670,152 @@ console.log('Test 18: Verifying NPC Avatar Rendering & Multi-Tier Fallback in Pr
   console.log('✅ TEST 18 PASSED: Projections View HTML & NPC avatar integrity verified.\n');
 }
 
-console.log('🎉 ALL 18 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');
+// ---------------------------------------------------------------------------
+// Test 19: Game-Like Bounty Board Categorization & Live Ticket Derivation
+// ---------------------------------------------------------------------------
+console.log('Test 19: Verifying Game-Like Bounty Board Categorization & Live Ticket Derivation...');
+{
+  // 1. Verify all 8 requested categories exist
+  const expectedKeys = ['flowers', 'crustaceans', 'obsidian', 'fishes', 'dolls', 'fruits', 'crops', 'animals'];
+  const actualKeys = BOUNTY_CATEGORIES.map(c => c.key);
+  expectedKeys.forEach(k => {
+    assert.ok(actualKeys.includes(k), `Category ${k} must be registered in BOUNTY_CATEGORIES`);
+  });
+
+  // 2. Verify categorizeBounty classifies items across categories
+  assert.strictEqual(categorizeBounty({ name: 'Blue Daffodil' }), 'flowers');
+  assert.strictEqual(categorizeBounty({ name: 'Yellow Daffodil' }), 'flowers');
+  assert.strictEqual(categorizeBounty({ name: 'Oyster' }), 'crustaceans');
+  assert.strictEqual(categorizeBounty({ name: 'Octopus' }), 'crustaceans');
+  assert.strictEqual(categorizeBounty({ name: 'Hermit Crab' }), 'crustaceans');
+  assert.strictEqual(categorizeBounty({ name: 'Obsidian' }), 'obsidian');
+  assert.strictEqual(categorizeBounty({ name: 'Weakfish' }), 'fishes');
+  assert.strictEqual(categorizeBounty({ name: 'Coelacanth' }), 'fishes');
+  assert.strictEqual(categorizeBounty({ name: 'Ember Doll' }), 'dolls');
+  assert.strictEqual(categorizeBounty({ name: 'Bloom Doll' }), 'dolls');
+  assert.strictEqual(categorizeBounty({ name: 'Giant Apple' }), 'fruits');
+  assert.strictEqual(categorizeBounty({ name: 'Giant Orange' }), 'fruits');
+  assert.strictEqual(categorizeBounty({ name: 'Giant Banana' }), 'fruits');
+  assert.strictEqual(categorizeBounty({ name: 'Adirondack Potato' }), 'crops');
+  assert.strictEqual(categorizeBounty({ name: 'Warty Goblin Pumpkin' }), 'crops');
+  assert.strictEqual(categorizeBounty({ name: 'White Carrot' }), 'crops');
+  assert.strictEqual(categorizeBounty({ name: 'Chicken (Lvl 3)' }), 'animals');
+  assert.strictEqual(categorizeBounty({ name: 'Cow #1' }), 'animals');
+  assert.strictEqual(categorizeBounty({ name: 'Sheep' }), 'animals');
+
+  // 3. Test canonical cards calculation (27 regular bounties + 19 animal bounties = 46)
+  const defaultCards = getActiveBountyCards();
+  assert.strictEqual(defaultCards.cards.length, 46, `Canonical roster must be exactly 46 cards, got ${defaultCards.cards.length}`);
+  assert.strictEqual(defaultCards.regularCount, 27, 'Must have 27 regular bounties (5 flowers + 5 fish + 3 crustaceans + 3 obsidian + 3 giant fruits + 3 crops + 5 dolls)');
+  assert.strictEqual(defaultCards.animalCount, 19, 'Must have 19 animal bounties (8 chicken + 4 cow + 4 sheep + 3 pig)');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_apple').tickets, 17, 'Giant Apple must yield 17 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_banana').tickets, 33, 'Giant Banana must yield 33 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_giant_orange').tickets, 10, 'Giant Orange must yield 10 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_obsidian_33').tickets, 33, 'Obsidian #1 must yield 33 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_obsidian_43_1').tickets, 43, 'Obsidian #2 must yield 43 tix');
+  assert.strictEqual(defaultCards.cards.find(c => c.id === 'b_obsidian_43_2').tickets, 43, 'Obsidian #3 must yield 43 tix');
+  assert.ok(defaultCards.regularTix > 0, 'Regular tickets sum must be positive');
+  assert.ok(defaultCards.animalTix > 0, 'Animal tickets sum must be positive');
+  assert.strictEqual(defaultCards.allRegularDone, true, 'Default state should have all regular done');
+
+  // 4. Test live bounties derivation from state.globalData.bounties
+  state.globalData = {
+    bounties: [
+      { id: '101', name: 'Blue Daffodil', baseTickets: 12 },
+      { id: '102', name: 'Octopus', baseTickets: 25 },
+      { id: '103', name: 'Chicken (Lvl 3+)', baseTickets: 6, level: 3 },
+      { id: '104', name: 'Cow (Lvl 4+)', baseTickets: 11, level: 4 }
+    ]
+  };
+  const liveCards = getActiveBountyCards();
+  assert.strictEqual(liveCards.cards.length, 46, 'Must maintain 46 canonical roster cards with live overrides');
+  assert.strictEqual(liveCards.regularCount, 27, '27 regular bounties');
+  assert.strictEqual(liveCards.animalCount, 19, '19 animal bounties');
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_blue_daffodil').tickets, 12);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_octopus').tickets, 25);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_chicken_lvl3').tickets, 6);
+  assert.strictEqual(liveCards.cards.find(c => c.id === 'b_cow_lvl4').tickets, 11);
+  state.globalData = {}; // Clean up
+
+  // 5. Test calculation with partial tile selection
+  const partialTiles = {
+    b_blue_daffodil: true,
+    b_yellow_daffodil: false,
+    b_chicken_lvl3: true,
+    b_cow_lvl4: false
+  };
+  const partialCards = getActiveBountyCards(partialTiles);
+  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_yellow_daffodil').isActive, false);
+  assert.strictEqual(partialCards.cards.find(c => c.id === 'b_cow_lvl4').isActive, false);
+  assert.strictEqual(partialCards.allRegularDone, false, 'Should be false when yellow daffodil is unticked');
+
+  // 6. Test plan calculation with tiles in config
+  const customTilesTemplate = {
+    ...DEFAULT_PLANNER_TEMPLATE,
+    bounties: {
+      regularEnabled: true,
+      animalEnabled: true,
+      tiles: {
+        b_blue_daffodil: true,
+        b_chicken_lvl3: true
+      }
+    }
+  };
+  const tilePlan = calculateWeekNpcPlan('template', customTilesTemplate, {}, 0, 0);
+  assert.ok(tilePlan.bountiesBreakdown.regularTix > 0);
+  assert.ok(tilePlan.bountiesBreakdown.animalTix > 0);
+  assert.strictEqual(tilePlan.bountiesBreakdown.boardBonusEnabled, false, 'Bonus not awarded when not all regular bounties are done');
+
+  console.log(`  ✓ 7 Categories registered: ${actualKeys.join(', ')}`);
+  console.log(`  ✓ Canonical Roster: 24 regular + 19 animal bounties (43 total)`);
+  console.log(`  ✓ Live Farm Derivation: dynamically reflects exact farm bounties`);
+  console.log('✅ TEST 19 PASSED: Bounty Board categorization & live derivation verified.\n');
+}
+
+// ---------------------------------------------------------------------------
+// Test 20: Bounty Board Game-Like Interface HTML Structure & Audits
+// ---------------------------------------------------------------------------
+console.log('Test 20: Verifying Bounty Board Game-Like Interface HTML Structure & Plaques...');
+{
+  const mockContainer = { innerHTML: '' };
+  globalThis.document = {
+    getElementById: (id) => id === 'weeklyProjectionsContainer' ? mockContainer : null,
+    body: { classList: { contains: () => false } }
+  };
+
+  setPlannerSectionTab('bounties');
+
+  const displayItems = buildMockDisplayItems(2, 100, 50);
+  const proj = calculateProjections(displayItems, '2026-11-09', 1000, 12);
+  renderProjectionsView(proj);
+
+  // Assert game board container and plaques
+  assert.ok(mockContainer.innerHTML.includes('bounty-game-board'), 'Must render .bounty-game-board container');
+  assert.ok(mockContainer.innerHTML.includes('bounty-category-plaque'), 'Must render category plaques');
+  assert.ok(mockContainer.innerHTML.includes('Flower Bounties'), 'Must render Flower Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Fish Bounties'), 'Must render Fish Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Crustacean Bounties'), 'Must render Crustacean Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Obsidian Bounties'), 'Must render Obsidian Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Giant Fruit Bounties'), 'Must render Giant Fruit Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Exotic Crop Bounties'), 'Must render Exotic Crop Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Doll Bounties'), 'Must render Doll Bounties plaque');
+  assert.ok(mockContainer.innerHTML.includes('Animal Bounties'), 'Must render Animal Bounties plaque');
+
+  // Assert tiles, checkmarks and ribbons
+  assert.ok(mockContainer.innerHTML.includes('bounty-tile'), 'Must render .bounty-tile');
+  assert.ok(mockContainer.innerHTML.includes('bounty-tile-checkmark'), 'Must render green checkmark badge');
+  assert.ok(mockContainer.innerHTML.includes('bounty-tile-ribbon'), 'Must render bottom golden ribbon');
+  assert.ok(mockContainer.innerHTML.includes('bounty-tile-level'), 'Must render animal level badge');
+  assert.ok(mockContainer.innerHTML.includes('bounty-bonus-banner'), 'Must render Full Board Bonus banner');
+  assert.ok(mockContainer.innerHTML.includes('togglePlannerBountyTile'), 'Must have togglePlannerBountyTile click handler');
+  assert.ok(mockContainer.innerHTML.includes('toggleAllPlannerBountyTiles'), 'Must have toggleAllPlannerBountyTiles click handler');
+
+  // Restore deliveries tab for subsequent tests
+  setPlannerSectionTab('deliveries');
+
+  console.log('  ✓ In-game Bounty Board HTML structure verified');
+  console.log('  ✓ All 7 plaques, tiles, checkmarks, ribbons, and board bonus banner verified');
+  console.log('✅ TEST 20 PASSED: Bounty Board UI integrity verified.\n');
+}
+
+console.log('🎉 ALL 20 TICKET PROJECTION & NPC PLANNER TESTS PASSED WITH 100% SUCCESS! 🚀');

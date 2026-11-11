@@ -25,6 +25,12 @@ let _activeChartTab = 'progression';
  * @param {'progression'|'projections'} tab
  */
 export function switchChartTab(tab) {
+  if (tab === 'leaderboard') {
+    if (typeof window !== 'undefined' && typeof window.openLeaderboardModal === 'function') {
+      window.openLeaderboardModal();
+    }
+    return;
+  }
   _activeChartTab = tab;
   const chartEl = document.getElementById('weeklyChartContainer');
   const projEl = document.getElementById('weeklyProjectionsContainer');

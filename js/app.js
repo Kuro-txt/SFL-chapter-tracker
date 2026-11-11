@@ -50,6 +50,20 @@ import {
   hideChartTooltip,
   switchChartTab
 } from './render.js';
+import {
+  setLeaderboardLimit,
+  setLeaderboardFilter,
+  loadLeaderboardData,
+  renderLeaderboard,
+  updateUserRankDisplay,
+  initLeaderboardRank,
+  openLeaderboardModal,
+  closeLeaderboardModal,
+  toggleLeaderboardModal,
+  searchLeaderboardRank,
+  clearRankSearch,
+  lookupUsernameToFarmId
+} from './leaderboard.js';
 import { 
   setProjectionScenario,
   togglePlannerNpc,
@@ -61,6 +75,8 @@ import {
   toggleAllNpcDouble,
   setPlannerSectionTab,
   togglePlannerBounty,
+  togglePlannerBountyTile,
+  toggleAllPlannerBountyTiles,
   setPlannerBountyCount,
   setPlannerRegularBountyTix,
   setPlannerAnimalBountyTix,
@@ -175,6 +191,18 @@ window.closeCategorySummaryModal = closeCategorySummaryModal;
 window.handleCategorySortChange = handleCategorySortChange;
 window.openWeekBreakdownModal = openWeekBreakdownModal;
 window.switchChartTab = switchChartTab;
+window.setLeaderboardLimit = setLeaderboardLimit;
+window.setLeaderboardFilter = setLeaderboardFilter;
+window.loadLeaderboardData = loadLeaderboardData;
+window.renderLeaderboard = renderLeaderboard;
+window.updateUserRankDisplay = updateUserRankDisplay;
+window.initLeaderboardRank = initLeaderboardRank;
+window.openLeaderboardModal = openLeaderboardModal;
+window.closeLeaderboardModal = closeLeaderboardModal;
+window.toggleLeaderboardModal = toggleLeaderboardModal;
+window.searchLeaderboardRank = searchLeaderboardRank;
+window.clearRankSearch = clearRankSearch;
+window.lookupUsernameToFarmId = lookupUsernameToFarmId;
 window.setProjectionScenario = setProjectionScenario;
 window.togglePlannerNpc = togglePlannerNpc;
 window.setPlannerNpcDays = setPlannerNpcDays;
@@ -185,6 +213,8 @@ window.togglePlannerNpcDouble = togglePlannerNpcDouble;
 window.toggleAllNpcDouble = toggleAllNpcDouble;
 window.setPlannerSectionTab = setPlannerSectionTab;
 window.togglePlannerBounty = togglePlannerBounty;
+window.togglePlannerBountyTile = togglePlannerBountyTile;
+window.toggleAllPlannerBountyTiles = toggleAllPlannerBountyTiles;
 window.setPlannerBountyCount = setPlannerBountyCount;
 window.setPlannerRegularBountyTix = setPlannerRegularBountyTix;
 window.setPlannerAnimalBountyTix = setPlannerAnimalBountyTix;
@@ -368,7 +398,6 @@ export async function startNewChapter(newChapterId = 'cave_dwellers_16', newChap
   }
 
   recalculateAll();
-  showToast(`🎉 Welcome to ${newChapterTitle}! Old tasks archived & cleared.`);
 }
 window.startNewChapter = startNewChapter;
 
@@ -665,5 +694,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateChapterCountdown();
   updateCurrentWeekBadge();
   setInterval(updateChapterCountdown, 60000);
+  initLeaderboardRank();
   recalculateAll();
 });

@@ -1030,6 +1030,105 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, deletedChapterId: chapterId });
     }
 
+    // ==========================================
+    // ACTION: LOOKUP FARM BY USERNAME
+    // ==========================================
+    if (action === 'lookupFarm' || action === 'lookupUser') {
+      const targetUsername = searchParams.get('username') || (req.query && req.query.username) || '';
+      if (!targetUsername) {
+        return res.status(400).json({ success: false, error: 'Username is required.' });
+      }
+      try {
+        const cleanUser = targetUsername.trim();
+        const sflWorldUrl = `https://sfl.world/api/v1/land/info/username/${encodeURIComponent(cleanUser)}`;
+        const resp = await fetch(sflWorldUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          signal: AbortSignal.timeout(10000)
+        });
+        if (!resp.ok) {
+          return res.status(resp.status).json({ 
+            success: false, 
+            error: resp.status === 404 ? `Username "${cleanUser}" was not found on Sunflower Land.` : 'Failed to lookup user on sfl.world.' 
+          });
+        }
+        const data = await resp.json();
+        return res.status(200).json({ success: true, data });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: err.message || 'Lookup request failed.' });
+      }
+    }
+
+    // ==========================================
+    // ACTION: GET LEADERBOARD
+    // ==========================================
+    if (action === 'getLeaderboard') {
+      let targetFarmId = searchParams.get('farmId') || (req.query && req.query.farmId) || '';
+      const limit = searchParams.get('limit') || (req.query && req.query.limit) || '100';
+      const userApiKey = searchParams.get('apiKey') || (req.query && req.query.apiKey) || process.env.SFL_API_KEY || '';
+      const reqUser = searchParams.get('username') || (req.query && req.query.username) || '';
+
+      if (!targetFarmId && reqUser) {
+        const cleanUser = reqUser.trim();
+        try {
+          const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser.toLowerCase()]);
+          if (uRes.rows.length > 0) {
+            const v = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
+            if (v && v.farmId) targetFarmId = String(v.farmId).trim();
+          }
+        } catch (dbErr) {
+          // ignore db error, proceed to fallback lookup
+        }
+
+        // Fallback to sfl.world API to resolve username to farm_id
+        if (!targetFarmId) {
+          try {
+            const sflWorldRes = await fetch(`https://sfl.world/api/v1/land/info/username/${encodeURIComponent(cleanUser)}`, {
+              headers: { 'Accept': 'application/json' },
+              signal: AbortSignal.timeout(6000)
+            });
+            if (sflWorldRes.ok) {
+              const sflWorldData = await sflWorldRes.json();
+              if (sflWorldData && sflWorldData.farm_id) {
+                targetFarmId = String(sflWorldData.farm_id).trim();
+              }
+            }
+          } catch (lookupErr) {
+            // ignore lookup error and fallback
+          }
+        }
+      }
+
+      const sflHeaders = {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': 'https://sunflower-land.com/',
+        'Origin': 'https://sunflower-land.com'
+      };
+      if (userApiKey) sflHeaders['x-api-key'] = userApiKey;
+
+      const url = `https://api.sunflower-land.com/community/data?type=ticketLeaderboard${targetFarmId ? `&farmId=${encodeURIComponent(targetFarmId)}` : ''}&limit=${encodeURIComponent(limit)}`;
+
+      try {
+        let sflRes = await fetch(url, { headers: sflHeaders, signal: AbortSignal.timeout(12000) });
+
+        if (!sflRes.ok && process.env.SFL_API_KEY && userApiKey !== process.env.SFL_API_KEY) {
+          sflHeaders['x-api-key'] = process.env.SFL_API_KEY;
+          sflRes = await fetch(url, { headers: sflHeaders, signal: AbortSignal.timeout(12000) });
+        }
+
+        const data = await sflRes.json();
+        if (data.error) {
+          return res.status(sflRes.status >= 400 ? sflRes.status : 400).json({ success: false, error: data.error });
+        }
+        return res.status(200).json({ success: true, data: data.data || data });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: err.message || 'Failed to fetch leaderboard.' });
+      }
+    }
+
     let farmId = searchParams.get('farmId') || (req.query && req.query.farmId) || '';
     const apiKey = searchParams.get('apiKey') || (req.query && req.query.apiKey) || process.env.SFL_API_KEY || '';
     const username = searchParams.get('username') || (req.query && req.query.username) || '';
@@ -1047,8 +1146,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Farm ID is required.' });
     }
 
-    // Parallelize live prices and farm data fetching for maximum performance
-    const [priceMap, sflFetchResult] = await Promise.all([
+    // Parallelize live prices, farm data, and leaderboard rank fetching for maximum performance
+    const [priceMap, sflFetchResult, userRank] = await Promise.all([
       getLivePriceMap(),
       (async () => {
         const sflHeaders = {
@@ -1097,6 +1196,54 @@ export default async function handler(req, res) {
           }
         }
         return { sflRes, usedBackupKey, apiKeyInvalid };
+      })(),
+      (async () => {
+        try {
+          const lbHeaders = {
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://sunflower-land.com/',
+            'Origin': 'https://sunflower-land.com'
+          };
+          if (apiKey) lbHeaders['x-api-key'] = apiKey;
+          else if (process.env.SFL_API_KEY) lbHeaders['x-api-key'] = process.env.SFL_API_KEY;
+
+          let lbRes = await fetch(`https://api.sunflower-land.com/community/data?type=ticketLeaderboard&farmId=${encodeURIComponent(farmId)}&limit=1`, {
+            headers: lbHeaders,
+            signal: AbortSignal.timeout(8000)
+          });
+          if (!lbRes.ok && process.env.SFL_API_KEY && lbHeaders['x-api-key'] !== process.env.SFL_API_KEY) {
+            lbHeaders['x-api-key'] = process.env.SFL_API_KEY;
+            lbRes = await fetch(`https://api.sunflower-land.com/community/data?type=ticketLeaderboard&farmId=${encodeURIComponent(farmId)}&limit=1`, {
+              headers: lbHeaders,
+              signal: AbortSignal.timeout(8000)
+            });
+          }
+          if (lbRes.ok) {
+            const lbJson = await lbRes.json();
+            const lbData = lbJson.data || lbJson;
+            const details = Array.isArray(lbData.farmRankingDetails) ? lbData.farmRankingDetails : [];
+            const topList = Array.isArray(lbData.topTen) ? lbData.topTen : (Array.isArray(lbData.ranking) ? lbData.ranking : []);
+            let found = details.find(r => String(r.farmId) === String(farmId));
+            if (!found && topList.length > 0) {
+              const idx = topList.findIndex(r => String(r.farmId) === String(farmId));
+              if (idx !== -1) found = { ...topList[idx], rank: topList[idx].rank || (idx + 1) };
+            }
+            if (found && found.rank) {
+              return {
+                rank: found.rank,
+                count: found.count,
+                id: found.id || '',
+                experience: found.experience || 0,
+                ascensionLevel: found.ascensionLevel || 0,
+                farmId: found.farmId
+              };
+            }
+          }
+        } catch (lbErr) {
+          console.warn('Leaderboard rank fetch warning:', lbErr.message);
+        }
+        return null;
       })()
     ]);
 
@@ -1290,6 +1437,7 @@ export default async function handler(req, res) {
       archiveDeliveries: userVault ? (userVault.archiveDeliveries || []) : [],
       bounties: userVault?.weeks?.[curWkId]?.bounties || parsed.activeBounties,
       chores: userVault?.weeks?.[curWkId]?.chores || parsed.choresList,
+      userRank: userRank || null,
       vaultData: userVault
     });
   } catch (err) {
