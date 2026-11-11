@@ -577,7 +577,7 @@ export async function saveProgressToCloudKV(silent = false) {
     if (isTicked) {
       const base = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
       const isManual = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-      const yieldAmt = b.isManual ? base : (base + boostCount);
+      const yieldAmt = b.isManual ? base : (base + vipBonus + boostCount);
       const lineCost = (b.itemsCost || b.cost || 0);
       calculatedTotalTickets += yieldAmt;
       calculatedTotalCost += lineCost;
@@ -615,7 +615,7 @@ export async function saveProgressToCloudKV(silent = false) {
     (wk.bounties || []).forEach(b => {
       if (b.completed || b.checked) {
         const isMan = Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_'));
-        calculatedTotalTickets += (isMan ? (b.baseTickets || b.tickets || 0) : ((b.baseTickets || b.tickets || 0) + boostCount));
+        calculatedTotalTickets += (isMan ? (b.baseTickets || b.tickets || 0) : ((b.baseTickets || b.tickets || 0) + vipBonus + boostCount));
         calculatedTotalCost += (b.itemsCost || b.cost || 0);
       }
     });
