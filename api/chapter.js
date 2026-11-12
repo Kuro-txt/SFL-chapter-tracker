@@ -10,6 +10,8 @@ import {
 let isSchemaInitialized = false;
 let cachedPriceMap = null;
 let cachedPriceMapExpiresAt = 0;
+const leaderboardCache = new Map();
+const LEADERBOARD_CACHE_TTL_MS = 60000; // 60 second cache TTL
 
 // Standard baseline fallback prices for core game resources to guarantee recipes never calculate to 0.000 SFL
 export const BASELINE_PRICES = {
@@ -464,8 +466,8 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
 
                 vault.archiveDeliveries.push({
                   id: targetOrderId,
-                  from: npcName,
-                  name: npcName,
+                  from: npcClean,
+                  name: npcClean,
                   baseTickets: defaultTix,
                   tickets: defaultTix,
                   cost: prevDeliv?.cost || prevDeliv?.itemsCost || 0,
@@ -1442,6 +1444,12 @@ export default async function handler(req, res) {
 
       const url = `https://api.sunflower-land.com/community/data?type=ticketLeaderboard${targetFarmId ? `&farmId=${encodeURIComponent(targetFarmId)}` : ''}&limit=${encodeURIComponent(limit)}`;
 
+      const cacheKey = `${targetFarmId || 'all'}_${limit}`;
+      const cached = leaderboardCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp < LEADERBOARD_CACHE_TTL_MS)) {
+        return res.status(200).json({ success: true, data: cached.data, cached: true });
+      }
+
       try {
         let sflRes = await fetch(url, { headers: sflHeaders, signal: AbortSignal.timeout(12000) });
 
@@ -1450,13 +1458,46 @@ export default async function handler(req, res) {
           sflRes = await fetch(url, { headers: sflHeaders, signal: AbortSignal.timeout(12000) });
         }
 
-        const data = await sflRes.json();
-        if (data.error) {
+        if (sflRes.status === 429) {
+          if (cached && cached.data) {
+            return res.status(200).json({ success: true, data: cached.data, cached: true, rateLimited: true });
+          }
+          await new Promise(r => setTimeout(r, 1200));
+          sflRes = await fetch(url, { headers: sflHeaders, signal: AbortSignal.timeout(12000) });
+        }
+
+        const text = await sflRes.text();
+        let data = null;
+        try {
+          data = JSON.parse(text);
+        } catch (jsonErr) {
+          if (cached && cached.data) {
+            return res.status(200).json({ success: true, data: cached.data, cached: true });
+          }
+          if (sflRes.status === 429) {
+            return res.status(429).json({ success: false, error: 'Sunflower Land leaderboard is temporarily rate-limited. Please try again shortly.' });
+          }
+          return res.status(sflRes.status >= 400 ? sflRes.status : 502).json({
+            success: false,
+            error: `Upstream error (${sflRes.status}) parsing leaderboard.`
+          });
+        }
+
+        if (data && data.error) {
+          if (cached && cached.data) {
+            return res.status(200).json({ success: true, data: cached.data, cached: true });
+          }
           return res.status(sflRes.status >= 400 ? sflRes.status : 400).json({ success: false, error: data.error });
         }
-        return res.status(200).json({ success: true, data: data.data || data });
+
+        const lbPayload = (data && data.data) ? data.data : data;
+        leaderboardCache.set(cacheKey, { timestamp: Date.now(), data: lbPayload });
+        return res.status(200).json({ success: true, data: lbPayload });
       } catch (err) {
-        return res.status(500).json({ success: false, error: err.message || 'Failed to fetch leaderboard.' });
+        if (cached && cached.data) {
+          return res.status(200).json({ success: true, data: cached.data, cached: true });
+        }
+        return res.status(503).json({ success: false, error: err.message || 'Failed to fetch leaderboard.' });
       }
     }
 
@@ -1526,6 +1567,33 @@ export default async function handler(req, res) {
             console.warn('Backup fetch warning:', backupErr.message);
           }
         }
+
+        if (sflRes.status === 429) {
+          console.warn(`Upstream 429 rate limit hit for farm #${farmId}. Waiting 1500ms before retry...`);
+          await new Promise(r => setTimeout(r, 1500));
+          try {
+            const retryHeaders = {
+              'Accept': 'application/json, text/plain, */*',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Referer': 'https://sunflower-land.com/',
+              'Origin': 'https://sunflower-land.com'
+            };
+            if (process.env.SFL_API_KEY) retryHeaders['x-api-key'] = process.env.SFL_API_KEY;
+            else if (apiKey) retryHeaders['x-api-key'] = apiKey;
+
+            const retryRes = await fetch(`https://api.sunflower-land.com/community/farms/${encodeURIComponent(farmId)}`, {
+              headers: retryHeaders,
+              signal: AbortSignal.timeout(10000)
+            });
+            if (retryRes.ok) {
+              sflRes = retryRes;
+              console.log(`429 retry succeeded for farm #${farmId}!`);
+            }
+          } catch (retryErr) {
+            console.warn('429 retry warning:', retryErr.message);
+          }
+        }
+
         return { sflRes, usedBackupKey, apiKeyInvalid };
       })(),
       (async () => {
@@ -1587,6 +1655,36 @@ export default async function handler(req, res) {
         });
       }
       if (sflRes.status === 429) {
+        if (username) {
+          const cleanUser = username.trim().toLowerCase();
+          try {
+            const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+            if (uRes.rows.length > 0) {
+              const vData = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
+              if (vData) {
+                console.log(`[Rate Limit Fallback] Upstream SFL 429 for #${farmId}. Serving cached vault data for "${cleanUser}".`);
+                cleanVaultDeliveriesAndSnapshots(vData);
+                return res.status(200).json({
+                  rateLimited: true,
+                  isCachedFallback: true,
+                  message: '⏳ Sunflower Land is temporarily rate-limiting live requests. Displaying your last saved cloud data.',
+                  vaultData: vData,
+                  deliveries: vData.deliveries || vData.archiveDeliveries || [],
+                  bounties: vData.bounties || [],
+                  chores: vData.chores || [],
+                  milestones: vData.milestones || {},
+                  isDoubleDeliveryActive: false,
+                  doubleDeliveryDates: [],
+                  isVipActive: Boolean(vData.isVipActive),
+                  chapterPoints: vData.chapterPoints || 0,
+                  userRank: userRank || null
+                });
+              }
+            }
+          } catch (dbErr) {
+            console.warn('Vault fallback query error:', dbErr.message);
+          }
+        }
         return res.status(429).json({
           error: '⏳ Rate limit reached. Sunflower Land is blocking too many requests. Please wait 1–2 minutes before fetching again, or enter an SFL API Key for a higher quota.'
         });
@@ -1599,7 +1697,18 @@ export default async function handler(req, res) {
       throw new Error(`Sunflower Land API responded with status ${sflRes.status}`);
     }
 
-    const payload = await sflRes.json();
+    let payload = null;
+    try {
+      payload = await sflRes.json();
+    } catch (parseErr) {
+      return res.status(502).json({
+        error: 'Sunflower Land API returned an invalid response. Please try again in a moment.'
+      });
+    }
+
+    if (!payload || typeof payload !== 'object' || payload.error) {
+      return res.status(400).json({ error: payload?.error || 'Failed to parse farm payload from Sunflower Land.' });
+    }
     const farm = payload.farm || payload;
 
     const coinRatioQuery = searchParams.get('coinRatio');
