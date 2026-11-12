@@ -395,7 +395,7 @@ export function renderColumnHistoryModalList() {
 
       const canEditTickets = (type === 'animalBounty') || r.isManual;
       const ticketsInputHtml = canEditTickets
-        ? `<input type="number" value="${r.displayTickets}" onchange="updateHistoryItemTickets('${sourceKey}', '${itemTargetKey}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield" />`
+        ? `<input type="number" value="${r.displayTickets}" onblur="updateHistoryItemTickets('${sourceKey}', '${itemTargetKey}', this.value)" style="width:48px; padding:3px 5px; font-size:11px;" title="Ticket Yield (press Tab or click away to save)" />`
         : `<input type="number" value="${r.displayTickets}" disabled style="width:48px; padding:3px 5px; font-size:11px; opacity:0.75; cursor:not-allowed; background:rgba(0,0,0,0.05);" title="Game-synced ticket yield cannot be edited" />`;
 
       let itemTitleHtml = '';
@@ -679,14 +679,21 @@ export async function updateHistoryItemTickets(sourceOrWkId, mapKeyOrIdxOrId, va
     target.userTickets = desiredYield;
     target.isCustomTickets = true;
 
-    // Cross-sync: Ensure both state.globalData and cloudHistory.weeks stay synchronized for this item
+    // Cross-sync: Ensure both state.globalData and cloudHistory.weeks stay synchronized for this item.
+    // For animal bounties with no stable id, we match by exact object reference (target IS the item
+    // from the live array) to avoid broadcasting one edit to all same-species/same-level animals.
+    const hasStableId = Boolean(target.id);
     const matchFn = (item) => {
       if (!item) return false;
-      if (target.id && item.id) return String(item.id) === String(target.id);
+      // Always prefer a stable ID match
+      if (hasStableId && item.id) return String(item.id) === String(target.id);
       if (isChore) {
         return (item.npc || '').toLowerCase() === (target.npc || '').toLowerCase() &&
                (item.task || item.name || '').toLowerCase() === (target.task || target.name || '').toLowerCase();
       }
+      // For anonymous animal bounties: only update the exact same object (reference equality).
+      // This prevents broadcasting to other animals sharing the same name + level.
+      if (isAnimal && !hasStableId) return item === target;
       return (item.name || '').toLowerCase() === (target.name || '').toLowerCase() &&
              Number(item.level || 0) === Number(target.level || 0);
     };

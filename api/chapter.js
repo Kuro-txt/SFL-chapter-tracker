@@ -303,8 +303,12 @@ export function preserveCustomTaskEdits(freshList, existingList, isChore = false
         const freshName = (freshItem.name || '').toLowerCase().trim();
         const eName = (e.name || '').toLowerCase().trim();
         if (freshName && eName && freshName === eName) {
-          if (freshItem.level !== undefined && e.level !== undefined) {
-            return Number(freshItem.level) === Number(e.level);
+          // Treat null/undefined level as equivalent — both sides may omit level for non-animal bounties.
+          // Only enforce a numeric level comparison when BOTH sides have a non-null numeric level.
+          const freshLvl = freshItem.level != null ? Number(freshItem.level) : null;
+          const eLvl = e.level != null ? Number(e.level) : null;
+          if (freshLvl !== null && eLvl !== null) {
+            return freshLvl === eLvl;
           }
           return true;
         }

@@ -515,6 +515,11 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
       });
     }
 
+    // Per-source counter for anonymous animal bounties (no stable b.id).
+    // Tracks how many times we've seen a given name_level within this source so
+    // that duplicate same-species/same-level entries get distinct keys and survive.
+    const anonLevelCounts = {};
+
     items.forEach(b => {
       if (!b || typeof b !== 'object') return;
       const bName = b.name || b.item || b.itemName || (b.items && Object.keys(b.items)[0]) || '';
@@ -523,7 +528,18 @@ export function parseFarmData(farm, priceMap, rawPayload = null) {
       const featherCount = extractRewardTickets(b.reward) || extractRewardTickets(b.items) || extractRewardTickets(b);
       if (featherCount <= 0) return;
 
-      const uniqueKey = b.id ? String(b.id) : `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
+      let uniqueKey;
+      if (b.id) {
+        uniqueKey = String(b.id);
+      } else {
+        // For anonymous animal bounties, append a per-name_level ordinal so that
+        // e.g. three Chicken Lvl 8 produce distinct keys: chicken_8_0, chicken_8_1, chicken_8_2.
+        const baseKey = `${(bName || 'bounty').toLowerCase()}_${b.level || 0}`;
+        const count = anonLevelCounts[baseKey] || 0;
+        anonLevelCounts[baseKey] = count + 1;
+        uniqueKey = count === 0 ? baseKey : `${baseKey}_${count}`;
+      }
+
       if (seenBountyKeys.has(uniqueKey)) return;
       seenBountyKeys.add(uniqueKey);
 
