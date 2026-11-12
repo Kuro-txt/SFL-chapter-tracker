@@ -335,6 +335,20 @@ export function preserveCustomTaskEdits(freshList, existingList, isChore = false
   return freshList;
 }
 
+export const CANONICAL_CHAPTER_NPCS = {
+  bert: 2,
+  cornwell: 3,
+  finley: 2,
+  finn: 5,
+  jester: 4,
+  miranda: 2,
+  pharaoh: 6,
+  "pumpkin' pete": 1,
+  raven: 4,
+  timmy: 5,
+  tywin: 10
+};
+
 export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNpcsData) {
   if (!vault.archiveDeliveries) vault.archiveDeliveries = [];
   if (!vault.npcSnapshots) vault.npcSnapshots = {};
@@ -349,15 +363,30 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   // Track NPCs that had a stale delivery completed in this cycle
   const staleCompletedNpcs = new Set();
 
-  // 2. Reconcile Deltas using NPC Lifetime Counters
-  Object.entries(CHAPTER_NPC_TICKETS).forEach(([npcName, defaultTix]) => {
-    const npcClean = npcName.toLowerCase().trim();
-    const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
+  // 2. Reconcile Deltas using NPC Lifetime Counters (Canonical NPCs only to avoid duplicate alias loops)
+  Object.entries(CANONICAL_CHAPTER_NPCS).forEach(([npcClean, defaultTix]) => {
+    const currStat = currentNpcsData[npcClean] ||
+      (npcClean === "pumpkin' pete" ? (currentNpcsData['pumpkin pete'] || currentNpcsData['pete']) : null) ||
+      (npcClean === 'timmy' ? currentNpcsData['tyreless timmy'] : null) ||
+      (npcClean === 'cornwell' ? currentNpcsData['corny'] : null) ||
+      (npcClean === 'finley' ? currentNpcsData['findlay'] : null) ||
+      { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
     const prevStat = vault.npcSnapshots[npcClean];
 
     if (prevStat) {
       let delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
       let skipDelta = currStat.skippedCount - prevStat.skippedCount;
+
+      // Delta Sanity Guard: In Sunflower Land, a player cannot complete >5 orders for one NPC between syncs.
+      // An abnormal delta (>5) indicates an uninitialized baseline, reset, or old chapter mismatch.
+      // Fast-forward baseline snapshot count without synthesizing phantom deliveries.
+      if (delivDelta > 5) {
+        console.warn(`⚠️ [Reconciler Guard] Abnormal delivery delta (${delivDelta}) for ${npcClean}. Baseline fast-forwarded to ${currStat.deliveryCount} without synthesizing phantom deliveries.`);
+        delivDelta = 0;
+      }
+      if (skipDelta > 10) {
+        skipDelta = 0;
+      }
 
       if (delivDelta > 0 || skipDelta > 0) {
         const completionTime = currStat.deliveryCompletedAt || nowMs;
@@ -479,6 +508,13 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       deliveryCompletedAt: currStat.deliveryCompletedAt
     };
   });
+
+  // Clean up ghost alias keys so snapshots remain canonical
+  delete vault.npcSnapshots['pete'];
+  delete vault.npcSnapshots['pumpkin pete'];
+  delete vault.npcSnapshots['corny'];
+  delete vault.npcSnapshots['findlay'];
+  delete vault.npcSnapshots['tyreless timmy'];
 
   // 3. Register or update the currently active order from board
   parsedDeliveryList.forEach(order => {
@@ -632,6 +668,227 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   return vault.archiveDeliveries;
 }
 
+export function isAnimalBountyHelper(item) {
+  if (!item) return false;
+  if (item.category === 'animal' || item.type === 'animal') return true;
+  if (item.level !== undefined && item.level !== null) return true;
+  if (item.tier !== undefined && item.tier !== null) return true;
+  const rawName = typeof item === 'string' ? item : (item.name || '');
+  const animalKeywords = ['cow', 'sheep', 'chicken', 'bull', 'pig', 'duck', 'goat', 'animal'];
+  const lowerName = rawName.toLowerCase();
+  if (animalKeywords.some(kw => lowerName.includes(kw))) return true;
+  if (/(?:lvl|level|#|\()\s*(\d+)/i.test(rawName)) return true;
+  return false;
+}
+
+export function isManualBountyHelper(item) {
+  if (!item) return false;
+  return Boolean(item.isManual) || (typeof item.id === 'string' && item.id.startsWith('manual_'));
+}
+
+export function hasWeeklyBountiesBonusHelper(bountiesList) {
+  if (!Array.isArray(bountiesList) || bountiesList.length === 0) return false;
+  const regularBounties = bountiesList.filter(b => !isAnimalBountyHelper(b) && !isManualBountyHelper(b));
+  if (regularBounties.length === 0) return false;
+  return regularBounties.every(b => {
+    if (!b || b.isSkipped) return false;
+    return b.checked !== undefined ? Boolean(b.checked) : Boolean(b.completed);
+  });
+}
+
+export function recomputeVaultCumulative(vault) {
+  const isVip = Boolean(vault.isVipActive);
+  const vipBonus = isVip ? 2 : 0;
+  const currentWeekMonday = getMondayBasedWeekId();
+  const KNOWN_DOUBLE_DELIVERY_DATES = ['2026-09-02'];
+  const doubleDatesSet = new Set(KNOWN_DOUBLE_DELIVERY_DATES);
+
+  let totalTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
+  let totalCost = (vault.trackCost || 0);
+
+  const npcDoubleClaimed = new Set();
+  const sortedDeliveries = [...(vault.archiveDeliveries || [])].sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
+
+  sortedDeliveries.forEach(d => {
+    const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped;
+    if (isDone) {
+      const baseTix = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+      const isManual = Boolean(d.isManual);
+      const isStacked = Boolean(d.isStacked);
+      const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : '');
+      const isDoubleDay = doubleDatesSet.has(compDate);
+      const npcClean = (d.from || d.name || '').toLowerCase().trim();
+      const doubleKey = `${npcClean}_${compDate}`;
+
+      let yieldAmt = baseTix;
+      if (!isManual) {
+        if (!isStacked && (d.hasDoubleBonus || (isDoubleDay && !npcDoubleClaimed.has(doubleKey)))) {
+          yieldAmt = (baseTix + vipBonus) * 2;
+          npcDoubleClaimed.add(doubleKey);
+          d.hasDoubleBonus = true;
+        } else {
+          yieldAmt = (baseTix + vipBonus);
+          d.hasDoubleBonus = false;
+        }
+      }
+      totalTickets += yieldAmt;
+      totalCost += (d.itemsCost || d.cost || 0);
+    }
+  });
+
+  (vault.bounties || []).forEach(b => {
+    if (b.checked !== undefined ? b.checked : Boolean(b.completed)) {
+      totalTickets += (b.userTickets !== undefined ? b.userTickets : (b.baseTickets || b.tickets || 0));
+      totalCost += (b.itemsCost || b.cost || 0);
+    }
+  });
+  if (hasWeeklyBountiesBonusHelper(vault.bounties)) {
+    totalTickets += 100;
+  }
+
+  (vault.chores || []).forEach(c => {
+    if (c.checked !== undefined ? c.checked : Boolean(c.completed)) {
+      const base = (c.userTickets !== undefined ? c.userTickets : (c.baseTickets || c.tickets || 1));
+      totalTickets += c.isManual ? base : (base + vipBonus);
+      totalCost += (c.itemsCost || c.cost || 0);
+    }
+  });
+
+  Object.entries(vault.weeks || {}).forEach(([wkKey, wk]) => {
+    if (wkKey === currentWeekMonday) return;
+    (wk.bounties || []).forEach(b => {
+      if (b.completed || b.checked) {
+        totalTickets += (b.userTickets !== undefined ? b.userTickets : (b.baseTickets || b.tickets || 0));
+        totalCost += (b.itemsCost || b.cost || 0);
+      }
+    });
+    (wk.chores || []).forEach(c => {
+      if (c.completed || c.checked) {
+        const base = (c.userTickets !== undefined ? c.userTickets : (c.baseTickets || c.tickets || 1));
+        totalTickets += c.isManual ? base : (base + vipBonus);
+        totalCost += (c.itemsCost || c.cost || 0);
+      }
+    });
+    if (hasWeeklyBountiesBonusHelper(wk.bounties)) {
+      totalTickets += 100;
+    }
+  });
+
+  vault.cumulativeTickets = totalTickets;
+  vault.cumulativeCost = totalCost;
+  return { totalTickets, totalCost };
+}
+
+export function cleanVaultDeliveriesAndSnapshots(vault) {
+  if (!vault || typeof vault !== 'object') return false;
+  let modified = false;
+
+  // 1. Clean deliveries
+  if (Array.isArray(vault.archiveDeliveries) && vault.archiveDeliveries.length > 0) {
+    const origLen = vault.archiveDeliveries.length;
+    
+    // Identify burst completion timestamps (>3 completed deliveries sharing the exact same millisecond timestamp)
+    const tsCounts = {};
+    vault.archiveDeliveries.forEach(x => {
+      if (x && x.completedAt) {
+        tsCounts[x.completedAt] = (tsCounts[x.completedAt] || 0) + 1;
+      }
+    });
+    const burstTimestamps = new Set(Object.keys(tsCounts).filter(k => tsCounts[k] > 3));
+
+    const cleanedDeliveries = vault.archiveDeliveries.filter(x => {
+      if (!x) return false;
+      const isDone = Boolean(x.checked !== undefined ? x.checked : x.completed);
+      const isSkip = Boolean(x.isSkipped);
+      if (!isDone && !isSkip) return true; // keep active deliveries
+
+      // Filter out deliveries completed before Chapter 16 start (Nov 8, 2026)
+      const dt = x.completedDate || (x.completedAt ? new Date(x.completedAt).toISOString().split('T')[0] : '');
+      if (dt && dt < '2026-11-08') return false;
+
+      // Filter out duplicate _2, _3 suffix cards
+      if (x.id && /_d\d+_\d+$/.test(String(x.id))) return false;
+
+      // Filter out burst synthetic deliveries
+      if (x.completedAt && burstTimestamps.has(String(x.completedAt))) return false;
+
+      // Filter out phantom 0-cost completed deliveries with no items
+      if (isDone && !x.isManual && (x.cost === 0 || !x.cost) && (!x.itemDetails || x.itemDetails.length === 0) && (!x.items || Object.keys(x.items).length === 0)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (cleanedDeliveries.length !== origLen) {
+      vault.archiveDeliveries = cleanedDeliveries;
+      modified = true;
+    }
+  }
+
+  // 2. Normalize npcSnapshots: keep only canonical keys, remove ghost alias keys
+  if (vault.npcSnapshots && typeof vault.npcSnapshots === 'object') {
+    const aliasMap = {
+      'pete': "pumpkin' pete",
+      'pumpkin pete': "pumpkin' pete",
+      'corny': 'cornwell',
+      'findlay': 'finley',
+      'tyreless timmy': 'timmy'
+    };
+    Object.entries(aliasMap).forEach(([alias, canonical]) => {
+      if (vault.npcSnapshots[alias]) {
+        if (!vault.npcSnapshots[canonical] || (vault.npcSnapshots[alias].deliveryCount > (vault.npcSnapshots[canonical].deliveryCount || 0))) {
+          vault.npcSnapshots[canonical] = vault.npcSnapshots[alias];
+        }
+        delete vault.npcSnapshots[alias];
+        modified = true;
+      }
+    });
+  }
+
+  // 3. Clean today's log if it has burst / phantom entries
+  if (Array.isArray(vault.logs) && vault.logs.length > 0) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLog = vault.logs.find(l => l.date === todayStr);
+    if (todayLog && Array.isArray(todayLog.deliveriesDone) && todayLog.deliveriesDone.length > 10) {
+      const realDeliveriesToday = (vault.archiveDeliveries || []).filter(d => {
+        const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+        const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : '');
+        return isDone && compDate === todayStr;
+      });
+
+      const isVip = Boolean(vault.isVipActive);
+      const vipBonus = isVip ? 2 : 0;
+      let dayTix = 0;
+      let dayCost = 0;
+      todayLog.deliveriesDone = realDeliveriesToday.map(d => {
+        const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+        const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
+        const yieldAmt = wasDouble ? (base + vipBonus) * 2 : (base + vipBonus);
+        const c = d.itemsCost || d.cost || 0;
+        dayTix += yieldAmt;
+        dayCost += c;
+        return {
+          name: d.name || d.from,
+          yield: yieldAmt,
+          cost: c,
+          weekId: d.weekId || getMondayBasedWeekId()
+        };
+      });
+      todayLog.ticketsSaved = dayTix;
+      todayLog.costSaved = dayCost;
+      modified = true;
+    }
+  }
+
+  // 4. Recalculate cumulative
+  if (modified) {
+    recomputeVaultCumulative(vault);
+  }
+
+  return modified;
+}
+
 export default async function handler(req, res) {
   const { searchParams } = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const action = searchParams.get('action') || (req.query && req.query.action);
@@ -719,6 +976,15 @@ export default async function handler(req, res) {
       const vaultData = typeof userRes.rows[0].vault_data === 'string'
         ? JSON.parse(userRes.rows[0].vault_data)
         : userRes.rows[0].vault_data;
+
+      // Auto-heal vault if it contains dirty/phantom delivery bursts or pre-chapter-16 tasks
+      const wasLoginHealed = cleanVaultDeliveriesAndSnapshots(vaultData);
+      if (wasLoginHealed) {
+        await client.query(
+          'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+          [JSON.stringify(vaultData), cleanUser]
+        );
+      }
 
       const chapterLogsRes = await client.query(
         'SELECT chapter_id, chapter_title, archived_at, is_locked, summary_data FROM user_chapter_logs WHERE username = $1 ORDER BY archived_at DESC',
@@ -819,7 +1085,45 @@ export default async function handler(req, res) {
         };
       });
 
+      // Auto-heal vault if it contains dirty/phantom delivery bursts or pre-chapter-16 tasks
+      const wasHealed = cleanVaultDeliveriesAndSnapshots(vaultData);
+      if (wasHealed) {
+        await client.query(
+          'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+          [JSON.stringify(vaultData), cleanUser]
+        );
+      }
+
       return res.status(200).json({ success: true, vaultData });
+    }
+
+    // ==========================================
+    // ACTION: REPAIR VAULT
+    // ==========================================
+    if (action === 'repairVault') {
+      const username = searchParams.get('username') || (req.query && req.query.username) || (req.body && req.body.username);
+      if (!username) {
+        return res.status(400).json({ error: 'Username required.' });
+      }
+
+      const cleanUser = username.trim().toLowerCase();
+      const userRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'User vault not found.' });
+      }
+
+      const vaultData = typeof userRes.rows[0].vault_data === 'string'
+        ? JSON.parse(userRes.rows[0].vault_data)
+        : userRes.rows[0].vault_data;
+
+      cleanVaultDeliveriesAndSnapshots(vaultData);
+
+      await client.query(
+        'UPDATE user_vaults SET vault_data = $1 WHERE username = $2',
+        [JSON.stringify(vaultData), cleanUser]
+      );
+
+      return res.status(200).json({ success: true, message: `Vault for ${cleanUser} cleaned and repaired successfully.`, vaultData });
     }
 
     // ==========================================
@@ -855,9 +1159,32 @@ export default async function handler(req, res) {
       });
       mergedLogs = mergedLogs.slice(0, 60);
 
+      // Defend npcSnapshots against stale client overwrite:
+      // Never allow incoming client payload to downgrade delivery counts or re-introduce ghost aliases
+      const safeNpcSnapshots = { ...(existingVault.npcSnapshots || {}) };
+      if (body.npcSnapshots && typeof body.npcSnapshots === 'object') {
+        Object.entries(body.npcSnapshots).forEach(([k, v]) => {
+          if (!v || typeof v !== 'object') return;
+          const cleanK = (k === 'pumpkin pete' || k === 'pete') ? "pumpkin' pete" : (k === 'corny' ? 'cornwell' : (k === 'findlay' ? 'finley' : (k === 'tyreless timmy' ? 'timmy' : k)));
+          const prev = safeNpcSnapshots[cleanK] || { deliveryCount: 0, skippedCount: 0 };
+          safeNpcSnapshots[cleanK] = {
+            deliveryCount: Math.max(prev.deliveryCount || 0, v.deliveryCount || 0),
+            skippedCount: Math.max(prev.skippedCount || 0, v.skippedCount || 0),
+            deliveryCompletedAt: v.deliveryCompletedAt || prev.deliveryCompletedAt || null,
+            choreCount: Math.max(prev.choreCount || 0, v.choreCount || 0)
+          };
+        });
+      }
+      delete safeNpcSnapshots['pete'];
+      delete safeNpcSnapshots['pumpkin pete'];
+      delete safeNpcSnapshots['corny'];
+      delete safeNpcSnapshots['findlay'];
+      delete safeNpcSnapshots['tyreless timmy'];
+
       const updatedVault = {
         ...existingVault,
         ...body,
+        npcSnapshots: safeNpcSnapshots,
         chapterPoints: body.chapterPoints !== undefined ? Number(body.chapterPoints) : (existingVault.chapterPoints || 0),
         trackTickets: body.trackTickets !== undefined ? body.trackTickets : (existingVault.trackTickets || 0),
         coinRatio: body.coinRatio !== undefined ? (body.coinRatio === 0 || body.coinRatio === '0' || body.coinRatio === 'free' ? 0 : (parseFloat(body.coinRatio) || 1000)) : (existingVault.coinRatio !== undefined ? existingVault.coinRatio : 1000),

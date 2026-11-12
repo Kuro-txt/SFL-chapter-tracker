@@ -436,7 +436,14 @@ export default async function handler(req, res) {
           vault.bounties = vault.weeks[currentWeekMonday].bounties;
           vault.chores = vault.weeks[currentWeekMonday].chores;
           vault.milestones = parsed.liveMilestones;
-          vault.npcSnapshots = parsed.npcsData;
+          // vault.npcSnapshots is updated canonically in reconcileDeliveriesWithNpcs
+          if (vault.npcSnapshots) {
+            delete vault.npcSnapshots['pete'];
+            delete vault.npcSnapshots['pumpkin pete'];
+            delete vault.npcSnapshots['corny'];
+            delete vault.npcSnapshots['findlay'];
+            delete vault.npcSnapshots['tyreless timmy'];
+          }
 
           const isVip = Boolean(parsed.isVipActive);
           const vipBonus = isVip ? 2 : 0;

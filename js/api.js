@@ -140,6 +140,14 @@ export async function loadTrackerData() {
         if (localDelivs) existingArchiveDelivs = JSON.parse(localDelivs);
       } catch (e) {}
     }
+    // Filter out historical deliveries from prior chapters (before Nov 8, 2026) to prevent resurrecting old records
+    existingArchiveDelivs = (existingArchiveDelivs || []).filter(d => {
+      if (!d) return false;
+      const isDone = Boolean(d.checked !== undefined ? d.checked : d.completed) && !d.isSkipped && !d.isManual;
+      if (isDone && d.completedDate && d.completedDate < '2026-11-08') return false;
+      if (d.id && /_d\d+_\d+$/.test(String(d.id))) return false;
+      return true;
+    });
 
     // Preserve custom deliveries onto incoming board deliveries
     preserveCustomDeliveryEdits(data.deliveries, existingArchiveDelivs);
