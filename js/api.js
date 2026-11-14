@@ -10,7 +10,10 @@ import {
   preserveCustomTaskEdits,
   getActiveBoostsCostSfl,
   getBoostCostsConfig,
-  getCoinRatio
+  getCoinRatio,
+  getCustomPrices,
+  sanitizeCustomPrices,
+  applyCustomPricesToItems
 } from './state.js';
 import { recalculateAll } from './render.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
@@ -109,6 +112,10 @@ export async function loadTrackerData() {
     const data = await res.json();
     isRequestPending = false;
     updateFetchBtn();
+
+    if (data.priceMap) {
+      state.priceMap = data.priceMap;
+    }
 
     // Auto-update user's rank from response if provided
     if (data.userRank && data.userRank.rank) {
@@ -301,6 +308,12 @@ export async function loadTrackerData() {
       if (data.vaultData?.boostCosts) {
         localStorage.setItem('sfl_boost_costs', JSON.stringify(data.vaultData.boostCosts));
       }
+      if (data.vaultData?.customPrices) {
+        state.currentVaultData.customPrices = sanitizeCustomPrices(data.vaultData.customPrices);
+        try {
+          localStorage.setItem('sfl_custom_prices', JSON.stringify(state.currentVaultData.customPrices));
+        } catch (e) {}
+      }
 
       const { checkAndAutoClaimDailyLogin } = await import('./state.js');
       await checkAndAutoClaimDailyLogin();
@@ -367,6 +380,7 @@ export async function loadTrackerData() {
       }
     }
 
+    applyCustomPricesToItems();
     recalculateAll();
 
     // Automatically refresh full leaderboard data & rank
@@ -671,6 +685,7 @@ export async function saveProgressToCloudKV(silent = false) {
     targetRatio: parseFloat(document.getElementById('targetRatioInput')?.value) || 0,
     coinRatio: getCoinRatio(),
     boostCosts: getBoostCostsConfig(),
+    customPrices: getCustomPrices(),
     dailyLoginTickets,
     cumulativeTickets: calculatedTotalTickets,
     cumulativeCost: calculatedTotalCost,
@@ -715,6 +730,7 @@ export async function saveProgressToCloudKV(silent = false) {
       state.globalData.npcSnapshots = data.vaultData.npcSnapshots || {};
     }
 
+    applyCustomPricesToItems();
     recalculateAll();
 
     setSaveButtonsState('saved');

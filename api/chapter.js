@@ -1864,6 +1864,7 @@ export default async function handler(req, res) {
       success: true,
       farmId,
       pricesLoadedCount: Object.keys(priceMap).length,
+      priceMap,
       isVipActive: parsed.isVipActive,
       isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
       doubleDeliveryDates: parsed.doubleDeliveryDates,

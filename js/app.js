@@ -41,7 +41,14 @@ import {
   closeBoostsCostModal,
   updateBoostModalPreview,
   saveBoostCostsFromModal,
-  resetBoostCostsToDefault
+  resetBoostCostsToDefault,
+  openCustomPricesModal,
+  closeCustomPricesModal,
+  saveCustomPricesFromModal,
+  resetCustomPricesToDefault,
+  clearCustomPriceRow,
+  handleCustomPricesSearch,
+  renderCustomPricesList
 } from './modals.js';
 import { 
   recalculateAll,
@@ -258,6 +265,13 @@ window.closeBoostsCostModal = closeBoostsCostModal;
 window.updateBoostModalPreview = updateBoostModalPreview;
 window.saveBoostCostsFromModal = saveBoostCostsFromModal;
 window.resetBoostCostsToDefault = resetBoostCostsToDefault;
+window.openCustomPricesModal = openCustomPricesModal;
+window.closeCustomPricesModal = closeCustomPricesModal;
+window.saveCustomPricesFromModal = saveCustomPricesFromModal;
+window.resetCustomPricesToDefault = resetCustomPricesToDefault;
+window.clearCustomPriceRow = clearCustomPriceRow;
+window.handleCustomPricesSearch = handleCustomPricesSearch;
+window.renderCustomPricesList = renderCustomPricesList;
 
 window.saveAndRecalculate = () => {
   const isVip = Boolean(document.getElementById('vipToggle')?.checked);

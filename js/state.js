@@ -2,7 +2,8 @@ export const state = {
   globalData: null,
   currentUser: null, 
   activeColumnType: null,
-  currentVaultData: null
+  currentVaultData: null,
+  priceMap: null
 };
 
 export const SFL_FLOWER_ITEMS = new Set([
@@ -122,6 +123,148 @@ export function saveBoostCostsConfig(config) {
   if (state.currentVaultData) state.currentVaultData.boostCosts = sanitized;
   if (state.globalData) state.globalData.boostCosts = sanitized;
   return sanitized;
+}
+
+// ==========================================
+// CUSTOM RESOURCE PRICES
+// ==========================================
+
+export function sanitizeCustomPrices(cfg) {
+  if (!cfg || typeof cfg !== 'object') return {};
+  const result = {};
+  for (const [k, v] of Object.entries(cfg)) {
+    const cleanKey = String(k).toLowerCase().trim();
+    if (!cleanKey) continue;
+    if (v === '' || v === null || v === undefined) continue;
+    const num = parseFloat(v);
+    if (!isNaN(num) && num >= 0) {
+      result[cleanKey] = num;
+    }
+  }
+  return result;
+}
+
+export function getCustomPrices() {
+  try {
+    const fromVault = state.currentVaultData?.customPrices || state.globalData?.customPrices;
+    if (fromVault && typeof fromVault === 'object') {
+      return sanitizeCustomPrices(fromVault);
+    }
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('sfl_custom_prices') : null;
+    if (raw) {
+      return sanitizeCustomPrices(JSON.parse(raw));
+    }
+  } catch (e) {}
+  return {};
+}
+
+export function saveCustomPricesConfig(config) {
+  const sanitized = sanitizeCustomPrices(config);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('sfl_custom_prices', JSON.stringify(sanitized));
+    }
+  } catch (e) {}
+  if (state.currentVaultData) state.currentVaultData.customPrices = sanitized;
+  if (state.globalData) state.globalData.customPrices = sanitized;
+  return sanitized;
+}
+
+export function applyCustomPricesToItems() {
+  const overrides = getCustomPrices();
+
+  function updateItem(item) {
+    if (!item) return;
+
+    if (Array.isArray(item.itemDetails) && item.itemDetails.length > 0) {
+      item.itemDetails.forEach(det => {
+        if (!det) return;
+        const cName = (det.name || '').toLowerCase().trim();
+
+        if (cName === 'coins' || cName === 'coin') {
+          if (overrides['coins'] !== undefined) {
+            det.unitPrice = overrides['coins'];
+            det.lineCost = (typeof det.qty === 'number' ? det.qty : parseFloat(det.qty) || 0) * overrides['coins'];
+          } else if (overrides['coin'] !== undefined) {
+            det.unitPrice = overrides['coin'];
+            det.lineCost = (typeof det.qty === 'number' ? det.qty : parseFloat(det.qty) || 0) * overrides['coin'];
+          }
+          return;
+        }
+
+        if (det.marketUnitPrice === undefined) {
+          det.marketUnitPrice = det.unitPrice !== undefined ? det.unitPrice : 0;
+        }
+        if (det.marketLineCost === undefined) {
+          det.marketLineCost = det.lineCost !== undefined ? det.lineCost : 0;
+        }
+
+        const qty = typeof det.qty === 'number' ? det.qty : parseFloat(det.qty) || 0;
+        if (overrides[cName] !== undefined) {
+          det.unitPrice = overrides[cName];
+          det.lineCost = qty * overrides[cName];
+          det.isCustomPrice = true;
+        } else {
+          det.unitPrice = det.marketUnitPrice;
+          det.lineCost = qty * det.marketUnitPrice;
+          delete det.isCustomPrice;
+        }
+      });
+
+      if (!item.isCustomCost && item.userCost === undefined) {
+        const totalCost = item.itemDetails.reduce((sum, d) => sum + (d.lineCost || 0), 0);
+        item.itemsCost = totalCost;
+        item.cost = totalCost;
+      }
+    } else if (item.items && typeof item.items === 'object') {
+      let hasCustom = false;
+      let calculatedCost = 0;
+      Object.entries(item.items).forEach(([ingName, qty]) => {
+        const cName = ingName.toLowerCase().trim();
+        const numQty = typeof qty === 'number' ? qty : parseFloat(qty) || 0;
+        if (overrides[cName] !== undefined) {
+          hasCustom = true;
+          calculatedCost += numQty * overrides[cName];
+        }
+      });
+      if (hasCustom && !item.isCustomCost && item.userCost === undefined) {
+        item.itemsCost = calculatedCost;
+        item.cost = calculatedCost;
+      }
+    } else if (item.name && typeof item.name === 'string') {
+      const rawName = item.name.toLowerCase().trim();
+      const strippedName = rawName.replace(/\b(bounty|task)\b/gi, '').trim();
+      const matchedKey = overrides[rawName] !== undefined ? rawName : (overrides[strippedName] !== undefined ? strippedName : null);
+
+      if (item.baseMarketCost === undefined) {
+        item.baseMarketCost = item.cost !== undefined ? item.cost : 0;
+      }
+
+      if (!item.isCustomCost && item.userCost === undefined) {
+        if (matchedKey !== null) {
+          item.cost = overrides[matchedKey];
+          item.itemsCost = overrides[matchedKey];
+          item.isCustomPrice = true;
+        } else if (item.baseMarketCost !== undefined) {
+          item.cost = item.baseMarketCost;
+          item.itemsCost = item.baseMarketCost;
+          delete item.isCustomPrice;
+        }
+      }
+    }
+  }
+
+  (state.globalData?.deliveries || []).forEach(updateItem);
+  (state.globalData?.archiveDeliveries || []).forEach(updateItem);
+  (state.globalData?.bounties || []).forEach(updateItem);
+  (state.globalData?.chores || []).forEach(updateItem);
+
+  const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks || {};
+  Object.values(weeks).forEach(wk => {
+    if (!wk || typeof wk !== 'object') return;
+    (wk.bounties || []).forEach(updateItem);
+    (wk.chores || []).forEach(updateItem);
+  });
 }
 
 export function getActiveBoostsCostSfl() {

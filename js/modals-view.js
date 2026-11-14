@@ -839,3 +839,14 @@ export {
   saveBoostCostsFromModal,
   resetBoostCostsToDefault
 } from './modal-boosts.js';
+
+// Re-export Custom Prices System
+export {
+  openCustomPricesModal,
+  closeCustomPricesModal,
+  saveCustomPricesFromModal,
+  resetCustomPricesToDefault,
+  clearCustomPriceRow,
+  handleCustomPricesSearch,
+  renderCustomPricesList
+} from './modal-custom-prices.js';

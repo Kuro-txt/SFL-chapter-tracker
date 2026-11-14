@@ -19,7 +19,14 @@ export {
   closeBoostsCostModal,
   updateBoostModalPreview,
   saveBoostCostsFromModal,
-  resetBoostCostsToDefault
+  resetBoostCostsToDefault,
+  openCustomPricesModal,
+  closeCustomPricesModal,
+  saveCustomPricesFromModal,
+  resetCustomPricesToDefault,
+  clearCustomPriceRow,
+  handleCustomPricesSearch,
+  renderCustomPricesList
 } from './modals-view.js';
 
 export {
