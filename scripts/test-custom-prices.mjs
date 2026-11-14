@@ -133,4 +133,36 @@ assert.strictEqual(woodBountyReset.cost, 0.015, 'Wood bounty should restore to o
 
 console.log('✅ TEST 3 PASSED: Resetting restores original market prices with zero loss.');
 
+// ==========================================
+// TEST 4: Coin Tools Method (Axe, Pickaxe, Rod)
+// ==========================================
+console.log('\nTest 4: Verifying coin tool dynamic calculation (Axe, Pickaxe, Rod)...');
+
+// Import helper functions
+import { COIN_TOOL_RECIPES, computeToolPrice, recomputeCoinCosts } from '../js/state.js';
+
+// Axe is 20 coins
+// At 1000 coins/SFL: 20 * 0.001 = 0.020 SFL
+const axe1000 = computeToolPrice('axe', {}, 1000);
+assert.strictEqual(Math.round(axe1000 * 1000) / 1000, 0.020, 'Axe at 1000 coins/SFL should be 0.020 SFL');
+
+// At Free coins (0): 20 * 0 = 0.000 SFL
+const axeFree = computeToolPrice('axe', {}, 0);
+assert.strictEqual(axeFree, 0, 'Axe with Free coins should be 0.000 SFL');
+
+// At 1500 coins/SFL: 20 / 1500 = 0.01333 SFL
+const axe1500 = computeToolPrice('axe', {}, 1500);
+assert.strictEqual(Math.round(axe1500 * 10000) / 10000, 0.0133, 'Axe at 1500 coins/SFL should be ~0.0133 SFL');
+
+// Pickaxe: 3 wood + 16 coins
+// With wood=0.010 and coins=1000: 3*0.010 + 16*0.001 = 0.030 + 0.016 = 0.046 SFL
+const pickaxeCustomWood = computeToolPrice('pickaxe', { wood: 0.010 }, 1000);
+assert.strictEqual(Math.round(pickaxeCustomWood * 1000) / 1000, 0.046, 'Pickaxe with custom wood 0.010 should be 0.046 SFL');
+
+// Pickaxe with Free coins (0): 3*0.010 + 0 = 0.030 SFL
+const pickaxeFree = computeToolPrice('pickaxe', { wood: 0.010 }, 0);
+assert.strictEqual(Math.round(pickaxeFree * 1000) / 1000, 0.030, 'Pickaxe with Free coins and custom wood should be 0.030 SFL');
+
+console.log('✅ TEST 4 PASSED: Coin tools dynamically compute costs using coin ratio & custom ingredient prices.');
+
 console.log('\n🎉 ALL CUSTOM PRICES TESTS PASSED WITH 100% SUCCESS! 🚀');

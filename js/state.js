@@ -170,8 +170,47 @@ export function saveCustomPricesConfig(config) {
   return sanitized;
 }
 
+export const COIN_TOOL_RECIPES = {
+  'axe': { coins: 20 },
+  'pickaxe': { wood: 3, coins: 16 },
+  'stone pickaxe': { wood: 3, stone: 5, coins: 16 },
+  'iron pickaxe': { wood: 3, iron: 5, coins: 64 },
+  'gold pickaxe': { wood: 3, gold: 3, coins: 80 },
+  'rod': { wood: 3, stone: 1, coins: 20 }
+};
+
+export function computeToolPrice(toolName, overrides = {}, coinRatio = null) {
+  const norm = String(toolName || '').toLowerCase().trim();
+  const recipe = COIN_TOOL_RECIPES[norm];
+  if (!recipe) return 0;
+
+  const ratio = coinRatio !== null ? coinRatio : getCoinRatio();
+  const isFree = ratio === 0 || ratio === '0' || ratio === 'free';
+  const coinPrice = isFree ? 0 : (ratio && Number(ratio) > 0 ? 1 / Number(ratio) : 1 / 1000);
+
+  let cost = 0;
+  for (const [ing, qty] of Object.entries(recipe)) {
+    if (ing === 'coins' || ing === 'coin') {
+      cost += qty * coinPrice;
+    } else {
+      let ingUnitPrice;
+      if (overrides[ing] !== undefined) {
+        ingUnitPrice = overrides[ing];
+      } else if (state.priceMap && state.priceMap[ing] !== undefined && state.priceMap[ing] > 0) {
+        ingUnitPrice = state.priceMap[ing];
+      } else {
+        const fallbacks = { wood: 0.0103, stone: 0.0204, iron: 0.0408, gold: 0.0815 };
+        ingUnitPrice = fallbacks[ing] || 0;
+      }
+      cost += qty * ingUnitPrice;
+    }
+  }
+  return cost;
+}
+
 export function applyCustomPricesToItems() {
   const overrides = getCustomPrices();
+  const coinRatio = getCoinRatio();
 
   function updateItem(item) {
     if (!item) return;
@@ -204,6 +243,11 @@ export function applyCustomPricesToItems() {
           det.unitPrice = overrides[cName];
           det.lineCost = qty * overrides[cName];
           det.isCustomPrice = true;
+        } else if (COIN_TOOL_RECIPES[cName]) {
+          const dynamicPrice = computeToolPrice(cName, overrides, coinRatio);
+          det.unitPrice = dynamicPrice;
+          det.lineCost = qty * dynamicPrice;
+          delete det.isCustomPrice;
         } else {
           det.unitPrice = det.marketUnitPrice;
           det.lineCost = qty * det.marketUnitPrice;
@@ -225,6 +269,9 @@ export function applyCustomPricesToItems() {
         if (overrides[cName] !== undefined) {
           hasCustom = true;
           calculatedCost += numQty * overrides[cName];
+        } else if (COIN_TOOL_RECIPES[cName]) {
+          hasCustom = true;
+          calculatedCost += numQty * computeToolPrice(cName, overrides, coinRatio);
         }
       });
       if (hasCustom && !item.isCustomCost && item.userCost === undefined) {
@@ -245,6 +292,12 @@ export function applyCustomPricesToItems() {
           item.cost = overrides[matchedKey];
           item.itemsCost = overrides[matchedKey];
           item.isCustomPrice = true;
+        } else if (COIN_TOOL_RECIPES[rawName] || COIN_TOOL_RECIPES[strippedName]) {
+          const toolKey = COIN_TOOL_RECIPES[rawName] ? rawName : strippedName;
+          const dynamicPrice = computeToolPrice(toolKey, overrides, coinRatio);
+          item.cost = dynamicPrice;
+          item.itemsCost = dynamicPrice;
+          delete item.isCustomPrice;
         } else if (item.baseMarketCost !== undefined) {
           item.cost = item.baseMarketCost;
           item.itemsCost = item.baseMarketCost;
@@ -636,10 +689,14 @@ export function getDeliveryRecords() {
 export function recomputeCoinCosts(ratio) {
   const isFree = ratio === 0 || ratio === '0' || ratio === 'free';
   const newCoinPrice = isFree ? 0 : (ratio && Number(ratio) > 0 ? 1 / Number(ratio) : 1 / 1000);
+  const currentOverrides = getCustomPrices();
 
   if (state.priceMap) {
     state.priceMap['coins'] = newCoinPrice;
     state.priceMap['coin'] = newCoinPrice;
+    for (const toolName of Object.keys(COIN_TOOL_RECIPES)) {
+      state.priceMap[toolName] = computeToolPrice(toolName, currentOverrides, isFree ? 0 : Number(ratio));
+    }
   }
 
   function updateItem(item) {
@@ -648,10 +705,17 @@ export function recomputeCoinCosts(ratio) {
     if (Array.isArray(item.itemDetails) && item.itemDetails.length > 0) {
       item.itemDetails.forEach(det => {
         const cName = (det.name || '').toLowerCase().trim();
+        const qty = typeof det.qty === 'number' ? det.qty : parseFloat(det.qty) || 0;
+
         if (cName === 'coins' || cName === 'coin') {
           hasCoinItem = true;
           det.unitPrice = newCoinPrice;
-          det.lineCost = (typeof det.qty === 'number' ? det.qty : parseFloat(det.qty) || 0) * newCoinPrice;
+          det.lineCost = qty * newCoinPrice;
+        } else if (COIN_TOOL_RECIPES[cName] && !det.isCustomPrice && currentOverrides[cName] === undefined) {
+          hasCoinItem = true;
+          const dynamicPrice = computeToolPrice(cName, currentOverrides, isFree ? 0 : Number(ratio));
+          det.unitPrice = dynamicPrice;
+          det.lineCost = qty * dynamicPrice;
         }
       });
       if (hasCoinItem && !item.isCustomCost && item.userCost === undefined) {
@@ -662,16 +726,32 @@ export function recomputeCoinCosts(ratio) {
     } else if (item.items && typeof item.items === 'object') {
       Object.entries(item.items).forEach(([ingName, qty]) => {
         const cName = ingName.toLowerCase().trim();
+        const numQty = typeof qty === 'number' ? qty : parseFloat(qty) || 0;
         if (cName === 'coins' || cName === 'coin') {
           hasCoinItem = true;
           if (!item.isCustomCost && item.userCost === undefined) {
-            const numQty = typeof qty === 'number' ? qty : parseFloat(qty) || 0;
             const coinCost = numQty * newCoinPrice;
             item.itemsCost = coinCost;
             item.cost = coinCost;
           }
+        } else if (COIN_TOOL_RECIPES[cName] && currentOverrides[cName] === undefined) {
+          hasCoinItem = true;
+          if (!item.isCustomCost && item.userCost === undefined) {
+            const toolCost = numQty * computeToolPrice(cName, currentOverrides, isFree ? 0 : Number(ratio));
+            item.itemsCost = toolCost;
+            item.cost = toolCost;
+          }
         }
       });
+    } else if (item.name && typeof item.name === 'string') {
+      const rawName = item.name.toLowerCase().trim();
+      const strippedName = rawName.replace(/\b(bounty|task)\b/gi, '').trim();
+      const toolKey = COIN_TOOL_RECIPES[rawName] ? rawName : (COIN_TOOL_RECIPES[strippedName] ? strippedName : null);
+      if (toolKey && currentOverrides[toolKey] === undefined && !item.isCustomPrice && !item.isCustomCost && item.userCost === undefined) {
+        const dynamicPrice = computeToolPrice(toolKey, currentOverrides, isFree ? 0 : Number(ratio));
+        item.cost = dynamicPrice;
+        item.itemsCost = dynamicPrice;
+      }
     }
   }
 

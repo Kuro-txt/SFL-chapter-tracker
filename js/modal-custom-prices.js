@@ -6,7 +6,10 @@ import {
   formatSFL, 
   getCustomPrices, 
   saveCustomPricesConfig, 
-  applyCustomPricesToItems 
+  applyCustomPricesToItems,
+  getCoinRatio,
+  COIN_TOOL_RECIPES,
+  computeToolPrice
 } from './state.js';
 import { renderItemIcon } from './item-icons.js';
 
@@ -33,9 +36,6 @@ export const BASELINE_RESOURCE_PRICES = {
   "leather": 0.045,
   "merino wool": 0.065,
   "honey": 0.080,
-  "cheese": 0.120,
-  "blue cheese": 0.180,
-  "honey cheddar": 0.220,
 
   // Crops
   "sunflower": 0.0004,
@@ -72,63 +72,10 @@ export const BASELINE_RESOURCE_PRICES = {
   "lemon": 0.048,
   "grape": 0.060,
 
-  // Fish & Seafood
-  "red snapper": 0.080,
-  "tuna": 0.100,
-  "anchovy": 0.040,
-  "olive flounder": 0.070,
-  "sea bass": 0.060,
-  "halibut": 0.080,
-  "blowfish": 0.090,
-  "squid": 0.075,
-  "porgy": 0.050,
-  "clownfish": 0.060,
-  "lobster": 0.120,
-  "blue crab": 0.060,
-  "hermit crab": 0.040,
-  "shrimp": 0.050,
-  "oyster": 0.060,
-  "mussel": 0.050,
-
-  // Food & Bakery
-  "mashed potato": 0.015,
-  "pumpkin soup": 0.025,
-  "boiled eggs": 0.050,
-  "popcorn": 0.090,
-  "bumpkin broth": 0.035,
-  "bumpkin salad": 0.045,
-  "bumpkin roast": 0.065,
-  "fermented carrots": 0.055,
-  "sauerkraut": 0.060,
-  "apple pie": 0.080,
-  "orange cake": 0.090,
-  "carrot cake": 0.070,
-  "sunflower cake": 0.040,
-  "potato cake": 0.050,
-  "cabbage cake": 0.060,
-  "beetroot cake": 0.075,
-  "cauliflower cake": 0.085,
-  "parsnip cake": 0.095,
-  "eggplant cake": 0.110,
-  "radish cake": 0.125,
-  "wheat cake": 0.080,
-  "reindeer carrot": 0.030,
-  "rhubarb tart": 0.070,
-  "pancakes": 0.060,
-  "fruit salad": 0.075,
-  "club sandwich": 0.090,
-
-  // Crafting, Tools & Bait
-  "rod": 0.020,
-  "fishing lure": 0.015,
-  "earthworm": 0.005,
-  "grub": 0.008,
-  "red wiggler": 0.012,
-  "timber": 0.095,
-  "crimsteel": 0.450,
-  "synthetic fibre": 0.200,
-  "hardened leather": 0.220,
-  "bee box": 0.650
+  // Tools (Calculated via coins method)
+  "rod": 0.0713,
+  "axe": 0.020,
+  "pickaxe": 0.0469
 };
 
 export const CUSTOM_PRICE_ITEMS = [
@@ -188,71 +135,19 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'leather', label: 'Leather', category: 'Animals' },
   { key: 'merino wool', label: 'Merino Wool', category: 'Animals' },
   { key: 'honey', label: 'Honey', category: 'Animals' },
-  { key: 'cheese', label: 'Cheese', category: 'Animals' },
-  { key: 'blue cheese', label: 'Blue Cheese', category: 'Animals' },
-  { key: 'honey cheddar', label: 'Honey Cheddar', category: 'Animals' },
 
-  // Fish & Seafood
-  { key: 'red snapper', label: 'Red Snapper', category: 'Fish' },
-  { key: 'tuna', label: 'Tuna', category: 'Fish' },
-  { key: 'anchovy', label: 'Anchovy', category: 'Fish' },
-  { key: 'olive flounder', label: 'Olive Flounder', category: 'Fish' },
-  { key: 'sea bass', label: 'Sea Bass', category: 'Fish' },
-  { key: 'halibut', label: 'Halibut', category: 'Fish' },
-  { key: 'blowfish', label: 'Blowfish', category: 'Fish' },
-  { key: 'squid', label: 'Squid', category: 'Fish' },
-  { key: 'porgy', label: 'Porgy', category: 'Fish' },
-  { key: 'clownfish', label: 'Clownfish', category: 'Fish' },
-  { key: 'lobster', label: 'Lobster', category: 'Fish' },
-  { key: 'blue crab', label: 'Blue Crab', category: 'Fish' },
-  { key: 'hermit crab', label: 'Hermit Crab', category: 'Fish' },
-  { key: 'shrimp', label: 'Shrimp', category: 'Fish' },
-  { key: 'oyster', label: 'Oyster', category: 'Fish' },
-  { key: 'mussel', label: 'Mussel', category: 'Fish' },
-
-  // Food & Bakery
-  { key: 'mashed potato', label: 'Mashed Potato', category: 'Food' },
-  { key: 'pumpkin soup', label: 'Pumpkin Soup', category: 'Food' },
-  { key: 'boiled eggs', label: 'Boiled Eggs', category: 'Food' },
-  { key: 'popcorn', label: 'Popcorn', category: 'Food' },
-  { key: 'bumpkin broth', label: 'Bumpkin Broth', category: 'Food' },
-  { key: 'bumpkin salad', label: 'Bumpkin Salad', category: 'Food' },
-  { key: 'bumpkin roast', label: 'Bumpkin Roast', category: 'Food' },
-  { key: 'fermented carrots', label: 'Fermented Carrots', category: 'Food' },
-  { key: 'sauerkraut', label: 'Sauerkraut', category: 'Food' },
-  { key: 'apple pie', label: 'Apple Pie', category: 'Food' },
-  { key: 'orange cake', label: 'Orange Cake', category: 'Food' },
-  { key: 'carrot cake', label: 'Carrot Cake', category: 'Food' },
-  { key: 'sunflower cake', label: 'Sunflower Cake', category: 'Food' },
-  { key: 'potato cake', label: 'Potato Cake', category: 'Food' },
-  { key: 'cabbage cake', label: 'Cabbage Cake', category: 'Food' },
-  { key: 'beetroot cake', label: 'Beetroot Cake', category: 'Food' },
-  { key: 'cauliflower cake', label: 'Cauliflower Cake', category: 'Food' },
-  { key: 'parsnip cake', label: 'Parsnip Cake', category: 'Food' },
-  { key: 'eggplant cake', label: 'Eggplant Cake', category: 'Food' },
-  { key: 'radish cake', label: 'Radish Cake', category: 'Food' },
-  { key: 'wheat cake', label: 'Wheat Cake', category: 'Food' },
-  { key: 'reindeer carrot', label: 'Reindeer Carrot', category: 'Food' },
-  { key: 'rhubarb tart', label: 'Rhubarb Tart', category: 'Food' },
-  { key: 'pancakes', label: 'Pancakes', category: 'Food' },
-  { key: 'fruit salad', label: 'Fruit Salad', category: 'Food' },
-  { key: 'club sandwich', label: 'Club Sandwich', category: 'Food' },
-
-  // Crafting, Tools & Bait
-  { key: 'rod', label: 'Rod', category: 'Crafting' },
-  { key: 'fishing lure', label: 'Fishing Lure', category: 'Crafting' },
-  { key: 'earthworm', label: 'Earthworm', category: 'Crafting' },
-  { key: 'grub', label: 'Grub', category: 'Crafting' },
-  { key: 'red wiggler', label: 'Red Wiggler', category: 'Crafting' },
-  { key: 'timber', label: 'Timber', category: 'Crafting' },
-  { key: 'crimsteel', label: 'Crimsteel', category: 'Crafting' },
-  { key: 'synthetic fibre', label: 'Synthetic Fibre', category: 'Crafting' },
-  { key: 'hardened leather', label: 'Hardened Leather', category: 'Crafting' },
-  { key: 'bee box', label: 'Bee Box', category: 'Crafting' }
+  // Tools (Coins & Resources)
+  { key: 'rod', label: 'Rod', category: 'Tools' },
+  { key: 'axe', label: 'Axe', category: 'Tools' },
+  { key: 'pickaxe', label: 'Pickaxe', category: 'Tools' }
 ];
 
 export function getMarketPriceForItem(key) {
   const cleanKey = String(key || '').toLowerCase().trim();
+  if (COIN_TOOL_RECIPES && COIN_TOOL_RECIPES[cleanKey]) {
+    const dynamicPrice = computeToolPrice(cleanKey);
+    if (typeof dynamicPrice === 'number' && dynamicPrice >= 0) return dynamicPrice;
+  }
   if (state.priceMap && state.priceMap[cleanKey] !== undefined && state.priceMap[cleanKey] > 0) {
     return state.priceMap[cleanKey];
   }
