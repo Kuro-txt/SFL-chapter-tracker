@@ -257,7 +257,9 @@ export function applyCustomPricesToItems() {
   (state.globalData?.deliveries || []).forEach(updateItem);
   (state.globalData?.archiveDeliveries || []).forEach(updateItem);
   (state.globalData?.bounties || []).forEach(updateItem);
+  (state.globalData?.archiveBounties || []).forEach(updateItem);
   (state.globalData?.chores || []).forEach(updateItem);
+  (state.globalData?.archiveChores || []).forEach(updateItem);
 
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks || {};
   Object.values(weeks).forEach(wk => {
@@ -677,7 +679,9 @@ export function recomputeCoinCosts(ratio) {
   (state.globalData?.deliveries || []).forEach(updateItem);
   (state.globalData?.archiveDeliveries || []).forEach(updateItem);
   (state.globalData?.bounties || []).forEach(updateItem);
+  (state.globalData?.archiveBounties || []).forEach(updateItem);
   (state.globalData?.chores || []).forEach(updateItem);
+  (state.globalData?.archiveChores || []).forEach(updateItem);
 
   // Update historical weeks
   const weeks = state.globalData?.cloudHistory?.weeks || state.currentVaultData?.weeks || {};

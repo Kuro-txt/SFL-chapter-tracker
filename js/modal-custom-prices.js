@@ -57,7 +57,6 @@ export const BASELINE_RESOURCE_PRICES = {
   "tomato": 0.035,
   "lemon": 0.048,
   "grape": 0.060,
-  "solar totem": 0.500,
   "rod": 0.020,
   "fishing lure": 0.015,
   "earthworm": 0.005,
@@ -120,7 +119,6 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'grape', label: 'Grape', category: 'Fruits' },
 
   // Other Delivery Items
-  { key: 'solar totem', label: 'Solar Totem', category: 'Other' },
   { key: 'rod', label: 'Rod', category: 'Other' },
   { key: 'fishing lure', label: 'Fishing Lure', category: 'Other' },
   { key: 'earthworm', label: 'Earthworm', category: 'Other' },
@@ -236,7 +234,7 @@ export function renderCustomPricesList() {
   container.innerHTML = html;
 }
 
-export function clearCustomPriceRow(key) {
+export async function clearCustomPriceRow(key) {
   const inputId = `customPriceInput_${key.replace(/\s+/g, '_')}`;
   const input = document.getElementById(inputId);
   if (input) {
@@ -247,6 +245,19 @@ export function clearCustomPriceRow(key) {
   saveCustomPricesConfig(prices);
   applyCustomPricesToItems();
   renderCustomPricesList();
+
+  try {
+    const { recalculateAll } = await import('./render.js');
+    recalculateAll();
+  } catch (e) {}
+
+  try {
+    const { saveProgressToCloudKV, showToast } = await import('./api.js');
+    saveProgressToCloudKV(true);
+    if (typeof showToast === 'function') {
+      showToast(`✔ Custom price for ${key} cleared`, 'success');
+    }
+  } catch (e) {}
 }
 
 export function openCustomPricesModal() {
@@ -265,7 +276,8 @@ export function closeCustomPricesModal() {
 }
 
 export async function saveCustomPricesFromModal() {
-  const inputs = document.querySelectorAll('.custom-price-field');
+  const modal = document.getElementById('customPricesModal');
+  const inputs = (modal || document).querySelectorAll('.custom-price-field');
   const newPrices = {};
 
   inputs.forEach(input => {
