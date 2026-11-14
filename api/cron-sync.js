@@ -647,24 +647,28 @@ export default async function handler(req, res) {
             });
 
             let bountyCount = 0, bountyTix = 0, bountyCost = 0;
-            let autoBountyCount = 0;
+            let autoBountyCount = 0, manualBountyCount = 0;
             let animalBountyCount = 0, animalBountyTix = 0, animalBountyCost = 0;
-            let autoAnimalBountyCount = 0;
+            let autoAnimalBountyCount = 0, manualAnimalBountyCount = 0;
             (vault.bounties || []).forEach(b => {
               const isDone = b.checked !== undefined ? b.checked : Boolean(b.completed);
               if (isDone) {
-                const bTix = b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0);
+                const bTix = b.userTickets !== undefined ? b.userTickets : (b.baseTickets !== undefined ? b.baseTickets : (b.tickets || 0));
                 const bCost = (b.itemsCost || b.cost || 0);
                 const isAnimal = isAnimalBountyHelper(b);
                 const isMan = isManualBountyHelper(b);
+                const isCustom = Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+                const isFixedTix = isMan || isCustom;
                 if (isAnimal) {
                   animalBountyCount++;
-                  if (!isMan) autoAnimalBountyCount++;
+                  if (!isFixedTix) autoAnimalBountyCount++;
+                  else manualAnimalBountyCount++;
                   animalBountyTix += bTix;
                   animalBountyCost += bCost;
                 } else {
                   bountyCount++;
-                  if (!isMan) autoBountyCount++;
+                  if (!isFixedTix) autoBountyCount++;
+                  else manualBountyCount++;
                   bountyTix += bTix;
                   bountyCost += bCost;
                 }
@@ -681,10 +685,12 @@ export default async function handler(req, res) {
               if (isDone) {
                 choreCount++;
                 const isMan = isManualBountyHelper(c);
-                if (isMan) manualChoreCount++;
+                const isCustom = Boolean(c.isCustomTickets) || c.userTickets !== undefined;
+                const isFixedTix = isMan || isCustom;
+                if (isFixedTix) manualChoreCount++;
                 else autoChoreCount++;
-                const baseTix = c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1);
-                const yieldAmt = isMan ? baseTix : (baseTix + vipBonus);
+                const baseTix = c.userTickets !== undefined ? c.userTickets : (c.baseTickets !== undefined ? c.baseTickets : (c.tickets || 1));
+                const yieldAmt = isFixedTix ? baseTix : (baseTix + vipBonus);
                 choreTix += yieldAmt;
                 choreCost += (c.itemsCost || c.cost || 0);
               }
@@ -694,18 +700,22 @@ export default async function handler(req, res) {
               if (wkKey === currentWeekMonday) return;
               (wk.bounties || []).forEach(b => {
                 if (b.completed || b.checked) {
-                  const bTix = (b.baseTickets || b.tickets || 0);
+                  const bTix = b.userTickets !== undefined ? b.userTickets : (b.baseTickets || b.tickets || 0);
                   const bCost = (b.itemsCost || b.cost || 0);
                   const isAnimal = isAnimalBountyHelper(b);
                   const isMan = isManualBountyHelper(b);
+                  const isCustom = Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+                  const isFixedTix = isMan || isCustom;
                   if (isAnimal) {
                     animalBountyCount++;
-                    if (!isMan) autoAnimalBountyCount++;
+                    if (!isFixedTix) autoAnimalBountyCount++;
+                    else manualAnimalBountyCount++;
                     animalBountyTix += bTix;
                     animalBountyCost += bCost;
                   } else {
                     bountyCount++;
-                    if (!isMan) autoBountyCount++;
+                    if (!isFixedTix) autoBountyCount++;
+                    else manualBountyCount++;
                     bountyTix += bTix;
                     bountyCost += bCost;
                   }
@@ -718,10 +728,12 @@ export default async function handler(req, res) {
                 if (c.completed || c.checked) {
                   choreCount++;
                   const isMan = isManualBountyHelper(c);
-                  if (isMan) manualChoreCount++;
+                  const isCustom = Boolean(c.isCustomTickets) || c.userTickets !== undefined;
+                  const isFixedTix = isMan || isCustom;
+                  if (isFixedTix) manualChoreCount++;
                   else autoChoreCount++;
-                  const baseTix = (c.baseTickets || c.tickets || 1);
-                  const yieldAmt = isMan ? baseTix : (baseTix + vipBonus);
+                  const baseTix = c.userTickets !== undefined ? c.userTickets : (c.baseTickets || c.tickets || 1);
+                  const yieldAmt = isFixedTix ? baseTix : (baseTix + vipBonus);
                   choreTix += yieldAmt;
                   choreCost += (c.itemsCost || c.cost || 0);
                 }
@@ -851,6 +863,7 @@ export default async function handler(req, res) {
                   tickets: bountyTix, 
                   cost: bountyCost,
                   autoCount: autoBountyCount,
+                  manualCount: manualBountyCount,
                   boostUnits: autoBountyCount
                 },
                 animalBounties: { 
@@ -859,6 +872,7 @@ export default async function handler(req, res) {
                   tickets: animalBountyTix, 
                   cost: animalBountyCost,
                   autoCount: autoAnimalBountyCount,
+                  manualCount: manualAnimalBountyCount,
                   boostUnits: autoAnimalBountyCount
                 },
                 chores: { 
