@@ -1384,6 +1384,25 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
       justify-content: center;
       align-items: stretch;
     }
+    .header-right-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .discord-feedback-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      text-decoration: none;
+      line-height: 1;
+    }
+    .discord-feedback-btn:hover {
+      text-decoration: none;
+    }
     .header-support-btn {
       display: inline-flex;
       align-items: center;
@@ -3045,7 +3064,8 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
       header { justify-content: space-between; }
       .header-title-group { order: -1; width: 100%; margin-bottom: 6px; }
       .header-left-group { order: 1; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
-      #themeToggleBtn { order: 2; margin: 0 auto; }
+      .header-right-group { order: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; margin-top: 4px; }
+      #themeToggleBtn { margin: 0; }
       .modal { padding: 6px; }
       .modal-content { max-height: 94vh; width: 100%; border-radius: 8px; }
       .modal-body { padding: 10px 8px; }
