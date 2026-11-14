@@ -26,6 +26,7 @@ export {
   resetCustomPricesToDefault,
   clearCustomPriceRow,
   handleCustomPricesSearch,
+  setCustomPricesCategory,
   renderCustomPricesList
 } from './modals-view.js';
 

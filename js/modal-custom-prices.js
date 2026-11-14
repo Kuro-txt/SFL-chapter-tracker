@@ -12,15 +12,20 @@ import { renderItemIcon } from './item-icons.js';
 
 // Standard baseline fallback prices
 export const BASELINE_RESOURCE_PRICES = {
+  // Core Resources & Minerals
   "wood": 0.0103,
   "stone": 0.0204,
   "iron": 0.0408,
   "gold": 0.0815,
   "crimstone": 0.125,
   "sunstone": 0.250,
+  "obsidian": 0.150,
   "oil": 0.015,
   "sand": 0.005,
   "salt": 0.008,
+  "refined salt": 0.040,
+
+  // Animals & Products
   "egg": 0.0233,
   "milk": 0.0512,
   "wool": 0.0325,
@@ -28,6 +33,11 @@ export const BASELINE_RESOURCE_PRICES = {
   "leather": 0.045,
   "merino wool": 0.065,
   "honey": 0.080,
+  "cheese": 0.120,
+  "blue cheese": 0.180,
+  "honey cheddar": 0.220,
+
+  // Crops
   "sunflower": 0.0004,
   "potato": 0.0014,
   "pumpkin": 0.0035,
@@ -50,6 +60,10 @@ export const BASELINE_RESOURCE_PRICES = {
   "onion": 0.070,
   "turnip": 0.065,
   "artichoke": 0.080,
+  "rhubarb": 0.040,
+  "broccoli": 0.050,
+
+  // Fruits
   "apple": 0.045,
   "banana": 0.055,
   "orange": 0.050,
@@ -57,11 +71,64 @@ export const BASELINE_RESOURCE_PRICES = {
   "tomato": 0.035,
   "lemon": 0.048,
   "grape": 0.060,
+
+  // Fish & Seafood
+  "red snapper": 0.080,
+  "tuna": 0.100,
+  "anchovy": 0.040,
+  "olive flounder": 0.070,
+  "sea bass": 0.060,
+  "halibut": 0.080,
+  "blowfish": 0.090,
+  "squid": 0.075,
+  "porgy": 0.050,
+  "clownfish": 0.060,
+  "lobster": 0.120,
+  "blue crab": 0.060,
+  "hermit crab": 0.040,
+  "shrimp": 0.050,
+  "oyster": 0.060,
+  "mussel": 0.050,
+
+  // Food & Bakery
+  "mashed potato": 0.015,
+  "pumpkin soup": 0.025,
+  "boiled eggs": 0.050,
+  "popcorn": 0.090,
+  "bumpkin broth": 0.035,
+  "bumpkin salad": 0.045,
+  "bumpkin roast": 0.065,
+  "fermented carrots": 0.055,
+  "sauerkraut": 0.060,
+  "apple pie": 0.080,
+  "orange cake": 0.090,
+  "carrot cake": 0.070,
+  "sunflower cake": 0.040,
+  "potato cake": 0.050,
+  "cabbage cake": 0.060,
+  "beetroot cake": 0.075,
+  "cauliflower cake": 0.085,
+  "parsnip cake": 0.095,
+  "eggplant cake": 0.110,
+  "radish cake": 0.125,
+  "wheat cake": 0.080,
+  "reindeer carrot": 0.030,
+  "rhubarb tart": 0.070,
+  "pancakes": 0.060,
+  "fruit salad": 0.075,
+  "club sandwich": 0.090,
+
+  // Crafting, Tools & Bait
   "rod": 0.020,
   "fishing lure": 0.015,
   "earthworm": 0.005,
   "grub": 0.008,
-  "red wiggler": 0.012
+  "red wiggler": 0.012,
+  "timber": 0.095,
+  "crimsteel": 0.450,
+  "synthetic fibre": 0.200,
+  "hardened leather": 0.220,
+  "bee box": 0.650
 };
 
 export const CUSTOM_PRICE_ITEMS = [
@@ -72,18 +139,11 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'gold', label: 'Gold', category: 'Resources' },
   { key: 'crimstone', label: 'Crimstone', category: 'Resources' },
   { key: 'sunstone', label: 'Sunstone', category: 'Resources' },
+  { key: 'obsidian', label: 'Obsidian', category: 'Resources' },
   { key: 'oil', label: 'Oil', category: 'Resources' },
   { key: 'sand', label: 'Sand', category: 'Resources' },
   { key: 'salt', label: 'Salt', category: 'Resources' },
-
-  // Animals & Products
-  { key: 'egg', label: 'Egg', category: 'Animals' },
-  { key: 'milk', label: 'Milk', category: 'Animals' },
-  { key: 'wool', label: 'Wool', category: 'Animals' },
-  { key: 'feather', label: 'Feather', category: 'Animals' },
-  { key: 'leather', label: 'Leather', category: 'Animals' },
-  { key: 'merino wool', label: 'Merino Wool', category: 'Animals' },
-  { key: 'honey', label: 'Honey', category: 'Animals' },
+  { key: 'refined salt', label: 'Refined Salt', category: 'Resources' },
 
   // Crops
   { key: 'sunflower', label: 'Sunflower', category: 'Crops' },
@@ -108,22 +168,87 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'onion', label: 'Onion', category: 'Crops' },
   { key: 'turnip', label: 'Turnip', category: 'Crops' },
   { key: 'artichoke', label: 'Artichoke', category: 'Crops' },
+  { key: 'rhubarb', label: 'Rhubarb', category: 'Crops' },
+  { key: 'broccoli', label: 'Broccoli', category: 'Crops' },
 
   // Fruits
-  { key: 'blueberry', label: 'Blueberry', category: 'Fruits' },
-  { key: 'orange', label: 'Orange', category: 'Fruits' },
   { key: 'apple', label: 'Apple', category: 'Fruits' },
   { key: 'banana', label: 'Banana', category: 'Fruits' },
+  { key: 'orange', label: 'Orange', category: 'Fruits' },
+  { key: 'blueberry', label: 'Blueberry', category: 'Fruits' },
   { key: 'tomato', label: 'Tomato', category: 'Fruits' },
   { key: 'lemon', label: 'Lemon', category: 'Fruits' },
   { key: 'grape', label: 'Grape', category: 'Fruits' },
 
-  // Other Delivery Items
-  { key: 'rod', label: 'Rod', category: 'Other' },
-  { key: 'fishing lure', label: 'Fishing Lure', category: 'Other' },
-  { key: 'earthworm', label: 'Earthworm', category: 'Other' },
-  { key: 'grub', label: 'Grub', category: 'Other' },
-  { key: 'red wiggler', label: 'Red Wiggler', category: 'Other' }
+  // Animals & Products
+  { key: 'egg', label: 'Egg', category: 'Animals' },
+  { key: 'milk', label: 'Milk', category: 'Animals' },
+  { key: 'wool', label: 'Wool', category: 'Animals' },
+  { key: 'feather', label: 'Feather', category: 'Animals' },
+  { key: 'leather', label: 'Leather', category: 'Animals' },
+  { key: 'merino wool', label: 'Merino Wool', category: 'Animals' },
+  { key: 'honey', label: 'Honey', category: 'Animals' },
+  { key: 'cheese', label: 'Cheese', category: 'Animals' },
+  { key: 'blue cheese', label: 'Blue Cheese', category: 'Animals' },
+  { key: 'honey cheddar', label: 'Honey Cheddar', category: 'Animals' },
+
+  // Fish & Seafood
+  { key: 'red snapper', label: 'Red Snapper', category: 'Fish' },
+  { key: 'tuna', label: 'Tuna', category: 'Fish' },
+  { key: 'anchovy', label: 'Anchovy', category: 'Fish' },
+  { key: 'olive flounder', label: 'Olive Flounder', category: 'Fish' },
+  { key: 'sea bass', label: 'Sea Bass', category: 'Fish' },
+  { key: 'halibut', label: 'Halibut', category: 'Fish' },
+  { key: 'blowfish', label: 'Blowfish', category: 'Fish' },
+  { key: 'squid', label: 'Squid', category: 'Fish' },
+  { key: 'porgy', label: 'Porgy', category: 'Fish' },
+  { key: 'clownfish', label: 'Clownfish', category: 'Fish' },
+  { key: 'lobster', label: 'Lobster', category: 'Fish' },
+  { key: 'blue crab', label: 'Blue Crab', category: 'Fish' },
+  { key: 'hermit crab', label: 'Hermit Crab', category: 'Fish' },
+  { key: 'shrimp', label: 'Shrimp', category: 'Fish' },
+  { key: 'oyster', label: 'Oyster', category: 'Fish' },
+  { key: 'mussel', label: 'Mussel', category: 'Fish' },
+
+  // Food & Bakery
+  { key: 'mashed potato', label: 'Mashed Potato', category: 'Food' },
+  { key: 'pumpkin soup', label: 'Pumpkin Soup', category: 'Food' },
+  { key: 'boiled eggs', label: 'Boiled Eggs', category: 'Food' },
+  { key: 'popcorn', label: 'Popcorn', category: 'Food' },
+  { key: 'bumpkin broth', label: 'Bumpkin Broth', category: 'Food' },
+  { key: 'bumpkin salad', label: 'Bumpkin Salad', category: 'Food' },
+  { key: 'bumpkin roast', label: 'Bumpkin Roast', category: 'Food' },
+  { key: 'fermented carrots', label: 'Fermented Carrots', category: 'Food' },
+  { key: 'sauerkraut', label: 'Sauerkraut', category: 'Food' },
+  { key: 'apple pie', label: 'Apple Pie', category: 'Food' },
+  { key: 'orange cake', label: 'Orange Cake', category: 'Food' },
+  { key: 'carrot cake', label: 'Carrot Cake', category: 'Food' },
+  { key: 'sunflower cake', label: 'Sunflower Cake', category: 'Food' },
+  { key: 'potato cake', label: 'Potato Cake', category: 'Food' },
+  { key: 'cabbage cake', label: 'Cabbage Cake', category: 'Food' },
+  { key: 'beetroot cake', label: 'Beetroot Cake', category: 'Food' },
+  { key: 'cauliflower cake', label: 'Cauliflower Cake', category: 'Food' },
+  { key: 'parsnip cake', label: 'Parsnip Cake', category: 'Food' },
+  { key: 'eggplant cake', label: 'Eggplant Cake', category: 'Food' },
+  { key: 'radish cake', label: 'Radish Cake', category: 'Food' },
+  { key: 'wheat cake', label: 'Wheat Cake', category: 'Food' },
+  { key: 'reindeer carrot', label: 'Reindeer Carrot', category: 'Food' },
+  { key: 'rhubarb tart', label: 'Rhubarb Tart', category: 'Food' },
+  { key: 'pancakes', label: 'Pancakes', category: 'Food' },
+  { key: 'fruit salad', label: 'Fruit Salad', category: 'Food' },
+  { key: 'club sandwich', label: 'Club Sandwich', category: 'Food' },
+
+  // Crafting, Tools & Bait
+  { key: 'rod', label: 'Rod', category: 'Crafting' },
+  { key: 'fishing lure', label: 'Fishing Lure', category: 'Crafting' },
+  { key: 'earthworm', label: 'Earthworm', category: 'Crafting' },
+  { key: 'grub', label: 'Grub', category: 'Crafting' },
+  { key: 'red wiggler', label: 'Red Wiggler', category: 'Crafting' },
+  { key: 'timber', label: 'Timber', category: 'Crafting' },
+  { key: 'crimsteel', label: 'Crimsteel', category: 'Crafting' },
+  { key: 'synthetic fibre', label: 'Synthetic Fibre', category: 'Crafting' },
+  { key: 'hardened leather', label: 'Hardened Leather', category: 'Crafting' },
+  { key: 'bee box', label: 'Bee Box', category: 'Crafting' }
 ];
 
 export function getMarketPriceForItem(key) {
@@ -143,9 +268,19 @@ export function getMarketPriceForItem(key) {
 }
 
 let _customPricesSearchFilter = '';
+let _customPricesCategoryFilter = 'all';
 
 export function handleCustomPricesSearch(query) {
   _customPricesSearchFilter = String(query || '').toLowerCase().trim();
+  renderCustomPricesList();
+}
+
+export function setCustomPricesCategory(cat) {
+  _customPricesCategoryFilter = cat || 'all';
+  const tabs = document.querySelectorAll('#customPricesCategoryTabs .cat-tab-btn');
+  tabs.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === _customPricesCategoryFilter);
+  });
   renderCustomPricesList();
 }
 
@@ -155,8 +290,12 @@ export function renderCustomPricesList() {
 
   const currentPrices = getCustomPrices();
   const search = _customPricesSearchFilter;
+  const catFilter = _customPricesCategoryFilter;
 
   const filteredItems = CUSTOM_PRICE_ITEMS.filter(item => {
+    if (catFilter !== 'all' && item.category !== catFilter) {
+      return false;
+    }
     if (!search) return true;
     return item.label.toLowerCase().includes(search) || 
            item.key.toLowerCase().includes(search) || 
@@ -172,8 +311,8 @@ export function renderCustomPricesList() {
 
   if (filteredItems.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 24px; color: #888; font-size: 13px;">
-        No resources found matching "<strong>${escapeHtml(search)}</strong>".
+      <div class="custom-prices-empty" style="text-align: center; padding: 28px; color: #888; font-size: 13px;">
+        No items found matching "${escapeHtml(search || catFilter)}".
       </div>
     `;
     return;
@@ -183,10 +322,10 @@ export function renderCustomPricesList() {
 
   let currentCategory = null;
   filteredItems.forEach(item => {
-    if (!search && item.category !== currentCategory) {
+    if (!search && catFilter === 'all' && item.category !== currentCategory) {
       currentCategory = item.category;
       html += `
-        <div style="font-size: 11px; font-weight: 900; color: #8B4513; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 4px 2px 4px; border-bottom: 1px solid #D2B48C; margin-top: 6px;">
+        <div class="custom-prices-cat-header">
           ${escapeHtml(currentCategory)}
         </div>
       `;
@@ -198,20 +337,20 @@ export function renderCustomPricesList() {
     const inputId = `customPriceInput_${item.key.replace(/\s+/g, '_')}`;
 
     html += `
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: ${hasCustom ? '#FFFDE7' : '#FFFFFF'}; border: 1.5px solid ${hasCustom ? '#FBC02D' : '#E0D0B8'}; border-radius: 6px; gap: 8px;">
+      <div class="custom-price-row ${hasCustom ? 'has-custom' : ''}" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 6px; gap: 8px;">
         <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
-          <span style="display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center;">
+          <span style="display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; flex-shrink: 0;">
             ${renderItemIcon(item.label, 20)}
           </span>
-          <span style="font-weight: 800; font-size: 12.5px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          <span class="custom-price-item-name" style="font-weight: 800; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             ${escapeHtml(item.label)}
           </span>
-          <span style="font-size: 11px; color: #777; margin-left: 2px;">
-            (Mkt: <span style="font-weight: 600; color: #555;">${formatSFL(mktPrice)}</span> SFL)
+          <span class="custom-price-market-text" style="font-size: 11px; margin-left: 2px;">
+            (Mkt: <span class="custom-price-market-val" style="font-weight: 600;">${formatSFL(mktPrice)}</span> SFL)
           </span>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
           <span style="font-size: 11px; font-weight: bold; color: ${hasCustom ? '#E65100' : '#888'};">
             ${hasCustom ? '⚡' : ''}
           </span>
@@ -220,8 +359,8 @@ export function renderCustomPricesList() {
                  value="${customVal !== '' ? customVal : ''}"
                  data-item-key="${item.key}"
                  class="custom-price-field"
-                 style="width: 86px; padding: 4px 6px; font-size: 12px; font-weight: bold; text-align: right; border: 1.5px solid ${hasCustom ? '#FBC02D' : '#D2B48C'}; border-radius: 4px; background: ${hasCustom ? '#FFFFEE' : '#FFF'};" />
-          <span style="font-size: 11px; font-weight: bold; color: #666;">SFL</span>
+                 style="width: 86px; padding: 4px 6px; font-size: 12px; font-weight: bold; text-align: right; border-radius: 4px;" />
+          <span class="custom-price-currency" style="font-size: 11px; font-weight: bold;">SFL</span>
           <button type="button" onclick="clearCustomPriceRow('${item.key}')" 
                   class="btn-wood" style="padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 4px; visibility: ${hasCustom ? 'visible' : 'hidden'};" 
                   title="Clear custom price for ${escapeHtml(item.label)}">✕</button>
@@ -266,6 +405,11 @@ export function openCustomPricesModal() {
   const searchInput = document.getElementById('customPricesSearchInput');
   if (searchInput) searchInput.value = '';
   _customPricesSearchFilter = '';
+  _customPricesCategoryFilter = 'all';
+  const tabs = document.querySelectorAll('#customPricesCategoryTabs .cat-tab-btn');
+  tabs.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === 'all');
+  });
   renderCustomPricesList();
   modal.classList.add('show');
 }

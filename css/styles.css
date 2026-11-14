@@ -3040,6 +3040,152 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
       color: #94a3b8 !important;
     }
 
+    /* Custom Prices Modal - Base & Dark Mode */
+    .custom-prices-cat-tabs {
+      scrollbar-width: thin;
+    }
+    .custom-prices-cat-tabs::-webkit-scrollbar {
+      height: 4px;
+    }
+    .custom-prices-cat-tabs::-webkit-scrollbar-thumb {
+      background: #C49A6C;
+      border-radius: 4px;
+    }
+    .custom-prices-cat-header {
+      font-size: 11px;
+      font-weight: 900;
+      color: #8B4513;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 4px 2px 4px;
+      border-bottom: 1px solid #D2B48C;
+      margin-top: 6px;
+    }
+    .custom-price-row {
+      background: #FFFFFF;
+      border: 1.5px solid #E0D0B8;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .custom-price-row.has-custom {
+      background: #FFFDE7;
+      border: 1.5px solid #FBC02D;
+    }
+    .custom-price-item-name {
+      color: #333333;
+    }
+    .custom-price-market-text {
+      color: #777777;
+    }
+    .custom-price-market-val {
+      color: #555555;
+    }
+    .custom-price-field {
+      background: #FFFFFF;
+      border: 1.5px solid #D2B48C;
+      color: #222222;
+    }
+    .custom-price-row.has-custom .custom-price-field {
+      background: #FFFFEE;
+      border-color: #FBC02D;
+    }
+    .custom-price-currency {
+      color: #666666;
+    }
+
+    body.dark-mode #customPricesModal .modal-content {
+      background-color: #131b26 !important;
+      border-color: #2d3f56 !important;
+    }
+    body.dark-mode #customPricesModal .modal-header {
+      background: linear-gradient(180deg, #1e293b, #141c28) !important;
+      border-bottom: 2px solid #f59e0b !important;
+    }
+    body.dark-mode #customPricesModal .modal-title {
+      color: #fde047 !important;
+    }
+    body.dark-mode #customPricesModal #customPricesActiveBadge {
+      background: rgba(34, 197, 94, 0.15) !important;
+      color: #4ade80 !important;
+      border-color: rgba(34, 197, 94, 0.4) !important;
+    }
+    body.dark-mode #customPricesModal .custom-prices-filter-bar {
+      background: #0f172a !important;
+      border-bottom: 1.5px solid #2d3f56 !important;
+    }
+    body.dark-mode #customPricesModal #customPricesSearchInput {
+      background-color: #0b1118 !important;
+      border-color: #2d3f56 !important;
+      color: #f1f5f9 !important;
+    }
+    body.dark-mode #customPricesModal #customPricesSearchInput::placeholder {
+      color: #64748b !important;
+    }
+    body.dark-mode #customPricesModal .custom-prices-desc {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode #customPricesModal .cat-tab-btn {
+      background: #16202d !important;
+      border-color: #2d3f56 !important;
+      color: #94a3b8 !important;
+    }
+    body.dark-mode #customPricesModal .cat-tab-btn:hover {
+      background: #1e293b !important;
+      border-color: #38bdf8 !important;
+      color: #f1f5f9 !important;
+    }
+    body.dark-mode #customPricesModal .cat-tab-btn.active {
+      background: #f59e0b !important;
+      border-color: #d97706 !important;
+      color: #0f172a !important;
+    }
+    body.dark-mode #customPricesModal .custom-prices-list {
+      background: #131b26 !important;
+    }
+    body.dark-mode #customPricesModal .custom-prices-cat-header {
+      color: #fbbf24 !important;
+      border-bottom-color: #2d3f56 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-row {
+      background: #16202d !important;
+      border-color: #2d3f56 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-row.has-custom {
+      background: #1e293b !important;
+      border-color: #f59e0b !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-item-name {
+      color: #f8fafc !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-market-text {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-market-val {
+      color: #fbbf24 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-field {
+      background-color: #0b1118 !important;
+      border-color: #2d3f56 !important;
+      color: #f1f5f9 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-row.has-custom .custom-price-field {
+      background-color: #0f172a !important;
+      border-color: #f59e0b !important;
+      color: #fde047 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-field:focus {
+      border-color: #38bdf8 !important;
+    }
+    body.dark-mode #customPricesModal .custom-price-currency {
+      color: #94a3b8 !important;
+    }
+    body.dark-mode #customPricesModal .modal-footer {
+      background: #0f172a !important;
+      border-top-color: #2d3f56 !important;
+    }
+    body.dark-mode #customPricesModal .custom-prices-footer-note {
+      color: #94a3b8 !important;
+    }
+
     /* Mobile Adaptations */
     @media (max-width: 600px) {
       header { justify-content: space-between; }

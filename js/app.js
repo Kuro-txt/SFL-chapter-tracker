@@ -48,6 +48,7 @@ import {
   resetCustomPricesToDefault,
   clearCustomPriceRow,
   handleCustomPricesSearch,
+  setCustomPricesCategory,
   renderCustomPricesList
 } from './modals.js';
 import { 
@@ -271,6 +272,7 @@ window.saveCustomPricesFromModal = saveCustomPricesFromModal;
 window.resetCustomPricesToDefault = resetCustomPricesToDefault;
 window.clearCustomPriceRow = clearCustomPriceRow;
 window.handleCustomPricesSearch = handleCustomPricesSearch;
+window.setCustomPricesCategory = setCustomPricesCategory;
 window.renderCustomPricesList = renderCustomPricesList;
 
 window.saveAndRecalculate = () => {

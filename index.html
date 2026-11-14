@@ -846,8 +846,8 @@
         <button type="button" onclick="closeCustomPricesModal()" class="btn btn-wood" style="padding: 4px 8px; font-size: 11px;">✕ CLOSE</button>
       </div>
 
-      <div style="padding: 10px 14px 4px 14px; background: #FFF8DC; border-bottom: 1.5px dashed #D2B48C;">
-        <p style="font-size: 11.5px; color: #5C3A21; margin: 0 0 8px 0; line-height: 1.4;">
+      <div class="custom-prices-filter-bar" style="padding: 10px 14px 6px 14px; background: #FFF8DC; border-bottom: 1.5px dashed #D2B48C;">
+        <p class="custom-prices-desc" style="font-size: 11.5px; color: #5C3A21; margin: 0 0 8px 0; line-height: 1.4;">
           Override individual resource prices (in SFL) used in delivery & task calculations.
           Leave a field blank to use the live market price. Enter <code>0</code> for free.
         </p>
@@ -859,14 +859,24 @@
             ↺ RESET ALL
           </button>
         </div>
+        <div id="customPricesCategoryTabs" class="custom-prices-cat-tabs" style="display: flex; gap: 5px; overflow-x: auto; padding: 6px 0 2px; scrollbar-width: none;">
+          <button type="button" class="cat-tab-btn active" data-cat="all" onclick="setCustomPricesCategory('all')">All</button>
+          <button type="button" class="cat-tab-btn" data-cat="Resources" onclick="setCustomPricesCategory('Resources')">🪵 Resources</button>
+          <button type="button" class="cat-tab-btn" data-cat="Crops" onclick="setCustomPricesCategory('Crops')">🌾 Crops</button>
+          <button type="button" class="cat-tab-btn" data-cat="Fruits" onclick="setCustomPricesCategory('Fruits')">🍎 Fruits</button>
+          <button type="button" class="cat-tab-btn" data-cat="Animals" onclick="setCustomPricesCategory('Animals')">🥚 Animals</button>
+          <button type="button" class="cat-tab-btn" data-cat="Fish" onclick="setCustomPricesCategory('Fish')">🐟 Fish</button>
+          <button type="button" class="cat-tab-btn" data-cat="Food" onclick="setCustomPricesCategory('Food')">🍲 Food</button>
+          <button type="button" class="cat-tab-btn" data-cat="Crafting" onclick="setCustomPricesCategory('Crafting')">🛠️ Crafting</button>
+        </div>
       </div>
 
-      <div id="customPricesListContainer" style="flex: 1; overflow-y: auto; padding: 10px 14px; max-height: 52vh;">
+      <div id="customPricesListContainer" class="custom-prices-list" style="flex: 1; overflow-y: auto; padding: 10px 14px; max-height: 52vh;">
         <!-- Populated dynamically by renderCustomPricesList() -->
       </div>
 
       <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #8B4513; padding: 10px 14px; background: #FDF5E6;">
-        <span style="font-size: 11px; color: #8B4513; font-style: italic;">Saves to your Cloud Vault automatically</span>
+        <span class="custom-prices-footer-note" style="font-size: 11px; color: #8B4513; font-style: italic;">Saves to your Cloud Vault automatically</span>
         <div style="display: flex; gap: 8px;">
           <button type="button" onclick="closeCustomPricesModal()" class="btn btn-wood" style="font-size: 11.5px; padding: 5px 10px;">CANCEL</button>
           <button type="button" onclick="saveCustomPricesFromModal()" class="btn btn-emerald" style="font-size: 11.5px; padding: 5px 12px; font-weight: 900;">

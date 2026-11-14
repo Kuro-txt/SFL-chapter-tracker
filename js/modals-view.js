@@ -848,5 +848,6 @@ export {
   resetCustomPricesToDefault,
   clearCustomPriceRow,
   handleCustomPricesSearch,
+  setCustomPricesCategory,
   renderCustomPricesList
 } from './modal-custom-prices.js';
