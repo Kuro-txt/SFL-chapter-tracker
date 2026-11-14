@@ -800,11 +800,13 @@ export default async function handler(req, res) {
               (wk.chores || []).forEach(c => {
                 if (c.completed || c.checked) {
                   const isMan = isManualBountyHelper(c);
-                  const base = (c.baseTickets || c.tickets || 1);
-                  stat.tickets += (isMan ? base : (base + vipBonus));
+                  const isCustom = Boolean(c.isCustomTickets) || c.userTickets !== undefined;
+                  const isFixedTix = isMan || isCustom;
+                  const base = c.userTickets !== undefined ? c.userTickets : (c.baseTickets || c.tickets || 1);
+                  stat.tickets += (isFixedTix ? base : (base + vipBonus));
                   stat.baseTickets += base;
                   stat.cost += (c.itemsCost || c.cost || 0);
-                  if (isMan) {
+                  if (isFixedTix) {
                     stat.manualTickets += base;
                   } else {
                     stat.boostUnits += 1;

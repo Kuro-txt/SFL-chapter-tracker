@@ -1,3 +1,5 @@
+import { BASELINE_RESOURCE_PRICES } from './item-maps.js';
+
 export const state = {
   globalData: null,
   currentUser: null, 
@@ -199,7 +201,7 @@ export function computeToolPrice(toolName, overrides = {}, coinRatio = null) {
       } else if (state.priceMap && state.priceMap[ing] !== undefined && state.priceMap[ing] > 0) {
         ingUnitPrice = state.priceMap[ing];
       } else {
-        const fallbacks = { wood: 0.0103, stone: 0.0204, iron: 0.0408, gold: 0.0815 };
+        const fallbacks = BASELINE_RESOURCE_PRICES || { wood: 0.0103, stone: 0.0204, iron: 0.0408, gold: 0.0815 };
         ingUnitPrice = fallbacks[ing] || 0;
       }
       cost += qty * ingUnitPrice;
@@ -261,6 +263,9 @@ export function applyCustomPricesToItems() {
         item.cost = totalCost;
       }
     } else if (item.items && typeof item.items === 'object') {
+      if (item.baseMarketCost === undefined) {
+        item.baseMarketCost = item.cost !== undefined ? item.cost : 0;
+      }
       let hasCustom = false;
       let calculatedCost = 0;
       Object.entries(item.items).forEach(([ingName, qty]) => {
@@ -272,11 +277,23 @@ export function applyCustomPricesToItems() {
         } else if (COIN_TOOL_RECIPES[cName]) {
           hasCustom = true;
           calculatedCost += numQty * computeToolPrice(cName, overrides, coinRatio);
+        } else {
+          const mktPrice = (state.priceMap && state.priceMap[cName] !== undefined && state.priceMap[cName] > 0)
+            ? state.priceMap[cName]
+            : (BASELINE_RESOURCE_PRICES[cName] || 0);
+          calculatedCost += numQty * mktPrice;
         }
       });
-      if (hasCustom && !item.isCustomCost && item.userCost === undefined) {
-        item.itemsCost = calculatedCost;
-        item.cost = calculatedCost;
+      if (!item.isCustomCost && item.userCost === undefined) {
+        if (hasCustom) {
+          item.itemsCost = calculatedCost;
+          item.cost = calculatedCost;
+          item.isCustomPrice = true;
+        } else if (item.baseMarketCost !== undefined) {
+          item.itemsCost = item.baseMarketCost;
+          item.cost = item.baseMarketCost;
+          delete item.isCustomPrice;
+        }
       }
     } else if (item.name && typeof item.name === 'string') {
       const rawName = item.name.toLowerCase().trim();

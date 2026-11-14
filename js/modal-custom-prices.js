@@ -11,98 +11,11 @@ import {
   COIN_TOOL_RECIPES,
   computeToolPrice
 } from './state.js';
+import { BASELINE_RESOURCE_PRICES } from './item-maps.js';
 import { renderItemIcon } from './item-icons.js';
 
-// Standard baseline fallback prices
-export const BASELINE_RESOURCE_PRICES = {
-  // Core Resources & Minerals
-  "wood": 0.0103,
-  "stone": 0.0204,
-  "iron": 0.0408,
-  "gold": 0.0815,
-  "crimstone": 0.125,
-  "obsidian": 0.150,
-  "oil": 0.015,
-  "sand": 0.005,
-  "salt": 0.008,
-  "refined salt": 0.040,
-
-  // Animals & Products
-  "egg": 0.0233,
-  "milk": 0.0512,
-  "wool": 0.0325,
-  "feather": 0.018,
-  "leather": 0.045,
-  "merino wool": 0.065,
-  "honey": 0.080,
-
-  // Crops
-  "sunflower": 0.0004,
-  "potato": 0.0014,
-  "pumpkin": 0.0035,
-  "carrot": 0.006,
-  "cabbage": 0.012,
-  "beetroot": 0.023,
-  "cauliflower": 0.035,
-  "parsnip": 0.055,
-  "eggplant": 0.070,
-  "corn": 0.080,
-  "radish": 0.095,
-  "wheat": 0.045,
-  "kale": 0.065,
-  "barley": 0.075,
-  "soybean": 0.085,
-  "rice": 0.060,
-  "olive": 0.120,
-  "zucchini": 0.050,
-  "yam": 0.055,
-  "onion": 0.070,
-  "turnip": 0.065,
-  "artichoke": 0.080,
-  "rhubarb": 0.040,
-  "broccoli": 0.050,
-
-  // Fruits
-  "apple": 0.045,
-  "banana": 0.055,
-  "orange": 0.050,
-  "blueberry": 0.040,
-  "tomato": 0.035,
-  "lemon": 0.048,
-  "grape": 0.060,
-
-  // Fish & Seafood
-  "red snapper": 0.080,
-  "tuna": 0.100,
-  "anchovy": 0.040,
-  "olive flounder": 0.070,
-  "sea bass": 0.060,
-  "halibut": 0.080,
-  "blowfish": 0.090,
-  "squid": 0.075,
-  "porgy": 0.050,
-  "clownfish": 0.060,
-  "lobster": 0.120,
-  "blue crab": 0.060,
-  "hermit crab": 0.040,
-  "shrimp": 0.050,
-  "oyster": 0.060,
-  "mussel": 0.050,
-
-  // Tools (Calculated via coins method)
-  "rod": 0.0713,
-  "axe": 0.020,
-  "pickaxe": 0.0469,
-
-  // Other Resources
-  "frost pebble": 0.050,
-  "wild grass": 0.040,
-  "ribbon": 0.050,
-  "dewberry": 0.060,
-  "moonfur": 0.080,
-  "heart leaf": 0.040,
-  "chewed bone": 0.060
-};
+// Standard baseline fallback prices re-exported for external consumers
+export { BASELINE_RESOURCE_PRICES } from './item-maps.js';
 
 export const CUSTOM_PRICE_ITEMS = [
   // Core Resources
@@ -216,13 +129,72 @@ export function getMarketPriceForItem(key) {
 
 let _customPricesSearchFilter = '';
 let _customPricesCategoryFilter = 'all';
+let _draftCustomPrices = {};
+
+export function syncDomInputsToDraft() {
+  const modal = document.getElementById('customPricesModal');
+  const inputs = (modal || document).querySelectorAll('.custom-price-field');
+  inputs.forEach(input => {
+    const key = input.dataset.itemKey;
+    if (!key) return;
+    const val = input.value.trim();
+    if (val === '') {
+      delete _draftCustomPrices[key];
+    } else {
+      const num = parseFloat(val);
+      if (!isNaN(num) && num >= 0) {
+        _draftCustomPrices[key] = num;
+      } else {
+        delete _draftCustomPrices[key];
+      }
+    }
+  });
+}
+
+export function handleCustomPriceInput(key, val) {
+  const cleanKey = String(key || '').toLowerCase().trim();
+  const trimmed = String(val || '').trim();
+  if (trimmed === '') {
+    delete _draftCustomPrices[cleanKey];
+  } else {
+    const num = parseFloat(trimmed);
+    if (!isNaN(num) && num >= 0) {
+      _draftCustomPrices[cleanKey] = num;
+    } else {
+      delete _draftCustomPrices[cleanKey];
+    }
+  }
+
+  const inputId = `customPriceInput_${cleanKey.replace(/\s+/g, '_')}`;
+  const input = document.getElementById(inputId);
+  if (input) {
+    const row = input.closest('.custom-price-row');
+    const hasCustom = _draftCustomPrices[cleanKey] !== undefined;
+    if (row) {
+      row.classList.toggle('has-custom', hasCustom);
+      const bolt = row.querySelector('.custom-price-bolt');
+      if (bolt) bolt.textContent = hasCustom ? '⚡' : '';
+      const clearBtn = row.querySelector('.custom-price-clear-btn');
+      if (clearBtn) clearBtn.style.visibility = hasCustom ? 'visible' : 'hidden';
+    }
+  }
+
+  const badge = document.getElementById('customPricesActiveBadge');
+  if (badge) {
+    const count = Object.keys(_draftCustomPrices).length;
+    badge.textContent = `${count} ACTIVE`;
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+}
 
 export function handleCustomPricesSearch(query) {
+  syncDomInputsToDraft();
   _customPricesSearchFilter = String(query || '').toLowerCase().trim();
   renderCustomPricesList();
 }
 
 export function setCustomPricesCategory(cat) {
+  syncDomInputsToDraft();
   _customPricesCategoryFilter = cat || 'all';
   const tabs = document.querySelectorAll('#customPricesCategoryTabs .cat-tab-btn');
   tabs.forEach(btn => {
@@ -235,7 +207,7 @@ export function renderCustomPricesList() {
   const container = document.getElementById('customPricesListContainer');
   if (!container) return;
 
-  const currentPrices = getCustomPrices();
+  const currentPrices = _draftCustomPrices;
   const search = _customPricesSearchFilter;
   const catFilter = _customPricesCategoryFilter;
 
@@ -298,7 +270,7 @@ export function renderCustomPricesList() {
         </div>
 
         <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-          <span style="font-size: 11px; font-weight: bold; color: ${hasCustom ? '#E65100' : '#888'};">
+          <span class="custom-price-bolt" style="font-size: 11px; font-weight: bold; color: ${hasCustom ? '#E65100' : '#888'};">
             ${hasCustom ? '⚡' : ''}
           </span>
           <input type="number" id="${inputId}" step="any" min="0" 
@@ -306,10 +278,11 @@ export function renderCustomPricesList() {
                  value="${customVal !== '' ? customVal : ''}"
                  data-item-key="${item.key}"
                  class="custom-price-field"
+                 oninput="handleCustomPriceInput('${item.key}', this.value)"
                  style="width: 86px; padding: 4px 6px; font-size: 12px; font-weight: bold; text-align: right; border-radius: 4px;" />
           <span class="custom-price-currency" style="font-size: 11px; font-weight: bold;">SFL</span>
           <button type="button" onclick="clearCustomPriceRow('${item.key}')" 
-                  class="btn-wood" style="padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 4px; visibility: ${hasCustom ? 'visible' : 'hidden'};" 
+                  class="btn btn-wood custom-price-clear-btn" style="padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 4px; visibility: ${hasCustom ? 'visible' : 'hidden'};" 
                   title="Clear custom price for ${escapeHtml(item.label)}">✕</button>
         </div>
       </div>
@@ -321,13 +294,15 @@ export function renderCustomPricesList() {
 }
 
 export async function clearCustomPriceRow(key) {
-  const inputId = `customPriceInput_${key.replace(/\s+/g, '_')}`;
+  const cleanKey = String(key || '').toLowerCase().trim();
+  delete _draftCustomPrices[cleanKey];
+  const inputId = `customPriceInput_${cleanKey.replace(/\s+/g, '_')}`;
   const input = document.getElementById(inputId);
   if (input) {
     input.value = '';
   }
   const prices = getCustomPrices();
-  delete prices[key];
+  delete prices[cleanKey];
   saveCustomPricesConfig(prices);
   applyCustomPricesToItems();
   renderCustomPricesList();
@@ -341,7 +316,7 @@ export async function clearCustomPriceRow(key) {
     const { saveProgressToCloudKV, showToast } = await import('./api.js');
     saveProgressToCloudKV(true);
     if (typeof showToast === 'function') {
-      showToast(`✔ Custom price for ${key} cleared`, 'success');
+      showToast(`✔ Custom price for ${cleanKey} cleared`, 'success');
     }
   } catch (e) {}
 }
@@ -349,6 +324,7 @@ export async function clearCustomPriceRow(key) {
 export function openCustomPricesModal() {
   const modal = document.getElementById('customPricesModal');
   if (!modal) return;
+  _draftCustomPrices = { ...getCustomPrices() };
   const searchInput = document.getElementById('customPricesSearchInput');
   if (searchInput) searchInput.value = '';
   _customPricesSearchFilter = '';
@@ -367,22 +343,8 @@ export function closeCustomPricesModal() {
 }
 
 export async function saveCustomPricesFromModal() {
-  const modal = document.getElementById('customPricesModal');
-  const inputs = (modal || document).querySelectorAll('.custom-price-field');
-  const newPrices = {};
-
-  inputs.forEach(input => {
-    const key = input.dataset.itemKey;
-    if (!key) return;
-    const val = input.value.trim();
-    if (val === '') return;
-    const num = parseFloat(val);
-    if (!isNaN(num) && num >= 0) {
-      newPrices[key] = num;
-    }
-  });
-
-  saveCustomPricesConfig(newPrices);
+  syncDomInputsToDraft();
+  saveCustomPricesConfig(_draftCustomPrices);
   applyCustomPricesToItems();
   closeCustomPricesModal();
 
@@ -395,13 +357,14 @@ export async function saveCustomPricesFromModal() {
     const { saveProgressToCloudKV, showToast } = await import('./api.js');
     saveProgressToCloudKV(true);
     if (typeof showToast === 'function') {
-      const count = Object.keys(newPrices).length;
+      const count = Object.keys(_draftCustomPrices).length;
       showToast(count > 0 ? `✔ ${count} custom resource prices applied!` : '✔ Custom prices reset to market rates', 'success');
     }
   } catch (e) {}
 }
 
 export async function resetCustomPricesToDefault() {
+  _draftCustomPrices = {};
   saveCustomPricesConfig({});
   applyCustomPricesToItems();
   renderCustomPricesList();

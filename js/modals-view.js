@@ -847,6 +847,7 @@ export {
   saveCustomPricesFromModal,
   resetCustomPricesToDefault,
   clearCustomPriceRow,
+  handleCustomPriceInput,
   handleCustomPricesSearch,
   setCustomPricesCategory,
   renderCustomPricesList

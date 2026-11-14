@@ -47,6 +47,7 @@ import {
   saveCustomPricesFromModal,
   resetCustomPricesToDefault,
   clearCustomPriceRow,
+  handleCustomPriceInput,
   handleCustomPricesSearch,
   setCustomPricesCategory,
   renderCustomPricesList
@@ -271,6 +272,7 @@ window.closeCustomPricesModal = closeCustomPricesModal;
 window.saveCustomPricesFromModal = saveCustomPricesFromModal;
 window.resetCustomPricesToDefault = resetCustomPricesToDefault;
 window.clearCustomPriceRow = clearCustomPriceRow;
+window.handleCustomPriceInput = handleCustomPriceInput;
 window.handleCustomPricesSearch = handleCustomPricesSearch;
 window.setCustomPricesCategory = setCustomPricesCategory;
 window.renderCustomPricesList = renderCustomPricesList;

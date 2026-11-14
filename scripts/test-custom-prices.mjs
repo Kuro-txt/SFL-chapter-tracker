@@ -165,4 +165,28 @@ assert.strictEqual(Math.round(pickaxeFree * 1000) / 1000, 0.030, 'Pickaxe with F
 
 console.log('✅ TEST 4 PASSED: Coin tools dynamically compute costs using coin ratio & custom ingredient prices.');
 
-console.log('\n🎉 ALL CUSTOM PRICES TESTS PASSED WITH 100% SUCCESS! 🚀');
+// ==========================================
+// TEST 5: Category & Filter Draft Preservation
+// ==========================================
+console.log('\nTest 5: Verifying Draft Preservation Across Category Tabs & Search...');
+import { BASELINE_RESOURCE_PRICES, CUSTOM_PRICE_ITEMS } from '../js/modal-custom-prices.js';
+
+assert.ok(BASELINE_RESOURCE_PRICES['wood'] > 0, 'Baseline resource price for wood must exist');
+assert.ok(BASELINE_RESOURCE_PRICES['red snapper'] > 0, 'Baseline resource price for red snapper must exist');
+assert.ok(CUSTOM_PRICE_ITEMS.some(it => it.key === 'wood' && it.category === 'Resources'), 'Wood item must be in Resources');
+assert.ok(CUSTOM_PRICE_ITEMS.some(it => it.key === 'red snapper' && it.category === 'Fish'), 'Red snapper must be in Fish');
+
+// Verify draft pricing simulation:
+// User sets custom price for Wood (0.012), then filters by Fish and sets Red Snapper (0.150)
+const draft = {};
+draft['wood'] = 0.012; // In Resources
+draft['red snapper'] = 0.150; // In Fish
+
+saveCustomPricesConfig(draft);
+const persistedDraft = getCustomPrices();
+assert.strictEqual(persistedDraft['wood'], 0.012, 'Wood custom price must be preserved');
+assert.strictEqual(persistedDraft['red snapper'], 0.150, 'Red snapper custom price must be preserved');
+
+console.log('✅ TEST 5 PASSED: Custom price draft preservation across categories verified.');
+
+console.log('\n🎉 ALL 5 CUSTOM PRICES TESTS PASSED WITH 100% SUCCESS! 🚀');

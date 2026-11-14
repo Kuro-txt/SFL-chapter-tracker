@@ -736,3 +736,94 @@ export const FALLBACK_EMOJIS = {
   "heartleaf": "🍀",
   "chewedbone": "🦴"
 };
+
+// Standard baseline fallback prices for resources, crops, fruits, animals, fish & tools
+export const BASELINE_RESOURCE_PRICES = {
+  // Core Resources & Minerals
+  "wood": 0.0103,
+  "stone": 0.0204,
+  "iron": 0.0408,
+  "gold": 0.0815,
+  "crimstone": 0.125,
+  "obsidian": 0.150,
+  "oil": 0.015,
+  "sand": 0.005,
+  "salt": 0.008,
+  "refined salt": 0.040,
+
+  // Animals & Products
+  "egg": 0.0233,
+  "milk": 0.0512,
+  "wool": 0.0325,
+  "feather": 0.018,
+  "leather": 0.045,
+  "merino wool": 0.065,
+  "honey": 0.080,
+
+  // Crops
+  "sunflower": 0.0004,
+  "potato": 0.0014,
+  "pumpkin": 0.0035,
+  "carrot": 0.006,
+  "cabbage": 0.012,
+  "beetroot": 0.023,
+  "cauliflower": 0.035,
+  "parsnip": 0.055,
+  "eggplant": 0.070,
+  "corn": 0.080,
+  "radish": 0.095,
+  "wheat": 0.045,
+  "kale": 0.065,
+  "barley": 0.075,
+  "soybean": 0.085,
+  "rice": 0.060,
+  "olive": 0.120,
+  "zucchini": 0.050,
+  "yam": 0.055,
+  "onion": 0.070,
+  "turnip": 0.065,
+  "artichoke": 0.080,
+  "rhubarb": 0.040,
+  "broccoli": 0.050,
+
+  // Fruits
+  "apple": 0.045,
+  "banana": 0.055,
+  "orange": 0.050,
+  "blueberry": 0.040,
+  "tomato": 0.035,
+  "lemon": 0.048,
+  "grape": 0.060,
+
+  // Fish & Seafood
+  "red snapper": 0.080,
+  "tuna": 0.100,
+  "anchovy": 0.040,
+  "olive flounder": 0.070,
+  "sea bass": 0.060,
+  "halibut": 0.080,
+  "blowfish": 0.090,
+  "squid": 0.075,
+  "porgy": 0.050,
+  "clownfish": 0.060,
+  "lobster": 0.120,
+  "blue crab": 0.060,
+  "hermit crab": 0.040,
+  "shrimp": 0.050,
+  "oyster": 0.060,
+  "mussel": 0.050,
+
+  // Tools (Calculated via coins method)
+  "rod": 0.0713,
+  "axe": 0.020,
+  "pickaxe": 0.0469,
+
+  // Other Resources
+  "frost pebble": 0.050,
+  "wild grass": 0.040,
+  "ribbon": 0.050,
+  "dewberry": 0.060,
+  "moonfur": 0.080,
+  "heart leaf": 0.040,
+  "chewed bone": 0.060
+};
