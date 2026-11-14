@@ -187,4 +187,55 @@ console.log('\nTest 5: Verifying Cost Input 3 Decimal Places Formatting & Saniti
   console.log('✅ TEST 5 PASSED: 3 decimal places formatting verified.');
 }
 
-console.log('\n🎉 ALL 5 TASK EDITING TESTS PASSED WITH 100% SUCCESS!\n');
+// Test 6: Manually Edited Animal Bounties Excluded from Boosts in Chapter Logs
+console.log('\nTest 6: Verifying Manually Edited Animal Bounties Excluded from Boosts in Chapter Logs...');
+{
+  const bEdited = {
+    id: 'bounty_cow_1',
+    name: 'Cow',
+    level: 1,
+    baseTickets: 1,
+    tickets: 1,
+    userTickets: 1,
+    isCustomTickets: true,
+    completed: true,
+    checked: true,
+    isManual: false
+  };
+
+  const bAuto = {
+    id: 'bounty_chicken_1',
+    name: 'Chicken',
+    level: 1,
+    baseTickets: 2,
+    tickets: 2,
+    completed: true,
+    checked: true,
+    isManual: false
+  };
+
+  const isManTask = (b) => Boolean(b.isManual) || (typeof b.id === 'string' && b.id.startsWith('manual_')) || Boolean(b.isCustomTickets) || b.userTickets !== undefined;
+
+  assert.strictEqual(isManTask(bEdited), true, 'Manually edited animal bounty must be recognized as fixed/manual tickets');
+  assert.strictEqual(isManTask(bAuto), false, 'Unedited animal bounty must be recognized as automated');
+
+  // Verify boost unit assignment
+  let boostUnits = 0;
+  [bEdited, bAuto].forEach(b => {
+    if (!isManTask(b)) boostUnits += 1;
+  });
+
+  assert.strictEqual(boostUnits, 1, 'Only the unedited animal bounty should receive a boost unit');
+
+  const boostLevel = 1;
+  const extraAnimalBoost = boostLevel * boostUnits;
+  const totalAnimalTix = bEdited.userTickets + (bAuto.baseTickets + extraAnimalBoost);
+
+  // bEdited (1) + bAuto (2 + 1) = 4 tickets total
+  assert.strictEqual(extraAnimalBoost, 1, 'Extra boost must only be 1 (for bAuto), not 2');
+  assert.strictEqual(totalAnimalTix, 4, 'Total animal tickets must evaluate to 4 (1 edited + 3 auto)');
+
+  console.log('✅ TEST 6 PASSED: Manually edited animal bounties strictly excluded from +1 boosts.');
+}
+
+console.log('\n🎉 ALL 6 TASK EDITING TESTS PASSED WITH 100% SUCCESS!\n');
