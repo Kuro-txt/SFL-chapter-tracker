@@ -734,7 +734,23 @@ export const FALLBACK_EMOJIS = {
   "dewberry": "🫐",
   "moonfur": "🌕",
   "heartleaf": "🍀",
-  "chewedbone": "🦴"
+  "chewedbone": "🦴",
+  "bluecrab": "🦀",
+  "lobster": "🦞",
+  "hermitcrab": "🦀",
+  "shrimp": "🦐",
+  "mussel": "🦪",
+  "oyster": "🦪",
+  "anemone": "🪸",
+  "isopod": "🦐",
+  "seaslug": "🐌",
+  "seasnail": "🐚",
+  "gardeneel": "🐍",
+  "seagrapes": "🍇",
+  "octopus": "🐙",
+  "seaurchin": "🦔",
+  "horseshoecrab": "🦀",
+  "barnacle": "🐚"
 };
 
 // Standard baseline fallback prices for resources, crops, fruits, animals, fish & tools
@@ -812,6 +828,16 @@ export const BASELINE_RESOURCE_PRICES = {
   "shrimp": 0.050,
   "oyster": 0.060,
   "mussel": 0.050,
+  "anemone": 0.060,
+  "isopod": 0.050,
+  "sea slug": 0.050,
+  "sea snail": 0.040,
+  "garden eel": 0.070,
+  "sea grapes": 0.040,
+  "octopus": 0.100,
+  "sea urchin": 0.050,
+  "horseshoe crab": 0.060,
+  "barnacle": 0.040,
 
   // Tools (Calculated via coins method)
   "rod": 0.0713,

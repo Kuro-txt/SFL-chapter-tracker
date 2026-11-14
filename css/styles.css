@@ -263,6 +263,7 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
 }
 .modal-header { padding: 16px; border-bottom: 3px solid #8B5A2B; display: flex; justify-content: space-between; align-items: center; background: #8B5A2B; color: #FFF8DC; border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .modal-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.modal p, .modal-content p, .modal-body p { text-shadow: none; }
 
 .chart-floating-tooltip {
   position: fixed;
@@ -3133,6 +3134,12 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
       color: #666666;
     }
 
+    /* Remove all text-shadow ("shade") across Custom Prices Modal */
+    #customPricesModal,
+    #customPricesModal * {
+      text-shadow: none !important;
+    }
+
     #customPricesModal .modal-header {
       background: linear-gradient(180deg, #8B5A2B 0%, #6E3F19 100%);
       border-bottom: 2.5px solid #4E2712;
@@ -3144,7 +3151,7 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
     #customPricesModal .modal-title {
       color: #FFF8DC !important;
       font-weight: 900;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      text-shadow: none !important;
     }
     #customPricesModal #customPricesActiveBadge {
       background: #2E7D32;
@@ -3157,14 +3164,16 @@ body.dark-mode #itemsBurnedModal .cat-other { background: rgba(148, 163, 184, 0.
       border-bottom: 1.5px solid #D2B48C;
     }
     #customPricesModal .custom-prices-desc {
-      color: #2C1808;
+      color: #2C1808 !important;
       font-weight: 600;
+      text-shadow: none !important;
     }
     #customPricesModal .custom-prices-desc code,
     #customPricesModal .custom-prices-code-zero {
       background: #EFEBE9;
       color: #1B5E20;
       border: 1px solid #C8E6C9;
+      text-shadow: none !important;
     }
 
     body.dark-mode #customPricesModal .modal-content {

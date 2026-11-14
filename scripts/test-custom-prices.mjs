@@ -176,6 +176,23 @@ assert.ok(BASELINE_RESOURCE_PRICES['red snapper'] > 0, 'Baseline resource price 
 assert.ok(CUSTOM_PRICE_ITEMS.some(it => it.key === 'wood' && it.category === 'Resources'), 'Wood item must be in Resources');
 assert.ok(CUSTOM_PRICE_ITEMS.some(it => it.key === 'red snapper' && it.category === 'Fish'), 'Red snapper must be in Fish');
 
+// Verify all 16 requested fish & seafood items exist in category Fish
+const requestedFish = [
+  'blue crab', 'lobster', 'hermit crab', 'shrimp', 'mussel', 'oyster',
+  'anemone', 'isopod', 'sea slug', 'sea snail', 'garden eel', 'sea grapes',
+  'octopus', 'sea urchin', 'horseshoe crab', 'barnacle'
+];
+requestedFish.forEach(fishKey => {
+  assert.ok(
+    CUSTOM_PRICE_ITEMS.some(it => it.key === fishKey && it.category === 'Fish'),
+    `Fish item "${fishKey}" must exist in CUSTOM_PRICE_ITEMS under category Fish`
+  );
+  assert.ok(
+    BASELINE_RESOURCE_PRICES[fishKey] > 0,
+    `Baseline price for "${fishKey}" must be greater than 0`
+  );
+});
+
 // Verify draft pricing simulation:
 // User sets custom price for Wood (0.012), then filters by Fish and sets Red Snapper (0.150)
 const draft = {};

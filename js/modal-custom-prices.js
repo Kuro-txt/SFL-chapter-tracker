@@ -85,12 +85,22 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'squid', label: 'Squid', category: 'Fish' },
   { key: 'porgy', label: 'Porgy', category: 'Fish' },
   { key: 'clownfish', label: 'Clownfish', category: 'Fish' },
-  { key: 'lobster', label: 'Lobster', category: 'Fish' },
   { key: 'blue crab', label: 'Blue Crab', category: 'Fish' },
+  { key: 'lobster', label: 'Lobster', category: 'Fish' },
   { key: 'hermit crab', label: 'Hermit Crab', category: 'Fish' },
   { key: 'shrimp', label: 'Shrimp', category: 'Fish' },
-  { key: 'oyster', label: 'Oyster', category: 'Fish' },
   { key: 'mussel', label: 'Mussel', category: 'Fish' },
+  { key: 'oyster', label: 'Oyster', category: 'Fish' },
+  { key: 'anemone', label: 'Anemone', category: 'Fish' },
+  { key: 'isopod', label: 'Isopod', category: 'Fish' },
+  { key: 'sea slug', label: 'Sea Slug', category: 'Fish' },
+  { key: 'sea snail', label: 'Sea Snail', category: 'Fish' },
+  { key: 'garden eel', label: 'Garden Eel', category: 'Fish' },
+  { key: 'sea grapes', label: 'Sea Grapes', category: 'Fish' },
+  { key: 'octopus', label: 'Octopus', category: 'Fish' },
+  { key: 'sea urchin', label: 'Sea Urchin', category: 'Fish' },
+  { key: 'horseshoe crab', label: 'Horseshoe Crab', category: 'Fish' },
+  { key: 'barnacle', label: 'Barnacle', category: 'Fish' },
 
   // Tools (Coins & Resources)
   { key: 'rod', label: 'Rod', category: 'Tools' },
@@ -313,11 +323,8 @@ export async function clearCustomPriceRow(key) {
   } catch (e) {}
 
   try {
-    const { saveProgressToCloudKV, showToast } = await import('./api.js');
+    const { saveProgressToCloudKV } = await import('./api.js');
     saveProgressToCloudKV(true);
-    if (typeof showToast === 'function') {
-      showToast(`✔ Custom price for ${cleanKey} cleared`, 'success');
-    }
   } catch (e) {}
 }
 
@@ -354,12 +361,8 @@ export async function saveCustomPricesFromModal() {
   } catch (e) {}
 
   try {
-    const { saveProgressToCloudKV, showToast } = await import('./api.js');
+    const { saveProgressToCloudKV } = await import('./api.js');
     saveProgressToCloudKV(true);
-    if (typeof showToast === 'function') {
-      const count = Object.keys(_draftCustomPrices).length;
-      showToast(count > 0 ? `✔ ${count} custom resource prices applied!` : '✔ Custom prices reset to market rates', 'success');
-    }
   } catch (e) {}
 }
 
@@ -375,11 +378,8 @@ export async function resetCustomPricesToDefault() {
   } catch (e) {}
 
   try {
-    const { saveProgressToCloudKV, showToast } = await import('./api.js');
+    const { saveProgressToCloudKV } = await import('./api.js');
     saveProgressToCloudKV(true);
-    if (typeof showToast === 'function') {
-      showToast('✔ All prices reset to live market rates', 'success');
-    }
   } catch (e) {}
 }
 
