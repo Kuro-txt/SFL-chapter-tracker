@@ -727,5 +727,12 @@ export const FALLBACK_EMOJIS = {
   "duendecap": "🪲",
   "duendecaps": "🪲",
   "ticket": "🪲",
-  "tickets": "🪲"
+  "tickets": "🪲",
+  "frostpebble": "❄️",
+  "wildgrass": "🌾",
+  "ribbon": "🎀",
+  "dewberry": "🫐",
+  "moonfur": "🌕",
+  "heartleaf": "🍀",
+  "chewedbone": "🦴"
 };

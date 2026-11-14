@@ -21,7 +21,6 @@ export const BASELINE_RESOURCE_PRICES = {
   "iron": 0.0408,
   "gold": 0.0815,
   "crimstone": 0.125,
-  "sunstone": 0.250,
   "obsidian": 0.150,
   "oil": 0.015,
   "sand": 0.005,
@@ -72,10 +71,37 @@ export const BASELINE_RESOURCE_PRICES = {
   "lemon": 0.048,
   "grape": 0.060,
 
+  // Fish & Seafood
+  "red snapper": 0.080,
+  "tuna": 0.100,
+  "anchovy": 0.040,
+  "olive flounder": 0.070,
+  "sea bass": 0.060,
+  "halibut": 0.080,
+  "blowfish": 0.090,
+  "squid": 0.075,
+  "porgy": 0.050,
+  "clownfish": 0.060,
+  "lobster": 0.120,
+  "blue crab": 0.060,
+  "hermit crab": 0.040,
+  "shrimp": 0.050,
+  "oyster": 0.060,
+  "mussel": 0.050,
+
   // Tools (Calculated via coins method)
   "rod": 0.0713,
   "axe": 0.020,
-  "pickaxe": 0.0469
+  "pickaxe": 0.0469,
+
+  // Other Resources
+  "frost pebble": 0.050,
+  "wild grass": 0.040,
+  "ribbon": 0.050,
+  "dewberry": 0.060,
+  "moonfur": 0.080,
+  "heart leaf": 0.040,
+  "chewed bone": 0.060
 };
 
 export const CUSTOM_PRICE_ITEMS = [
@@ -85,7 +111,6 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'iron', label: 'Iron', category: 'Resources' },
   { key: 'gold', label: 'Gold', category: 'Resources' },
   { key: 'crimstone', label: 'Crimstone', category: 'Resources' },
-  { key: 'sunstone', label: 'Sunstone', category: 'Resources' },
   { key: 'obsidian', label: 'Obsidian', category: 'Resources' },
   { key: 'oil', label: 'Oil', category: 'Resources' },
   { key: 'sand', label: 'Sand', category: 'Resources' },
@@ -136,10 +161,37 @@ export const CUSTOM_PRICE_ITEMS = [
   { key: 'merino wool', label: 'Merino Wool', category: 'Animals' },
   { key: 'honey', label: 'Honey', category: 'Animals' },
 
+  // Fish & Seafood
+  { key: 'red snapper', label: 'Red Snapper', category: 'Fish' },
+  { key: 'tuna', label: 'Tuna', category: 'Fish' },
+  { key: 'anchovy', label: 'Anchovy', category: 'Fish' },
+  { key: 'olive flounder', label: 'Olive Flounder', category: 'Fish' },
+  { key: 'sea bass', label: 'Sea Bass', category: 'Fish' },
+  { key: 'halibut', label: 'Halibut', category: 'Fish' },
+  { key: 'blowfish', label: 'Blowfish', category: 'Fish' },
+  { key: 'squid', label: 'Squid', category: 'Fish' },
+  { key: 'porgy', label: 'Porgy', category: 'Fish' },
+  { key: 'clownfish', label: 'Clownfish', category: 'Fish' },
+  { key: 'lobster', label: 'Lobster', category: 'Fish' },
+  { key: 'blue crab', label: 'Blue Crab', category: 'Fish' },
+  { key: 'hermit crab', label: 'Hermit Crab', category: 'Fish' },
+  { key: 'shrimp', label: 'Shrimp', category: 'Fish' },
+  { key: 'oyster', label: 'Oyster', category: 'Fish' },
+  { key: 'mussel', label: 'Mussel', category: 'Fish' },
+
   // Tools (Coins & Resources)
   { key: 'rod', label: 'Rod', category: 'Tools' },
   { key: 'axe', label: 'Axe', category: 'Tools' },
-  { key: 'pickaxe', label: 'Pickaxe', category: 'Tools' }
+  { key: 'pickaxe', label: 'Pickaxe', category: 'Tools' },
+
+  // Other Resources
+  { key: 'frost pebble', label: 'Frost Pebble', category: 'Other' },
+  { key: 'wild grass', label: 'Wild Grass', category: 'Other' },
+  { key: 'ribbon', label: 'Ribbon', category: 'Other' },
+  { key: 'dewberry', label: 'Dewberry', category: 'Other' },
+  { key: 'moonfur', label: 'Moonfur', category: 'Other' },
+  { key: 'heart leaf', label: 'Heart Leaf', category: 'Other' },
+  { key: 'chewed bone', label: 'Chewed Bone', category: 'Other' }
 ];
 
 export function getMarketPriceForItem(key) {
