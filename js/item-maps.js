@@ -786,7 +786,7 @@ export const BASELINE_RESOURCE_PRICES = {
   "cauliflower": 0.035,
   "parsnip": 0.055,
   "eggplant": 0.070,
-  "corn": 0.080,
+  "corn": 0.015,
   "radish": 0.095,
   "wheat": 0.045,
   "kale": 0.065,
