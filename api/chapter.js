@@ -16,57 +16,88 @@ const LEADERBOARD_CACHE_TTL_MS = 60000; // 60 second cache TTL
 // Standard baseline fallback prices for core game resources to guarantee recipes never calculate to 0.000 SFL
 export const BASELINE_PRICES = {
   // Core Resources
-  "wood": 0.0103,
-  "stone": 0.0204,
-  "iron": 0.0408,
-  "gold": 0.0815,
-  "crimstone": 0.125,
+  "wood": 0.01458541,
+  "stone": 0.02585,
+  "iron": 0.0701,
+  "gold": 0.2882,
+  "crimstone": 0.6689,
+  "obsidian": 15.1,
   "sunstone": 0.250,
   "oil": 0.015,
   "sand": 0.005,
-  "salt": 0.008,
+  "salt": 0.00571184,
 
   // Animals & Products
-  "egg": 0.0233,
-  "eggs": 0.0233,
-  "milk": 0.0512,
-  "wool": 0.0325,
-  "feather": 0.018,
-  "leather": 0.045,
-  "merino wool": 0.065,
+  "egg": 0.02998661,
+  "eggs": 0.02998661,
+  "milk": 0.08987917,
+  "wool": 0.05914938,
+  "merino wool": 0.007674,
+  "merinowool": 0.007674,
+  "leather": 0.07824,
+  "feather": 0.0052,
+  "honey": 0.1049,
 
   // Crops
-  "sunflower": 0.0004,
-  "potato": 0.0014,
-  "pumpkin": 0.0035,
-  "carrot": 0.006,
-  "cabbage": 0.012,
-  "beetroot": 0.023,
-  "cauliflower": 0.035,
-  "parsnip": 0.055,
-  "eggplant": 0.070,
-  "corn": 0.080,
-  "radish": 0.095,
-  "wheat": 0.045,
-  "kale": 0.065,
-  "barley": 0.075,
-  "soybean": 0.085,
-  "rice": 0.060,
-  "olive": 0.120,
-  "zucchini": 0.050,
-  "yam": 0.055,
-  "onion": 0.070,
-  "turnip": 0.065,
-  "artichoke": 0.080,
+  "sunflower": 0.00019987,
+  "potato": 0.000235,
+  "pumpkin": 0.00070173,
+  "carrot": 0.0014494,
+  "cabbage": 0.001453,
+  "beetroot": 0.005788,
+  "cauliflower": 0.00863867,
+  "parsnip": 0.0109986,
+  "eggplant": 0.0083,
+  "corn": 0.015,
+  "radish": 0.0096,
+  "wheat": 0.016593,
+  "kale": 0.022428,
+  "barley": 0.021274,
+  "soybean": 0.002296,
+  "rice": 0.30348,
+  "olive": 0.38898,
+  "rhubarb": 0.000539,
+  "zucchini": 0.000548,
+  "yam": 0.0023062,
+  "broccoli": 0.002488,
+  "pepper": 0.005898,
+  "onion": 0.01333,
+  "turnip": 0.01419871,
+  "artichoke": 0.01126667,
 
   // Fruits
-  "apple": 0.045,
-  "banana": 0.055,
-  "orange": 0.050,
-  "blueberry": 0.040,
-  "tomato": 0.035,
-  "lemon": 0.048,
-  "grape": 0.060
+  "apple": 0.021855,
+  "banana": 0.021968,
+  "orange": 0.01556667,
+  "blueberry": 0.0189,
+  "tomato": 0.007218,
+  "lemon": 0.009472,
+  "grape": 0.2344,
+
+  // Exotics & Foraging
+  "duskberry": 0.8865,
+  "lunara": 0.4978,
+  "celestine": 0.176,
+  "ruffroot": 0.41485,
+  "chewed bone": 0.38895,
+  "heart leaf": 0.407,
+  "moonfur": 3.2929,
+  "ribbon": 0.4,
+  "dewberry": 0.40556667,
+  "wild grass": 0.4016,
+  "frost pebble": 0.38388,
+  "saltwort": 0.049996,
+
+  // Baits & Fish
+  "capsule bait": 0.02258,
+  "umbrella bait": 0.0177,
+  "crimson baitfish": 0.0299,
+
+  // Emblems
+  "goblin emblem": 0.050385,
+  "bumpkin emblem": 0.0496955,
+  "sunflorian emblem": 0.05142,
+  "nightshade emblem": 0.043975
 };
 
 export async function getLivePriceMap() {
@@ -74,26 +105,49 @@ export async function getLivePriceMap() {
   if (cachedPriceMap && now < cachedPriceMapExpiresAt) {
     return { ...cachedPriceMap };
   }
-  try {
-    const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (pricesRes.ok) {
-      const rawPricesData = await pricesRes.json();
-      if (rawPricesData) {
-        const live = extractPricesRecursive(rawPricesData);
-        cachedPriceMap = { ...BASELINE_PRICES, ...live };
-        cachedPriceMapExpiresAt = now + 10 * 60 * 1000; // 10 minute cache TTL
-        return { ...cachedPriceMap };
+
+  const fetchPrices = async () => {
+    try {
+      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (pricesRes.ok) {
+        const rawPricesData = await pricesRes.json();
+        if (rawPricesData) {
+          const live = extractPricesRecursive(rawPricesData);
+          if (live && Object.keys(live).length > 0) {
+            cachedPriceMap = { ...BASELINE_PRICES, ...live };
+            cachedPriceMapExpiresAt = Date.now() + 15 * 60 * 1000; // 15 minute cache TTL
+            return cachedPriceMap;
+          }
+        }
       }
+    } catch (e) {
+      console.warn('Live price fetch warning:', e.message);
     }
-  } catch (e) {
-    console.warn('Live price fetch warning:', e.message);
-  }
-  // Return fallback baseline if sfl.world timed out or failed
+    return null;
+  };
+
   if (!cachedPriceMap) {
     cachedPriceMap = { ...BASELINE_PRICES };
+  }
+
+  // Attempt fetch with a 3-second race so user requests are never delayed if sfl.world is slow
+  const quickFetch = Promise.race([
+    fetchPrices(),
+    new Promise(resolve => setTimeout(() => resolve(null), 3000))
+  ]);
+
+  const result = await quickFetch;
+  if (result) {
+    return { ...result };
+  }
+
+  // If fetch didn't finish in 3s or failed, keep existing cachedPriceMap (or updated baseline)
+  // Back off retry for 60s to avoid hammering slow upstream endpoint on every request
+  if (cachedPriceMapExpiresAt <= now) {
+    cachedPriceMapExpiresAt = now + 60 * 1000;
   }
   return { ...cachedPriceMap };
 }

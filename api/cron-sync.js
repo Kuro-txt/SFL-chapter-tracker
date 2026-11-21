@@ -5,7 +5,12 @@ import {
   parseFarmData,
   CHAPTER_NPC_TICKETS 
 } from './sfl-parser.js';
-import { reconcileDeliveriesWithNpcs, preserveCustomTaskEdits } from './chapter.js';
+import { 
+  reconcileDeliveriesWithNpcs, 
+  preserveCustomTaskEdits,
+  BASELINE_PRICES,
+  getLivePriceMap 
+} from './chapter.js';
 import { calculateTrackTickets } from './chapter-tracks.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -296,18 +301,14 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'No registered user vaults found in database.' });
     }
 
-    let priceMap = {};
+    let priceMap = { ...BASELINE_PRICES };
     try {
-      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        signal: AbortSignal.timeout(8000)
-      });
-      if (pricesRes.ok) {
-        const rawPricesData = await pricesRes.json();
-        if (rawPricesData) priceMap = extractPricesRecursive(rawPricesData);
+      const liveMap = await getLivePriceMap();
+      if (liveMap && Object.keys(liveMap).length > 0) {
+        priceMap = liveMap;
       }
     } catch (e) {
-      console.warn('Cron price fetch failed, proceeding with recipe values:', e.message);
+      console.warn('Cron price fetch failed, proceeding with baseline values:', e.message);
     }
 
     // 1. Gather all farm IDs across user accounts
