@@ -1594,7 +1594,17 @@ export default async function handler(req, res) {
           }
         }
 
-        return { sflRes, usedBackupKey, apiKeyInvalid };
+        let sflPayload = null;
+        let sflParseError = null;
+        if (sflRes.ok) {
+          try {
+            sflPayload = await sflRes.json();
+          } catch (pErr) {
+            sflParseError = pErr.message;
+          }
+        }
+
+        return { sflRes, sflPayload, sflParseError, usedBackupKey, apiKeyInvalid };
       })(),
       (async () => {
         try {
@@ -1646,7 +1656,7 @@ export default async function handler(req, res) {
       })()
     ]);
 
-    const { sflRes, usedBackupKey, apiKeyInvalid } = sflFetchResult;
+    const { sflRes, sflPayload, sflParseError, usedBackupKey, apiKeyInvalid } = sflFetchResult;
 
     if (!sflRes.ok) {
       if (sflRes.status === 401 || apiKeyInvalid) {
@@ -1697,10 +1707,38 @@ export default async function handler(req, res) {
       throw new Error(`Sunflower Land API responded with status ${sflRes.status}`);
     }
 
-    let payload = null;
-    try {
-      payload = await sflRes.json();
-    } catch (parseErr) {
+    const payload = sflPayload;
+    if (!payload) {
+      console.warn(`SFL payload parse error for farm #${farmId}:`, sflParseError);
+      if (username) {
+        const cleanUser = username.trim().toLowerCase();
+        try {
+          const uRes = await client.query('SELECT vault_data FROM user_vaults WHERE username = $1', [cleanUser]);
+          if (uRes.rows.length > 0) {
+            const vData = typeof uRes.rows[0].vault_data === 'string' ? JSON.parse(uRes.rows[0].vault_data) : uRes.rows[0].vault_data;
+            if (vData) {
+              console.log(`[Parse Fallback] Upstream SFL invalid response for #${farmId}. Serving cached vault data for "${cleanUser}".`);
+              cleanVaultDeliveriesAndSnapshots(vData);
+              return res.status(200).json({
+                isCachedFallback: true,
+                message: '⚠️ Sunflower Land response was temporarily interrupted. Displaying your last saved cloud data.',
+                vaultData: vData,
+                deliveries: vData.deliveries || vData.archiveDeliveries || [],
+                bounties: vData.bounties || [],
+                chores: vData.chores || [],
+                milestones: vData.milestones || {},
+                isDoubleDeliveryActive: false,
+                doubleDeliveryDates: [],
+                isVipActive: Boolean(vData.isVipActive),
+                chapterPoints: vData.chapterPoints || 0,
+                userRank: userRank || null
+              });
+            }
+          }
+        } catch (dbErr) {
+          console.warn('Vault fallback query error:', dbErr.message);
+        }
+      }
       return res.status(502).json({
         error: 'Sunflower Land API returned an invalid response. Please try again in a moment.'
       });
