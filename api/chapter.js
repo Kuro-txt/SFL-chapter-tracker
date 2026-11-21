@@ -106,46 +106,87 @@ export async function getLivePriceMap() {
     return { ...cachedPriceMap };
   }
 
-  const fetchPrices = async () => {
+  // Tier 1: sfl-calculator-backend (covers Chapter 16 Cave Dwellers items & live market rates)
+  const fetchTier1 = async () => {
     try {
-      const pricesRes = await fetch('https://sfl.world/api/v1/prices', { 
+      const res = await fetch('https://sfl-calculator-backend.onrender.com/api/resource-prices', {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(2800)
       });
-      if (pricesRes.ok) {
-        const rawPricesData = await pricesRes.json();
-        if (rawPricesData) {
-          const live = extractPricesRecursive(rawPricesData);
-          if (live && Object.keys(live).length > 0) {
-            cachedPriceMap = { ...BASELINE_PRICES, ...live };
-            cachedPriceMapExpiresAt = Date.now() + 15 * 60 * 1000; // 15 minute cache TTL
-            return cachedPriceMap;
-          }
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.prices || typeof data === 'object')) {
+          const live = extractPricesRecursive(data.prices || data);
+          if (live && Object.keys(live).length > 0) return live;
         }
       }
     } catch (e) {
-      console.warn('Live price fetch warning:', e.message);
+      console.warn('[Price Hierarchy] Tier 1 (sfl-calculator-backend) unavailable:', e.message);
     }
     return null;
   };
+
+  // Tier 2: sfl.world prices endpoint (secondary live market aggregator)
+  const fetchTier2 = async () => {
+    try {
+      const res = await fetch('https://sfl.world/api/v1/prices', { 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        signal: AbortSignal.timeout(2800)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data) {
+          const live = extractPricesRecursive(data);
+          if (live && Object.keys(live).length > 0) return live;
+        }
+      }
+    } catch (e) {
+      console.warn('[Price Hierarchy] Tier 2 (sfl.world) unavailable:', e.message);
+    }
+    return null;
+  };
+
+  // Helper to resolve whichever upstream provider answers first with valid data
+  function raceFirstValid(promises) {
+    return new Promise(resolve => {
+      let pending = promises.length;
+      let resolved = false;
+      promises.forEach(p => {
+        p.then(val => {
+          if (!resolved && val && Object.keys(val).length > 0) {
+            resolved = true;
+            resolve(val);
+          } else {
+            pending--;
+            if (pending === 0 && !resolved) resolve(null);
+          }
+        }).catch(() => {
+          pending--;
+          if (pending === 0 && !resolved) resolve(null);
+        });
+      });
+    });
+  }
 
   if (!cachedPriceMap) {
     cachedPriceMap = { ...BASELINE_PRICES };
   }
 
-  // Attempt fetch with a 3-second race so user requests are never delayed if sfl.world is slow
+  // Race upstream tiers with a 2.8s absolute ceiling so user requests are never delayed
   const quickFetch = Promise.race([
-    fetchPrices(),
-    new Promise(resolve => setTimeout(() => resolve(null), 3000))
+    raceFirstValid([fetchTier1(), fetchTier2()]),
+    new Promise(resolve => setTimeout(() => resolve(null), 2800))
   ]);
 
-  const result = await quickFetch;
-  if (result) {
-    return { ...result };
+  const livePrices = await quickFetch;
+  if (livePrices && Object.keys(livePrices).length > 0) {
+    cachedPriceMap = { ...BASELINE_PRICES, ...livePrices };
+    cachedPriceMapExpiresAt = Date.now() + 15 * 60 * 1000; // 15 minute cache TTL
+    return { ...cachedPriceMap };
   }
 
-  // If fetch didn't finish in 3s or failed, keep existing cachedPriceMap (or updated baseline)
-  // Back off retry for 60s to avoid hammering slow upstream endpoint on every request
+  // Tier 3: If both upstream providers failed or timed out, fall back to BASELINE_PRICES / existing cache
+  // Back off retry for 60s to avoid hammering upstream on every request
   if (cachedPriceMapExpiresAt <= now) {
     cachedPriceMapExpiresAt = now + 60 * 1000;
   }
