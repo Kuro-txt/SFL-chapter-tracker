@@ -430,6 +430,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
     const prevStat = vault.npcSnapshots[npcClean];
 
     if (prevStat) {
+      if (currStat.deliveryCount < prevStat.deliveryCount) {
+        console.warn(`⚠️ [Reconciler Guard] Delivery counter regression for ${npcClean}: current ${currStat.deliveryCount} < snapshot ${prevStat.deliveryCount}. Ignoring.`);
+        return;
+      }
       let delivDelta = currStat.deliveryCount - prevStat.deliveryCount;
       let skipDelta = currStat.skippedCount - prevStat.skippedCount;
 
@@ -448,6 +452,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         const completionTime = currStat.deliveryCompletedAt || nowMs;
         const compDate = new Date(completionTime).toISOString().split('T')[0];
         const compWeek = getMondayBasedWeekId(completionTime);
+        const npcSlug = slugifyNpc(npcClean);
 
         // STALE ACTIVE CARD RESOLUTION
         // Look for an existing pending active card for this NPC that was created on a previous day
@@ -455,7 +460,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           const dNpc = (d.from || d.name || '').toLowerCase().trim();
           const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
           const isStale = Boolean(d.activeSince && d.activeSince < todayDateStr);
-          return dNpc === npcClean && d.id === `deliv_${npcClean}_active` && isPending && isStale;
+          return (dNpc === npcClean || dNpc === npcSlug) && (d.id === `deliv_${npcSlug}_active` || d.id === `deliv_${npcClean}_active`) && isPending && isStale;
         });
 
         if (staleActiveIdx !== -1) {
@@ -466,7 +471,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           } else if (delivDelta > 0) {
             // Yesterday's delivery was completed: upgrade it to d<completedCountIndex>, keep original items!
             const completedCountIndex = prevStat.deliveryCount + 1;
-            const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
+            const targetOrderId = `deliv_${npcSlug}_d${completedCountIndex}`;
             const orderToComplete = vault.archiveDeliveries[staleActiveIdx];
             const origWeek = getMondayBasedWeekId(orderToComplete.weekId || orderToComplete.activeSince || compWeek);
             orderToComplete.id = targetOrderId;
@@ -489,13 +494,13 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           const baseCount = currStat.deliveryCount - delivDelta;
           for (let k = 1; k <= delivDelta; k++) {
             const completedCountIndex = baseCount + k;
-            const targetOrderId = `deliv_${npcClean}_d${completedCountIndex}`;
+            const targetOrderId = `deliv_${npcSlug}_d${completedCountIndex}`;
             const isStacked = k > 1 || staleCompletedNpcs.has(npcClean);
 
             const existingPendingIdx = vault.archiveDeliveries.findIndex(d => {
               const dNpc = (d.from || d.name || '').toLowerCase().trim();
               const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
-              return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active` || d.id === targetOrderId);
+              return (dNpc === npcClean || dNpc === npcSlug) && (isPending || d.id === `deliv_${npcSlug}_active` || d.id === `deliv_${npcClean}_active` || d.id === targetOrderId);
             });
 
             if (existingPendingIdx !== -1) {
@@ -515,7 +520,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
               const alreadyExists = vault.archiveDeliveries.some(d => d.id === targetOrderId);
               if (!alreadyExists) {
                 // Preceding delivery lookup so it has recipe/tickets instead of 0 cost if needed
-                const prevDelivId = `deliv_${npcClean}_d${completedCountIndex - 1}`;
+                const prevDelivId = `deliv_${npcSlug}_d${completedCountIndex - 1}`;
                 const prevDeliv = vault.archiveDeliveries.find(d => d.id === prevDelivId);
 
                 vault.archiveDeliveries.push({
@@ -575,10 +580,11 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
   // 3. Register or update the currently active order from board
   parsedDeliveryList.forEach(order => {
     const npcClean = (order.from || order.name || '').toLowerCase().trim();
+    const npcSlug = slugifyNpc(npcClean);
     const currStat = currentNpcsData[npcClean] || { deliveryCount: 0, skippedCount: 0, deliveryCompletedAt: null };
 
     if (order.completed) {
-      const targetDoneId = `deliv_${npcClean}_d${currStat.deliveryCount}`;
+      const targetDoneId = `deliv_${npcSlug}_d${currStat.deliveryCount}`;
       const compTime = order.completedAt || currStat.deliveryCompletedAt || nowMs;
       const compDate = new Date(compTime).toISOString().split('T')[0];
       const compWeek = getMondayBasedWeekId(compTime);
@@ -587,7 +593,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
       const activeIdx = vault.archiveDeliveries.findIndex(d => {
         const dNpc = (d.from || d.name || '').toLowerCase().trim();
         const isPending = !(d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
-        return dNpc === npcClean && (isPending || d.id === `deliv_${npcClean}_active`);
+        return (dNpc === npcClean || dNpc === npcSlug) && (isPending || d.id === `deliv_${npcSlug}_active` || d.id === `deliv_${npcClean}_active`);
       });
 
       if (activeIdx !== -1) {
@@ -661,10 +667,10 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         }
       }
     } else {
-      const activeOrderId = `deliv_${npcClean}_active`;
+      const activeOrderId = `deliv_${npcSlug}_active`;
       const nextTargetCount = currStat.deliveryCount + 1;
 
-      const existingIdx = vault.archiveDeliveries.findIndex(d => d.id === activeOrderId && !d.isManual);
+      const existingIdx = vault.archiveDeliveries.findIndex(d => (d.id === activeOrderId || d.id === `deliv_${npcClean}_active`) && !d.isManual);
 
       if (existingIdx !== -1) {
         const target = vault.archiveDeliveries[existingIdx];
@@ -756,7 +762,14 @@ export function recomputeVaultCumulative(vault) {
   const isVip = Boolean(vault.isVipActive);
   const vipBonus = isVip ? 2 : 0;
   const currentWeekMonday = getMondayBasedWeekId();
-  const KNOWN_DOUBLE_DELIVERY_DATES = ['2026-09-02'];
+  const KNOWN_DOUBLE_DELIVERY_DATES = [
+    '2026-09-02',
+    '2026-11-19',
+    '2026-11-25',
+    '2026-12-05',
+    '2026-12-08',
+    '2026-12-16'
+  ];
   const doubleDatesSet = new Set(KNOWN_DOUBLE_DELIVERY_DATES);
 
   let totalTickets = (vault.trackTickets || 0) + (vault.dailyLoginTickets || 0);
@@ -839,6 +852,23 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
   if (!vault || typeof vault !== 'object') return false;
   let modified = false;
 
+  const KNOWN_GHOST_DELIVERY_IDS = new Set([
+    'deliv_tywin_d36',
+    'deliv_bert_d420',
+    'deliv_finn_d272',
+    'deliv_pharaoh_d325',
+    'deliv_cornwell_d339',
+    'deliv_miranda_d383',
+    'deliv_pumpkin_pete_d578',
+    'deliv_cornwell_d208',
+    'deliv_bert_d173',
+    'deliv_timmy_d147',
+    'deliv_miranda_d205',
+    'deliv_raven_d172',
+    'deliv_pumpkin_pete_d272',
+    "deliv_pumpkin' pete_d808"
+  ]);
+
   // 1. Clean deliveries
   if (Array.isArray(vault.archiveDeliveries) && vault.archiveDeliveries.length > 0) {
     const origLen = vault.archiveDeliveries.length;
@@ -852,11 +882,40 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
     });
     const burstTimestamps = new Set(Object.keys(tsCounts).filter(k => tsCounts[k] > 3));
 
+    // Detect max deliveryCountAtCreation per NPC to identify cross-farm regressions
+    const maxCountByNpc = {};
+    vault.archiveDeliveries.forEach(x => {
+      if (!x) return;
+      const isDone = Boolean(x.checked !== undefined ? x.checked : x.completed);
+      if (isDone && !x.isManual) {
+        const rawNpc = (x.from || x.name || '').toLowerCase().trim();
+        const npc = slugifyNpc(rawNpc);
+        const count = x.deliveryCountAtCreation || 0;
+        if (count > (maxCountByNpc[npc] || 0)) {
+          maxCountByNpc[npc] = count;
+        }
+      }
+    });
+
+    const seenIds = new Set();
     const cleanedDeliveries = vault.archiveDeliveries.filter(x => {
       if (!x) return false;
+
+      // Canonicalize ID if it contains raw quotes or spaces
+      if (x.id) {
+        const cleanId = String(x.id).replace(/['"`]/g, '').replace(/\s+/g, '_');
+        if (cleanId !== x.id) {
+          x.id = cleanId;
+          modified = true;
+        }
+      }
+
       const isDone = Boolean(x.checked !== undefined ? x.checked : x.completed);
       const isSkip = Boolean(x.isSkipped);
       if (!isDone && !isSkip) return true; // keep active deliveries
+
+      // Filter out explicit known ghost/cross-farm bleed IDs
+      if (x.id && KNOWN_GHOST_DELIVERY_IDS.has(x.id)) return false;
 
       // Filter out deliveries completed before Chapter 16 start (Nov 8, 2026)
       const dt = x.completedDate || (x.completedAt ? new Date(x.completedAt).toISOString().split('T')[0] : '');
@@ -873,6 +932,23 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
         return false;
       }
 
+      // Filter out cross-farm counter regression anomalies (> 15 behind peak for that NPC)
+      if (isDone && !x.isManual) {
+        const rawNpc = (x.from || x.name || '').toLowerCase().trim();
+        const npc = slugifyNpc(rawNpc);
+        const maxCount = maxCountByNpc[npc] || 0;
+        const count = x.deliveryCountAtCreation || 0;
+        if (maxCount > 20 && count > 0 && (maxCount - count) > 15) {
+          return false;
+        }
+      }
+
+      // Deduplicate by canonical ID
+      if (x.id) {
+        if (seenIds.has(x.id)) return false;
+        seenIds.add(x.id);
+      }
+
       return true;
     });
 
@@ -880,6 +956,38 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
       vault.archiveDeliveries = cleanedDeliveries;
       modified = true;
     }
+  }
+
+  // Double delivery dates: Ensure accurate hasDoubleBonus
+  const doubleDates = new Set(['2026-09-02', '2026-11-19', '2026-11-25', '2026-12-05', '2026-12-08', '2026-12-16']);
+  const claimedByDate = {};
+
+  if (Array.isArray(vault.archiveDeliveries)) {
+    vault.archiveDeliveries.sort((a, b) => (a.completedAt || 0) - (b.completedAt || 0));
+
+    vault.archiveDeliveries.forEach(d => {
+      const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
+      if (isDone) {
+        const dt = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : '');
+        if (doubleDates.has(dt)) {
+          if (!claimedByDate[dt]) claimedByDate[dt] = new Set();
+          const npc = slugifyNpc(d.from || d.name || '');
+          const isStacked = Boolean(d.isStacked);
+          if (!isStacked && !claimedByDate[dt].has(npc)) {
+            claimedByDate[dt].add(npc);
+            if (!d.hasDoubleBonus) {
+              d.hasDoubleBonus = true;
+              modified = true;
+            }
+          } else {
+            if (d.hasDoubleBonus) {
+              d.hasDoubleBonus = false;
+              modified = true;
+            }
+          }
+        }
+      }
+    });
   }
 
   // 2. Normalize npcSnapshots: keep only canonical keys, remove ghost alias keys
@@ -902,39 +1010,40 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
     });
   }
 
-  // 3. Clean today's log if it has burst / phantom entries
+  // 3. Clean logs if they contain burst / phantom / cleaned deliveries
   if (Array.isArray(vault.logs) && vault.logs.length > 0) {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayLog = vault.logs.find(l => l.date === todayStr);
-    if (todayLog && Array.isArray(todayLog.deliveriesDone) && todayLog.deliveriesDone.length > 10) {
-      const realDeliveriesToday = (vault.archiveDeliveries || []).filter(d => {
+    vault.logs.forEach(log => {
+      if (!log || !log.date) return;
+      const realDeliveriesForDate = (vault.archiveDeliveries || []).filter(d => {
         const isDone = (d.checked !== undefined ? d.checked : Boolean(d.completed)) && !d.isSkipped && !d.isManual;
         const compDate = d.completedDate || (d.completedAt ? new Date(d.completedAt).toISOString().split('T')[0] : '');
-        return isDone && compDate === todayStr;
+        return isDone && compDate === log.date;
       });
 
-      const isVip = Boolean(vault.isVipActive);
-      const vipBonus = isVip ? 2 : 0;
-      let dayTix = 0;
-      let dayCost = 0;
-      todayLog.deliveriesDone = realDeliveriesToday.map(d => {
-        const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
-        const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
-        const yieldAmt = wasDouble ? (base + vipBonus) * 2 : (base + vipBonus);
-        const c = d.itemsCost || d.cost || 0;
-        dayTix += yieldAmt;
-        dayCost += c;
-        return {
-          name: d.name || d.from,
-          yield: yieldAmt,
-          cost: c,
-          weekId: d.weekId || getMondayBasedWeekId()
-        };
-      });
-      todayLog.ticketsSaved = dayTix;
-      todayLog.costSaved = dayCost;
-      modified = true;
-    }
+      if (Array.isArray(log.deliveriesDone) && (log.deliveriesDone.length > realDeliveriesForDate.length || log.date === '2026-11-19')) {
+        const isVip = Boolean(vault.isVipActive);
+        const vipBonus = isVip ? 2 : 0;
+        let dayTix = 0;
+        let dayCost = 0;
+        log.deliveriesDone = realDeliveriesForDate.map(d => {
+          const base = d.baseTickets !== undefined ? d.baseTickets : (d.tickets || 2);
+          const wasDouble = Boolean(d.hasDoubleBonus) && !Boolean(d.isStacked);
+          const yieldAmt = wasDouble ? (base + vipBonus) * 2 : (base + vipBonus);
+          const c = d.itemsCost || d.cost || 0;
+          dayTix += yieldAmt;
+          dayCost += c;
+          return {
+            name: d.name || d.from,
+            yield: yieldAmt,
+            cost: c,
+            weekId: d.weekId || getMondayBasedWeekId()
+          };
+        });
+        log.ticketsSaved = dayTix;
+        log.costSaved = dayCost;
+        modified = true;
+      }
+    });
   }
 
   // 4. Recalculate cumulative
@@ -1834,6 +1943,43 @@ export default async function handler(req, res) {
     const parsed = parseFarmData(farm, priceMap, payload);
 
     if (userVault && cleanUser) {
+      const vaultFarmId = String(userVault.farmId || '').trim();
+      const queryFarmId = String(farmId || '').trim();
+
+      // If user vault has no farmId yet, link it to the queried farmId
+      if (!vaultFarmId && queryFarmId) {
+        userVault.farmId = queryFarmId;
+      }
+
+      const isOwnFarm = !vaultFarmId || !queryFarmId || vaultFarmId === queryFarmId;
+
+      if (!isOwnFarm) {
+        console.warn(`[Vault Security] Prevented cross-farm mutation: User "${cleanUser}" (Farm #${vaultFarmId}) queried external Farm #${queryFarmId}.`);
+        return res.status(200).json({
+          success: true,
+          farmId: queryFarmId,
+          pricesLoadedCount: Object.keys(priceMap).length,
+          isVipActive: parsed.isVipActive,
+          isDoubleDeliveryActive: parsed.isDoubleDeliveryActive,
+          doubleDeliveryDates: parsed.doubleDeliveryDates,
+          chapterPoints: parsed.chapterPoints || 0,
+          trackTickets: parsed.chapterPoints > 0 ? calculateTrackTickets(parsed.chapterPoints, parsed.isVipActive, 'Cave Dwellers') : 0,
+          coinRatio: finalCoinRatio,
+          usedBackupKey,
+          apiKeyInvalid,
+          milestones: parsed.liveMilestones,
+          deliveries: parsed.deliveryList,
+          archiveDeliveries: [],
+          bounties: parsed.activeBounties,
+          chores: parsed.choresList,
+          userRank: userRank || null,
+          vaultData: null
+        });
+      }
+
+      // Auto-heal vault if it contains dirty/phantom delivery bursts or anomalies
+      cleanVaultDeliveriesAndSnapshots(userVault);
+
       userVault.coinRatio = finalCoinRatio;
 
       // Auto-migrate to Cave Dwellers (Chapter 16):
