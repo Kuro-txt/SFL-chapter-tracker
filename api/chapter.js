@@ -919,6 +919,7 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
 
     // Detect max deliveryCountAtCreation per NPC to identify cross-farm regressions
     const maxCountByNpc = {};
+    const snapshots = vault.npcSnapshots || {};
     vault.archiveDeliveries.forEach(x => {
       if (!x) return;
       const isDone = Boolean(x.checked !== undefined ? x.checked : x.completed);
@@ -926,6 +927,10 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
         const rawNpc = (x.from || x.name || '').toLowerCase().trim();
         const npc = slugifyNpc(rawNpc);
         const count = x.deliveryCountAtCreation || 0;
+        const snapCount = snapshots[npc]?.deliveryCount || snapshots[rawNpc]?.deliveryCount || 0;
+        if (snapCount > 0 && count > (snapCount + 1)) {
+          return;
+        }
         if (count > (maxCountByNpc[npc] || 0)) {
           maxCountByNpc[npc] = count;
         }
@@ -951,6 +956,14 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
 
       // Filter out explicit known ghost/cross-farm bleed IDs
       if (x.id && KNOWN_GHOST_DELIVERY_IDS.has(x.id)) return false;
+
+      // Filter out impossible alien deliveries exceeding the farm's known snapshot count
+      const rawNpc = (x.from || x.name || '').toLowerCase().trim();
+      const npc = slugifyNpc(rawNpc);
+      const snapCount = snapshots[npc]?.deliveryCount || snapshots[rawNpc]?.deliveryCount || 0;
+      if (isDone && !x.isManual && snapCount > 0 && (x.deliveryCountAtCreation || 0) > (snapCount + 1)) {
+        return false;
+      }
 
       // Filter out deliveries completed before Chapter 16 start (Nov 8, 2026)
       const dt = x.completedDate || (x.completedAt ? new Date(x.completedAt).toISOString().split('T')[0] : '');
