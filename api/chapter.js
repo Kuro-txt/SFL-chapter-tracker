@@ -901,12 +901,6 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
     'deliv_cornwell_d339',
     'deliv_miranda_d383',
     'deliv_pumpkin_pete_d578',
-    'deliv_cornwell_d208',
-    'deliv_bert_d173',
-    'deliv_timmy_d147',
-    'deliv_miranda_d205',
-    'deliv_raven_d172',
-    'deliv_pumpkin_pete_d272',
     "deliv_pumpkin' pete_d808"
   ]);
 
