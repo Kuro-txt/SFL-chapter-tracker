@@ -893,17 +893,6 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
   if (!vault || typeof vault !== 'object') return false;
   let modified = false;
 
-  const KNOWN_GHOST_DELIVERY_IDS = new Set([
-    'deliv_tywin_d36',
-    'deliv_bert_d420',
-    'deliv_finn_d272',
-    'deliv_pharaoh_d325',
-    'deliv_cornwell_d339',
-    'deliv_miranda_d383',
-    'deliv_pumpkin_pete_d578',
-    "deliv_pumpkin' pete_d808"
-  ]);
-
   // 1. Clean deliveries
   if (Array.isArray(vault.archiveDeliveries) && vault.archiveDeliveries.length > 0) {
     const origLen = vault.archiveDeliveries.length;
@@ -953,9 +942,6 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
       const isDone = Boolean(x.checked !== undefined ? x.checked : x.completed);
       const isSkip = Boolean(x.isSkipped);
       if (!isDone && !isSkip) return true; // keep active deliveries
-
-      // Filter out explicit known ghost/cross-farm bleed IDs
-      if (x.id && KNOWN_GHOST_DELIVERY_IDS.has(x.id)) return false;
 
       // Filter out impossible alien deliveries exceeding the farm's known snapshot count
       const rawNpc = (x.from || x.name || '').toLowerCase().trim();
