@@ -514,7 +514,6 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             const completedCountIndex = prevStat.deliveryCount + 1;
             const targetOrderId = `deliv_${npcSlug}_d${completedCountIndex}`;
             const orderToComplete = vault.archiveDeliveries[staleActiveIdx];
-            const origWeek = getMondayBasedWeekId(orderToComplete.weekId || orderToComplete.activeSince || compWeek);
             orderToComplete.id = targetOrderId;
             orderToComplete.completed = true;
             orderToComplete.checked = true;
@@ -522,7 +521,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
             orderToComplete.status = 'completed';
             orderToComplete.completedAt = completionTime;
             orderToComplete.completedDate = compDate;
-            orderToComplete.weekId = origWeek;
+            orderToComplete.weekId = compWeek;
             orderToComplete.deliveryCountAtCreation = completedCountIndex;
             orderToComplete.isStacked = false; // Primary / oldest delivery: eligible for 2x double delivery bonus
             staleCompletedNpcs.add(npcClean);
@@ -646,7 +645,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
         target.status = 'completed';
         target.completedAt = compTime;
         target.completedDate = compDate;
-        target.weekId = getMondayBasedWeekId(target.weekId || compWeek);
+        target.weekId = compWeek;
         target.deliveryCountAtCreation = currStat.deliveryCount;
         target.isStacked = isStackedOrder;
         target.items = order.items || target.items;
@@ -669,7 +668,7 @@ export function reconcileDeliveriesWithNpcs(vault, parsedDeliveryList, currentNp
           target.status = 'completed';
           target.completedAt = compTime;
           target.completedDate = compDate;
-          target.weekId = getMondayBasedWeekId(target.weekId || compWeek);
+          target.weekId = compWeek;
           target.isStacked = isStackedOrder;
           target.items = order.items || target.items;
           if (!target.isCustomCost && target.userCost === undefined) {
