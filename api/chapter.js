@@ -896,15 +896,6 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
   if (Array.isArray(vault.archiveDeliveries) && vault.archiveDeliveries.length > 0) {
     const origLen = vault.archiveDeliveries.length;
     
-    // Identify burst completion timestamps (>3 completed deliveries sharing the exact same millisecond timestamp)
-    const tsCounts = {};
-    vault.archiveDeliveries.forEach(x => {
-      if (x && x.completedAt) {
-        tsCounts[x.completedAt] = (tsCounts[x.completedAt] || 0) + 1;
-      }
-    });
-    const burstTimestamps = new Set(Object.keys(tsCounts).filter(k => tsCounts[k] > 3));
-
     const snapshots = vault.npcSnapshots || {};
 
     const seenIds = new Set();
@@ -938,9 +929,6 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
 
       // Filter out duplicate _2, _3 suffix cards
       if (x.id && /_d\d+_\d+$/.test(String(x.id))) return false;
-
-      // Filter out burst synthetic deliveries
-      if (x.completedAt && burstTimestamps.has(String(x.completedAt))) return false;
 
       // Filter out phantom 0-cost completed deliveries with no items
       if (isDone && !x.isManual && (x.cost === 0 || !x.cost) && (!x.itemDetails || x.itemDetails.length === 0) && (!x.items || Object.keys(x.items).length === 0)) {
