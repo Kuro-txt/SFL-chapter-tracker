@@ -905,25 +905,7 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
     });
     const burstTimestamps = new Set(Object.keys(tsCounts).filter(k => tsCounts[k] > 3));
 
-    // Detect max deliveryCountAtCreation per NPC to identify cross-farm regressions
-    const maxCountByNpc = {};
     const snapshots = vault.npcSnapshots || {};
-    vault.archiveDeliveries.forEach(x => {
-      if (!x) return;
-      const isDone = Boolean(x.checked !== undefined ? x.checked : x.completed);
-      if (isDone && !x.isManual) {
-        const rawNpc = (x.from || x.name || '').toLowerCase().trim();
-        const npc = slugifyNpc(rawNpc);
-        const count = x.deliveryCountAtCreation || 0;
-        const snapCount = snapshots[npc]?.deliveryCount || snapshots[rawNpc]?.deliveryCount || 0;
-        if (snapCount > 0 && count > (snapCount + 1)) {
-          return;
-        }
-        if (count > (maxCountByNpc[npc] || 0)) {
-          maxCountByNpc[npc] = count;
-        }
-      }
-    });
 
     const seenIds = new Set();
     const cleanedDeliveries = vault.archiveDeliveries.filter(x => {
@@ -963,17 +945,6 @@ export function cleanVaultDeliveriesAndSnapshots(vault) {
       // Filter out phantom 0-cost completed deliveries with no items
       if (isDone && !x.isManual && (x.cost === 0 || !x.cost) && (!x.itemDetails || x.itemDetails.length === 0) && (!x.items || Object.keys(x.items).length === 0)) {
         return false;
-      }
-
-      // Filter out cross-farm counter regression anomalies (> 15 behind peak for that NPC)
-      if (isDone && !x.isManual) {
-        const rawNpc = (x.from || x.name || '').toLowerCase().trim();
-        const npc = slugifyNpc(rawNpc);
-        const maxCount = maxCountByNpc[npc] || 0;
-        const count = x.deliveryCountAtCreation || 0;
-        if (maxCount > 20 && count > 0 && (maxCount - count) > 15) {
-          return false;
-        }
       }
 
       // Deduplicate by canonical ID
