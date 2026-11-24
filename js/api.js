@@ -113,13 +113,14 @@ export async function loadTrackerData() {
     // Auto-update user's rank from response if provided
     if (data.userRank && data.userRank.rank) {
       if (typeof window.updateUserRankDisplay === 'function') {
-        window.updateUserRankDisplay(data.userRank.rank, data.userRank.id);
+        window.updateUserRankDisplay(data.userRank.rank, data.userRank.id, data.userRank.count);
       }
       try {
         localStorage.setItem('sfl_user_rank', JSON.stringify({
           rank: data.userRank.rank,
           name: data.userRank.id || '',
-          farmId: data.userRank.farmId
+          farmId: data.userRank.farmId,
+          count: data.userRank.count
         }));
       } catch (e) {}
     }

@@ -269,9 +269,9 @@ export async function loadLeaderboardData(forceRefresh = false, overrideFarmId =
           }
         }
         if (myRecord && myRecord.rank) {
-          updateUserRankDisplay(myRecord.rank, myRecord.id);
+          updateUserRankDisplay(myRecord.rank, myRecord.id, myRecord.count);
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('sfl_user_rank', JSON.stringify({ rank: myRecord.rank, name: myRecord.id || '', farmId: myRecord.farmId }));
+            localStorage.setItem('sfl_user_rank', JSON.stringify({ rank: myRecord.rank, name: myRecord.id || '', farmId: myRecord.farmId, count: myRecord.count }));
           }
         }
       }
@@ -620,7 +620,7 @@ export function renderLeaderboard() {
   `;
 }
 
-export function updateUserRankDisplay(rank, playerName = '') {
+export function updateUserRankDisplay(rank, playerName = '', ticketCount = null) {
   if (typeof document === 'undefined') return;
   const badgeEl = document.getElementById('statTotalRankBadge');
   const footerEl = document.getElementById('statTotalRank');
@@ -633,18 +633,46 @@ export function updateUserRankDisplay(rank, playerName = '') {
     return;
   }
 
+  // Attempt to resolve ticketCount from cache if not explicitly provided
+  let effectiveTickets = ticketCount;
+  if (effectiveTickets === null || effectiveTickets === undefined) {
+    try {
+      const saved = localStorage.getItem('sfl_user_rank');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.count !== undefined && parsed.count !== null) {
+          effectiveTickets = parsed.count;
+        }
+      }
+    } catch (e) {}
+  }
+
   const rankStr = `#${rank}`;
+  const tixNum = Number(effectiveTickets);
+  const hasTickets = !isNaN(tixNum) && tixNum >= 0 && effectiveTickets !== null && effectiveTickets !== undefined && effectiveTickets !== '';
+  const formattedTix = hasTickets ? tixNum.toLocaleString() : null;
+
   if (badgeEl) {
-    badgeEl.textContent = rankStr;
+    if (formattedTix) {
+      badgeEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:3px;"><span>${rankStr}</span> <span style="font-size:10px; opacity:0.85; font-weight:700;">(${formattedTix})</span></span>`;
+    } else {
+      badgeEl.textContent = rankStr;
+    }
     badgeEl.style.display = 'inline-block';
-    badgeEl.title = `Your Global Rank: ${rankStr}${playerName ? ` (${playerName})` : ''} - Click to view Leaderboard`;
+    badgeEl.title = `Your Global Rank: ${rankStr}${formattedTix ? ` (${formattedTix} Tickets)` : ''}${playerName ? ` · ${playerName}` : ''} - Click to view Leaderboard`;
   }
+
   if (footerEl) {
-    footerEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:3px;">🏆 ${rankStr}</span>`;
-    footerEl.title = `Your Global Rank: ${rankStr}${playerName ? ` (${playerName})` : ''} - Click to view Leaderboard`;
+    if (formattedTix) {
+      footerEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px;"><span>🏆 ${rankStr}</span> <span class="stat-rank-tix" style="display:inline-flex; align-items:center; gap:2px; font-size:11px; font-weight:700;">(${renderChapterTicketIcon(12)} <span>${formattedTix}</span>)</span></span>`;
+    } else {
+      footerEl.innerHTML = `<span style="display:inline-flex; align-items:center; gap:3px;">🏆 ${rankStr}</span>`;
+    }
+    footerEl.title = `Your Global Rank: ${rankStr}${formattedTix ? ` (${formattedTix} in-game tickets)` : ''}${playerName ? ` (${playerName})` : ''} - Click to view Leaderboard`;
   }
+
   if (tipEl) {
-    tipEl.innerHTML = `🏆 Global Rank: <strong>${rankStr}</strong>${playerName ? ` (${playerName})` : ''}`;
+    tipEl.innerHTML = `🏆 Global Rank: <strong>${rankStr}</strong>${formattedTix ? ` (${formattedTix} Tickets)` : ''}${playerName ? ` (${playerName})` : ''}`;
   }
 }
 
@@ -655,7 +683,7 @@ export function initLeaderboardRank() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (parsed && parsed.rank) {
-        updateUserRankDisplay(parsed.rank, parsed.name);
+        updateUserRankDisplay(parsed.rank, parsed.name, parsed.count);
       }
     }
   } catch (e) {}

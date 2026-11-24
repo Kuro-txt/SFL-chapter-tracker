@@ -300,6 +300,10 @@ export function userLogout() {
   localStorage.removeItem('sfl_track_manual_tix');
   localStorage.removeItem('sfl_track_tix');
   localStorage.removeItem('sfl_chapter_points');
+  localStorage.removeItem('sfl_user_rank');
+  if (typeof window.updateUserRankDisplay === 'function') {
+    window.updateUserRankDisplay(null);
+  }
   const trackTixEl = document.getElementById('trackTicketsInput');
   if (trackTixEl) trackTixEl.value = '0';
   const farmIdInput = document.getElementById('farmId');
